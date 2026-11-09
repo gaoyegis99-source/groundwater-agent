@@ -1,0 +1,90 @@
+{
+  "description": "Return structural metadata without sample values.",
+  "domain": "data",
+  "errorCodes": [
+    "FORMAT_UNSUPPORTED",
+    "LAYER_REQUIRED",
+    "INPUT_INVALID"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-data-inspect",
+      "inputs": {
+        "data": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "data.inspect",
+        "version": "1.0.0"
+      },
+      "parameters": {},
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "data.inspect",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "arrow-ipc-file",
+        "cog",
+        "copc",
+        "csv",
+        "flatgeobuf",
+        "geojson",
+        "geopackage",
+        "geoparquet",
+        "geotiff",
+        "json",
+        "las",
+        "laz",
+        "npy",
+        "parquet"
+      ],
+      "mediaTypes": [
+        "application/geopackage+sqlite3",
+        "application/geo+json",
+        "application/flatgeobuf",
+        "application/vnd.apache.parquet",
+        "image/tiff",
+        "application/vnd.las",
+        "application/vnd.laz",
+        "text/csv",
+        "application/json",
+        "application/vnd.apache.arrow.file",
+        "application/x-npy"
+      ],
+      "name": "data",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "kind": "value",
+      "name": "summary",
+      "schema": {
+        "type": "object"
+      }
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "layer": {
+        "minLength": 1,
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "metadata"
+  ],
+  "timeoutSeconds": 600,
+  "title": "Inspect data",
+  "version": "1.0.0"
+}

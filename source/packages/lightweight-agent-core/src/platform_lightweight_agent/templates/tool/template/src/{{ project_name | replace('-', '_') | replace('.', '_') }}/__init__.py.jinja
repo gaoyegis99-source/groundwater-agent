@@ -1,0 +1,23 @@
+from __future__ import annotations
+
+from collections.abc import Mapping
+
+TOOL_DESCRIPTOR = {"tool_id": "example.lookup", "version": "1.0.0"}
+
+
+def lookup(arguments: Mapping[str, object]) -> Mapping[str, object]:
+    return {"answer": f"example:{arguments.get('query', '')}"}
+
+
+def register(executor: object, reference: object) -> None:
+    """Bind the host-verified wheel digest; never embed it in this wheel."""
+
+    if (
+        getattr(reference, "tool_id", None) != TOOL_DESCRIPTOR["tool_id"]
+        or getattr(reference, "version", None) != TOOL_DESCRIPTOR["version"]
+    ):
+        raise ValueError("host ToolReference does not match this logical tool")
+    register_handler = getattr(executor, "register", None)
+    if not callable(register_handler):
+        raise TypeError("executor does not support trusted tool registration")
+    register_handler(reference, lookup)

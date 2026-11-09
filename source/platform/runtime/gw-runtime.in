@@ -1,0 +1,7 @@
+#!/bin/sh
+set -eu
+: "${V6_PYTHON:?V6_PYTHON is required}"
+: "${V6_RUNTIME_CONTROL_ROOT:?V6_RUNTIME_CONTROL_ROOT is required}"
+export PYTHONPATH="$V6_RUNTIME_CONTROL_ROOT"
+export PYTHONDONTWRITEBYTECODE=1
+exec "$V6_PYTHON" -B -m scripts.maintenance.service_entrypoint "$@"

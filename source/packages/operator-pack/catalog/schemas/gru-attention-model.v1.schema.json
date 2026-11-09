@@ -1,0 +1,45 @@
+{
+  "$id": "gru-attention-model.v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "dropout": {
+      "exclusiveMaximum": 1,
+      "minimum": 0,
+      "type": "number"
+    },
+    "hiddenSize": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "inputFeatures": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "inputWindow": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "numHeads": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "numLayers": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "schemaVersion": {
+      "const": "gru-attention-model.v1"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "inputWindow",
+    "inputFeatures",
+    "hiddenSize",
+    "numLayers",
+    "numHeads",
+    "dropout"
+  ],
+  "type": "object"
+}

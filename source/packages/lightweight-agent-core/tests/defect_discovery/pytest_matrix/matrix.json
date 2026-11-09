@@ -1,0 +1,447 @@
+{
+  "schema_version": "v6-defect-pytest-matrix-v1",
+  "cases": [
+    {
+      "case": "B01",
+      "complete": true,
+      "assessed_scope": "Core import isolation and local CLI approval path, plus a fresh base-wheel-only environment installed by uv with offline/no-index/no-cache and resumed from outside the source tree.",
+      "selectors": [
+        "tests/test_drivers_and_cli.py::test_core_import_does_not_load_services_or_optional_agent_frameworks",
+        "tests/test_drivers_and_cli.py::test_cli_check_and_local_approval_workflow",
+        "tests/test_wheel_delivery.py::test_base_wheel_runs_offline_without_optional_dependencies"
+      ]
+    },
+    {
+      "case": "B02",
+      "complete": true,
+      "assessed_scope": "Built wheel from an arbitrary directory, bundled assets, restartable CLI, and real CSV clean-install delivery.",
+      "selectors": [
+        "tests/test_wheel_delivery.py::test_built_wheel_delivers_templates_and_restartable_cli",
+        "tests/test_csv_statistics_delivery.py::test_csv_capability_clean_install_restart_and_bundle_round_trip"
+      ]
+    },
+    {
+      "case": "B03",
+      "complete": false,
+      "assessed_scope": "Provider extra metadata and base import isolation.",
+      "missing_scope": ["separate clean installs for every extra", "intentional dependency-conflict environment"],
+      "selectors": [
+        "tests/test_wheel_delivery.py::test_provider_specific_extra_matches_runtime_readiness",
+        "tests/test_workflow_v3.py::test_base_import_does_not_load_optional_workflow_dependencies"
+      ]
+    },
+    {
+      "case": "B04",
+      "complete": false,
+      "assessed_scope": "CLI/Python shared project runtime, Web shared Host, and native async tool delivery.",
+      "missing_scope": ["single parameterized semantic parity oracle across all three entrypoints"],
+      "selectors": [
+        "tests/test_runtime.py::test_cli_runs_and_resumes_the_same_portable_project",
+        "tests/test_runtime.py::test_standard_project_registry_accepts_native_async_tool_handlers",
+        "tests/test_web.py::test_web_can_share_a_host_runtime_assembly"
+      ]
+    },
+    {
+      "case": "W01",
+      "complete": true,
+      "assessed_scope": "Missing, forward, cross-branch, pointer, required, and explicit type binding rejection.",
+      "selectors": ["tests/test_workflow_v3.py::test_v3_preflight_rejects_missing_forward_and_incompatible_bindings"]
+    },
+    {
+      "case": "W02",
+      "complete": false,
+      "assessed_scope": "Input, tool output, retained-state and Agent tool-output limits at representative oversized values.",
+      "missing_scope": ["limit-1/equal/limit+1 byte matrix", "multibyte UTF-8 boundary for every budget surface"],
+      "selectors": [
+        "tests/test_workflow_v3.py::test_v3_node_input_limit_fails_before_dispatch",
+        "tests/test_workflow_v3.py::test_v3_tool_output_limit_closes_dispatched_action_without_retry",
+        "tests/test_workflow_v3.py::test_v3_cumulative_retained_state_limit_blocks_without_retaining_payload",
+        "tests/test_workflow_v4.py::test_v4_rejects_oversized_agent_tool_output_before_persisting_it"
+      ]
+    },
+    {
+      "case": "W03",
+      "complete": true,
+      "assessed_scope": "Bounded parallelism, declaration-order join, fail-fast/wait-all, nested subtree policy and unknown actions.",
+      "selectors": [
+        "tests/test_workflow_v3.py::test_v3_parallel_is_bounded_and_join_is_declaration_ordered",
+        "tests/test_workflow_v3.py::test_v3_parallel_failure_policy",
+        "tests/test_workflow_v3.py::test_v3_subworkflow_concurrency_policy_limits_its_subtree",
+        "tests/test_workflow_v3.py::test_v3_failure_does_not_skip_reconciliation_of_dispatched_actions"
+      ]
+    },
+    {
+      "case": "W04",
+      "complete": true,
+      "assessed_scope": "Cross-engine mutex, queued cancellation/revocation, live sync work, close timeout and resource ownership.",
+      "selectors": [
+        "tests/test_workflow_v3.py::test_v3_mutex_resource_is_shared_across_engine_instances",
+        "tests/test_workflow_v3.py::test_v3_unknown_sync_action_retains_mutex_until_reconciled",
+        "tests/test_host_runtime.py::test_host_cancellation_of_a_queued_run_prevents_late_start",
+        "tests/test_host_runtime.py::test_host_rechecks_authorization_after_its_tool_queue",
+        "tests/test_host_runtime.py::test_host_keeps_sync_tool_capacity_and_resources_until_worker_stops",
+        "tests/test_host_runtime.py::test_host_close_timeout_keeps_runtime_available_until_work_settles"
+      ]
+    },
+    {
+      "case": "W05",
+      "complete": true,
+      "assessed_scope": "Legacy default, pre-budget v3, workflow versions, frozen subworkflows, manifest versions and opaque storage-shaped business JSON.",
+      "selectors": [
+        "tests/test_workflow_v4.py::test_workflow_defaults_to_v4_and_legacy_requires_explicit_version",
+        "tests/test_workflow_v3.py::test_pre_budget_v3_definition_round_trips_without_semantic_drift",
+        "tests/test_engine.py::test_condition_parallel_and_subworkflow_are_portable_control_flow",
+        "tests/test_workflow_v3.py::test_v3_resume_executes_frozen_subworkflow_definition",
+        "tests/test_domain_packs.py::test_domain_manifest_protocol_does_not_migrate_existing_projects",
+        "tests/test_journal_scaling.py::test_private_storage_marker_is_opaque_business_json_in_every_journal"
+      ]
+    },
+    {
+      "case": "R03",
+      "complete": true,
+      "assessed_scope": "Late success/error, wrong action identity and reconciled fact monotonicity.",
+      "selectors": [
+        "tests/test_workflow_v3.py::test_v3_late_executor_result_cannot_overwrite_reconciliation",
+        "tests/test_workflow_v3.py::test_v3_late_executor_error_cannot_reopen_a_reconciled_action",
+        "tests/test_tool_testing.py::test_sync_contract_rejects_a_stable_but_wrong_action_identity"
+      ]
+    },
+    {
+      "case": "R04",
+      "complete": true,
+      "assessed_scope": "Cross-engine resource ownership, background lease-expiry wakeup, cursor fairness, bounded retry, parallel recovery capacity, and stale-generation fencing across independent OS processes.",
+      "selectors": [
+        "tests/test_workflow_v3.py::test_v3_executor_observes_cancel_from_another_engine",
+        "tests/test_workflow_v3.py::test_v3_mutex_resource_is_shared_across_engine_instances",
+        "tests/test_host_runtime.py::test_host_periodically_recovers_after_a_previous_lease_expires",
+        "tests/test_host_runtime.py::test_host_recovers_after_previous_process_dies_with_live_lease",
+        "tests/test_host_runtime.py::test_expired_execution_lease_fences_a_stale_other_process",
+        "tests/test_host_runtime.py::test_host_recovery_cursor_skips_incompatible_rows_without_spin",
+        "tests/test_host_runtime.py::test_host_recovery_uses_available_run_and_tool_capacity_in_parallel",
+        "tests/test_journal_scaling.py::test_recoverable_scan_cursor_pages_past_the_front_of_the_queue"
+      ]
+    },
+    {
+      "case": "R05",
+      "complete": true,
+      "assessed_scope": "Async cancellation, sync cancellation/timeout, proven stop, unknown result and Host close propagation.",
+      "selectors": [
+        "tests/test_workflow_v3.py::test_v3_cancel_distinguishes_requested_from_stopped",
+        "tests/test_workflow_v3.py::test_v3_sync_executor_cancel_after_dispatch_is_unknown_then_reconciled",
+        "tests/test_workflow_v3.py::test_v3_step_timeout_requests_the_sync_tool_context_token",
+        "tests/test_workflow_v3.py::test_v3_timeout_after_dispatch_requires_reconciliation",
+        "tests/test_host_runtime.py::test_host_close_requests_the_live_sync_tool_context_token"
+      ]
+    },
+    {
+      "case": "R06",
+      "complete": true,
+      "assessed_scope": "Durable invocation ledger, unknown post-dispatch usage and budget persistence across approval/resume.",
+      "selectors": [
+        "tests/test_workflow_v4.py::test_v4_dispatched_model_usage_is_not_treated_as_zero_after_crash",
+        "tests/test_workflow_v4.py::test_v4_token_budget_is_not_reset_by_resume",
+        "tests/test_native_agent_adapters.py::test_v4_journal_records_sdk_requests_separately_from_one_driver_turn"
+      ]
+    },
+    {
+      "case": "R07",
+      "complete": false,
+      "assessed_scope": "Hypothesis state sequences plus separately reported real-process crash windows.",
+      "missing_scope": ["mixed state-machine sequences in which selected restarts are real process exits"],
+      "selectors": ["tests/test_state_invariants.py"]
+    },
+    {
+      "case": "R08",
+      "complete": true,
+      "assessed_scope": "Recovery-pending ownership, query, idempotent replay with original action id, and old-owner continuation.",
+      "selectors": [
+        "tests/test_inspection_and_journal_lifecycle.py::test_backup_restore_holds_unknown_action_until_explicit_query_recovery",
+        "tests/test_inspection_and_journal_lifecycle.py::test_backup_idempotent_redispatch_reuses_the_original_action_id",
+        "tests/test_inspection_and_journal_lifecycle.py::test_backup_query_holds_a_ready_action_after_the_old_owner_continued"
+      ]
+    },
+    {
+      "case": "A01",
+      "complete": false,
+      "assessed_scope": "Approval persists under occupied capacity and is recovered without resubmission.",
+      "missing_scope": ["SIGKILL immediately after approval commit in a parallel workflow"],
+      "selectors": [
+        "tests/test_host_runtime.py::test_host_persists_parallel_approval_while_execution_slot_is_busy",
+        "tests/test_host_runtime.py::test_host_start_recovers_a_saved_approval_without_resubmission"
+      ]
+    },
+    {
+      "case": "A02",
+      "complete": false,
+      "assessed_scope": "Stable approval identity, idempotent mid-flight decisions, and invalid identity rejection.",
+      "missing_scope": ["concurrent opposite decisions against the same approval identity"],
+      "selectors": [
+        "tests/test_workflow_v3.py::test_v3_approval_uses_stable_id_and_does_not_replay_action",
+        "tests/test_workflow_v3.py::test_v3_midflight_approval_is_idempotent_and_consumed_by_owner",
+        "tests/test_host_runtime.py::test_host_invalid_approval_does_not_turn_into_cancellation"
+      ]
+    },
+    {
+      "case": "A04",
+      "complete": true,
+      "assessed_scope": "Frozen driver, workflow, tool, endpoint, digest, arguments and target permission across approval.",
+      "selectors": [
+        "tests/test_engine.py::test_resume_refuses_to_switch_agent_driver_versions",
+        "tests/test_engine.py::test_legacy_resume_uses_the_frozen_subworkflow_definition",
+        "tests/test_runtime.py::test_runtime_freezes_and_enforces_tool_manifest_bindings",
+        "tests/test_external_adapters.py::test_execution_manifest_freezes_only_used_external_target_across_approval"
+      ]
+    },
+    {
+      "case": "D01",
+      "complete": true,
+      "assessed_scope": "Swapped gates, protected branch placement, exact gate receipt and unsupported topology rejection.",
+      "selectors": [
+        "tests/test_domain_packs.py::test_required_domain_gate_rejects_swapped_pass_and_block_branches",
+        "tests/test_domain_packs.py::test_required_domain_gate_binds_rule_receipt_and_checked_values"
+      ]
+    },
+    {
+      "case": "D02",
+      "complete": true,
+      "assessed_scope": "Report binds rule, input and arguments; stale or identity-mismatched reports do not authorize calculation.",
+      "selectors": [
+        "tests/test_domain_packs.py::test_validation_report_binds_the_checked_input_and_arguments",
+        "tests/test_domain_packs.py::test_required_domain_gate_binds_rule_receipt_and_checked_values"
+      ]
+    },
+    {
+      "case": "D03",
+      "complete": true,
+      "assessed_scope": "Profile selection is explicit and frozen into node bindings and domain lock.",
+      "selectors": ["tests/test_domain_packs.py::test_csv_parameter_profile_is_explicit_and_frozen_into_node_bindings"]
+    },
+    {
+      "case": "D04",
+      "complete": true,
+      "assessed_scope": "Versioned context policy, scoped/bounded resources, duplicate agents, digest and tool-scope enforcement.",
+      "selectors": [
+        "tests/test_domain_packs.py::test_agent_context_resources_are_scoped_bounded_and_materialized",
+        "tests/test_workflow_v2.py::test_v2_kernel_rechecks_exact_tool_scope_after_driver_translation",
+        "tests/test_runtime.py::test_nested_agent_uses_definition_address_not_instance_path"
+      ]
+    },
+    {
+      "case": "D05",
+      "complete": false,
+      "assessed_scope": "Real CSV wheel happy path and representative invalid numeric/business failures.",
+      "missing_scope": ["complete encoding/numeric/file-size/row-count boundary table and independent statistical oracle"],
+      "selectors": ["tests/test_csv_statistics_delivery.py"]
+    },
+    {
+      "case": "D06",
+      "complete": true,
+      "assessed_scope": "Domain check/compile and portable plan remain authoring-only without importing tools.",
+      "selectors": [
+        "tests/test_domain_packs.py::test_cli_domain_check_and_compile_are_authoring_only",
+        "tests/test_portability_v2.py::test_execution_plan_is_non_executing_and_exposes_agent_scope",
+        "tests/test_portability_v2.py::test_environment_readiness_checks_release_delivery_without_importing_tools"
+      ]
+    },
+    {
+      "case": "M01",
+      "complete": true,
+      "assessed_scope": "Both real SDK adapters share neutral replies, typed outputs, native tools, repair, approval and cancellation contracts.",
+      "selectors": ["tests/test_native_agent_adapters.py"]
+    },
+    {
+      "case": "M02",
+      "complete": true,
+      "assessed_scope": "Invalid tool/output/schema/usage, one bounded repair, cancellation, provider failure and transport timeout.",
+      "selectors": [
+        "tests/test_native_agent_adapters.py::test_pydantic_ai_maps_invalid_model_tool_output_to_stable_failure",
+        "tests/test_native_agent_adapters.py::test_agents_sdk_maps_invalid_model_tool_output_to_stable_failure",
+        "tests/test_native_agent_adapters.py::test_pydantic_ai_schema_validator_uses_one_framework_retry",
+        "tests/test_native_agent_adapters.py::test_agents_sdk_guardrail_uses_one_framework_retry",
+        "tests/test_sdk_wire_paths.py::test_real_provider_transport_timeout_is_a_stable_failure"
+      ]
+    },
+    {
+      "case": "M03",
+      "complete": true,
+      "assessed_scope": "Old run enforces frozen driver/model/instructions while new target binding can be selected for a new run.",
+      "selectors": [
+        "tests/test_engine.py::test_resume_refuses_to_switch_agent_driver_versions",
+        "tests/test_runtime.py::test_project_runtime_runs_and_resume_uses_frozen_instructions",
+        "tests/test_portability_v2.py::test_environment_readiness_requires_bound_model_provider_import"
+      ]
+    },
+    {
+      "case": "M04",
+      "complete": false,
+      "assessed_scope": "No real model request was authorized.",
+      "missing_scope": ["explicit credentials, provider/model selection and cost budget"],
+      "selectors": []
+    },
+    {
+      "case": "X01",
+      "complete": false,
+      "assessed_scope": "Registered HTTP target, idempotency header, ambiguous response, query and invalid receipts.",
+      "missing_scope": ["real loopback fault proxy matrix for connection failure, 5xx, malformed JSON and NaN"],
+      "selectors": [
+        "tests/test_external_adapters.py::test_remote_http_adapter_uses_registered_endpoint_and_stable_idempotency_key",
+        "tests/test_external_adapters.py::test_remote_http_adapter_reconciles_ambiguous_side_effect_without_replaying",
+        "tests/test_external_adapters.py::test_remote_http_invalid_receipt_remains_unknown"
+      ]
+    },
+    {
+      "case": "X02",
+      "complete": false,
+      "assessed_scope": "MCP protocol translation and injected-client reconciliation.",
+      "missing_scope": ["actual MCP stdio session", "actual MCP HTTP session"],
+      "selectors": [
+        "tests/test_external_adapters.py::test_mcp_protocol_result_translation_is_fail_closed_and_structured",
+        "tests/test_external_adapters.py::test_mcp_reconciliation_translates_existing_result_without_redispatch"
+      ]
+    },
+    {
+      "case": "X03",
+      "complete": false,
+      "assessed_scope": "Runner spy verifies exact digest, command, args and explicit result facts.",
+      "missing_scope": ["authorized real container runner network and mount isolation"],
+      "selectors": [
+        "tests/test_external_adapters.py::test_mcp_and_container_adapters_only_delegate_exact_registered_capabilities",
+        "tests/test_external_adapters.py::test_external_bridges_preserve_explicit_execution_facts"
+      ]
+    },
+    {
+      "case": "X04",
+      "complete": true,
+      "assessed_scope": "Discovery, binding and authorization remain distinct across project registries and exact identities.",
+      "selectors": [
+        "tests/test_runtime.py::test_project_registries_are_isolated_between_embedding_roots",
+        "tests/test_portable.py::test_bundle_target_requires_exact_tool_permission_and_credential_binding",
+        "tests/test_portability_v2.py::test_trusted_development_entrypoint_probe_reports_locator_and_callable_layers"
+      ]
+    },
+    {
+      "case": "P01",
+      "complete": true,
+      "assessed_scope": "Real CSV wheel and structured Agent bundle v2 migrate into clean targets with explicit bindings.",
+      "selectors": [
+        "tests/test_csv_statistics_delivery.py::test_csv_capability_clean_install_restart_and_bundle_round_trip",
+        "tests/test_portability_v2.py::test_bundle_v2_round_trip_requires_compatible_target",
+        "tests/test_portability_v2.py::test_cli_can_assemble_bundle_v2_into_a_checked_project"
+      ]
+    },
+    {
+      "case": "P02",
+      "complete": true,
+      "assessed_scope": "Tamper, credential, nonempty target, limits, parent/child collision, digest, symlink and exact target checks.",
+      "selectors": [
+        "tests/test_portable.py::test_bundle_rejects_credentials_and_nonempty_target",
+        "tests/test_portable.py::test_archive_member_limit_counts_required_metadata_and_input_files",
+        "tests/test_portable.py::test_archive_member_validation_rejects_non_adjacent_parent_child_paths",
+        "tests/test_portable.py::test_import_rejects_tampered_file_content",
+        "tests/test_portable.py::test_bundle_rejects_source_and_destination_symlinks",
+        "tests/test_portability_v2.py::test_bundle_v2_rejects_v1_agent_and_tampering"
+      ]
+    },
+    {
+      "case": "P03",
+      "complete": true,
+      "assessed_scope": "Failed export/import/final publish preserves prior artifacts and leaves no usable partial target.",
+      "selectors": [
+        "tests/test_portable.py::test_failed_export_preserves_a_preexisting_valid_archive",
+        "tests/test_portability_v2.py::test_project_import_failure_leaves_no_half_assembled_project",
+        "tests/test_local_recovery.py::test_final_publish_failure_leaves_package_and_no_partial_target"
+      ]
+    },
+    {
+      "case": "P05",
+      "complete": true,
+      "assessed_scope": "Approval-wait input, immutable artifacts, full local backup, new-directory restore and explicit recovery ownership.",
+      "selectors": [
+        "tests/test_local_recovery.py::test_input_file_approval_backup_restore_and_continue",
+        "tests/test_local_recovery.py::test_restore_never_overwrites_an_existing_environment",
+        "tests/test_local_recovery.py::test_local_recovery_fails_closed_when_a_referenced_file_is_missing"
+      ]
+    },
+    {
+      "case": "U03",
+      "complete": true,
+      "assessed_scope": "Persisted cursor replay, cross-writer wakeup, disconnect cleanup, terminal reconnect and execution-bound cursor reuse.",
+      "selectors": [
+        "tests/test_workflow_v3.py::test_v3_event_stream_replays_from_persisted_cursor",
+        "tests/test_workflow_v3.py::test_v3_event_stream_observes_another_sqlite_writer",
+        "tests/test_web.py::test_sse_uses_instance_bound_last_event_id_and_terminal_204",
+        "tests/test_web.py::test_web_rejects_old_execution_id_after_run_name_is_reused",
+        "tests/test_web.py::test_sse_disconnect_releases_subscription_and_ping_is_not_journaled"
+      ]
+    },
+    {
+      "case": "U04",
+      "complete": false,
+      "assessed_scope": "Host/Origin/session rejection, execution identity, request bounds and text-only rendering implementation path.",
+      "missing_scope": ["real-browser script payload and duplicate-click observation", "trace storage scan"],
+      "selectors": [
+        "tests/test_web.py::test_local_web_rejects_host_origin_and_missing_control_session",
+        "tests/test_web.py::test_local_web_server_requires_an_explicit_control_session_token",
+        "tests/test_web.py::test_host_web_invalid_control_does_not_cancel_or_advance_a_run",
+        "tests/test_web.py::test_web_rejects_old_execution_id_after_run_name_is_reused"
+      ]
+    },
+    {
+      "case": "S01",
+      "complete": true,
+      "assessed_scope": "Credential-field variants, tool failures, Journal, bundle, target config and Web reconciliation logging.",
+      "selectors": [
+        "tests/test_engine.py::test_journal_keeps_unknown_tool_errors_and_cancellation_reasons_safe",
+        "tests/test_engine.py::test_subworkflow_cycles_and_credential_outputs_are_rejected",
+        "tests/test_portability_v2.py::test_portable_target_wire_contract_rejects_credentials",
+        "tests/test_web.py::test_web_reconciles_without_echoing_sensitive_request_values"
+      ]
+    },
+    {
+      "case": "S02",
+      "complete": true,
+      "assessed_scope": "Traversal, absolute path, symlink, cwd, digest, size, ambient path and post-publication tamper.",
+      "selectors": [
+        "tests/test_files.py::test_workspace_rejects_ambient_paths_tampering_and_symlink_escape",
+        "tests/test_files.py::test_workspace_does_not_depend_on_garbage_collection_or_current_directory",
+        "tests/test_files.py::test_bundle_file_references_rejects_incomplete_or_unsafe_metadata"
+      ]
+    },
+    {
+      "case": "S03",
+      "complete": true,
+      "assessed_scope": "Explain/preview are read-only; plans and default environment diagnosis do not import tools or resolve credentials.",
+      "selectors": [
+        "tests/test_inspection_and_journal_lifecycle.py::test_read_only_run_explanation_never_exposes_arguments_or_executes",
+        "tests/test_inspection_and_journal_lifecycle.py::test_engine_explanation_is_a_read_only_journal_view",
+        "tests/test_portability_v2.py::test_execution_plan_is_non_executing_and_exposes_agent_scope",
+        "tests/test_portability_v2.py::test_environment_readiness_checks_release_delivery_without_importing_tools"
+      ]
+    },
+    {
+      "case": "O01",
+      "complete": false,
+      "assessed_scope": "No repeatable measurement run has been attached yet.",
+      "missing_scope": ["30-sample cold/warm install/import/CLI/RSS and step/concurrency curves"],
+      "selectors": []
+    },
+    {
+      "case": "O02",
+      "complete": false,
+      "assessed_scope": "Repeated Host close reclaims process-local resource entries.",
+      "missing_scope": ["1000 short runs", "50 approval recoveries", "file-descriptor/thread/connection time series"],
+      "selectors": ["tests/test_host_runtime.py::test_repeated_hosts_reclaim_idle_process_resource_entries"]
+    },
+    {
+      "case": "O03",
+      "complete": true,
+      "assessed_scope": "Shared large values, paging, retention/purge, live-run VACUUM refusal and disk-space failure.",
+      "selectors": [
+        "tests/test_journal_scaling.py::test_sqlite_stores_one_content_addressed_copy_of_large_results",
+        "tests/test_journal_scaling.py::test_space_diagnostics_distinguish_logical_purge_from_physical_reclaim",
+        "tests/test_journal_scaling.py::test_vacuum_refuses_a_journal_with_live_runs",
+        "tests/test_journal_scaling.py::test_vacuum_checks_temporary_disk_space"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,107 @@
+{
+  "description": "Clip vector by polygon mask operator.",
+  "domain": "vector",
+  "errorCodes": [
+    "CRS_REQUIRED",
+    "CRS_MISMATCH",
+    "LAYER_REQUIRED",
+    "GEOMETRY_TYPE_MISMATCH",
+    "UNSUPPORTED_DIMENSION",
+    "INVALID_GEOMETRY",
+    "BLOCKED_BY_ENVIRONMENT"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-vector-clip",
+      "inputs": {
+        "mask": {
+          "artifactId": "art_example_02"
+        },
+        "vector": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "vector.clip",
+        "version": "1.0.0"
+      },
+      "parameters": {},
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "vector.clip",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "flatgeobuf",
+        "geojson",
+        "geopackage",
+        "geoparquet",
+        "parquet"
+      ],
+      "mediaTypes": [
+        "application/geopackage+sqlite3",
+        "application/geo+json",
+        "application/flatgeobuf",
+        "application/vnd.apache.parquet"
+      ],
+      "name": "vector",
+      "required": true
+    },
+    {
+      "cardinality": "one",
+      "formats": [
+        "flatgeobuf",
+        "geojson",
+        "geopackage",
+        "geoparquet",
+        "parquet"
+      ],
+      "mediaTypes": [
+        "application/geopackage+sqlite3",
+        "application/geo+json",
+        "application/flatgeobuf",
+        "application/vnd.apache.parquet"
+      ],
+      "name": "mask",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "geopackage"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/geopackage+sqlite3"
+      ],
+      "name": "vector"
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "maskLayer": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "vectorLayer": {
+        "minLength": 1,
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "runtime": "qgis",
+  "tags": [
+    "vector",
+    "clip"
+  ],
+  "timeoutSeconds": 3600,
+  "title": "Clip vector by polygon mask",
+  "version": "1.0.0"
+}

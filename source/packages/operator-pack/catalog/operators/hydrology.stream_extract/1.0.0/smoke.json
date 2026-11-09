@@ -1,0 +1,22 @@
+{
+  "expectedOutputs": {
+    "streams": {
+      "format": "geotiff",
+      "kind": "artifact",
+      "mediaType": "image/tiff"
+    }
+  },
+  "inputs": {
+    "accumulation": {
+      "fixtureId": "accumulation"
+    }
+  },
+  "operator": {
+    "id": "hydrology.stream_extract",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "minimumContributingCells": 3
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

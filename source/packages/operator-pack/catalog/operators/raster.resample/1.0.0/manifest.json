@@ -1,0 +1,95 @@
+{
+  "description": "Resample raster operator.",
+  "domain": "raster",
+  "errorCodes": [
+    "CRS_REQUIRED",
+    "RASTER_INVALID",
+    "BLOCKED_BY_ENVIRONMENT"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-raster-resample",
+      "inputs": {
+        "raster": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "raster.resample",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "pixelSizeX": 1.0,
+        "pixelSizeY": 1.0
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "raster.resample",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "raster",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "raster"
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "pixelSizeX": {
+        "exclusiveMinimum": 0,
+        "type": "number"
+      },
+      "pixelSizeY": {
+        "exclusiveMinimum": 0,
+        "type": "number"
+      },
+      "resampling": {
+        "default": "nearest",
+        "enum": [
+          "nearest",
+          "bilinear",
+          "cubic",
+          "average",
+          "mode"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "pixelSizeX",
+      "pixelSizeY"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "raster",
+    "resample"
+  ],
+  "timeoutSeconds": 3600,
+  "title": "Resample raster",
+  "version": "1.0.0"
+}

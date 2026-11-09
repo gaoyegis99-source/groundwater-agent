@@ -1,0 +1,102 @@
+{
+  "description": "Calculate change between consecutive real observations using their actual elapsed time without interpolation.",
+  "domain": "timeseries",
+  "errorCodes": [
+    "DUPLICATE_TIMESTAMP",
+    "FIELD_REQUIRED",
+    "NON_NUMERIC_VALUE",
+    "OUTPUT_VALIDATION_FAILED",
+    "TIMESTAMP_INVALID",
+    "TIMEZONE_UNSUPPORTED"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-timeseries-rate_of_change",
+      "inputs": {
+        "observations": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "timeseries.rate_of_change",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "groupField": "station",
+        "timeField": "time",
+        "valueField": "value"
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "timeseries.rate_of_change",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "csv",
+        "parquet",
+        "arrow-ipc-file"
+      ],
+      "mediaTypes": [
+        "text/csv",
+        "application/vnd.apache.parquet",
+        "application/vnd.apache.arrow.file"
+      ],
+      "name": "observations",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "parquet"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "rates"
+    },
+    {
+      "kind": "value",
+      "name": "summary",
+      "schema": {
+        "type": "object"
+      }
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "groupField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "timeField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "valueField": {
+        "minLength": 1,
+        "type": "string"
+      }
+    },
+    "required": [
+      "groupField",
+      "timeField",
+      "valueField"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "timeseries",
+    "rate_of_change"
+  ],
+  "timeoutSeconds": 1800,
+  "title": "Calculate observation rate of change",
+  "version": "1.0.0"
+}

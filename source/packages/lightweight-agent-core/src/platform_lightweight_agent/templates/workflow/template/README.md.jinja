@@ -1,0 +1,108 @@
+# {{ project_name }}
+
+This project uses the recommended V6 new-workflow contract:
+`v6-light-workflow-v4`.  It has explicit node schemas, bounded async
+concurrency, `CANCEL_REQUESTED`/`RECONCILING` recovery semantics, and durable
+Agent budgets.  Existing v1--v3 definitions are intentionally not upgraded by
+this template or by the runtime.
+
+Install the authoring/runtime features once in the environment that runs this
+project:
+
+```bash
+python -m pip install 'platform-lightweight-agent-core[authoring,workflow,pydantic-ai-anthropic]'
+```
+
+Then validate the definition before binding a real provider or credential:
+
+```bash
+platform-agent-workflow check .
+platform-agent-workflow plan .
+platform-agent-workflow lock .
+platform-agent-workflow export . {{ project_name }}.v6bundle --format v2
+platform-agent-workflow diagnose {{ project_name }}.v6bundle \
+  --target-config target.example.json --check-environment
+```
+
+Run the complete V4 Agent/tool/approval path offline before configuring a
+provider:
+
+```bash
+platform-agent-workflow run workflow.json \
+  --journal .v6-agent-runs.sqlite --run-id offline-example \
+  --tool-registry runtime_tools:register \
+  --driver-name primary --scripted-decisions scripted-decisions.json \
+  --input '{"request":"Find the aquifer example."}'
+# Copy approval_id from the WAITING_APPROVAL result, then:
+platform-agent-workflow resume offline-example \
+  --journal .v6-agent-runs.sqlite --approval-id APPROVAL_ID --approve \
+  --tool-registry runtime_tools:register \
+  --driver-name primary --scripted-decisions scripted-decisions.json
+```
+
+These results are marked `execution_mode=simulated` and
+`model_evaluation=false`. They validate V6 contracts, tool routing, approval
+and SQLite resume only; they do not measure model quality or provider
+compatibility. Add `--strict-exit` in automation: success returns `0`, blocked
+returns `10`, approval wait `11`, reconciliation `12`, cancel requested `13`,
+cancelled `14`, running `15`, and recovery pending `16`.
+
+`target.example.json` is deliberately a development binding.  Replace its
+model name, tool delivery evidence, and credential references in the target
+environment; do not put credential values in this project or bundle.  A
+release delivery records the exact wheel digest and a PyPA entry point, but an
+entry point is never execution authorization: the host still registers an
+exact `ToolReference` route.
+
+## Writing a local tool
+
+`runtime_tools.py` uses `ToolRegistrationExecutor`, the same narrow registry
+used for ordinary functions, native `async def` tools, and verified release
+wheels.  A tool may therefore become asynchronous without changing target
+bindings, schemas, permissions, wheel metadata, or the project loader:
+
+```python
+from platform_lightweight_agent.api import ToolContext
+
+async def lookup(arguments: dict[str, object], context: ToolContext) -> dict[str, object]:
+    # context exposes only action_id, cooperative cancellation, and an
+    # optional host-owned FileWorkspace; it never contains credentials/journal state.
+    await context.cancellation.checkpoint()
+    return {"answer": f"example:{arguments['query']}"}
+```
+
+When a host supplies `context.files`, publish action-isolated local artifacts
+before returning their `FileReference`; that reference is directly resolvable
+as the following tool's input:
+
+```python
+path = context.files.action_output_path(context.action_id, "reports/result.txt")
+path.write_text("result", encoding="utf-8")
+output = context.files.record_output("reports/result.txt", action_id=context.action_id)
+return {"file": output.to_mapping()}
+```
+
+An embedding passes this deliberately narrow context through
+`load_project_runtime(..., tool_context_factory=...)`; the CLI binds the same
+contract only when `--file-workspace PATH` is explicit. Neither path injects
+credentials.
+
+Tool packages can add `pytest` only to their development dependencies and use
+the dependency-free contract helpers from the core package:
+
+```python
+from platform_lightweight_agent.testing import assert_async_action_replay
+
+result = await assert_async_action_replay(
+    executor,
+    request,
+    effect_observer=lambda: external_ledger_snapshot(),
+)
+```
+
+The observer should return a stable snapshot of an external ledger or request
+log. The helper verifies exact action identity, a stable replay result without
+a second external effect, and rejection of conflicting arguments under the
+same `action_id`. Test known business failures, deliberate uncertain results,
+cancellation, output-schema rejection, and wheel installation with the tool's
+own expected fixtures.

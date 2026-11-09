@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "v12-research-acceptance-policy.v1",
+  "dimensions": {
+    "scientificStatus": [
+      "input_checksums", "parameters_and_seeds", "algorithm_identity",
+      "numerical_benchmark", "tolerance_contract", "lineage", "domain_review"
+    ],
+    "engineeringStatus": [
+      "changed_scope_tests", "contract_checks", "schema_migration",
+      "compose_smoke", "snapshot_restore", "archive_rebuild"
+    ],
+    "agentExperienceStatus": [
+      "deepseek_quality", "minimax_quality", "human_review"
+    ]
+  },
+  "archivePolicy": {
+    "experiment": [],
+    "benchmark": ["scientificStatus", "engineeringStatus"]
+  }
+}

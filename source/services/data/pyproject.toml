@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools==75.8.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "platform-data-service"
+version = "3.0.0"
+requires-python = ">=3.12"
+dependencies = [
+  "platform-protocol-contracts==2.0.0",
+  "fastapi==0.141.1", "pydantic==2.13.5", "uvicorn==0.32.1",
+  "httpx==0.28.1", "pyarrow>=19,<24", "duckdb==1.5.6", "psycopg[binary,pool]==3.3.4",
+  "openpyxl==3.1.5", "shapely==2.1.2", "pyproj==3.7.2"
+]
+
+[project.scripts]
+platform-data = "platform_data_service.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+platform_data_service = ["migrations/*.sql"]

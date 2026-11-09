@@ -1,0 +1,1766 @@
+{
+  "schema_version": "v6-defect-discovery-assessments-v2",
+  "review_basis": "Explicit selectors and external dimensions from the 52-case plan. Every declared facet is required; partial offline evidence cannot cover missing external scenarios.",
+  "cases": {
+    "B01": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_drivers_and_cli.py::test_core_import_does_not_load_services_or_optional_agent_frameworks"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_drivers_and_cli.py::test_cli_check_and_local_approval_workflow"
+          }
+        },
+        {
+          "schema": "v6-base-wheel-offline-evidence-v1",
+          "match": {
+            "variant": "base_wheel_offline_v1_approval"
+          }
+        }
+      ]
+    },
+    "B02": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_wheel_delivery.py::test_built_wheel_delivers_templates_and_restartable_cli"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_csv_statistics_delivery.py::test_csv_capability_clean_install_restart_and_bundle_round_trip"
+          }
+        }
+      ]
+    },
+    "B03": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_wheel_delivery.py::test_provider_specific_extra_matches_runtime_readiness"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_workflow_v3.py::test_base_import_does_not_load_optional_workflow_dependencies"
+          }
+        },
+        {
+          "schema": "v6-separate-extras-install-evidence-v1",
+          "match": {
+            "variant": "separate_offline_extra_installations"
+          }
+        }
+      ]
+    },
+    "B04": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_runtime.py::test_cli_runs_and_resumes_the_same_portable_project"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_runtime.py::test_standard_project_registry_accepts_native_async_tool_handlers"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_web.py::test_web_can_share_a_host_runtime_assembly"
+          }
+        },
+        {
+          "schema": "v6-entrypoint-parity-evidence-v1",
+          "match": {
+            "variant": "python_cli_web_sync_async_semantic_parity"
+          }
+        }
+      ]
+    },
+    "W01": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_workflow_v3.py::test_v3_preflight_rejects_missing_forward_and_incompatible_bindings"
+          }
+        }
+      ]
+    },
+    "W02": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_workflow_v3.py::test_v3_node_input_limit_fails_before_dispatch"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_workflow_v3.py::test_v3_tool_output_limit_closes_dispatched_action_without_retry"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_workflow_v3.py::test_v3_cumulative_retained_state_limit_blocks_without_retaining_payload"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_workflow_v4.py::test_v4_rejects_oversized_agent_tool_output_before_persisting_it"
+          }
+        },
+        {
+          "schema": "v6-exact-byte-boundary-evidence-v1",
+          "match": {
+            "variant": "node_input_63_bytes"
+          }
+        },
+        {
+          "schema": "v6-exact-byte-boundary-evidence-v1",
+          "match": {
+            "variant": "node_input_64_bytes"
+          }
+        },
+        {
+          "schema": "v6-exact-byte-boundary-evidence-v1",
+          "match": {
+            "variant": "node_input_65_bytes"
+          }
+        },
+        {
+          "schema": "v6-exact-byte-boundary-evidence-v1",
+          "match": {
+            "variant": "node_output_63_bytes"
+          }
+        },
+        {
+          "schema": "v6-exact-byte-boundary-evidence-v1",
+          "match": {
+            "variant": "node_output_64_bytes"
+          }
+        },
+        {
+          "schema": "v6-exact-byte-boundary-evidence-v1",
+          "match": {
+            "variant": "node_output_65_bytes"
+          }
+        },
+        {
+          "schema": "v6-exact-byte-boundary-evidence-v1",
+          "match": {
+            "variant": "retained_state_limit_-1"
+          }
+        },
+        {
+          "schema": "v6-exact-byte-boundary-evidence-v1",
+          "match": {
+            "variant": "retained_state_limit_+0"
+          }
+        },
+        {
+          "schema": "v6-exact-byte-boundary-evidence-v1",
+          "match": {
+            "variant": "retained_state_limit_+1"
+          }
+        },
+        {
+          "schema": "v6-exact-byte-boundary-evidence-v1",
+          "match": {
+            "variant": "agent_context_limit_-1"
+          }
+        },
+        {
+          "schema": "v6-exact-byte-boundary-evidence-v1",
+          "match": {
+            "variant": "agent_context_limit_+0"
+          }
+        },
+        {
+          "schema": "v6-exact-byte-boundary-evidence-v1",
+          "match": {
+            "variant": "agent_context_limit_+1"
+          }
+        },
+        {
+          "schema": "v6-exact-byte-boundary-evidence-v1",
+          "match": {
+            "variant": "agent_tool_output_limit_63"
+          }
+        },
+        {
+          "schema": "v6-exact-byte-boundary-evidence-v1",
+          "match": {
+            "variant": "agent_tool_output_limit_64"
+          }
+        },
+        {
+          "schema": "v6-exact-byte-boundary-evidence-v1",
+          "match": {
+            "variant": "agent_tool_output_limit_65"
+          }
+        }
+      ]
+    },
+    "W03": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_workflow_v3.py::test_v3_parallel_is_bounded_and_join_is_declaration_ordered"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_workflow_v3.py::test_v3_parallel_failure_policy"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_workflow_v3.py::test_v3_subworkflow_concurrency_policy_limits_its_subtree"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_workflow_v3.py::test_v3_failure_does_not_skip_reconciliation_of_dispatched_actions"
+          }
+        }
+      ]
+    },
+    "W04": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_workflow_v3.py::test_v3_mutex_resource_is_shared_across_engine_instances"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_workflow_v3.py::test_v3_unknown_sync_action_retains_mutex_until_reconciled"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_host_runtime.py::test_host_cancellation_of_a_queued_run_prevents_late_start"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_host_runtime.py::test_host_rechecks_authorization_after_its_tool_queue"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_host_runtime.py::test_host_keeps_sync_tool_capacity_and_resources_until_worker_stops"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_host_runtime.py::test_host_close_timeout_keeps_runtime_available_until_work_settles"
+          }
+        }
+      ]
+    },
+    "W05": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_workflow_v4.py::test_workflow_defaults_to_v4_and_legacy_requires_explicit_version"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_workflow_v3.py::test_pre_budget_v3_definition_round_trips_without_semantic_drift"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_engine.py::test_condition_parallel_and_subworkflow_are_portable_control_flow"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_workflow_v3.py::test_v3_resume_executes_frozen_subworkflow_definition"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_domain_packs.py::test_domain_manifest_protocol_does_not_migrate_existing_projects"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_journal_scaling.py::test_private_storage_marker_is_opaque_business_json_in_every_journal"
+          }
+        }
+      ]
+    },
+    "R01": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-process-crash-evidence-v1",
+          "match": {
+            "supports_result_query": true,
+            "accepts_idempotency_key": false
+          },
+          "dimensions": {
+            "window": [
+              "before_action_ready",
+              "after_action_ready",
+              "before_action_dispatched",
+              "after_action_dispatched",
+              "effect_committed",
+              "before_action_resolved",
+              "after_action_resolved",
+              "after_step_completed",
+              "after_run_succeeded"
+            ],
+            "repetition": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10
+            ]
+          }
+        },
+        {
+          "schema": "v6-process-crash-evidence-v1",
+          "match": {
+            "supports_result_query": false,
+            "accepts_idempotency_key": false
+          },
+          "dimensions": {
+            "window": [
+              "before_action_ready",
+              "after_action_ready",
+              "before_action_dispatched",
+              "after_action_dispatched",
+              "effect_committed",
+              "before_action_resolved",
+              "after_action_resolved",
+              "after_step_completed",
+              "after_run_succeeded"
+            ],
+            "repetition": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10
+            ]
+          }
+        },
+        {
+          "schema": "v6-process-crash-evidence-v1",
+          "match": {
+            "supports_result_query": false,
+            "accepts_idempotency_key": true
+          },
+          "dimensions": {
+            "window": [
+              "before_action_ready",
+              "after_action_ready",
+              "before_action_dispatched",
+              "after_action_dispatched",
+              "effect_committed",
+              "before_action_resolved",
+              "after_action_resolved",
+              "after_step_completed",
+              "after_run_succeeded"
+            ],
+            "repetition": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10
+            ]
+          }
+        }
+      ]
+    },
+    "R02": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-process-crash-evidence-v1",
+          "match": {
+            "supports_result_query": true,
+            "accepts_idempotency_key": false
+          },
+          "dimensions": {
+            "window": [
+              "before_action_ready",
+              "after_action_ready",
+              "before_action_dispatched",
+              "after_action_dispatched",
+              "effect_committed",
+              "before_action_resolved",
+              "after_action_resolved",
+              "after_step_completed",
+              "after_run_succeeded"
+            ],
+            "repetition": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10
+            ]
+          }
+        },
+        {
+          "schema": "v6-process-crash-evidence-v1",
+          "match": {
+            "supports_result_query": false,
+            "accepts_idempotency_key": false
+          },
+          "dimensions": {
+            "window": [
+              "before_action_ready",
+              "after_action_ready",
+              "before_action_dispatched",
+              "after_action_dispatched",
+              "effect_committed",
+              "before_action_resolved",
+              "after_action_resolved",
+              "after_step_completed",
+              "after_run_succeeded"
+            ],
+            "repetition": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10
+            ]
+          }
+        },
+        {
+          "schema": "v6-process-crash-evidence-v1",
+          "match": {
+            "supports_result_query": false,
+            "accepts_idempotency_key": true
+          },
+          "dimensions": {
+            "window": [
+              "before_action_ready",
+              "after_action_ready",
+              "before_action_dispatched",
+              "after_action_dispatched",
+              "effect_committed",
+              "before_action_resolved",
+              "after_action_resolved",
+              "after_step_completed",
+              "after_run_succeeded"
+            ],
+            "repetition": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10
+            ]
+          }
+        }
+      ]
+    },
+    "R03": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_workflow_v3.py::test_v3_late_executor_result_cannot_overwrite_reconciliation"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_workflow_v3.py::test_v3_late_executor_error_cannot_reopen_a_reconciled_action"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_tool_testing.py::test_sync_contract_rejects_a_stable_but_wrong_action_identity"
+          }
+        }
+      ]
+    },
+    "R04": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_workflow_v3.py::test_v3_executor_observes_cancel_from_another_engine"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_workflow_v3.py::test_v3_mutex_resource_is_shared_across_engine_instances"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_host_runtime.py::test_host_periodically_recovers_after_a_previous_lease_expires"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_host_runtime.py::test_host_recovery_cursor_skips_incompatible_rows_without_spin"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_host_runtime.py::test_host_recovery_uses_available_run_and_tool_capacity_in_parallel"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_journal_scaling.py::test_recoverable_scan_cursor_pages_past_the_front_of_the_queue"
+          }
+        },
+        {
+          "schema": "v6-process-crash-evidence-v1",
+          "match": {
+            "variant": "live_old_owner_returns_after_new_generation"
+          }
+        }
+      ]
+    },
+    "R05": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_workflow_v3.py::test_v3_cancel_distinguishes_requested_from_stopped"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_workflow_v3.py::test_v3_sync_executor_cancel_after_dispatch_is_unknown_then_reconciled"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_workflow_v3.py::test_v3_step_timeout_requests_the_sync_tool_context_token"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_workflow_v3.py::test_v3_timeout_after_dispatch_requires_reconciliation"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_host_runtime.py::test_host_close_requests_the_live_sync_tool_context_token"
+          }
+        }
+      ]
+    },
+    "R06": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_workflow_v4.py::test_v4_dispatched_model_usage_is_not_treated_as_zero_after_crash"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_workflow_v4.py::test_v4_token_budget_is_not_reset_by_resume"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_native_agent_adapters.py::test_v4_journal_records_sdk_requests_separately_from_one_driver_turn"
+          }
+        }
+      ]
+    },
+    "R07": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_state_invariants.py"
+          }
+        },
+        {
+          "schema": "v6-mixed-real-process-state-evidence-v1",
+          "match": {
+            "variant": "unknown_cancel_success"
+          }
+        },
+        {
+          "schema": "v6-mixed-real-process-state-evidence-v1",
+          "match": {
+            "variant": "unknown_recover_cancel_failure"
+          }
+        },
+        {
+          "schema": "v6-mixed-real-process-state-evidence-v1",
+          "match": {
+            "variant": "cancel_before_dispatch"
+          }
+        },
+        {
+          "schema": "v6-mixed-real-process-state-evidence-v1",
+          "match": {
+            "variant": "approval_rejected"
+          }
+        },
+        {
+          "schema": "v6-mixed-real-process-state-evidence-v1",
+          "match": {
+            "variant": "unknown_success_no_cancel"
+          }
+        }
+      ]
+    },
+    "R08": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_inspection_and_journal_lifecycle.py::test_backup_restore_holds_unknown_action_until_explicit_query_recovery"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_inspection_and_journal_lifecycle.py::test_backup_idempotent_redispatch_reuses_the_original_action_id"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_inspection_and_journal_lifecycle.py::test_backup_query_holds_a_ready_action_after_the_old_owner_continued"
+          }
+        }
+      ]
+    },
+    "A01": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_host_runtime.py::test_host_persists_parallel_approval_while_execution_slot_is_busy"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_host_runtime.py::test_host_start_recovers_a_saved_approval_without_resubmission"
+          }
+        },
+        {
+          "schema": "v6-approval-process-recovery-v1",
+          "match": {
+            "variant": "sigkill_after_approval_commit"
+          }
+        }
+      ]
+    },
+    "A02": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_workflow_v3.py::test_v3_approval_uses_stable_id_and_does_not_replay_action"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_workflow_v3.py::test_v3_midflight_approval_is_idempotent_and_consumed_by_owner"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_host_runtime.py::test_host_invalid_approval_does_not_turn_into_cancellation"
+          }
+        },
+        {
+          "schema": "v6-authorization-defect-evidence-v1",
+          "match": {
+            "variant": "idempotent_conflicting_and_cross_run_decisions"
+          }
+        }
+      ]
+    },
+    "A03": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-authorization-defect-evidence-v1",
+          "match": {
+            "variant": "revoked_before_approval"
+          }
+        },
+        {
+          "schema": "v6-authorization-defect-evidence-v1",
+          "match": {
+            "variant": "revoked_after_approval_persisted"
+          }
+        },
+        {
+          "schema": "v6-authorization-defect-evidence-v1",
+          "match": {
+            "variant": "revoked_after_approval_while_tool_queued"
+          }
+        },
+        {
+          "schema": "v6-authorization-defect-evidence-v1",
+          "match": {
+            "variant": "authorized_control"
+          }
+        }
+      ]
+    },
+    "A04": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_engine.py::test_resume_refuses_to_switch_agent_driver_versions"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_engine.py::test_legacy_resume_uses_the_frozen_subworkflow_definition"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_runtime.py::test_runtime_freezes_and_enforces_tool_manifest_bindings"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_external_adapters.py::test_execution_manifest_freezes_only_used_external_target_across_approval"
+          }
+        }
+      ]
+    },
+    "D01": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_domain_packs.py::test_required_domain_gate_rejects_swapped_pass_and_block_branches"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_domain_packs.py::test_required_domain_gate_binds_rule_receipt_and_checked_values"
+          }
+        }
+      ]
+    },
+    "D02": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_domain_packs.py::test_validation_report_binds_the_checked_input_and_arguments"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_domain_packs.py::test_required_domain_gate_binds_rule_receipt_and_checked_values"
+          }
+        }
+      ]
+    },
+    "D03": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_domain_packs.py::test_csv_parameter_profile_is_explicit_and_frozen_into_node_bindings"
+          }
+        }
+      ]
+    },
+    "D04": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_domain_packs.py::test_agent_context_resources_are_scoped_bounded_and_materialized"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_workflow_v2.py::test_v2_kernel_rechecks_exact_tool_scope_after_driver_translation"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_runtime.py::test_nested_agent_uses_definition_address_not_instance_path"
+          }
+        }
+      ]
+    },
+    "D05": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_csv_statistics_delivery.py"
+          }
+        },
+        {
+          "schema": "v6-csv-wheel-edge-evidence-v1",
+          "match": {
+            "variant": "valid_reference"
+          }
+        },
+        {
+          "schema": "v6-csv-wheel-edge-evidence-v1",
+          "match": {
+            "variant": "empty_file"
+          }
+        },
+        {
+          "schema": "v6-csv-wheel-edge-evidence-v1",
+          "match": {
+            "variant": "header_without_rows"
+          }
+        },
+        {
+          "schema": "v6-csv-wheel-edge-evidence-v1",
+          "match": {
+            "variant": "utf8_bom"
+          }
+        },
+        {
+          "schema": "v6-csv-wheel-edge-evidence-v1",
+          "match": {
+            "variant": "duplicate_column"
+          }
+        },
+        {
+          "schema": "v6-csv-wheel-edge-evidence-v1",
+          "match": {
+            "variant": "missing_column"
+          }
+        },
+        {
+          "schema": "v6-csv-wheel-edge-evidence-v1",
+          "match": {
+            "variant": "invalid_utf8"
+          }
+        },
+        {
+          "schema": "v6-csv-wheel-edge-evidence-v1",
+          "match": {
+            "variant": "malformed_csv"
+          }
+        },
+        {
+          "schema": "v6-csv-wheel-edge-evidence-v1",
+          "match": {
+            "variant": "not_a_number"
+          }
+        },
+        {
+          "schema": "v6-csv-wheel-edge-evidence-v1",
+          "match": {
+            "variant": "nan"
+          }
+        },
+        {
+          "schema": "v6-csv-wheel-edge-evidence-v1",
+          "match": {
+            "variant": "infinity"
+          }
+        },
+        {
+          "schema": "v6-csv-wheel-edge-evidence-v1",
+          "match": {
+            "variant": "large_finite"
+          }
+        },
+        {
+          "schema": "v6-csv-wheel-edge-evidence-v1",
+          "match": {
+            "variant": "row_limit_equal"
+          }
+        },
+        {
+          "schema": "v6-csv-wheel-edge-evidence-v1",
+          "match": {
+            "variant": "row_limit_plus_one"
+          }
+        },
+        {
+          "schema": "v6-csv-wheel-edge-evidence-v1",
+          "match": {
+            "variant": "size_limit_equal"
+          }
+        },
+        {
+          "schema": "v6-csv-wheel-edge-evidence-v1",
+          "match": {
+            "variant": "size_limit_plus_one"
+          }
+        }
+      ]
+    },
+    "D06": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_domain_packs.py::test_cli_domain_check_and_compile_are_authoring_only"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_portability_v2.py::test_execution_plan_is_non_executing_and_exposes_agent_scope"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_portability_v2.py::test_environment_readiness_checks_release_delivery_without_importing_tools"
+          }
+        }
+      ]
+    },
+    "M01": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_native_agent_adapters.py"
+          }
+        }
+      ]
+    },
+    "M02": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_native_agent_adapters.py::test_pydantic_ai_maps_invalid_model_tool_output_to_stable_failure"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_native_agent_adapters.py::test_agents_sdk_maps_invalid_model_tool_output_to_stable_failure"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_native_agent_adapters.py::test_pydantic_ai_schema_validator_uses_one_framework_retry"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_native_agent_adapters.py::test_agents_sdk_guardrail_uses_one_framework_retry"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_sdk_wire_paths.py::test_real_provider_transport_timeout_is_a_stable_failure"
+          }
+        }
+      ]
+    },
+    "M03": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_engine.py::test_resume_refuses_to_switch_agent_driver_versions"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_runtime.py::test_project_runtime_runs_and_resume_uses_frozen_instructions"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_portability_v2.py::test_environment_readiness_requires_bound_model_provider_import"
+          }
+        }
+      ]
+    },
+    "M04": {
+      "disposition": "complete",
+      "reason": "Use the explicitly budgeted live provider receipt, including failures; offline contracts cannot replace it or establish multi-provider/model quality.",
+      "required_environment": [
+        "explicit provider and model selection",
+        "provider credentials",
+        "a user-approved request and cost budget"
+      ],
+      "required_evidence": [
+        {
+          "schema": "v6-real-provider-evidence-v1",
+          "match": {
+            "variant": "real_provider_smoke"
+          }
+        }
+      ]
+    },
+    "X01": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_external_adapters.py::test_remote_http_adapter_uses_registered_endpoint_and_stable_idempotency_key"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_external_adapters.py::test_remote_http_adapter_reconciles_ambiguous_side_effect_without_replaying"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_external_adapters.py::test_remote_http_invalid_receipt_remains_unknown"
+          }
+        },
+        {
+          "schema": "v6-loopback-http-fault-evidence-v1",
+          "match": {
+            "variant": "success"
+          }
+        },
+        {
+          "schema": "v6-loopback-http-fault-evidence-v1",
+          "match": {
+            "variant": "client_error"
+          }
+        },
+        {
+          "schema": "v6-loopback-http-fault-evidence-v1",
+          "match": {
+            "variant": "server_error"
+          }
+        },
+        {
+          "schema": "v6-loopback-http-fault-evidence-v1",
+          "match": {
+            "variant": "malformed"
+          }
+        },
+        {
+          "schema": "v6-loopback-http-fault-evidence-v1",
+          "match": {
+            "variant": "nan"
+          }
+        },
+        {
+          "schema": "v6-loopback-http-fault-evidence-v1",
+          "match": {
+            "variant": "wrong_reconcile_action"
+          }
+        },
+        {
+          "schema": "v6-loopback-http-fault-evidence-v1",
+          "match": {
+            "variant": "connection_failure"
+          }
+        }
+      ]
+    },
+    "X02": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_external_adapters.py::test_mcp_protocol_result_translation_is_fail_closed_and_structured"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_external_adapters.py::test_mcp_reconciliation_translates_existing_result_without_redispatch"
+          }
+        },
+        {
+          "schema": "v6-real-mcp-session-evidence-v1",
+          "match": {
+            "variant": "real_mcp_stdio_session"
+          }
+        },
+        {
+          "schema": "v6-real-mcp-session-evidence-v1",
+          "match": {
+            "variant": "real_mcp_http_session"
+          }
+        }
+      ]
+    },
+    "X03": {
+      "disposition": "complete",
+      "reason": "Requires the real isolated V6 pinned-image smoke plus adapter contracts; it does not certify hostile-image escape resistance or unknown container outcome recovery.",
+      "required_environment": [
+        "an authorized container runtime",
+        "test images pinned by digest",
+        "an isolated network and mount policy test environment"
+      ],
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_external_adapters.py::test_mcp_and_container_adapters_only_delegate_exact_registered_capabilities"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_external_adapters.py::test_external_bridges_preserve_explicit_execution_facts"
+          }
+        },
+        {
+          "schema": "v6-real-container-evidence-v1",
+          "match": {
+            "variant": "isolated_pinned_container"
+          }
+        }
+      ]
+    },
+    "X04": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_runtime.py::test_project_registries_are_isolated_between_embedding_roots"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_portable.py::test_bundle_target_requires_exact_tool_permission_and_credential_binding"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_portability_v2.py::test_trusted_development_entrypoint_probe_reports_locator_and_callable_layers"
+          }
+        }
+      ]
+    },
+    "P01": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_csv_statistics_delivery.py::test_csv_capability_clean_install_restart_and_bundle_round_trip"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_portability_v2.py::test_bundle_v2_round_trip_requires_compatible_target"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_portability_v2.py::test_cli_can_assemble_bundle_v2_into_a_checked_project"
+          }
+        }
+      ]
+    },
+    "P02": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_portable.py::test_bundle_rejects_credentials_and_nonempty_target"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_portable.py::test_archive_member_limit_counts_required_metadata_and_input_files"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_portable.py::test_archive_member_validation_rejects_non_adjacent_parent_child_paths"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_portable.py::test_import_rejects_tampered_file_content"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_portable.py::test_bundle_rejects_source_and_destination_symlinks"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_portability_v2.py::test_bundle_v2_rejects_v1_agent_and_tampering"
+          }
+        }
+      ]
+    },
+    "P03": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_portable.py::test_failed_export_preserves_a_preexisting_valid_archive"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_portability_v2.py::test_project_import_failure_leaves_no_half_assembled_project"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_local_recovery.py::test_final_publish_failure_leaves_package_and_no_partial_target"
+          }
+        }
+      ]
+    },
+    "P04": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-file-recovery-evidence-v1",
+          "match": {
+            "variant": "intact"
+          }
+        },
+        {
+          "schema": "v6-file-recovery-evidence-v1",
+          "match": {
+            "variant": "missing_blob"
+          }
+        },
+        {
+          "schema": "v6-file-recovery-evidence-v1",
+          "match": {
+            "variant": "tampered_blob"
+          }
+        },
+        {
+          "schema": "v6-file-recovery-evidence-v1",
+          "match": {
+            "variant": "corrupt_index"
+          }
+        }
+      ]
+    },
+    "P05": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_local_recovery.py::test_input_file_approval_backup_restore_and_continue"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_local_recovery.py::test_restore_never_overwrites_an_existing_environment"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_local_recovery.py::test_local_recovery_fails_closed_when_a_referenced_file_is_missing"
+          }
+        }
+      ]
+    },
+    "P06": {
+      "disposition": "not_assessed",
+      "reason": "No genuine prior-version wheel, lock, policy, manifest, and SQLite artifact set with provenance exists in the repository; fabricated field deletion is not historical compatibility evidence.",
+      "required_environment": [
+        "signed or checksummed artifacts produced by a documented older release",
+        "the producing version and compatibility expectation",
+        "an isolated current-version import target"
+      ],
+      "required_evidence": [
+        {
+          "schema": "v6-historical-artifact-inventory-v1",
+          "match": {
+            "variant": "python_package_and_driver_version"
+          }
+        },
+        {
+          "schema": "v6-historical-artifact-inventory-v1",
+          "match": {
+            "variant": "domain_lock_and_context_policy"
+          }
+        },
+        {
+          "schema": "v6-historical-artifact-inventory-v1",
+          "match": {
+            "variant": "execution_manifest"
+          }
+        },
+        {
+          "schema": "v6-historical-artifact-inventory-v1",
+          "match": {
+            "variant": "sqlite_storage"
+          }
+        },
+        {
+          "schema": "v6-historical-artifact-inventory-v1",
+          "match": {
+            "variant": "bundle_and_local_recovery"
+          }
+        }
+      ]
+    },
+    "U01": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-console-session-evidence-v2",
+          "match": {
+            "variant": "selection_ab"
+          }
+        },
+        {
+          "schema": "v6-console-session-evidence-v2",
+          "match": {
+            "variant": "selection_aba"
+          }
+        },
+        {
+          "schema": "v6-console-session-evidence-v2",
+          "match": {
+            "variant": "same_run_refresh_order"
+          }
+        },
+        {
+          "schema": "v6-console-session-evidence-v2",
+          "match": {
+            "variant": "stale_error"
+          }
+        },
+        {
+          "schema": "v6-console-session-evidence-v2",
+          "match": {
+            "variant": "stale_sse"
+          }
+        },
+        {
+          "schema": "v6-console-session-evidence-v2",
+          "match": {
+            "variant": "pending_controls"
+          }
+        },
+        {
+          "schema": "v6-console-session-evidence-v2",
+          "match": {
+            "variant": "bound_control_identity"
+          }
+        },
+        {
+          "schema": "v6-console-session-evidence-v2",
+          "match": {
+            "variant": "list_order"
+          }
+        }
+      ]
+    },
+    "U02": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-console-session-evidence-v2",
+          "match": {
+            "variant": "business_approved"
+          }
+        },
+        {
+          "schema": "v6-console-session-evidence-v2",
+          "match": {
+            "variant": "business_blocked"
+          }
+        },
+        {
+          "schema": "v6-console-session-evidence-v2",
+          "match": {
+            "variant": "execution_error"
+          }
+        },
+        {
+          "schema": "v6-console-session-evidence-v2",
+          "match": {
+            "variant": "generic_output"
+          }
+        }
+      ]
+    },
+    "U03": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_workflow_v3.py::test_v3_event_stream_replays_from_persisted_cursor"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_workflow_v3.py::test_v3_event_stream_observes_another_sqlite_writer"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_web.py::test_sse_uses_instance_bound_last_event_id_and_terminal_204"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_web.py::test_web_rejects_old_execution_id_after_run_name_is_reused"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_web.py::test_sse_disconnect_releases_subscription_and_ping_is_not_journaled"
+          }
+        }
+      ]
+    },
+    "U04": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_web.py::test_local_web_rejects_host_origin_and_missing_control_session"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_web.py::test_local_web_server_requires_an_explicit_control_session_token"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_web.py::test_host_web_invalid_control_does_not_cancel_or_advance_a_run"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_web.py::test_web_rejects_old_execution_id_after_run_name_is_reused"
+          }
+        },
+        {
+          "schema": "v6-console-session-evidence-v2",
+          "match": {
+            "variant": "xss_token_storage_and_duplicate_click"
+          }
+        }
+      ]
+    },
+    "S01": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_engine.py::test_journal_keeps_unknown_tool_errors_and_cancellation_reasons_safe"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_engine.py::test_subworkflow_cycles_and_credential_outputs_are_rejected"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_portability_v2.py::test_portable_target_wire_contract_rejects_credentials"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_web.py::test_web_reconciles_without_echoing_sensitive_request_values"
+          }
+        }
+      ]
+    },
+    "S02": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_files.py::test_workspace_rejects_ambient_paths_tampering_and_symlink_escape"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_files.py::test_workspace_does_not_depend_on_garbage_collection_or_current_directory"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_files.py::test_bundle_file_references_rejects_incomplete_or_unsafe_metadata"
+          }
+        }
+      ]
+    },
+    "S03": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_inspection_and_journal_lifecycle.py::test_read_only_run_explanation_never_exposes_arguments_or_executes"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_inspection_and_journal_lifecycle.py::test_engine_explanation_is_a_read_only_journal_view"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_portability_v2.py::test_execution_plan_is_non_executing_and_exposes_agent_scope"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_portability_v2.py::test_environment_readiness_checks_release_delivery_without_importing_tools"
+          }
+        }
+      ]
+    },
+    "O01": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-defect-cost-curves-v1",
+          "match": {
+            "variant": "installation_step_and_concurrency_curves"
+          }
+        }
+      ]
+    },
+    "O02": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_host_runtime.py::test_repeated_hosts_reclaim_idle_process_resource_entries"
+          }
+        },
+        {
+          "schema": "v6-resource-stress-evidence-v1",
+          "match": {
+            "variant": "runs_approvals_and_host_lifecycle"
+          }
+        }
+      ]
+    },
+    "O03": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_journal_scaling.py::test_sqlite_stores_one_content_addressed_copy_of_large_results"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_journal_scaling.py::test_space_diagnostics_distinguish_logical_purge_from_physical_reclaim"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_journal_scaling.py::test_vacuum_refuses_a_journal_with_live_runs"
+          }
+        },
+        {
+          "schema": "v6-pytest-contract-matrix-v1",
+          "match": {
+            "variant": "pytest:tests/test_journal_scaling.py::test_vacuum_checks_temporary_disk_space"
+          }
+        }
+      ]
+    },
+    "O04": {
+      "disposition": "complete",
+      "required_evidence": [
+        {
+          "schema": "v6-evidence-gate-audit-v1",
+          "match": {
+            "variant": "delivery_gate_omits_state_invariants"
+          }
+        },
+        {
+          "schema": "v6-evidence-gate-audit-v1",
+          "match": {
+            "variant": "import_linter_cache_pollutes_source_fingerprint"
+          }
+        },
+        {
+          "schema": "v6-evidence-gate-audit-v1",
+          "match": {
+            "variant": "csv_documentation_contradicts_shipped_wheel"
+          }
+        }
+      ]
+    }
+  }
+}

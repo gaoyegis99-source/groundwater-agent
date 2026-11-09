@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "workflow.v6",
+  "workflowId": "groundwater.render-map",
+  "version": "1.0.0",
+  "inputs": [
+    {
+      "name": "data",
+      "cardinality": "one",
+      "mediaTypes": [
+        "application/geo+json",
+        "image/tiff"
+      ],
+      "formats": [
+        "geojson",
+        "geotiff",
+        "cog"
+      ]
+    }
+  ],
+  "parameters": [
+    "title",
+    "valueField"
+  ],
+  "nodes": [
+    {
+      "nodeId": "render",
+      "operatorId": "cartography.render-png",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "workflowInput": "data"
+        }
+      },
+      "parameters": {
+        "title": {
+          "workflowParameter": "title"
+        },
+        "valueField": {
+          "workflowParameter": "valueField"
+        }
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "name": "map-image",
+      "nodeOutput": {
+        "nodeId": "render",
+        "port": "image"
+      }
+    }
+  ]
+}

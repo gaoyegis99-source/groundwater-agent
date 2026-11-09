@@ -1,0 +1,115 @@
+{
+  "description": "Reproject vector or point cloud operator.",
+  "domain": "crs",
+  "errorCodes": [
+    "CRS_REQUIRED",
+    "CRS_INVALID",
+    "LAYER_REQUIRED"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-crs-reproject",
+      "inputs": {
+        "data": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "crs.reproject",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "targetCrs": "EPSG:3857"
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "crs.reproject",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "copc",
+        "flatgeobuf",
+        "geojson",
+        "geopackage",
+        "geoparquet",
+        "las",
+        "laz"
+      ],
+      "mediaTypes": [
+        "application/geopackage+sqlite3",
+        "application/geo+json",
+        "application/flatgeobuf",
+        "application/vnd.apache.parquet",
+        "application/vnd.las",
+        "application/vnd.laz"
+      ],
+      "name": "data",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formatCases": [
+        {
+          "format": "geopackage",
+          "inputFormats": [
+            "flatgeobuf",
+            "geojson",
+            "geopackage",
+            "geoparquet"
+          ],
+          "inputPort": "data",
+          "mediaType": "application/geopackage+sqlite3"
+        },
+        {
+          "format": "copc",
+          "inputFormats": [
+            "copc",
+            "las",
+            "laz"
+          ],
+          "inputPort": "data",
+          "mediaType": "application/vnd.laz"
+        }
+      ],
+      "formats": [
+        "copc",
+        "geopackage"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/geopackage+sqlite3",
+        "application/vnd.laz"
+      ],
+      "name": "data"
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "layer": {
+        "type": "string"
+      },
+      "targetCrs": {
+        "pattern": "^[A-Za-z][A-Za-z0-9_]*:[A-Za-z0-9._-]+$",
+        "type": "string"
+      }
+    },
+    "required": [
+      "targetCrs"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "crs",
+    "reproject"
+  ],
+  "timeoutSeconds": 3600,
+  "title": "Reproject vector or point cloud",
+  "version": "1.0.0"
+}

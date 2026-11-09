@@ -1,0 +1,3 @@
+# Linked worktrees are separate source baselines and may contain uncommitted work.
+# They are not inputs to searches over the active V6 source tree.
+/worktrees/

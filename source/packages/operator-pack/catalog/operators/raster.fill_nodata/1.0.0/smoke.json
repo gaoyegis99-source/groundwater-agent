@@ -1,0 +1,24 @@
+{
+  "expectedOutputs": {
+    "raster": {
+      "format": "geotiff",
+      "kind": "artifact",
+      "mediaType": "image/tiff"
+    }
+  },
+  "inputs": {
+    "raster": {
+      "fixtureId": "holes"
+    }
+  },
+  "operator": {
+    "id": "raster.fill_nodata",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "band": 1,
+    "maxDistancePixels": 2,
+    "smoothingIterations": 0
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

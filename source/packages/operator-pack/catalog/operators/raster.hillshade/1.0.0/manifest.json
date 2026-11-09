@@ -1,0 +1,100 @@
+{
+  "description": "Create terrain hillshade operator.",
+  "domain": "raster",
+  "errorCodes": [
+    "CRS_REQUIRED",
+    "PROJECTED_CRS_REQUIRED",
+    "BAND_INVALID",
+    "RASTER_INVALID",
+    "BLOCKED_BY_ENVIRONMENT"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-raster-hillshade",
+      "inputs": {
+        "raster": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "raster.hillshade",
+        "version": "1.0.0"
+      },
+      "parameters": {},
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "raster.hillshade",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "raster",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "raster"
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "algorithm": {
+        "default": "horn",
+        "enum": [
+          "horn",
+          "zevenbergenThorne"
+        ],
+        "type": "string"
+      },
+      "altitudeDegrees": {
+        "default": 45,
+        "exclusiveMinimum": 0,
+        "maximum": 90,
+        "type": "number"
+      },
+      "azimuthDegrees": {
+        "default": 315,
+        "exclusiveMaximum": 360,
+        "minimum": 0,
+        "type": "number"
+      },
+      "band": {
+        "default": 1,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "computeEdges": {
+        "default": false,
+        "type": "boolean"
+      }
+    },
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "raster",
+    "hillshade"
+  ],
+  "timeoutSeconds": 3600,
+  "title": "Create terrain hillshade",
+  "version": "1.0.0"
+}

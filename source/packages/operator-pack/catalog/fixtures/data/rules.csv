@@ -1,0 +1,4 @@
+minInclusive,maxExclusive,value
+,5,1
+5,10,2
+10,,3

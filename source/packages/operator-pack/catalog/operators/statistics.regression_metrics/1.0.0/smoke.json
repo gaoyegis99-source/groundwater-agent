@@ -1,0 +1,36 @@
+{
+  "expectedOutputs": {
+    "evaluated": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    },
+    "overall": {
+      "format": "json",
+      "kind": "artifact",
+      "mediaType": "application/json"
+    },
+    "perGroup": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    }
+  },
+  "inputs": {
+    "predictions": {
+      "fixtureId": "transfer.inverse-data"
+    }
+  },
+  "operator": {
+    "id": "statistics.regression_metrics",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "actualField": "actual",
+    "baselineField": "persistence",
+    "groupField": "station",
+    "predictedField": "predicted",
+    "unit": "m"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

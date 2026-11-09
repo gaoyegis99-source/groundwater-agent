@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>V6 local run console</title>
+    <link rel="stylesheet" href="/console/assets/style.css">
+  </head>
+  <body>
+    <header>
+      <h1>V6 local run console</h1>
+      <p>Read-only views are local. A control token stays only in this page's memory.</p>
+    </header>
+    <main>
+      <section class="toolbar" aria-label="Run list controls">
+        <label><input id="pending-only" type="checkbox"> Pending approvals only</label>
+        <button id="refresh-runs" type="button">Refresh runs</button>
+        <label class="session">Control token
+          <input id="session-token" type="password" autocomplete="off" spellcheck="false">
+        </label>
+      </section>
+      <p id="notice" role="status" aria-live="polite"></p>
+      <div class="panes">
+        <section aria-label="Runs">
+          <h2>Runs</h2>
+          <div id="run-list" class="run-list"></div>
+          <button id="more-runs" type="button" hidden>Load more</button>
+        </section>
+        <section aria-label="Selected run">
+          <h2 id="run-title">Select a run</h2>
+          <div id="run-controls" class="controls" hidden>
+            <button id="cancel-run" type="button">Request cancellation</button>
+          </div>
+          <div class="summary-grid" aria-label="Run progress">
+            <div><span class="summary-label">Execution status</span><strong id="execution-status">—</strong></div>
+            <div><span class="summary-label">Business status</span><strong id="business-status">—</strong></div>
+            <div><span class="summary-label">Current reason</span><strong id="run-reason">—</strong></div>
+          </div>
+          <h3>Node progress</h3>
+          <ol id="step-progress" class="step-progress"></ol>
+          <h3>Pending approvals</h3>
+          <div id="approvals"></div>
+          <h3>Result files</h3>
+          <div id="result-files" class="result-files"><span class="meta">No published result files.</span></div>
+          <h3>Reconcile an externally confirmed result</h3>
+          <form id="reconcile-form">
+            <label>Action ID <input id="reconcile-action-id" autocomplete="off"></label>
+            <label><input id="reconcile-succeeded" type="checkbox" checked> Succeeded</label>
+            <label>Output JSON <textarea id="reconcile-output" rows="3">{}</textarea></label>
+            <label>Error code <input id="reconcile-error" autocomplete="off"></label>
+            <button type="submit">Submit confirmed result</button>
+          </form>
+          <h3>Explanation</h3>
+          <pre id="explanation" class="data"></pre>
+          <h3>Detail</h3>
+          <pre id="detail" class="data"></pre>
+          <h3>Persisted events</h3>
+          <pre id="events" class="data"></pre>
+        </section>
+      </div>
+    </main>
+    <script src="/console/assets/app.js" defer></script>
+  </body>
+</html>

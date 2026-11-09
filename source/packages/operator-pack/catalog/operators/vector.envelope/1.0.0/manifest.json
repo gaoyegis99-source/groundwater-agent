@@ -1,0 +1,117 @@
+{
+  "description": "要求米制投影 CRS，先包围盒四周各扩 paddingMeters，再对短边对称扩展到 aspectRatio。 输出单一矩形面作为下游文件端口，避免把 value 输出错误绑定为下游参数。",
+  "domain": "vector",
+  "errorCodes": [
+    "RULESET_INVALID",
+    "RULESET_TOO_LARGE",
+    "INPUT_CARDINALITY_INVALID",
+    "FIELD_REQUIRED",
+    "DUPLICATE_FIELD",
+    "NON_NUMERIC_VALUE",
+    "OUTPUT_FIELD_CONFLICT",
+    "EMPTY_RESULT",
+    "TIME_AXIS_MISMATCH",
+    "DUPLICATE_TIMESTAMP",
+    "DUPLICATE_SERIES",
+    "TIMEZONE_UNSUPPORTED",
+    "TRAINING_WINDOW_INSUFFICIENT",
+    "HOLDOUT_REQUIRED",
+    "TARGET_NOT_FOUND",
+    "TENSOR_SHAPE_INVALID",
+    "ATTENTION_DIMENSIONS_INVALID",
+    "MODEL_WEIGHTS_INVALID",
+    "TRAINING_NON_FINITE",
+    "PREDICTION_NON_FINITE",
+    "SAMPLE_INDEX_INVALID",
+    "CRS_REQUIRED",
+    "CRS_MISMATCH",
+    "EMPTY_GEOMETRY",
+    "INVALID_GEOMETRY",
+    "GEOMETRY_TYPE_INVALID",
+    "COORDINATE_INVALID",
+    "METRIC_CRS_REQUIRED",
+    "EXTENT_INVALID",
+    "ROTATED_GRID_UNSUPPORTED",
+    "BAND_INVALID",
+    "IMAGERY_COVERAGE_INSUFFICIENT"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-vector-envelope",
+      "inputs": {
+        "vector": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "vector.envelope",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "aspectRatio": 1.6,
+        "layer": "boundary",
+        "paddingMeters": 10
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "vector.envelope",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "geopackage"
+      ],
+      "mediaTypes": [
+        "application/geopackage+sqlite3"
+      ],
+      "name": "vector",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "geopackage"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/geopackage+sqlite3"
+      ],
+      "name": "extent"
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "aspectRatio": {
+        "exclusiveMinimum": 0,
+        "type": "number"
+      },
+      "layer": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "paddingMeters": {
+        "minimum": 0,
+        "type": "number"
+      }
+    },
+    "required": [
+      "layer",
+      "paddingMeters",
+      "aspectRatio"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "vector",
+    "structured"
+  ],
+  "timeoutSeconds": 1800,
+  "title": "按留白和宽高比生成范围面",
+  "version": "1.0.0"
+}

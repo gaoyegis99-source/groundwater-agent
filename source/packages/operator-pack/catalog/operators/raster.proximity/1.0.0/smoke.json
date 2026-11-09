@@ -1,0 +1,24 @@
+{
+  "expectedOutputs": {
+    "raster": {
+      "format": "geotiff",
+      "kind": "artifact",
+      "mediaType": "image/tiff"
+    }
+  },
+  "inputs": {
+    "raster": {
+      "fixtureId": "proximity"
+    }
+  },
+  "operator": {
+    "id": "raster.proximity",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "band": 1,
+    "distanceUnit": "pixel",
+    "targetValue": 1
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

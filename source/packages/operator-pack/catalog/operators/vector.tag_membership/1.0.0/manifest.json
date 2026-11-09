@@ -1,0 +1,125 @@
+{
+  "description": "标记点是否被面集合覆盖; preserve CRS in a GeoPackage points layer. Use polygon union covers; retain outside and boundary points.",
+  "domain": "vector",
+  "errorCodes": [
+    "RULESET_INVALID",
+    "RULESET_TOO_LARGE",
+    "INPUT_CARDINALITY_INVALID",
+    "FIELD_REQUIRED",
+    "DUPLICATE_FIELD",
+    "NON_NUMERIC_VALUE",
+    "OUTPUT_FIELD_CONFLICT",
+    "EMPTY_RESULT",
+    "TIME_AXIS_MISMATCH",
+    "DUPLICATE_TIMESTAMP",
+    "DUPLICATE_SERIES",
+    "TIMEZONE_UNSUPPORTED",
+    "TRAINING_WINDOW_INSUFFICIENT",
+    "HOLDOUT_REQUIRED",
+    "TARGET_NOT_FOUND",
+    "TENSOR_SHAPE_INVALID",
+    "ATTENTION_DIMENSIONS_INVALID",
+    "MODEL_WEIGHTS_INVALID",
+    "TRAINING_NON_FINITE",
+    "PREDICTION_NON_FINITE",
+    "SAMPLE_INDEX_INVALID",
+    "CRS_REQUIRED",
+    "CRS_MISMATCH",
+    "EMPTY_GEOMETRY",
+    "INVALID_GEOMETRY",
+    "GEOMETRY_TYPE_INVALID",
+    "COORDINATE_INVALID",
+    "METRIC_CRS_REQUIRED",
+    "EXTENT_INVALID",
+    "ROTATED_GRID_UNSUPPORTED",
+    "BAND_INVALID",
+    "IMAGERY_COVERAGE_INSUFFICIENT"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-vector-tag_membership",
+      "inputs": {
+        "points": {
+          "artifactId": "art_example_01"
+        },
+        "polygons": {
+          "artifactId": "art_example_02"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "vector.tag_membership",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "outputField": "inside",
+        "polygonLayer": "boundary"
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "vector.tag_membership",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "geopackage"
+      ],
+      "mediaTypes": [
+        "application/geopackage+sqlite3"
+      ],
+      "name": "points",
+      "required": true
+    },
+    {
+      "cardinality": "one",
+      "formats": [
+        "geopackage"
+      ],
+      "mediaTypes": [
+        "application/geopackage+sqlite3"
+      ],
+      "name": "polygons",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "geopackage"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/geopackage+sqlite3"
+      ],
+      "name": "points"
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "outputField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "polygonLayer": {
+        "minLength": 1,
+        "type": "string"
+      }
+    },
+    "required": [
+      "polygonLayer",
+      "outputField"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "vector",
+    "structured"
+  ],
+  "timeoutSeconds": 1800,
+  "title": "标记点是否被面集合覆盖",
+  "version": "1.0.0"
+}

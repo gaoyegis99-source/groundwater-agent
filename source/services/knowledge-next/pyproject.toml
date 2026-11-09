@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools==75.8.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "platform-knowledge-next"
+version = "2.0.0"
+requires-python = ">=3.12"
+dependencies = [
+  "platform-protocol-contracts==2.0.0",
+  "platform-data-client==2.0.0",
+  "fastapi==0.141.1", "pydantic==2.13.5", "uvicorn==0.32.1",
+  "httpx==0.28.1", "psycopg[binary,pool]==3.3.4", "platform-embedding-client==6.0.1"
+]
+
+[project.scripts]
+platform-knowledge = "platform_knowledge_next.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+platform_knowledge_next = [
+  "migrations/*.sql", "static/*", "static/assets/*", "contracts/*.json"
+]

@@ -1,0 +1,101 @@
+{
+  "description": "Reproject raster operator.",
+  "domain": "raster",
+  "errorCodes": [
+    "CRS_REQUIRED",
+    "CRS_INVALID",
+    "RESOLUTION_INCOMPLETE"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-raster-reproject",
+      "inputs": {
+        "raster": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "raster.reproject",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "targetCrs": "EPSG:3857"
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "raster.reproject",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "raster",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "raster"
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "noData": {
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "pixelSizeX": {
+        "exclusiveMinimum": 0,
+        "type": "number"
+      },
+      "pixelSizeY": {
+        "exclusiveMinimum": 0,
+        "type": "number"
+      },
+      "resampling": {
+        "default": "nearest",
+        "enum": [
+          "nearest",
+          "bilinear",
+          "cubic"
+        ],
+        "type": "string"
+      },
+      "targetCrs": {
+        "pattern": "^[A-Za-z][A-Za-z0-9_]*:[A-Za-z0-9._-]+$",
+        "type": "string"
+      }
+    },
+    "required": [
+      "targetCrs"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "raster",
+    "reproject"
+  ],
+  "timeoutSeconds": 3600,
+  "title": "Reproject raster",
+  "version": "1.0.0"
+}

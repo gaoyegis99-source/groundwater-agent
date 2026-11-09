@@ -1,0 +1,175 @@
+{
+  "description": "Detect deterministic consecutive calendar-period runs above or below an explicit scalar or row threshold.",
+  "domain": "timeseries",
+  "errorCodes": [
+    "DUPLICATE_PERIOD",
+    "DUPLICATE_TIMESTAMP",
+    "FIELD_REQUIRED",
+    "FREQUENCY_UNSUPPORTED",
+    "NON_NUMERIC_VALUE",
+    "OUTPUT_VALIDATION_FAILED",
+    "THRESHOLD_INVALID",
+    "TIMESTAMP_INVALID",
+    "TIMEZONE_UNSUPPORTED"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-timeseries-threshold_events",
+      "inputs": {
+        "observations": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "timeseries.threshold_events",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "comparison": "above",
+        "frequency": "month",
+        "groupField": "station",
+        "thresholdSource": "scalar",
+        "thresholdValue": 2.0,
+        "timeField": "time",
+        "valueField": "value"
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "timeseries.threshold_events",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "csv",
+        "parquet",
+        "arrow-ipc-file"
+      ],
+      "mediaTypes": [
+        "text/csv",
+        "application/vnd.apache.parquet",
+        "application/vnd.apache.arrow.file"
+      ],
+      "name": "observations",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "parquet"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "classified"
+    },
+    {
+      "formats": [
+        "parquet"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "events"
+    },
+    {
+      "kind": "value",
+      "name": "summary",
+      "schema": {
+        "type": "object"
+      }
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "allOf": [
+      {
+        "else": {
+          "required": [
+            "thresholdField"
+          ]
+        },
+        "if": {
+          "properties": {
+            "thresholdSource": {
+              "const": "scalar"
+            }
+          }
+        },
+        "then": {
+          "required": [
+            "thresholdValue"
+          ]
+        }
+      }
+    ],
+    "properties": {
+      "comparison": {
+        "enum": [
+          "above",
+          "atOrAbove",
+          "below",
+          "atOrBelow"
+        ],
+        "type": "string"
+      },
+      "frequency": {
+        "enum": [
+          "day",
+          "month",
+          "quarter",
+          "year"
+        ],
+        "type": "string"
+      },
+      "groupField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "thresholdField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "thresholdSource": {
+        "enum": [
+          "scalar",
+          "field"
+        ],
+        "type": "string"
+      },
+      "thresholdValue": {
+        "type": "number"
+      },
+      "timeField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "valueField": {
+        "minLength": 1,
+        "type": "string"
+      }
+    },
+    "required": [
+      "groupField",
+      "timeField",
+      "valueField",
+      "frequency",
+      "comparison",
+      "thresholdSource"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "timeseries",
+    "threshold_events"
+  ],
+  "timeoutSeconds": 1800,
+  "title": "Detect threshold events",
+  "version": "1.0.0"
+}

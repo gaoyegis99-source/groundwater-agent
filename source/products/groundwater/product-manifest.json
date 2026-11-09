@@ -1,0 +1,50 @@
+{
+  "schemaVersion": "product-manifest.v8",
+  "productId": "groundwater",
+  "projectId": "groundwater-demo",
+  "services": [
+    "data",
+    "knowledge-next",
+    "executor"
+  ],
+  "publicRoutes": [
+    {
+      "prefix": "/api/v12/data",
+      "service": "data",
+      "contract": "data-http-v3"
+    },
+    {
+      "prefix": "/api/v12/knowledge",
+      "service": "knowledge-next",
+      "contract": "knowledge-http-v3"
+    }
+  ],
+  "domainPackage": {
+    "domainId": "groundwater",
+    "version": "6.0.0",
+    "checksum": "sha256:577ce573b7e67fad7367323bce87967c713c44c63d243467aaf47137fc7c53e6"
+  },
+  "knowledgeProjects": [
+    "groundwater-demo"
+  ],
+  "publicApiVersion": "v12",
+  "remoteServices": [
+    {
+      "serviceId": "groundwater-sustainability",
+      "baseUrlEnvironment": "GROUNDWATER_SUSTAINABILITY_BASE_URL",
+      "allowedHostEnvironment": "GROUNDWATER_SUSTAINABILITY_ALLOWED_HOST",
+      "credentialSecret": "groundwater-sustainability-api-key",
+      "caBundleSecret": "groundwater-sustainability-ca-bundle",
+      "connectTimeoutSeconds": 10,
+      "pollIntervalSeconds": 2,
+      "apiVersion": "remote-operation.v1",
+      "allowedServiceVersions": ["0.7.0"],
+      "allowedModelVersions": ["sustainability-evaluation.v1.1"],
+      "allowedOperations": ["sustainability.evaluate"]
+    }
+  ],
+  "uiProfile": {
+    "path": "ui/product-ui.json",
+    "checksum": "sha256:5a507594a33b5ccd44460f11ff4f38829e597f4ecf5f4372bc7ff8042243a1f1"
+  }
+}

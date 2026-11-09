@@ -1,0 +1,27 @@
+{
+  "expectedOutputs": {
+    "raster": {
+      "format": "geotiff",
+      "kind": "artifact",
+      "mediaType": "image/tiff"
+    }
+  },
+  "inputs": {
+    "mask": {
+      "fixtureId": "mask"
+    },
+    "raster": {
+      "fixtureId": "raster"
+    }
+  },
+  "operator": {
+    "id": "raster.clip",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "cropToCutline": true,
+    "maskLayer": "mask",
+    "noData": -9999
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

@@ -1,0 +1,11 @@
+[Unit]
+Description=Groundwater V6 daily backup for %i
+
+[Timer]
+OnCalendar=*-*-* 02:15:00
+Persistent=true
+RandomizedDelaySec=300
+Unit=groundwater-v6-backup@%i.service
+
+[Install]
+WantedBy=timers.target

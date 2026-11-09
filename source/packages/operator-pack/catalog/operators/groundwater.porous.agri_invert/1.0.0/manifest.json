@@ -1,0 +1,104 @@
+{
+  "id": "groundwater.porous.agri_invert",
+  "version": "1.0.0",
+  "title": "Agri Invert",
+  "description": "Execute fixed third-party operation agri.invert through deployment service binding porous-groundwater.",
+  "domain": "groundwater",
+  "tags": [
+    "groundwater",
+    "third-party",
+    "remote-http",
+    "agri.invert"
+  ],
+  "runtime": "remote_http",
+  "remoteBinding": {
+    "serviceId": "porous-groundwater",
+    "operationType": "agri.invert"
+  },
+  "timeoutSeconds": 7200,
+  "memoryLimitBytes": 1073741824,
+  "inputs": [
+    {
+      "name": "agricultural_data",
+      "cardinality": "one",
+      "required": true,
+      "mediaTypes": [
+        "application/zip"
+      ],
+      "formats": [
+        "zip"
+      ]
+    }
+  ],
+  "parametersSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {},
+    "required": []
+  },
+  "outputs": [
+    {
+      "name": "posterior_arrays",
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/x-npy"
+      ],
+      "formats": [
+        "npy"
+      ]
+    },
+    {
+      "name": "metrics",
+      "kind": "value",
+      "schema": {
+        "type": "object"
+      }
+    },
+    {
+      "name": "report_package",
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/zip"
+      ],
+      "formats": [
+        "zip"
+      ]
+    },
+    {
+      "name": "run_receipt",
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/json"
+      ],
+      "formats": [
+        "json"
+      ]
+    }
+  ],
+  "errorCodes": [
+    "REMOTE_AUTHENTICATION_FAILED",
+    "REMOTE_BINDING_INVALID",
+    "REMOTE_INTEGRITY_FAILED",
+    "REMOTE_OPERATION_FAILED",
+    "REMOTE_PROTOCOL_INVALID",
+    "REMOTE_SUBMISSION_UNCERTAIN",
+    "REMOTE_VERSION_MISMATCH"
+  ],
+  "examples": [
+    {
+      "schemaVersion": "operator-execution-request.v1",
+      "clientRequestId": "example-groundwater-porous-agri_invert",
+      "operator": {
+        "id": "groundwater.porous.agri_invert",
+        "version": "1.0.0"
+      },
+      "mode": "ASYNC",
+      "inputs": {
+        "agricultural_data": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "parameters": {}
+    }
+  ]
+}

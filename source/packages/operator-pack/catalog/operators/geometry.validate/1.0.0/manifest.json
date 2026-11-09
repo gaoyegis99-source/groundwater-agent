@@ -1,0 +1,84 @@
+{
+  "description": "Validate geometry operator.",
+  "domain": "geometry",
+  "errorCodes": [
+    "LAYER_REQUIRED",
+    "INPUT_INVALID",
+    "BLOCKED_BY_ENVIRONMENT"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-geometry-validate",
+      "inputs": {
+        "vector": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "geometry.validate",
+        "version": "1.0.0"
+      },
+      "parameters": {},
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "geometry.validate",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "flatgeobuf",
+        "geojson",
+        "geopackage",
+        "geoparquet",
+        "parquet"
+      ],
+      "mediaTypes": [
+        "application/geopackage+sqlite3",
+        "application/geo+json",
+        "application/flatgeobuf",
+        "application/vnd.apache.parquet"
+      ],
+      "name": "vector",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "geopackage"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/geopackage+sqlite3"
+      ],
+      "name": "report"
+    },
+    {
+      "kind": "value",
+      "name": "summary",
+      "schema": {
+        "type": "object"
+      }
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "layer": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "runtime": "qgis",
+  "tags": [
+    "geometry",
+    "validate"
+  ],
+  "timeoutSeconds": 1800,
+  "title": "Validate geometry",
+  "version": "1.0.0"
+}

@@ -1,0 +1,257 @@
+{
+  "documents": [
+    {
+      "chunks": [
+        {
+          "content": "算子是安装包中固定身份和版本的能力声明，包含输入端口、参数Schema和输出端口。参数与文件输入不是同一通道；端口的媒体类型、格式、基数和输出kind需要分别检查。目录中的说明支持选型，不能代替当前资料的字段和单位证据。",
+          "sourceRefs": [
+            "workflow-authoring-contract-v1"
+          ]
+        },
+        {
+          "content": "Workflow是算子的有向无环图，节点以workflowInput引用图的外部文件输入，或以nodeOutput引用上游artifact输出；参数通过workflowParameter引用图参数。对外命名输出指向节点端口。图应无环、端口兼容且每个节点都能到达一个声明输出。value输出可以成为最终命名输出，但当前DSL不支持把它当作下游文件。",
+          "sourceRefs": [
+            "workflow-authoring-contract-v1"
+          ]
+        },
+        {
+          "content": "已发布Executable Model在Workflow之上固定业务入口、参数绑定和运行策略。新生成草稿只用于查看和导出，没有自动注册为模型，也不表示执行成功。当前草稿execution_allowed恒为false；缺少参数、资源或证据必须明确说明，不得把设计图描述成已经计算得到的结论。",
+          "sourceRefs": [
+            "workflow-authoring-contract-v1"
+          ]
+        }
+      ],
+      "contentVersion": "1.0.0",
+      "knowledgeId": "workflow-authoring-methods.capability-layers.v1",
+      "language": "zh-CN",
+      "sources": [
+        {
+          "accessedAt": null,
+          "kind": "DOMAIN_DEFINITION",
+          "lifecycleStatus": "ACTIVE",
+          "publishedAt": "2026-10-09",
+          "publisher": "Groundwater Platform repository",
+          "reviewAfter": "2027-10-09",
+          "sourceId": "workflow-authoring-contract-v1",
+          "title": "当前静态算子清单、规则Schema与Workflow草稿编译契约",
+          "url": null,
+          "validThrough": null,
+          "version": "1.0.0"
+        }
+      ],
+      "summary": "区分原子能力、图定义、已发布模型和不能执行的设计草稿。",
+      "title": "编排方法：算子、工作流、模型与草稿的边界"
+    },
+    {
+      "chunks": [
+        {
+          "content": "table.project、table.filter和table.sort的1.0.0声明都有data和rules两个必需文件输入；data接收CSV、Parquet或Arrow IPC File，rules接收application/json且format为json。这些算子的parametersSchema是空的严格对象，不能把列映射、筛选表达式或排序键塞入临时算子参数。",
+          "sourceRefs": [
+            "workflow-authoring-contract-v1"
+          ]
+        },
+        {
+          "content": "规则文件须有自身schemaVersion：table-project-rules.v1的columns声明源列、目标列和类型；table-filter-rules.v1的condition声明字段、操作及值；table-sort-rules.v1的keys声明顺序、方向和空值位置。名称相似的JSON资源并不保证内容符合规则Schema；字典说明的来源、版本与实际文件身份必须一致。",
+          "sourceRefs": [
+            "workflow-authoring-contract-v1"
+          ]
+        },
+        {
+          "content": "table.project和table.sort的数据输出端口名为data；table.filter区分matched与rejected，并另有summary值输出。三类算子的文件输出声明为Parquet。选择输出必须对应用户意图和实际端口，不能凭文件后缀或中文标题猜测。CSV字段的物理类型与规则声明的转换类型也应区分。",
+          "sourceRefs": [
+            "workflow-authoring-contract-v1"
+          ]
+        }
+      ],
+      "contentVersion": "1.0.0",
+      "knowledgeId": "workflow-authoring-methods.table-rule-artifacts.v1",
+      "language": "zh-CN",
+      "sources": [
+        {
+          "accessedAt": null,
+          "kind": "DOMAIN_DEFINITION",
+          "lifecycleStatus": "ACTIVE",
+          "publishedAt": "2026-10-09",
+          "publisher": "Groundwater Platform repository",
+          "reviewAfter": "2027-10-09",
+          "sourceId": "workflow-authoring-contract-v1",
+          "title": "当前静态算子清单、规则Schema与Workflow草稿编译契约",
+          "url": null,
+          "validThrough": null,
+          "version": "1.0.0"
+        }
+      ],
+      "summary": "表格投影、筛选、排序的规则文档及真实端口契约。",
+      "title": "编排方法：表格规则属于独立文件输入"
+    },
+    {
+      "chunks": [
+        {
+          "content": "时序分析先识别分组列、时间列和数值列，并从当前资料观察与精确绑定字典取得含义。水位高程和地下水埋深的符号及基准不同；电导率也不是水位。列名包含数字或单位缩写不等于已证明单位。日期字符串格式、时间粒度、重复记录和缺测情况都需要独立确认。",
+          "sourceRefs": [
+            "workflow-authoring-contract-v1"
+          ]
+        },
+        {
+          "content": "用户的分析时间窗、频率、基准期、比较期和缺测处理属于分析选择；文件实际覆盖时间属于资料事实。不要用样本第一行推断完整范围，也不要把目录预览的前几行当作完整质量检查。数据字典中的生成器声明只能用于其绑定版本，不应套到同名的另一份资料上。",
+          "sourceRefs": [
+            "workflow-authoring-contract-v1"
+          ]
+        },
+        {
+          "content": "例如timeseries.regularize的声明要求频率、起止范围、插值方法、最大缺口周期及最大输出行数等明确参数；插值会生成估计记录，不能默认为实测值。具体算法是否适用还取决于样本数量、序列质量和业务目标。缺少选择依据时保留草稿缺项或请求澄清，不以算子存在推断分析结论成立。",
+          "sourceRefs": [
+            "workflow-authoring-contract-v1"
+          ]
+        }
+      ],
+      "contentVersion": "1.0.0",
+      "knowledgeId": "workflow-authoring-methods.timeseries-prerequisites.v1",
+      "language": "zh-CN",
+      "sources": [
+        {
+          "accessedAt": null,
+          "kind": "DOMAIN_DEFINITION",
+          "lifecycleStatus": "ACTIVE",
+          "publishedAt": "2026-10-09",
+          "publisher": "Groundwater Platform repository",
+          "reviewAfter": "2027-10-09",
+          "sourceId": "workflow-authoring-contract-v1",
+          "title": "当前静态算子清单、规则Schema与Workflow草稿编译契约",
+          "url": null,
+          "validThrough": null,
+          "version": "1.0.0"
+        }
+      ],
+      "summary": "分组、日期、数值、单位与采样范围的观察要求。",
+      "title": "编排方法：时序分析的数据前提"
+    },
+    {
+      "chunks": [
+        {
+          "content": "空间文件的CRS、坐标轴顺序、几何类型和度量单位是独立事实。EPSG:4326经纬度以角度表示，不能直接当作米制距离或面积；选择投影和分析单位须有依据。GeoJSON中的几何可用于演示，但虚构研究区不代表真实含水层边界、水力边界或行政范围。",
+          "sourceRefs": [
+            "workflow-authoring-contract-v1"
+          ]
+        },
+        {
+          "content": "连线时应检查源端口所有可能的mediaType/format组合是否都被目标接受，而不是只发现一个共同格式。crs.reproject的输出格式依赖输入类别：矢量输入对应GeoPackage，点云输入对应COPC。把重投影误认为必然输出GeoJSON会造成不合法的下游连线。",
+          "sourceRefs": [
+            "workflow-authoring-contract-v1"
+          ]
+        },
+        {
+          "content": "cartography.render-png接收单个GeoJSON或GeoTIFF/COG并声明PNG输出，不接收任意地理文件。是否需要显式格式转换应由上下游真实声明决定。当前图只支持one文件端口；即使目录里有拼接或多栅格算子，many端口仍被草稿校验明确拒绝，不能用列表伪装成一个资源。",
+          "sourceRefs": [
+            "workflow-authoring-contract-v1"
+          ]
+        }
+      ],
+      "contentVersion": "1.0.0",
+      "knowledgeId": "workflow-authoring-methods.spatial-format-chain.v1",
+      "language": "zh-CN",
+      "sources": [
+        {
+          "accessedAt": null,
+          "kind": "DOMAIN_DEFINITION",
+          "lifecycleStatus": "ACTIVE",
+          "publishedAt": "2026-10-09",
+          "publisher": "Groundwater Platform repository",
+          "reviewAfter": "2027-10-09",
+          "sourceId": "workflow-authoring-contract-v1",
+          "title": "当前静态算子清单、规则Schema与Workflow草稿编译契约",
+          "url": null,
+          "validThrough": null,
+          "version": "1.0.0"
+        }
+      ],
+      "summary": "坐标语义与格式传播必须同时满足。",
+      "title": "编排方法：空间坐标、单位和文件格式链"
+    },
+    {
+      "chunks": [
+        {
+          "content": "参数的类型、范围、枚举和组合关系均来自完整parametersSchema。raster.rasterize要求burnField与burnValue恰好选择一个；timeseries.threshold_events根据thresholdSource选择所需的thresholdValue或thresholdField。只看required列表或逐项类型会漏掉oneOf及条件约束。",
+          "sourceRefs": [
+            "workflow-authoring-contract-v1"
+          ]
+        },
+        {
+          "content": "算子声明中的default是软件配置默认值，不是当前数据的单位、坐标系、采样范围或物理属性。草稿使用默认值时须显式提供匹配的值，并将来源标为OPERATOR_DEFAULT；其他值依据USER、RESOURCE或KNOWLEDGE来源说明。未声明的默认值不得自行补造。",
+          "sourceRefs": [
+            "workflow-authoring-contract-v1"
+          ]
+        },
+        {
+          "content": "一个可选算子参数一旦绑定了workflowParameter，就成为草稿中的待供值位置；未提供值必须列为缺项。不需要该可选参数时，应省略它的节点绑定和图参数声明。一个图参数绑定多个节点参数时，给定值必须同时满足所有目标约束，不能只验证第一个使用位置。",
+          "sourceRefs": [
+            "workflow-authoring-contract-v1"
+          ]
+        }
+      ],
+      "contentVersion": "1.0.0",
+      "knowledgeId": "workflow-authoring-methods.parameters-and-defaults.v1",
+      "language": "zh-CN",
+      "sources": [
+        {
+          "accessedAt": null,
+          "kind": "DOMAIN_DEFINITION",
+          "lifecycleStatus": "ACTIVE",
+          "publishedAt": "2026-10-09",
+          "publisher": "Groundwater Platform repository",
+          "reviewAfter": "2027-10-09",
+          "sourceId": "workflow-authoring-contract-v1",
+          "title": "当前静态算子清单、规则Schema与Workflow草稿编译契约",
+          "url": null,
+          "validThrough": null,
+          "version": "1.0.0"
+        }
+      ],
+      "summary": "理解完整参数Schema以及默认值的证据边界。",
+      "title": "编排方法：条件参数、显式默认值和事实来源"
+    },
+    {
+      "chunks": [
+        {
+          "content": "资源证据绑定resource_id、version、checksum、media_type、format和size_bytes，不以显示名称取代身份。规则文件也是独立资源，需要真实上传回执和本轮完整观察。数据字典先等待上传完成再写入这些身份；复用旧字典时应核对全部绑定字段，而不是只匹配文件名。",
+          "sourceRefs": [
+            "workflow-authoring-contract-v1"
+          ]
+        },
+        {
+          "content": "知识引用应来自当前轮完整读取且checksum匹配的正文。过期、撤回、替换或旧checksum返回STALE时不能继续引用旧正文，也不能偷偷把新内容当作旧引用。来源为DEMO_ASSUMPTION时，必须保留其模拟假设，不把固定种子生成的数字当作实际地下水观测。",
+          "sourceRefs": [
+            "workflow-authoring-contract-v1"
+          ]
+        },
+        {
+          "content": "草稿校验通过只表示当前声明和已提供值满足编排约束；缺项为空也不意味着科学结论已经验证，更不表示建立了Executor Job、计算结果或公开模型。应分别说明结构问题、缺少输入、数据语义限制与用户目标。导出的草稿用于审阅，不能被描述为已执行工作流。",
+          "sourceRefs": [
+            "workflow-authoring-contract-v1"
+          ]
+        }
+      ],
+      "contentVersion": "1.0.0",
+      "knowledgeId": "workflow-authoring-methods.draft-evidence-validation.v1",
+      "language": "zh-CN",
+      "sources": [
+        {
+          "accessedAt": null,
+          "kind": "DOMAIN_DEFINITION",
+          "lifecycleStatus": "ACTIVE",
+          "publishedAt": "2026-10-09",
+          "publisher": "Groundwater Platform repository",
+          "reviewAfter": "2027-10-09",
+          "sourceId": "workflow-authoring-contract-v1",
+          "title": "当前静态算子清单、规则Schema与Workflow草稿编译契约",
+          "url": null,
+          "validThrough": null,
+          "version": "1.0.0"
+        }
+      ],
+      "summary": "资源身份、知识新鲜度和草稿解释的限制。",
+      "title": "编排方法：证据、校验结果与非执行状态"
+    }
+  ],
+  "schemaVersion": "workflow-authoring-knowledge.v1"
+}

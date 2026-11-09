@@ -1,0 +1,7 @@
+extend-exclude = [
+  ".generated",
+  "legacy",
+]
+
+[lint]
+extend-select = ["N"]

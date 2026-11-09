@@ -1,0 +1,26 @@
+.generated/
+.pytest_cache/
+.hypothesis/
+.ruff_cache/
+__pycache__/
+.retired-build/
+*.py[cod]
+**/.venv/
+node_modules/
+test-results/
+playwright-report/
+dist/
+build/
+# The locked Python build-backend domain is source, not a build output.
+!environments/build/
+!environments/build/**
+*.egg-info/
+.env
+.env.*
+!.env.example
+/migration-assets/yaozhanbao-transfer-case/payload/
+docs/V7-编排内核交接手册.docx
+/docs/presentations/
+/packages/lightweight-agent-core/examples/domain-packs/csv-statistics/artifacts/
+# The legacy CLI still defaults to a cwd-local journal; never stage its live DB.
+**/.v6-agent-runs.sqlite*

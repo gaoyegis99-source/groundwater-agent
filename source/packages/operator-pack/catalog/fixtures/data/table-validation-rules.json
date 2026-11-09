@@ -1,0 +1,18 @@
+{
+  "constraints": [
+    {
+      "fields": [
+        "id"
+      ],
+      "id": "id-unique",
+      "kind": "unique"
+    },
+    {
+      "field": "value",
+      "id": "value-range",
+      "kind": "range",
+      "minimum": 0
+    }
+  ],
+  "schemaVersion": "table-validation-rules.v1"
+}

@@ -1,0 +1,10 @@
+[Unit]
+Description=Groundwater V6 isolated restore drill for %i
+After=groundwater-v6-docker.service
+Requires=groundwater-v6-docker.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=@ENV_FILE@
+ExecStart=@LAUNCHER@ restore-drill %i
+TimeoutStartSec=14400

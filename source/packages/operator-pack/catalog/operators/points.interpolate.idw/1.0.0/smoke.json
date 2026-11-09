@@ -1,0 +1,33 @@
+{
+  "expectedOutputs": {
+    "raster": {
+      "format": "geotiff",
+      "kind": "artifact",
+      "mediaType": "image/tiff"
+    }
+  },
+  "inputs": {
+    "points": {
+      "fixtureId": "table"
+    }
+  },
+  "operator": {
+    "id": "points.interpolate.idw",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "extentMaxX": 100,
+    "extentMaxY": 100,
+    "extentMinX": 0,
+    "extentMinY": 0,
+    "neighborCount": 4,
+    "pixelSize": 50,
+    "power": 2,
+    "sourceCrs": "EPSG:3857",
+    "targetCrs": "EPSG:3857",
+    "valueField": "value",
+    "xField": "x",
+    "yField": "y"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

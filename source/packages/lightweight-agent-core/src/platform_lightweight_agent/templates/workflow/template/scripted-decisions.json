@@ -1,0 +1,25 @@
+{
+  "schema_version": "v6-scripted-decisions-v1",
+  "agents": {
+    "portable-research@1.0.0:research": [
+      {
+        "message": "Use the deterministic offline lookup.",
+        "tool_calls": [
+          {
+            "tool": {
+              "tool_id": "example.lookup",
+              "version": "1.0.0",
+              "package_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+            },
+            "arguments": {"query": "aquifer"}
+          }
+        ]
+      },
+      {
+        "message": "Offline example completed.",
+        "tool_calls": [],
+        "output": {"message": "example:aquifer"}
+      }
+    ]
+  }
+}

@@ -1,0 +1,141 @@
+{
+  "description": "Compare two explicit non-overlapping closed time intervals with a selected scalar aggregation.",
+  "domain": "timeseries",
+  "errorCodes": [
+    "AGGREGATION_UNSUPPORTED",
+    "FIELD_REQUIRED",
+    "INPUT_METADATA_INVALID",
+    "NON_NUMERIC_VALUE",
+    "OUTPUT_VALIDATION_FAILED",
+    "TIMESTAMP_AMBIGUOUS",
+    "TIMESTAMP_INVALID",
+    "TIMEZONE_UNSUPPORTED",
+    "TIME_RANGE_INVALID"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-timeseries-period_change",
+      "inputs": {
+        "observations": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "timeseries.period_change",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "aggregation": "mean",
+        "baselineEnd": "2024-01-31",
+        "baselineStart": "2024-01-01",
+        "comparisonEnd": "2024-02-29",
+        "comparisonStart": "2024-02-01",
+        "groupField": "station",
+        "timeField": "time",
+        "valueField": "value"
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "timeseries.period_change",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "csv",
+        "parquet",
+        "arrow-ipc-file"
+      ],
+      "mediaTypes": [
+        "text/csv",
+        "application/vnd.apache.parquet",
+        "application/vnd.apache.arrow.file"
+      ],
+      "name": "observations",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "parquet"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "changes"
+    },
+    {
+      "kind": "value",
+      "name": "summary",
+      "schema": {
+        "type": "object"
+      }
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "aggregation": {
+        "enum": [
+          "mean",
+          "median",
+          "min",
+          "max"
+        ],
+        "type": "string"
+      },
+      "baselineEnd": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "baselineStart": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "comparisonEnd": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "comparisonStart": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "groupField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "timeField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "valueField": {
+        "minLength": 1,
+        "type": "string"
+      }
+    },
+    "required": [
+      "groupField",
+      "timeField",
+      "valueField",
+      "baselineStart",
+      "baselineEnd",
+      "comparisonStart",
+      "comparisonEnd",
+      "aggregation"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "timeseries",
+    "timeseries",
+    "period_change"
+  ],
+  "timeoutSeconds": 1800,
+  "title": "Compare time periods",
+  "version": "1.0.0"
+}

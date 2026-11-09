@@ -1,0 +1,23 @@
+{
+  "expectedOutputs": {
+    "scaler": {
+      "format": "json",
+      "kind": "artifact",
+      "mediaType": "application/json"
+    }
+  },
+  "inputs": {
+    "data": {
+      "fixtureId": "transfer.split-fitRows"
+    },
+    "rules": {
+      "fixtureId": "transfer.fields"
+    }
+  },
+  "operator": {
+    "id": "preprocessing.standard_scaler_fit",
+    "version": "1.0.0"
+  },
+  "parameters": {},
+  "schemaVersion": "operator-smoke-test.v1"
+}

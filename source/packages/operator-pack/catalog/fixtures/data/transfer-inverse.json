@@ -1,0 +1,8 @@
+{
+  "fields": [
+    "actual",
+    "predicted",
+    "persistence"
+  ],
+  "schemaVersion": "standard-scaler-fields.v1"
+}

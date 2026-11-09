@@ -1,0 +1,12 @@
+**
+!environments/build/requirements.lock
+!packages/embedding-client/**
+!packages/protocol-contracts/**
+!services/data/client/**
+!services/knowledge-next/**
+**/__pycache__
+**/node_modules
+**/dist
+**/*.egg-info
+**/.pytest_cache
+**/test-results

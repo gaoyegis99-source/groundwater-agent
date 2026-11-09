@@ -1,0 +1,30 @@
+{
+  "expectedOutputs": {
+    "vector": {
+      "format": "geopackage",
+      "kind": "artifact",
+      "mediaType": "application/geopackage+sqlite3"
+    }
+  },
+  "inputs": {
+    "join": {
+      "fixtureId": "join.source"
+    },
+    "target": {
+      "fixtureId": "join.target"
+    }
+  },
+  "operator": {
+    "id": "vector.spatial_join",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "discardNonMatching": false,
+    "joinLayer": "join_source",
+    "mode": "oneToMany",
+    "predicate": "intersects",
+    "prefix": "j_",
+    "targetLayer": "target"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

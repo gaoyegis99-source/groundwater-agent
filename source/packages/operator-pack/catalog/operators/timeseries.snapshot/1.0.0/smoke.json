@@ -1,0 +1,35 @@
+{
+  "expectedOutputs": {
+    "diagnostics": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    },
+    "snapshot": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    },
+    "summary": {
+      "kind": "value"
+    }
+  },
+  "inputs": {
+    "observations": {
+      "fixtureId": "groundwater.timeseries"
+    }
+  },
+  "operator": {
+    "id": "timeseries.snapshot",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "groupField": "station",
+    "maxAgeDays": 2,
+    "selection": "nearest",
+    "targetTime": "2024-01-03",
+    "timeField": "time",
+    "valueField": "value"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

@@ -1,0 +1,11 @@
+[Unit]
+Description=Groundwater V6 monthly restore drill for %i
+
+[Timer]
+OnCalendar=Sun *-*-1..7 03:30:00
+Persistent=true
+RandomizedDelaySec=600
+Unit=groundwater-v6-restore-drill@%i.service
+
+[Install]
+WantedBy=timers.target

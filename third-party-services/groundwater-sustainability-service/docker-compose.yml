@@ -1,0 +1,27 @@
+services:
+  groundwater-sustainability-api:
+    build: .
+    platform: linux/amd64
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      GW_API_KEY_FILE: /run/secrets/groundwater-sustainability-api-key
+    secrets:
+      - groundwater-sustainability-api-key
+    volumes:
+      - groundwater-sustainability-data:/var/lib/groundwater-sustainability
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+
+volumes:
+  groundwater-sustainability-data:
+
+secrets:
+  groundwater-sustainability-api-key:
+    file: ./secrets/api-key

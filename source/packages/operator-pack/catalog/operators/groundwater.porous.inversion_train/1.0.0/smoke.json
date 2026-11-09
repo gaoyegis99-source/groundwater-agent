@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "operator-smoke-test.v1",
+  "operator": {
+    "id": "groundwater.porous.inversion_train",
+    "version": "1.0.0"
+  },
+  "inputs": {
+    "training_data": {
+      "fixtureId": "transfer.fields"
+    }
+  },
+  "parameters": {},
+  "expectedOutputs": {
+    "weights": {
+      "kind": "artifact",
+      "mediaType": "application/octet-stream",
+      "format": "binary"
+    },
+    "metrics": {
+      "kind": "value"
+    },
+    "report_package": {
+      "kind": "artifact",
+      "mediaType": "application/zip",
+      "format": "zip"
+    },
+    "run_receipt": {
+      "kind": "artifact",
+      "mediaType": "application/json",
+      "format": "json"
+    }
+  }
+}

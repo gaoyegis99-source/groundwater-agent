@@ -1,0 +1,1 @@
+{"dropout":0.0,"hiddenSize":8,"inputFeatures":2,"inputWindow":3,"numHeads":2,"numLayers":1,"schemaVersion":"gru-attention-model.v1"}

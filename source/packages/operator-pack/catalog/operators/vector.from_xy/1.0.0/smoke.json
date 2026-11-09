@@ -1,0 +1,24 @@
+{
+  "expectedOutputs": {
+    "points": {
+      "format": "geopackage",
+      "kind": "artifact",
+      "mediaType": "application/geopackage+sqlite3"
+    }
+  },
+  "inputs": {
+    "data": {
+      "fixtureId": "transfer.metrics-evaluated"
+    }
+  },
+  "operator": {
+    "id": "vector.from_xy",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "sourceCrs": "EPSG:32650",
+    "xField": "x",
+    "yField": "y"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

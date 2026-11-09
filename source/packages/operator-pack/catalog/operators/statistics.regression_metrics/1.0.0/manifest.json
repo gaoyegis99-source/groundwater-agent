@@ -1,0 +1,149 @@
+{
+  "description": "输出逐行 error=predicted-actual、absolute_error，以及总体/分井 MAE、RMSE、R²、样本数和持续性基线指标。 同一组数据上比较模型和基线；基线 RMSE 为零时改善率为 null 并声明原因，不伪造 0%。 样本少于 2 或 actual 为常量时 R² 为 null 并声明原因；不把 NaN/Infinity 写入 JSON。这些退化情形与旧 sklearn 默认强制有限值的差异须单独验收。",
+  "domain": "statistics",
+  "errorCodes": [
+    "RULESET_INVALID",
+    "RULESET_TOO_LARGE",
+    "INPUT_CARDINALITY_INVALID",
+    "FIELD_REQUIRED",
+    "DUPLICATE_FIELD",
+    "NON_NUMERIC_VALUE",
+    "OUTPUT_FIELD_CONFLICT",
+    "EMPTY_RESULT",
+    "TIME_AXIS_MISMATCH",
+    "DUPLICATE_TIMESTAMP",
+    "DUPLICATE_SERIES",
+    "TIMEZONE_UNSUPPORTED",
+    "TRAINING_WINDOW_INSUFFICIENT",
+    "HOLDOUT_REQUIRED",
+    "TARGET_NOT_FOUND",
+    "TENSOR_SHAPE_INVALID",
+    "ATTENTION_DIMENSIONS_INVALID",
+    "MODEL_WEIGHTS_INVALID",
+    "TRAINING_NON_FINITE",
+    "PREDICTION_NON_FINITE",
+    "SAMPLE_INDEX_INVALID",
+    "CRS_REQUIRED",
+    "CRS_MISMATCH",
+    "EMPTY_GEOMETRY",
+    "INVALID_GEOMETRY",
+    "GEOMETRY_TYPE_INVALID",
+    "COORDINATE_INVALID",
+    "METRIC_CRS_REQUIRED",
+    "EXTENT_INVALID",
+    "ROTATED_GRID_UNSUPPORTED",
+    "BAND_INVALID",
+    "IMAGERY_COVERAGE_INSUFFICIENT"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-statistics-regression_metrics",
+      "inputs": {
+        "predictions": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "statistics.regression_metrics",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "actualField": "actual",
+        "baselineField": "persistence",
+        "groupField": "station",
+        "predictedField": "predicted",
+        "unit": "m"
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "statistics.regression_metrics",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "parquet"
+      ],
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "predictions",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "parquet"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "evaluated"
+    },
+    {
+      "formats": [
+        "json"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/json"
+      ],
+      "name": "overall"
+    },
+    {
+      "formats": [
+        "parquet"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "perGroup"
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "actualField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "baselineField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "groupField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "predictedField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "unit": {
+        "minLength": 1,
+        "type": "string"
+      }
+    },
+    "required": [
+      "groupField",
+      "actualField",
+      "predictedField",
+      "baselineField",
+      "unit"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "statistics",
+    "structured"
+  ],
+  "timeoutSeconds": 1800,
+  "title": "回归误差与持续性基线评估",
+  "version": "1.0.0"
+}

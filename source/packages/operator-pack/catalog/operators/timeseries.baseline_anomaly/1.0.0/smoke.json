@@ -1,0 +1,29 @@
+{
+  "expectedOutputs": {
+    "anomalies": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    },
+    "summary": {
+      "kind": "value"
+    }
+  },
+  "inputs": {
+    "observations": {
+      "fixtureId": "monitoring.timeseries"
+    }
+  },
+  "operator": {
+    "id": "timeseries.baseline_anomaly",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "baselineEnd": "2021-12-31",
+    "baselineStart": "2020-01-01",
+    "groupField": "station",
+    "timeField": "time",
+    "valueField": "value"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

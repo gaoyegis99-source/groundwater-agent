@@ -1,0 +1,38 @@
+{
+  "$id": "table-join-rules.v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "keys": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "left": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "right": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "left",
+          "right"
+        ],
+        "type": "object"
+      },
+      "maxItems": 64,
+      "minItems": 1,
+      "type": "array"
+    },
+    "schemaVersion": {
+      "const": "table-join-rules.v1"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "keys"
+  ],
+  "type": "object"
+}

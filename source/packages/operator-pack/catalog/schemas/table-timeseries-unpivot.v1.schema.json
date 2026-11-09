@@ -1,0 +1,79 @@
+{
+  "$id": "table-timeseries-unpivot.v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "idFields": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 1024,
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "schemaVersion": {
+      "const": "table-timeseries-unpivot.v1"
+    },
+    "series": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "columns": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "column": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "time": {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "time",
+                "column"
+              ],
+              "type": "object"
+            },
+            "maxItems": 10000,
+            "minItems": 1,
+            "type": "array"
+          },
+          "field": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "columns"
+        ],
+        "type": "object"
+      },
+      "maxItems": 64,
+      "minItems": 1,
+      "type": "array"
+    },
+    "uniqueKeys": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 1024,
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "idFields",
+    "uniqueKeys",
+    "series"
+  ],
+  "type": "object"
+}

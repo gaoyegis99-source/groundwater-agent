@@ -1,0 +1,30 @@
+{
+  "expectedOutputs": {
+    "correlations": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    },
+    "summary": {
+      "kind": "value"
+    }
+  },
+  "inputs": {
+    "observations": {
+      "fixtureId": "monitoring.timeseries"
+    }
+  },
+  "operator": {
+    "id": "timeseries.autocorrelation",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "frequency": "month",
+    "groupField": "station",
+    "maxLagPeriods": 1,
+    "minPairs": 2,
+    "timeField": "time",
+    "valueField": "value"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

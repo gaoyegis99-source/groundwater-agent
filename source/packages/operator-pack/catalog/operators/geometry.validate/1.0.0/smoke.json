@@ -1,0 +1,25 @@
+{
+  "expectedOutputs": {
+    "report": {
+      "format": "geopackage",
+      "kind": "artifact",
+      "mediaType": "application/geopackage+sqlite3"
+    },
+    "summary": {
+      "kind": "value"
+    }
+  },
+  "inputs": {
+    "vector": {
+      "fixtureId": "invalid"
+    }
+  },
+  "operator": {
+    "id": "geometry.validate",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "layer": "invalid"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

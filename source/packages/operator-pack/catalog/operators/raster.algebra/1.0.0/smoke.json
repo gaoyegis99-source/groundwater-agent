@@ -1,0 +1,29 @@
+{
+  "expectedOutputs": {
+    "raster": {
+      "format": "geotiff",
+      "kind": "artifact",
+      "mediaType": "image/tiff"
+    }
+  },
+  "inputs": {
+    "rasters": [
+      {
+        "fixtureId": "raster"
+      },
+      {
+        "fixtureId": "raster.addend"
+      }
+    ]
+  },
+  "operator": {
+    "id": "raster.algebra",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "expression": "r1_b1 + r2_b1",
+    "noData": -9999,
+    "outputDataType": "float32"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

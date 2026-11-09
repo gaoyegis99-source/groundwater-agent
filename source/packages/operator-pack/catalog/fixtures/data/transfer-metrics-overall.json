@@ -1,0 +1,1 @@
+{"baseline":{"mae":0.17878574795193142,"r2":0.9303577422447428,"r2_reason":null,"rmse":0.19062598329307587,"sample_count":18},"improvement_reason":null,"mae":0.5510050985548232,"r2":0.16726010498088761,"r2_reason":null,"rmse":0.6591744439041278,"rmse_improvement_pct":-245.79464589078978,"sample_count":18,"unit":"m"}

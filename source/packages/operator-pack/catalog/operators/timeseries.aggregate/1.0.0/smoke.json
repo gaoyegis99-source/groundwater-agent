@@ -1,0 +1,28 @@
+{
+  "expectedOutputs": {
+    "series": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    },
+    "summary": {
+      "kind": "value"
+    }
+  },
+  "inputs": {
+    "observations": {
+      "fixtureId": "groundwater.timeseries"
+    }
+  },
+  "operator": {
+    "id": "timeseries.aggregate",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "frequency": "month",
+    "groupField": "station",
+    "timeField": "time",
+    "valueField": "value"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

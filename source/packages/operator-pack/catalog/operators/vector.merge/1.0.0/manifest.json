@@ -1,0 +1,84 @@
+{
+  "description": "Merge vector layers operator.",
+  "domain": "vector",
+  "errorCodes": [
+    "CRS_REQUIRED",
+    "CRS_MISMATCH",
+    "LAYER_REQUIRED",
+    "GEOMETRY_TYPE_MISMATCH",
+    "UNSUPPORTED_DIMENSION",
+    "SCHEMA_MISMATCH",
+    "INVALID_GEOMETRY",
+    "BLOCKED_BY_ENVIRONMENT"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-vector-merge",
+      "inputs": {
+        "vectors": [
+          {
+            "artifactId": "art_example_01"
+          },
+          {
+            "artifactId": "art_example_99"
+          }
+        ]
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "vector.merge",
+        "version": "1.0.0"
+      },
+      "parameters": {},
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "vector.merge",
+  "inputs": [
+    {
+      "cardinality": "many",
+      "formats": [
+        "flatgeobuf",
+        "geojson",
+        "geopackage",
+        "geoparquet",
+        "parquet"
+      ],
+      "maxItems": 32,
+      "mediaTypes": [
+        "application/geopackage+sqlite3",
+        "application/geo+json",
+        "application/flatgeobuf",
+        "application/vnd.apache.parquet"
+      ],
+      "name": "vectors",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "geopackage"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/geopackage+sqlite3"
+      ],
+      "name": "vector"
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {},
+    "type": "object"
+  },
+  "runtime": "qgis",
+  "tags": [
+    "vector",
+    "merge"
+  ],
+  "timeoutSeconds": 3600,
+  "title": "Merge vector layers",
+  "version": "1.0.0"
+}

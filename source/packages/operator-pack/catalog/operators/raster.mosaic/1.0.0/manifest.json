@@ -1,0 +1,83 @@
+{
+  "description": "Mosaic aligned rasters operator.",
+  "domain": "raster",
+  "errorCodes": [
+    "CRS_REQUIRED",
+    "CRS_MISMATCH",
+    "GRID_MISMATCH",
+    "RASTER_INVALID",
+    "BLOCKED_BY_ENVIRONMENT"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-raster-mosaic",
+      "inputs": {
+        "rasters": [
+          {
+            "artifactId": "art_example_01"
+          },
+          {
+            "artifactId": "art_example_99"
+          }
+        ]
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "raster.mosaic",
+        "version": "1.0.0"
+      },
+      "parameters": {},
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "raster.mosaic",
+  "inputs": [
+    {
+      "cardinality": "many",
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "maxItems": 16,
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "rasters",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "raster"
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "noData": {
+        "type": [
+          "number",
+          "null"
+        ]
+      }
+    },
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "raster",
+    "mosaic"
+  ],
+  "timeoutSeconds": 3600,
+  "title": "Mosaic aligned rasters",
+  "version": "1.0.0"
+}

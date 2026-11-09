@@ -1,0 +1,1 @@
+{"features":[{"count":24,"field":"depth","mean":11.603426615397135,"scale":0.8378605350345562,"variance":0.7020102761683927},{"count":24,"field":"rain","mean":6.0,"scale":3.488074922742725,"variance":12.166666666666666}],"schemaVersion":"standard-scaler.v1"}

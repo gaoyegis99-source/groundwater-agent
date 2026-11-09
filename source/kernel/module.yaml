@@ -1,0 +1,24 @@
+apiVersion: platform.module/v9
+kind: Service
+metadata:
+  name: kernel
+  version: 10.0.0
+  distribution:
+    name: platform-kernel-services
+    version: 7.0.0
+spec:
+  owner: platform-kernel
+  process:
+    command: [uvicorn, platform_kernel.main:app, --host, 0.0.0.0, --port, "8000"]
+  provides: [kernel-http-v12, interaction-v11, agent-runtime-v11]
+  requires: []
+  httpContracts:
+    kernel-http-v12:
+      basePath: /api/v12
+      openapi: contracts/openapi-v12.json
+  observationToolContracts: {}
+  executors: []
+  health: {live: /internal/health/live, ready: /internal/health/ready}
+  storage:
+    authority: kernel-session-agent-workflow
+    paths: [/data/kernel.sqlite3]

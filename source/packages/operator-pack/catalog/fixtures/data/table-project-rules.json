@@ -1,0 +1,15 @@
+{
+  "columns": [
+    {
+      "source": "id",
+      "target": "station_id",
+      "type": "int64"
+    },
+    {
+      "source": "value",
+      "target": "value",
+      "type": "float64"
+    }
+  ],
+  "schemaVersion": "table-project-rules.v1"
+}

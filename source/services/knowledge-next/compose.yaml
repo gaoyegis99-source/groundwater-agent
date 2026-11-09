@@ -1,0 +1,84 @@
+name: platform-knowledge-next-v3
+x-knowledge: &knowledge
+  image: platform-knowledge-next:2.0.0
+  build:
+    context: ../..
+    dockerfile: services/knowledge-next/Dockerfile
+  environment:
+    KNOWLEDGE_DATABASE_URL: postgresql://knowledge:knowledge-local@knowledge-db:5432/knowledge
+    KNOWLEDGE_PROJECT: ${KNOWLEDGE_PROJECT:-local-data}
+    KNOWLEDGE_DATA_URL: ${KNOWLEDGE_DATA_URL:-}
+    PLATFORM_EMBEDDING_BASE_URL: ${PLATFORM_EMBEDDING_BASE_URL:-}
+    KNOWLEDGE_READ_ONLY: ${KNOWLEDGE_READ_ONLY:-0}
+    KNOWLEDGE_VECTOR_SEARCH: ${KNOWLEDGE_VECTOR_SEARCH:-exact}
+  init: true
+  read_only: true
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,size=64m
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  labels:
+    io.platform.project: ${V6_KNOWLEDGE_PROJECT_ID:-platform-v6-knowledge}
+    io.platform.role: knowledge-service
+    io.platform.topology: v6-topology.v1
+services:
+  knowledge-db:
+    image: pgvector/pgvector:0.8.7-pg16-bookworm@sha256:7b822b0aac60967beb1ea5e576b8602c94c300a157d187f385ae3e0da199b90a
+    environment:
+      POSTGRES_USER: knowledge
+      POSTGRES_PASSWORD: knowledge-local
+      POSTGRES_DB: knowledge
+    volumes:
+      - type: bind
+        source: ${PLATFORM_INSTANCE_DATA_ROOT:?required}/knowledge/database
+        target: /var/lib/postgresql/data
+        bind:
+          create_host_path: false
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U knowledge -d knowledge]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    networks: [knowledge-store]
+    labels:
+      io.platform.project: ${V6_KNOWLEDGE_PROJECT_ID:-platform-v6-knowledge}
+      io.platform.role: knowledge-database
+      io.platform.hardening-exception: database
+      io.platform.topology: v6-topology.v1
+  migrate:
+    <<: *knowledge
+    command: [platform-knowledge, migrate]
+    depends_on:
+      knowledge-db: {condition: service_healthy}
+    read_only: false
+    networks: [knowledge-store]
+    labels:
+      io.platform.project: ${V6_KNOWLEDGE_PROJECT_ID:-platform-v6-knowledge}
+      io.platform.role: knowledge-migrate
+      io.platform.hardening-exception: migration
+      io.platform.topology: v6-topology.v1
+  api:
+    <<: *knowledge
+    ports:
+      - 127.0.0.1:${KNOWLEDGE_PORT:-8120}:8000
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/internal/health',timeout=3)"]
+      interval: 5s
+      timeout: 4s
+      retries: 20
+    networks: [knowledge-store, knowledge-service]
+  worker:
+    <<: *knowledge
+    command: [platform-knowledge, worker]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    networks: [knowledge-store, knowledge-service]
+networks:
+  knowledge-service:
+    name: ${V6_KNOWLEDGE_SERVICE_NETWORK:-groundwater-v6-knowledge-service}
+    internal: true
+  knowledge-store:
+    name: ${V6_KNOWLEDGE_STORE_NETWORK:-groundwater-v6-knowledge-store}
+    internal: true

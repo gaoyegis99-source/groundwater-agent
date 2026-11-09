@@ -1,0 +1,16 @@
+{
+  "name": "@platform/operator-ui",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.tsx",
+    "./styles.css": "./src/styles.css"
+  },
+  "dependencies": {
+    "@platform/ui-boundary": "1.0.0"
+  },
+  "peerDependencies": {
+    "react": "19.3.0"
+  }
+}

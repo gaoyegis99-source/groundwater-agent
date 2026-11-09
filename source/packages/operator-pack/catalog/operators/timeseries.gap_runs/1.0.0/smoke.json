@@ -1,0 +1,30 @@
+{
+  "expectedOutputs": {
+    "gaps": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    },
+    "summary": {
+      "kind": "value"
+    }
+  },
+  "inputs": {
+    "observations": {
+      "fixtureId": "monitoring.timeseries"
+    }
+  },
+  "operator": {
+    "id": "timeseries.gap_runs",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "expectedEnd": "2025-12-31",
+    "expectedStart": "2020-01-01",
+    "frequency": "month",
+    "groupField": "station",
+    "timeField": "time",
+    "valueField": "value"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

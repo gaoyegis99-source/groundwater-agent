@@ -1,0 +1,24 @@
+{
+  "$id": "table-deduplicate-rules.v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "keys": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 64,
+      "minItems": 1,
+      "type": "array"
+    },
+    "schemaVersion": {
+      "const": "table-deduplicate-rules.v1"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "keys"
+  ],
+  "type": "object"
+}

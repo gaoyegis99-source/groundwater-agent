@@ -1,0 +1,106 @@
+{
+  "description": "Raster algebra operator.",
+  "domain": "raster",
+  "errorCodes": [
+    "CRS_REQUIRED",
+    "GRID_MISMATCH",
+    "EXPRESSION_INVALID",
+    "OUTPUT_VALIDATION_FAILED"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-raster-algebra",
+      "inputs": {
+        "rasters": [
+          {
+            "artifactId": "art_example_01"
+          },
+          {
+            "artifactId": "art_example_99"
+          }
+        ]
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "raster.algebra",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "expression": "r1_b1",
+        "outputDataType": "uint8"
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "raster.algebra",
+  "inputs": [
+    {
+      "cardinality": "many",
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "maxItems": 16,
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "rasters",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "raster"
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "expression": {
+        "maxLength": 4096,
+        "minLength": 1,
+        "type": "string"
+      },
+      "noData": {
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "outputDataType": {
+        "enum": [
+          "uint8",
+          "int16",
+          "uint16",
+          "int32",
+          "uint32",
+          "float32",
+          "float64"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "expression",
+      "outputDataType"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "raster",
+    "algebra"
+  ],
+  "timeoutSeconds": 3600,
+  "title": "Raster algebra",
+  "version": "1.0.0"
+}

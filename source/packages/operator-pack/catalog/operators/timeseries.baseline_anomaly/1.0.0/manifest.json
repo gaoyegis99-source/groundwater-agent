@@ -1,0 +1,116 @@
+{
+  "description": "Calculate absolute and standardized anomalies from an explicit group baseline period.",
+  "domain": "timeseries",
+  "errorCodes": [
+    "DUPLICATE_TIMESTAMP",
+    "FIELD_REQUIRED",
+    "INSUFFICIENT_OBSERVATIONS",
+    "NON_NUMERIC_VALUE",
+    "OUTPUT_VALIDATION_FAILED",
+    "TIMESTAMP_INVALID",
+    "TIMEZONE_UNSUPPORTED",
+    "TIME_RANGE_INVALID"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-timeseries-baseline_anomaly",
+      "inputs": {
+        "observations": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "timeseries.baseline_anomaly",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "baselineEnd": "2021-12-31",
+        "baselineStart": "2020-01-01",
+        "groupField": "station",
+        "timeField": "time",
+        "valueField": "value"
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "timeseries.baseline_anomaly",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "csv",
+        "parquet",
+        "arrow-ipc-file"
+      ],
+      "mediaTypes": [
+        "text/csv",
+        "application/vnd.apache.parquet",
+        "application/vnd.apache.arrow.file"
+      ],
+      "name": "observations",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "parquet"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "anomalies"
+    },
+    {
+      "kind": "value",
+      "name": "summary",
+      "schema": {
+        "type": "object"
+      }
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "baselineEnd": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "baselineStart": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "groupField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "timeField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "valueField": {
+        "minLength": 1,
+        "type": "string"
+      }
+    },
+    "required": [
+      "groupField",
+      "timeField",
+      "valueField",
+      "baselineStart",
+      "baselineEnd"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "timeseries",
+    "baseline_anomaly"
+  ],
+  "timeoutSeconds": 1800,
+  "title": "Calculate baseline anomalies",
+  "version": "1.0.0"
+}

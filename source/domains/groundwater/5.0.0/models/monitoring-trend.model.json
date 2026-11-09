@@ -1,0 +1,347 @@
+{
+  "schemaVersion": "executable-model.v4",
+  "modelId": "groundwater.monitoring-trend",
+  "version": "3.0.0",
+  "workflowRef": {
+    "workflowId": "groundwater.monitoring-trend",
+    "version": "1.0.0",
+    "checksum": "sha256:42babe3078ecfec7f43c40f59a2e6c874f0c4ea84b3721e51213df13a87ab9b6"
+  },
+  "tool": {
+    "name": "run_monitoring_trend",
+    "description": "Analyze grouped groundwater monitoring trends from one exact Data version.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "versionId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "groupField": {
+          "type": "string",
+          "minLength": 1
+        },
+        "timeField": {
+          "type": "string",
+          "minLength": 1
+        },
+        "valueField": {
+          "type": "string",
+          "minLength": 1
+        },
+        "frequency": {
+          "type": "string",
+          "enum": [
+            "day",
+            "month",
+            "quarter",
+            "year"
+          ]
+        },
+        "expectedStart": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expectedEnd": {
+          "type": "string",
+          "minLength": 1
+        },
+        "baselineStart": {
+          "type": "string",
+          "minLength": 1
+        },
+        "baselineEnd": {
+          "type": "string",
+          "minLength": 1
+        },
+        "comparisonStart": {
+          "type": "string",
+          "minLength": 1
+        },
+        "comparisonEnd": {
+          "type": "string",
+          "minLength": 1
+        },
+        "aggregation": {
+          "type": "string",
+          "enum": [
+            "mean",
+            "median",
+            "min",
+            "max"
+          ]
+        },
+        "alpha": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "exclusiveMaximum": 1
+        },
+        "threshold": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "versionId",
+        "groupField",
+        "timeField",
+        "valueField",
+        "frequency",
+        "expectedStart",
+        "expectedEnd",
+        "baselineStart",
+        "baselineEnd",
+        "comparisonStart",
+        "comparisonEnd",
+        "aggregation"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "inputBindings": {
+    "observations": "versionId"
+  },
+  "defaultParameters": {
+    "alpha": 0.05,
+    "threshold": 3.5
+  },
+  "parameterBindings": {
+    "groupField": "groupField",
+    "timeField": "timeField",
+    "valueField": "valueField",
+    "frequency": "frequency",
+    "expectedStart": "expectedStart",
+    "expectedEnd": "expectedEnd",
+    "baselineStart": "baselineStart",
+    "baselineEnd": "baselineEnd",
+    "comparisonStart": "comparisonStart",
+    "comparisonEnd": "comparisonEnd",
+    "aggregation": "aggregation",
+    "alpha": "alpha",
+    "threshold": "threshold"
+  },
+  "deadlineSeconds": 3600,
+  "maxParallelNodes": 4,
+  "finalOutputs": [
+    "aggregated-series",
+    "aggregate-summary",
+    "completeness-profiles",
+    "completeness-summary",
+    "linear-trends",
+    "linear-summary",
+    "mann-kendall-trends",
+    "mann-kendall-summary",
+    "outlier-observations",
+    "outlier-summary",
+    "period-changes",
+    "period-change-summary"
+  ],
+  "executionService": "executor",
+  "executorId": "workflow-dag",
+  "outputPublications": {
+    "aggregated-series": {
+      "title": "Aggregated Series",
+      "mediaType": "application/vnd.apache.parquet",
+      "format": "parquet",
+      "policy": "FILE_QUERYABLE",
+      "semantics": {
+        "description": "groundwater.monitoring-trend output aggregated-series.",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [],
+        "source": "workflow-declared"
+      }
+    },
+    "aggregate-summary": {
+      "title": "Aggregate Summary",
+      "mediaType": "application/json",
+      "format": "json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "groundwater.monitoring-trend output aggregate-summary.",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [],
+        "source": "workflow-declared"
+      }
+    },
+    "completeness-profiles": {
+      "title": "Completeness Profiles",
+      "mediaType": "application/vnd.apache.parquet",
+      "format": "parquet",
+      "policy": "FILE_QUERYABLE",
+      "semantics": {
+        "description": "groundwater.monitoring-trend output completeness-profiles.",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [],
+        "source": "workflow-declared"
+      }
+    },
+    "completeness-summary": {
+      "title": "Completeness Summary",
+      "mediaType": "application/json",
+      "format": "json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "groundwater.monitoring-trend output completeness-summary.",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [],
+        "source": "workflow-declared"
+      }
+    },
+    "linear-trends": {
+      "title": "Linear Trends",
+      "mediaType": "application/vnd.apache.parquet",
+      "format": "parquet",
+      "policy": "FILE_QUERYABLE",
+      "semantics": {
+        "description": "groundwater.monitoring-trend output linear-trends.",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [],
+        "source": "workflow-declared"
+      }
+    },
+    "linear-summary": {
+      "title": "Linear Summary",
+      "mediaType": "application/json",
+      "format": "json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "groundwater.monitoring-trend output linear-summary.",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [],
+        "source": "workflow-declared"
+      }
+    },
+    "mann-kendall-trends": {
+      "title": "Mann Kendall Trends",
+      "mediaType": "application/vnd.apache.parquet",
+      "format": "parquet",
+      "policy": "FILE_QUERYABLE",
+      "semantics": {
+        "description": "groundwater.monitoring-trend output mann-kendall-trends.",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [],
+        "source": "workflow-declared"
+      }
+    },
+    "mann-kendall-summary": {
+      "title": "Mann Kendall Summary",
+      "mediaType": "application/json",
+      "format": "json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "groundwater.monitoring-trend output mann-kendall-summary.",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [],
+        "source": "workflow-declared"
+      }
+    },
+    "outlier-observations": {
+      "title": "Outlier Observations",
+      "mediaType": "application/vnd.apache.parquet",
+      "format": "parquet",
+      "policy": "FILE_QUERYABLE",
+      "semantics": {
+        "description": "groundwater.monitoring-trend output outlier-observations.",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [],
+        "source": "workflow-declared"
+      }
+    },
+    "outlier-summary": {
+      "title": "Outlier Summary",
+      "mediaType": "application/json",
+      "format": "json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "groundwater.monitoring-trend output outlier-summary.",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [],
+        "source": "workflow-declared"
+      }
+    },
+    "period-changes": {
+      "title": "Period Changes",
+      "mediaType": "application/vnd.apache.parquet",
+      "format": "parquet",
+      "policy": "FILE_QUERYABLE",
+      "semantics": {
+        "description": "groundwater.monitoring-trend output period-changes.",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [],
+        "source": "workflow-declared"
+      }
+    },
+    "period-change-summary": {
+      "title": "Period Change Summary",
+      "mediaType": "application/json",
+      "format": "json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "groundwater.monitoring-trend output period-change-summary.",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [],
+        "source": "workflow-declared"
+      }
+    }
+  }
+}

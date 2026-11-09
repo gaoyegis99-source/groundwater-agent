@@ -1,0 +1,23 @@
+{
+  "expectedOutputs": {
+    "profiles": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    },
+    "summary": {
+      "kind": "value"
+    }
+  },
+  "inputs": {
+    "data": {
+      "fixtureId": "table.document.table"
+    }
+  },
+  "operator": {
+    "id": "table.profile",
+    "version": "1.0.0"
+  },
+  "parameters": {},
+  "schemaVersion": "operator-smoke-test.v1"
+}

@@ -1,0 +1,44 @@
+{
+  "expectedOutputs": {
+    "darcyFlux": {
+      "format": "geotiff",
+      "kind": "artifact",
+      "mediaType": "image/tiff"
+    },
+    "seepageVelocity": {
+      "format": "geotiff",
+      "kind": "artifact",
+      "mediaType": "image/tiff"
+    },
+    "summary": {
+      "kind": "value"
+    },
+    "velocityEast": {
+      "format": "geotiff",
+      "kind": "artifact",
+      "mediaType": "image/tiff"
+    },
+    "velocityNorth": {
+      "format": "geotiff",
+      "kind": "artifact",
+      "mediaType": "image/tiff"
+    }
+  },
+  "inputs": {
+    "flowDirection": {
+      "fixtureId": "groundwater.direction"
+    },
+    "gradientMagnitude": {
+      "fixtureId": "groundwater.gradient"
+    }
+  },
+  "operator": {
+    "id": "groundwater.darcy_velocity",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "effectivePorosity": 0.25,
+    "hydraulicConductivityMetersPerDay": 10
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

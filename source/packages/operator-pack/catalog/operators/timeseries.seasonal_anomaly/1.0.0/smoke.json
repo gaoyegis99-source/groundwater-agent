@@ -1,0 +1,31 @@
+{
+  "expectedOutputs": {
+    "anomalies": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    },
+    "summary": {
+      "kind": "value"
+    }
+  },
+  "inputs": {
+    "observations": {
+      "fixtureId": "advanced.timeseries"
+    }
+  },
+  "operator": {
+    "id": "timeseries.seasonal_anomaly",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "baselineEnd": "2021-12-31",
+    "baselineStart": "2020-01-01",
+    "groupField": "station",
+    "minBaselineObservations": 2,
+    "seasonFrequency": "month",
+    "timeField": "time",
+    "valueField": "value"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

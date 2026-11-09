@@ -1,0 +1,138 @@
+{
+  "description": "Calculate raster statistics operator.",
+  "domain": "raster",
+  "errorCodes": [
+    "CRS_REQUIRED",
+    "BAND_INVALID",
+    "RASTER_INVALID",
+    "OUTPUT_VALIDATION_FAILED",
+    "BLOCKED_BY_ENVIRONMENT"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-raster-statistics",
+      "inputs": {
+        "raster": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "raster.statistics",
+        "version": "1.0.0"
+      },
+      "parameters": {},
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "raster.statistics",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "raster",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "kind": "value",
+      "name": "statistics",
+      "schema": {
+        "additionalProperties": false,
+        "properties": {
+          "bands": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "band": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "count": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "max": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "mean": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "min": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "nullCount": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "stddev": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "sum": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "band",
+                "count",
+                "nullCount",
+                "min",
+                "max",
+                "sum",
+                "mean",
+                "stddev"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "bands"
+        ],
+        "type": "object"
+      }
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "band": {
+        "minimum": 1,
+        "type": "integer"
+      }
+    },
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "raster",
+    "statistics"
+  ],
+  "timeoutSeconds": 3600,
+  "title": "Calculate raster statistics",
+  "version": "1.0.0"
+}

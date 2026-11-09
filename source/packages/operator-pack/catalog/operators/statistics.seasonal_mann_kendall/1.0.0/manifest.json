@@ -1,0 +1,121 @@
+{
+  "description": "Run a tie-corrected Seasonal Mann-Kendall test and seasonal Sen slope.",
+  "domain": "statistics",
+  "errorCodes": [
+    "DUPLICATE_PERIOD",
+    "DUPLICATE_TIMESTAMP",
+    "FIELD_REQUIRED",
+    "FREQUENCY_UNSUPPORTED",
+    "INSUFFICIENT_OBSERVATIONS",
+    "NON_NUMERIC_VALUE",
+    "OUTPUT_VALIDATION_FAILED",
+    "TIMESTAMP_INVALID",
+    "TIMEZONE_UNSUPPORTED"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-statistics-seasonal_mann_kendall",
+      "inputs": {
+        "observations": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "statistics.seasonal_mann_kendall",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "alpha": 0.05,
+        "groupField": "station",
+        "seasonFrequency": "month",
+        "timeField": "time",
+        "valueField": "value"
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "statistics.seasonal_mann_kendall",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "csv",
+        "parquet",
+        "arrow-ipc-file"
+      ],
+      "mediaTypes": [
+        "text/csv",
+        "application/vnd.apache.parquet",
+        "application/vnd.apache.arrow.file"
+      ],
+      "name": "observations",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "parquet"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "trends"
+    },
+    {
+      "kind": "value",
+      "name": "summary",
+      "schema": {
+        "type": "object"
+      }
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "alpha": {
+        "default": 0.05,
+        "exclusiveMaximum": 1,
+        "exclusiveMinimum": 0,
+        "type": "number"
+      },
+      "groupField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "seasonFrequency": {
+        "enum": [
+          "month",
+          "quarter"
+        ],
+        "type": "string"
+      },
+      "timeField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "valueField": {
+        "minLength": 1,
+        "type": "string"
+      }
+    },
+    "required": [
+      "groupField",
+      "timeField",
+      "valueField",
+      "seasonFrequency"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "statistics",
+    "seasonal_mann_kendall"
+  ],
+  "timeoutSeconds": 1800,
+  "title": "Seasonal Mann-Kendall trend test",
+  "version": "1.0.0"
+}

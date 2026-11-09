@@ -1,0 +1,129 @@
+{
+  "description": "Calculate Pearson autocorrelation over explicit calendar-period lags without interpolation.",
+  "domain": "timeseries",
+  "errorCodes": [
+    "DUPLICATE_PERIOD",
+    "DUPLICATE_TIMESTAMP",
+    "FIELD_REQUIRED",
+    "FREQUENCY_UNSUPPORTED",
+    "LAG_RANGE_INVALID",
+    "NON_NUMERIC_VALUE",
+    "OUTPUT_VALIDATION_FAILED",
+    "TIMESTAMP_INVALID",
+    "TIMEZONE_UNSUPPORTED"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-timeseries-autocorrelation",
+      "inputs": {
+        "observations": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "timeseries.autocorrelation",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "frequency": "month",
+        "groupField": "station",
+        "maxLagPeriods": 1,
+        "minPairs": 2,
+        "timeField": "time",
+        "valueField": "value"
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "timeseries.autocorrelation",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "csv",
+        "parquet",
+        "arrow-ipc-file"
+      ],
+      "mediaTypes": [
+        "text/csv",
+        "application/vnd.apache.parquet",
+        "application/vnd.apache.arrow.file"
+      ],
+      "name": "observations",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "parquet"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "correlations"
+    },
+    {
+      "kind": "value",
+      "name": "summary",
+      "schema": {
+        "type": "object"
+      }
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "frequency": {
+        "enum": [
+          "day",
+          "month",
+          "quarter",
+          "year"
+        ],
+        "type": "string"
+      },
+      "groupField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxLagPeriods": {
+        "maximum": 120,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "minPairs": {
+        "default": 3,
+        "minimum": 2,
+        "type": "integer"
+      },
+      "timeField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "valueField": {
+        "minLength": 1,
+        "type": "string"
+      }
+    },
+    "required": [
+      "groupField",
+      "timeField",
+      "valueField",
+      "frequency",
+      "maxLagPeriods"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "timeseries",
+    "autocorrelation"
+  ],
+  "timeoutSeconds": 1800,
+  "title": "Calculate time-series autocorrelation",
+  "version": "1.0.0"
+}

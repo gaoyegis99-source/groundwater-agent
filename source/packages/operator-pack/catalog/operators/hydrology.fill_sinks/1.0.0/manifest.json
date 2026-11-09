@@ -1,0 +1,83 @@
+{
+  "description": "Fills DEM depressions using the Wang-Liu method without changing CRS or grid.",
+  "domain": "hydrology",
+  "errorCodes": [
+    "CRS_REQUIRED",
+    "PROJECTED_CRS_REQUIRED",
+    "BAND_INVALID",
+    "RASTER_INVALID",
+    "BLOCKED_BY_ENVIRONMENT"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-hydrology-fill_sinks",
+      "inputs": {
+        "dem": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "hydrology.fill_sinks",
+        "version": "1.0.0"
+      },
+      "parameters": {},
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "hydrology.fill_sinks",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "dem",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "dem"
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "band": {
+        "default": 1,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "minimumSlopeDegrees": {
+        "default": 0.1,
+        "exclusiveMaximum": 90,
+        "minimum": 0,
+        "type": "number"
+      }
+    },
+    "type": "object"
+  },
+  "runtime": "qgis",
+  "tags": [
+    "hydrology",
+    "dem",
+    "conditioning"
+  ],
+  "timeoutSeconds": 3600,
+  "title": "Fill DEM sinks",
+  "version": "1.0.0"
+}

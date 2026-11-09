@@ -1,0 +1,109 @@
+name: platform-data-v3
+x-data: &data
+  image: platform-data-service:3.0.0
+  build:
+    context: ../..
+    dockerfile: services/data/Dockerfile
+  environment: &data-env
+    DATA_DATABASE_URL: postgresql://data:data-local@data-db:5432/data
+    DATA_ROOT: /data
+    DATA_PROJECT: local-data
+  volumes:
+    - type: bind
+      source: ${PLATFORM_INSTANCE_DATA_ROOT:?required}/data/objects
+      target: /data
+      bind:
+        create_host_path: false
+  init: true
+  read_only: true
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,size=64m
+  cap_drop: [ALL]
+  security_opt:
+    - no-new-privileges:true
+  labels:
+    io.platform.project: ${V6_DATA_PROJECT_ID:-platform-v6-data}
+    io.platform.role: data-service
+    io.platform.topology: v6-topology.v1
+services:
+  data-db:
+    image: postgres:16.10-bookworm@sha256:38471f330eb885e04de130b768d6db4e10469e2311879c7e5c699f6d2d8a1c74
+    environment:
+      POSTGRES_USER: data
+      POSTGRES_PASSWORD: data-local
+      POSTGRES_DB: data
+    volumes:
+      - type: bind
+        source: ${PLATFORM_INSTANCE_DATA_ROOT:?required}/data/database
+        target: /var/lib/postgresql/data
+        bind:
+          create_host_path: false
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U data -d data]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    networks: [data-store]
+    labels:
+      io.platform.project: ${V6_DATA_PROJECT_ID:-platform-v6-data}
+      io.platform.role: data-database
+      io.platform.hardening-exception: database
+      io.platform.topology: v6-topology.v1
+  migrate:
+    <<: *data
+    command: [platform-data, migrate]
+    depends_on:
+      data-db:
+        condition: service_healthy
+    read_only: false
+    networks: [data-store]
+    labels:
+      io.platform.project: ${V6_DATA_PROJECT_ID:-platform-v6-data}
+      io.platform.role: data-migrate
+      io.platform.hardening-exception: migration
+      io.platform.topology: v6-topology.v1
+  api:
+    <<: *data
+    ports:
+      - 127.0.0.1:${DATA_PORT:-8110}:8000
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/internal/health', timeout=3)"]
+      interval: 5s
+      timeout: 4s
+      retries: 20
+    networks:
+      data-store: {}
+      data-service: {}
+      data-contract:
+        aliases: [data-api]
+  worker:
+    <<: *data
+    environment:
+      <<: *data-env
+      DATA_SECCOMP_PROFILE: /app/seccomp.json
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+      # Worker installs the pinned default-deny filter with container libseccomp
+      # before opening its queue. The host resolver does not support Landlock here.
+      - seccomp=unconfined
+    command: [platform-data, worker]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks: [data-store]
+networks:
+  # Stable contract used by the independently deployed Knowledge stack.  It is
+  # deliberately named outside Compose's project-derived default-network rules.
+  data-contract:
+    name: ${V6_DATA_CONTRACT_NETWORK:-groundwater-v6-data-contract}
+    internal: true
+  data-service:
+    name: ${V6_DATA_SERVICE_NETWORK:-groundwater-v6-data-service}
+    internal: true
+  data-store:
+    name: ${V6_DATA_STORE_NETWORK:-groundwater-v6-data-store}
+    internal: true

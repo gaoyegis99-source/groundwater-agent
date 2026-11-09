@@ -1,0 +1,7 @@
+project_name:
+  type: str
+  default: example-tool
+  validator: "{% if not (project_name | regex_search('^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$')) %}Use a portable project name.{% endif %}"
+_subdirectory: template
+_exclude:
+  - copier.yml

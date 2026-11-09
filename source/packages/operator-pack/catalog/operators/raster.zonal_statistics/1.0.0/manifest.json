@@ -1,0 +1,119 @@
+{
+  "description": "Raster zonal statistics operator.",
+  "domain": "raster",
+  "errorCodes": [
+    "CRS_REQUIRED",
+    "CRS_MISMATCH",
+    "LAYER_REQUIRED"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-raster-zonal_statistics",
+      "inputs": {
+        "raster": {
+          "artifactId": "art_example_01"
+        },
+        "zones": {
+          "artifactId": "art_example_02"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "raster.zonal_statistics",
+        "version": "1.0.0"
+      },
+      "parameters": {},
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "raster.zonal_statistics",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "raster",
+      "required": true
+    },
+    {
+      "cardinality": "one",
+      "formats": [
+        "flatgeobuf",
+        "geojson",
+        "geopackage",
+        "geoparquet",
+        "parquet"
+      ],
+      "mediaTypes": [
+        "application/geopackage+sqlite3",
+        "application/geo+json",
+        "application/flatgeobuf",
+        "application/vnd.apache.parquet"
+      ],
+      "name": "zones",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "geopackage",
+        "geoparquet",
+        "parquet"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.apache.parquet",
+        "application/geopackage+sqlite3"
+      ],
+      "name": "statistics"
+    },
+    {
+      "kind": "value",
+      "name": "summary",
+      "schema": {
+        "type": "object"
+      }
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "band": {
+        "default": 1,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "includeEmpty": {
+        "default": true,
+        "type": "boolean"
+      },
+      "outputKind": {
+        "default": "table",
+        "enum": [
+          "table",
+          "vector"
+        ],
+        "type": "string"
+      },
+      "zonesLayer": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "raster",
+    "zonal-statistics"
+  ],
+  "timeoutSeconds": 3600,
+  "title": "Raster zonal statistics",
+  "version": "1.0.0"
+}

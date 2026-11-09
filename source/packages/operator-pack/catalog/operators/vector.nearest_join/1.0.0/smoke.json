@@ -1,0 +1,28 @@
+{
+  "expectedOutputs": {
+    "vector": {
+      "format": "geopackage",
+      "kind": "artifact",
+      "mediaType": "application/geopackage+sqlite3"
+    }
+  },
+  "inputs": {
+    "join": {
+      "fixtureId": "nearest.source"
+    },
+    "target": {
+      "fixtureId": "nearest.target"
+    }
+  },
+  "operator": {
+    "id": "vector.nearest_join",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "joinLayer": "nearest",
+    "neighbors": 1,
+    "prefix": "near_",
+    "targetLayer": "target"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

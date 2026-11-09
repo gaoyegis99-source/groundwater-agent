@@ -1,0 +1,26 @@
+{
+  "expectedOutputs": {
+    "points": {
+      "format": "geopackage",
+      "kind": "artifact",
+      "mediaType": "application/geopackage+sqlite3"
+    }
+  },
+  "inputs": {
+    "points": {
+      "fixtureId": "transfer.points-points"
+    },
+    "polygons": {
+      "fixtureId": "transfer.boundary"
+    }
+  },
+  "operator": {
+    "id": "vector.tag_membership",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "outputField": "inside",
+    "polygonLayer": "boundary"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

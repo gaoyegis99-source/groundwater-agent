@@ -1,0 +1,30 @@
+{
+  "expectedOutputs": {
+    "profiles": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    },
+    "summary": {
+      "kind": "value"
+    }
+  },
+  "inputs": {
+    "observations": {
+      "fixtureId": "groundwater.timeseries"
+    }
+  },
+  "operator": {
+    "id": "timeseries.completeness",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "expectedEnd": "2024-02-29",
+    "expectedStart": "2024-01-01",
+    "frequency": "month",
+    "groupField": "station",
+    "timeField": "time",
+    "valueField": "value"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

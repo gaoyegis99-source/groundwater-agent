@@ -1,0 +1,854 @@
+{
+  "catalogDigest": "sha256:106079138c9c4d6e40ae81655496df7f6cf6fdbe0ed19f25a7e9366f7e87a635",
+  "operators": [
+    {
+      "domain": "cartography",
+      "id": "cartography.render-png",
+      "manifestDigest": "sha256:8c4a0444da1bb6652ee21e934c6368e8ba58db6c85b3e91063d7dc5ae68cb90b",
+      "runtime": "native",
+      "smokeDigest": "sha256:4c74485db3b4ceb2015601e4df9ed076e29103cd7af7649268eb029341e04cf7",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "crs",
+      "id": "crs.reproject",
+      "manifestDigest": "sha256:81d8af8d691a9c51a480803c57ff7444958f0d52311d4b48d8c289172de363c6",
+      "runtime": "native",
+      "smokeDigest": "sha256:b12e6fdc794329ff42e8f7bff58094e487747c9bc8367da6ce28bde05e5c8476",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "data",
+      "id": "data.convert",
+      "manifestDigest": "sha256:a2716c966150dd8f699a19d081cd8d0c4991b117f9769f52b3b6cd81a38b0ba5",
+      "runtime": "native",
+      "smokeDigest": "sha256:581b67d5280d12f0c642a6d550f5cb04ed4b3b2679c38226d3ed6d3029d2fdd2",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "data",
+      "id": "data.inspect",
+      "manifestDigest": "sha256:bf43622f4c944eb96519b11ef663b2a92f9d9486edf69df4e23cb9bdf4ca9482",
+      "runtime": "native",
+      "smokeDigest": "sha256:a312bd87b7d172ce2b57f360fe80bb66e8c4a8d087b8a29091cf2e09f2b8899d",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "document",
+      "id": "document.chunk",
+      "manifestDigest": "sha256:bf2f35665a11206353a46771f55cd62c8866581b9667e1e32795bab473dec4c9",
+      "runtime": "native",
+      "smokeDigest": "sha256:3e89fdabf711cdadff6ac55edeab2c8b52a88477362b852f9faebbebcb49af4f",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "document",
+      "id": "document.text_extract",
+      "manifestDigest": "sha256:fb1d7bf42fcc1750111309818dd3b9b8ac69821f4b74ee3544e7df3f3199562b",
+      "runtime": "native",
+      "smokeDigest": "sha256:1d0818986dc2f5d40f9f4bebc372155ef1f213228f290721736dc55a13bd9204",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "geometry",
+      "id": "geometry.repair",
+      "manifestDigest": "sha256:ed26fbfe1b5d714ee9e438c3f7b935a73a79cb4ddb6fd73d052856445a535465",
+      "runtime": "qgis",
+      "smokeDigest": "sha256:1cdc6317dd3fb348228f470422107a6665d908053858bc9742f1cdea2286d2f3",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "geometry",
+      "id": "geometry.validate",
+      "manifestDigest": "sha256:f00d260965f78abce82b5c781f93a8a65957e9406b770573e9fc8c1b644a1dcd",
+      "runtime": "qgis",
+      "smokeDigest": "sha256:1ddd82622866db5306c2feeb18a80b17696ecc151d2b5fe0f2f84205027122c7",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "groundwater",
+      "id": "groundwater.darcy_velocity",
+      "manifestDigest": "sha256:b0fe4e41f68440bd6dabf4b8194bbdfaf78a8b4b7dba3c7ac8bdb0d35c190288",
+      "runtime": "native",
+      "smokeDigest": "sha256:651a5ee2b863ad43a95d14977cc4cf71451cfdd76142e6ce347b3e6bb309abca",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "groundwater",
+      "id": "groundwater.drawdown.calculate",
+      "manifestDigest": "sha256:20866448c0beb924d49efae82b5143058c6e65e39931c579031894924e957c03",
+      "runtime": "native",
+      "smokeDigest": "sha256:fed1bc60b6a5235537e73a3b2282c4f48cc6e9f1ec5791976d7bd3884ae59d15",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "groundwater",
+      "id": "groundwater.head.calculate",
+      "manifestDigest": "sha256:b3b2ad96b4217b05854fb5e513b0f76194777651742f9799ee819c05cf2e64a1",
+      "runtime": "native",
+      "smokeDigest": "sha256:e8ce870766a3c2330de50dbc0df72fd2ebb245c36dec8ab60042f91bfcf025fd",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "groundwater",
+      "id": "groundwater.hydraulic_gradient",
+      "manifestDigest": "sha256:1819aedfced7cb3c3446207c5ead69cd1ff586db4e96c45b7012c014efdbc842",
+      "runtime": "native",
+      "smokeDigest": "sha256:c2d087bf38cca7364d7cf45b3c36511291a9cda8363ae82c743cb3b24a78b087",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "groundwater",
+      "id": "groundwater.porous.agri_invert",
+      "manifestDigest": "sha256:30ad20c8795a928de1b30c1312ff1bfbb7960ae1d33b495a05d1a25336d561e7",
+      "runtime": "remote_http",
+      "smokeDigest": "sha256:aa13461adbeb485b79a3e120b7c433a91d3730e3fc2c0e5518a4c46428b88d04",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "groundwater",
+      "id": "groundwater.porous.flow_transport_simulate",
+      "manifestDigest": "sha256:6fd33ca659b62b0c5f74586a68ab6c751783f963b2b4d1cd852118bad833be7f",
+      "runtime": "remote_http",
+      "smokeDigest": "sha256:b69fc74d38b1abf2e75c1c59d578f05c41d1834d7bcc7ab756c49044f4b8ba71",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "groundwater",
+      "id": "groundwater.porous.inversion_sample",
+      "manifestDigest": "sha256:aff7d8d1f90291dd1967f6756abe82e80d596d274e3d18514c89037e36056b61",
+      "runtime": "remote_http",
+      "smokeDigest": "sha256:2df1d669ba6f056f0e1efaaecc16c6672b399758fe6f5f23351f3bc8e092ac77",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "groundwater",
+      "id": "groundwater.porous.inversion_train",
+      "manifestDigest": "sha256:6b572cb7c972231cb1a78889634e18fb0b0bac19f1faf6f32fc0522872ff20f1",
+      "runtime": "remote_http",
+      "smokeDigest": "sha256:eec0b66c967091554d2464d0eeda71106df48eccb5559743e068ee510482beee",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "groundwater",
+      "id": "groundwater.porous.map_prepare",
+      "manifestDigest": "sha256:1125ace4e917f76638dba3cd9944cc60d2ce8fa82522b7c84c0a20032355e2f1",
+      "runtime": "remote_http",
+      "smokeDigest": "sha256:19de47db6218322abc072b548046d5fea0a6878728e39cb84d0bb6fe71c0175d",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "groundwater",
+      "id": "groundwater.porous.model_compile",
+      "manifestDigest": "sha256:8674dbd8d19d5e9bfbda47fa284b99a98f249e2ddf8bc41ba8f4388412eafbf5",
+      "runtime": "remote_http",
+      "smokeDigest": "sha256:603d5d447786396afc1e9fa7cef94aa53afa0220bf7f4a9c5949a7850b3a1064",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "groundwater",
+      "id": "groundwater.porous.pest_calibrate",
+      "manifestDigest": "sha256:aac5658d0f112d6eb6db16a0c60c9760368cc595feb15c2d77d60a386433bed1",
+      "runtime": "remote_http",
+      "smokeDigest": "sha256:1e8046948b49e215fac939568cab63b5246198964059d30ba42f3adab067d309",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "groundwater",
+      "id": "groundwater.porous.result_analyze",
+      "manifestDigest": "sha256:570d0c9d871ebfd9a1b93fd05e86907fa4e6dda5a38dc9dc0834297834baeb0a",
+      "runtime": "remote_http",
+      "smokeDigest": "sha256:fd8c3947784bc2930fc6a4816b99f051d36a89ff5ede375b314a4c96c5cfe203",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "groundwater",
+      "id": "groundwater.porous.result_render",
+      "manifestDigest": "sha256:a1f5f86f545f365adc84b7c1f6e7d5bb7d655f4c1955860c5777e4f2f82c9996",
+      "runtime": "remote_http",
+      "smokeDigest": "sha256:eac8232b417488b7d1732ee92a62ee14c90e8c5eb1e53f0d1d1936bb6925b67f",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "groundwater",
+      "id": "groundwater.porous.scenario_compare",
+      "manifestDigest": "sha256:9031893960b420969a85a032b1482389b0264496fa1d0a01e1adb0850fbce122",
+      "runtime": "remote_http",
+      "smokeDigest": "sha256:f6dec0a7636057ef4aec900dfd11aed2f20bfe13e15ecde73686e1bec93cf878",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "groundwater",
+      "id": "groundwater.source_sustainability.evaluate",
+      "manifestDigest": "sha256:d56eb4a9863546cb418f3497403b34673707ebdc055f164bb20d0d323ea90b7a",
+      "runtime": "remote_http",
+      "smokeDigest": "sha256:a860c183f45a307ba396de8e03d42015e9d77dd8842af4521e4606f116d7e760",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "hydrology",
+      "id": "hydrology.basins",
+      "manifestDigest": "sha256:2ace0940c7a4524836ddeb0778a5ff3aa074d151c4663ae53f8e6be6221b5776",
+      "runtime": "native",
+      "smokeDigest": "sha256:94d793e31a1ec3b77e264675b3f84148bfe933facc0af37b8f0b829b46d06a2d",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "hydrology",
+      "id": "hydrology.fill_sinks",
+      "manifestDigest": "sha256:93962e3a704708498fa9adda653b20b47a12e80c0e9a1e4af76467a685658eb6",
+      "runtime": "qgis",
+      "smokeDigest": "sha256:54730e2dfb78864b4c3aa084833431888ff86a4d8a61df4f5d7d91fc9f1b3e72",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "hydrology",
+      "id": "hydrology.flow_accumulation",
+      "manifestDigest": "sha256:42bf6475157fd58385399feb515d8e9e64d1c97316cde2746c1d20c731749c6a",
+      "runtime": "native",
+      "smokeDigest": "sha256:18c6834b02e719315047d29d897782f332cecfaa9ffcfc951d0895580fa74a25",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "hydrology",
+      "id": "hydrology.flow_direction",
+      "manifestDigest": "sha256:1ebc42fd4733c3e056cddb888ffc3f61f44259ed117e53c9ea2c6fdda125b0ca",
+      "runtime": "native",
+      "smokeDigest": "sha256:36b54acd4e8a366d7c84af4bfd6939cfee839941c1032d6cae6becac728f7fc3",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "hydrology",
+      "id": "hydrology.snap_pour_points",
+      "manifestDigest": "sha256:e67848d0ca5fd49958c3e52188a9bff6415f6849b0da1e08dfce252f028ab153",
+      "runtime": "native",
+      "smokeDigest": "sha256:0713ba757ce6b0b93882297b954603ad37a325f5c3c5c91964d60a4854211b2b",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "hydrology",
+      "id": "hydrology.stream_extract",
+      "manifestDigest": "sha256:66b3dd649c6bfd5a691e29f2fa3cf6f1ab4c828962d9900b16076c8ce9362ca8",
+      "runtime": "native",
+      "smokeDigest": "sha256:34fc20370d60c9d31fa02bf2e2cc2f959f565adea9cac7f9f4935c98c7dd9112",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "hydrology",
+      "id": "hydrology.stream_order",
+      "manifestDigest": "sha256:002cfa0ca64baa4f511a4eebd0cb2073dc269768971c6f5e8b6469e6f42c9265",
+      "runtime": "native",
+      "smokeDigest": "sha256:286c751fbcb98f0bbc65ee5d7a355563f246a27fcf57a6c621dba7dc58d65d62",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "hydrology",
+      "id": "hydrology.watershed",
+      "manifestDigest": "sha256:94933d11fd017e57332cbd47010785b795d9bc26d7c3849ae4f41cd5a088d591",
+      "runtime": "native",
+      "smokeDigest": "sha256:0d0d8239faa37a874f8feefcfcfd1cfb84d6d5e560e066b64e717a0036a005cf",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "ml",
+      "id": "ml.gru_attention_finetune",
+      "manifestDigest": "sha256:b4442cca198927e131d7e7611d725cc3ece6aee848de784e681e33131d9957d6",
+      "runtime": "native",
+      "smokeDigest": "sha256:d1831ae1520ce4f97a055880eecd671e0d2be189e035ddd675c179949aa60c0e",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "ml",
+      "id": "ml.gru_attention_predict",
+      "manifestDigest": "sha256:d8a63ddf3ff2bf6a843054491ccd4904ed2041a1a8b84914c16aabb5a6936f9d",
+      "runtime": "native",
+      "smokeDigest": "sha256:4fc1ab55c808b92370e6180d9fff753f2f734457f9f1a111abd931005106a40c",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "ml",
+      "id": "ml.gru_attention_pretrain",
+      "manifestDigest": "sha256:eb913222d28f761b93d90d99017515723d086c9a14d9d500412c44a10b432c0a",
+      "runtime": "native",
+      "smokeDigest": "sha256:3b6adab6dd1cd20e6f98fc315b45560ceab994f0eb95997de932c6a11c5dc1a6",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "points",
+      "id": "points.interpolate.idw",
+      "manifestDigest": "sha256:0544375793a3cab08fe2d9d8acfcd55466e8c9ddb7faf5ccbc1912d9fb400625",
+      "runtime": "native",
+      "smokeDigest": "sha256:352d5002ebf33e3ce0768c64138150478d5c45537721467059a51cb7c6d489ac",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "preprocessing",
+      "id": "preprocessing.standard_scaler_fit",
+      "manifestDigest": "sha256:187af29947295936f79d4f7d5b9a4f0b9dd4a8f192b12acb2a579f386f829017",
+      "runtime": "native",
+      "smokeDigest": "sha256:d693acc7d7b6e1a52dada160f028821d1f02e21976009c5d1df9162107ed5bc1",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "preprocessing",
+      "id": "preprocessing.standard_scaler_inverse",
+      "manifestDigest": "sha256:ad873f35d257f26208394f544cf2957e39ba73cb6ee1b472364099ac84a2f81d",
+      "runtime": "native",
+      "smokeDigest": "sha256:3a64c5495fb996422276647e40206e3d78ec01f55e3448a6c68800014dd5a39a",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "preprocessing",
+      "id": "preprocessing.standard_scaler_transform",
+      "manifestDigest": "sha256:40d06ed286fb44c3d77b5644a19f1063fb80af05b7f8754ba83e3b74a328bb44",
+      "runtime": "native",
+      "smokeDigest": "sha256:bc774476b5f3b9aacaf58dbc0f08e394266d6da670f14536f901267ebe02ce79",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "raster",
+      "id": "raster.algebra",
+      "manifestDigest": "sha256:74f045625033c492d204800aab38a411646795feca1ba43f4df2af70057808e5",
+      "runtime": "native",
+      "smokeDigest": "sha256:125f7943da6104b494f81dcdf83ef4644791fad7c62d35c048cf3e807b2beea1",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "raster",
+      "id": "raster.aspect",
+      "manifestDigest": "sha256:7a24716bee5fbca373e2348d8314407d48047b0696cac732e6e1b094ccf146d3",
+      "runtime": "native",
+      "smokeDigest": "sha256:a986b88a34d47a204bef71c460fe0a368f309acdd2e09fa53d5b471ae1892f5b",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "raster",
+      "id": "raster.cell_statistics",
+      "manifestDigest": "sha256:6f00ed3a896416843265707fb6b7228beff85c3f43e891b868b6e9e9ca4f8196",
+      "runtime": "native",
+      "smokeDigest": "sha256:000eb45b90aceb276e1963098b9cd64a141a7e13bccc4b845c26ef0ae4537b08",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "raster",
+      "id": "raster.clip",
+      "manifestDigest": "sha256:f182544c980186b2d8cb8041b0db77b2b2cf487be6cc37a0935dad9071ab2801",
+      "runtime": "native",
+      "smokeDigest": "sha256:3cea922ca6679ce263c473acb94ceeb5a92ce05dc53bb47d2019cf18cd7cde2d",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "raster",
+      "id": "raster.contour",
+      "manifestDigest": "sha256:743a522d255d0057e281cb81411b128f761b36432737a7697a15edd6420929df",
+      "runtime": "native",
+      "smokeDigest": "sha256:b90d36d181e26141a06098adb3368d4df56e0de11f920cf1f682732ad418fc40",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "raster",
+      "id": "raster.fill_nodata",
+      "manifestDigest": "sha256:a014b63344a67828a80663b3095184f6a855e3a12207364632ab73094f89ab1a",
+      "runtime": "native",
+      "smokeDigest": "sha256:9e94ab9517db07221f3e967f3e420ad55ecf860b4060b061dfd55047cadb5603",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "raster",
+      "id": "raster.hillshade",
+      "manifestDigest": "sha256:29268a103d456ca673e07eab4749255212422ef43ae36fde444e5b13f7747526",
+      "runtime": "native",
+      "smokeDigest": "sha256:94441008d9823b730a15e665bd8644ca1ac5089447856b476fa5ce7c8feb400f",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "raster",
+      "id": "raster.mosaic",
+      "manifestDigest": "sha256:35468f3fe56f3f7a587279468dc34f48f8ca1c64dfe3eee76e328b70974fbfe8",
+      "runtime": "native",
+      "smokeDigest": "sha256:c9ca3f3ef36bc40f0ffde84561f514453623e4317a903ad0f59082edff02b306",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "raster",
+      "id": "raster.polygonize",
+      "manifestDigest": "sha256:53a0d4ea1a10aa0a6803b84cc31687ad4ac2e9522bd6525da844594ce6202be5",
+      "runtime": "native",
+      "smokeDigest": "sha256:49ce2bab17393bdd8b9eb6d45b7c3256d0745a42b5522c9027dc72a2cc52db6a",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "raster",
+      "id": "raster.proximity",
+      "manifestDigest": "sha256:6d595fcbe85ec057711e11a55c1046590efb185281ae3c513ca4a225af1502d1",
+      "runtime": "native",
+      "smokeDigest": "sha256:58f3a6143f4e8184a19ac75c201b72e38aa030cceec032f5f82e6c1a060412f4",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "raster",
+      "id": "raster.rasterize",
+      "manifestDigest": "sha256:602eb27cdf174d8b16c47765cd608629631197c94d6105adc1b2de3d62b096e8",
+      "runtime": "native",
+      "smokeDigest": "sha256:cee91ff4aff41bee6626af159adcaa238e8f1c2d6b19d3011e8c1ade3cc5e754",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "raster",
+      "id": "raster.reclassify",
+      "manifestDigest": "sha256:c4c35ea994453c1e284e0ef8d18a7d599284857652c8691d278e25e2273d31b3",
+      "runtime": "native",
+      "smokeDigest": "sha256:fefa00de0fb6ca70af5739b5148052a239dd53afb8391be70dc26653c4ad8677",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "raster",
+      "id": "raster.reproject",
+      "manifestDigest": "sha256:f11262159a7c7810960adf50597f3fcecde7cfba75b8a5e1853d07fbc902c248",
+      "runtime": "native",
+      "smokeDigest": "sha256:97ce95704606928e59c1debe314bcfb864adfa9005935404692856097257118c",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "raster",
+      "id": "raster.resample",
+      "manifestDigest": "sha256:8d06dfa0de09fc1e609ea7411b4352de77c6e973ca44088575326d963704caae",
+      "runtime": "native",
+      "smokeDigest": "sha256:e4a12d6a4d40afe807787e9b30db0bca96ab347d62b758c5dcb79e7cc50089fe",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "raster",
+      "id": "raster.sample_points",
+      "manifestDigest": "sha256:77064bc9e7ef57ea2099e62d5e404c8ae126e2cac063b3e2c5b89c80c56462bc",
+      "runtime": "native",
+      "smokeDigest": "sha256:44280a16d097fae1ce6a31434e3c4aeca326828b38e1a8bdb7c3fdc005da3245",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "raster",
+      "id": "raster.slope",
+      "manifestDigest": "sha256:8ef15391147f1904b1fd4ba649eaa003a19f79d4a1b8868049f7e0b1db8ad13a",
+      "runtime": "native",
+      "smokeDigest": "sha256:41351e591747bf77a3a5e1556e2211ac364c310b4d6923d42ae6c3ab289f676b",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "raster",
+      "id": "raster.statistics",
+      "manifestDigest": "sha256:707aded87f0ec1a64715887e30cafdd734b1a4146a568a1f0e79276d22b73482",
+      "runtime": "native",
+      "smokeDigest": "sha256:2507e9abbf291edc700466d5df40842bbcfd460a156c861405f0896a8b239c52",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "raster",
+      "id": "raster.window",
+      "manifestDigest": "sha256:489f13a3f107e11720d30f2def47fffdcbb47374b99b140f0b343c56ade8c9bf",
+      "runtime": "native",
+      "smokeDigest": "sha256:b68fdc8a7bed61f65a8b2a00383ebce284590bf1297e3b3a7fd8965ad6ce6c2f",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "raster",
+      "id": "raster.zonal_statistics",
+      "manifestDigest": "sha256:d06e863e7ac8a3113321b177669b767d652cd13a97676d12c26b7be6637ea087",
+      "runtime": "native",
+      "smokeDigest": "sha256:95b8bb88584b8ad458fb934716ed2bd55abc6ee279663e5fe10a838f7f37d450",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "table",
+      "id": "spreadsheet.extract_table",
+      "manifestDigest": "sha256:9254b5aeff2bf0e6b12fba02c534bab7f5144a572b09ab1f54f2813811ccd313",
+      "runtime": "native",
+      "smokeDigest": "sha256:a8d5bd2f51e1dc779963ebb1fc983e15cafd6ffd3cbdf6f8b392136f6d98fbf4",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "statistics",
+      "id": "statistics.describe",
+      "manifestDigest": "sha256:69d32681118719904fc54d158fb4b9384741c2a1d1440f013ebe13b694df3e98",
+      "runtime": "native",
+      "smokeDigest": "sha256:a2bdaa4cfe63630c268bfc41caa69c170d5cbe251adde3adba708f6c7b5a3ffe",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "statistics",
+      "id": "statistics.linear_trend",
+      "manifestDigest": "sha256:52f7fd90cea1202e93af20ff80ce509dc7ea4f7ac1ab6c08fa582dbf8b659be0",
+      "runtime": "native",
+      "smokeDigest": "sha256:bae1f2b027a8f2c4c11aeba87c92d6730c751e53b247fa7a4266eed556cf8e48",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "statistics",
+      "id": "statistics.mad_outliers",
+      "manifestDigest": "sha256:7b7a5ff026bf84daf81c1944b719f1657f9237dd8a98454b6fe3fbf619569da3",
+      "runtime": "native",
+      "smokeDigest": "sha256:057844c89523e78b4299e0ce1452f5535d80eca881561d9cffe49a9de1b4ef0f",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "statistics",
+      "id": "statistics.mann_kendall",
+      "manifestDigest": "sha256:23c2138802a55e10752b4c9fabfa0325f748efcb911be7c6905f652d93211d63",
+      "runtime": "native",
+      "smokeDigest": "sha256:0a1b03f833571b766e523ae9e2ada527208b1df3564013440f2972cb55d0d118",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "statistics",
+      "id": "statistics.pettitt_change_point",
+      "manifestDigest": "sha256:87f576ac538818994e1922bc49926c62ebbc44d622afb6fc0db6fa095e52eb2e",
+      "runtime": "native",
+      "smokeDigest": "sha256:303d6ea42592cc1bc7237ada64e6a68304c017f8f20dc864ef5ca93d998c5957",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "statistics",
+      "id": "statistics.regression_metrics",
+      "manifestDigest": "sha256:83ce03a69987ac66522c78310c46f7ca5511285f99c0942b9b0d0a30365f5d27",
+      "runtime": "native",
+      "smokeDigest": "sha256:ad641ef0fe17a99efe1a093b4f6f72c1438c11cc9f410336078bd04586e102b8",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "statistics",
+      "id": "statistics.seasonal_mann_kendall",
+      "manifestDigest": "sha256:fdfb0f88a7527697e97d059a5a77f41c94f1d623795302caf04218a46af4a4cc",
+      "runtime": "native",
+      "smokeDigest": "sha256:f1b7899378c946bf11e15b206350eba59c2a667dd2ee05130a71e6fa1d5ed3e1",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "table",
+      "id": "table.deduplicate",
+      "manifestDigest": "sha256:e81add8d78104392ae9c30408591abeae4631f5548767c162a4c5472f8bd0756",
+      "runtime": "native",
+      "smokeDigest": "sha256:9825e3bfdd6dc95100df98666bec99f3385fde2762102df8f2dd6db953d43e48",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "table",
+      "id": "table.filter",
+      "manifestDigest": "sha256:9852d8e4bc0aeef726fcff48164bda21ce3e8ae12aa868bdf052b7298284805e",
+      "runtime": "native",
+      "smokeDigest": "sha256:ad2a1ed86351dc90bf973edc4e0f3031e03f0d678e998dba772e84759ab55fe9",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "table",
+      "id": "table.join",
+      "manifestDigest": "sha256:c1c0d30d2408a677b45d3b080b8373d03814de545de16815abc8415b52db57ac",
+      "runtime": "native",
+      "smokeDigest": "sha256:7bc0f34e3a2c8c7c7a51cb5630a0ce61dbe1af95c469e1a20db0467054b06e1f",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "table",
+      "id": "table.profile",
+      "manifestDigest": "sha256:dfcff4d3529e04d6c3741afa8a1b286a6d8792d3e3cd83195ca87588935b1d8e",
+      "runtime": "native",
+      "smokeDigest": "sha256:dfd7f783cdc2e2d682d6b1f097ee3c33f5db99e3a824a0d9d31ee75acc2e6cbc",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "table",
+      "id": "table.project",
+      "manifestDigest": "sha256:12f1dababe99e4d0d8086e2da8ad0e096f06374c560ddce1ef7d8d01ba3f6a8b",
+      "runtime": "native",
+      "smokeDigest": "sha256:31dd0f271af1b84f5a071b8bb4ed0d9d69a08cc0475cbf0584dfccda4f5f8ae8",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "table",
+      "id": "table.sort",
+      "manifestDigest": "sha256:3b18a0de8c23a0467324bfa7c1a8511590077b2b5e14a56f7e6d431b46d80aff",
+      "runtime": "native",
+      "smokeDigest": "sha256:bbd3df33f4b8c82fbef64d1a8f4ddde896b985025d7ad4074425d8ddb8ecea1d",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "table",
+      "id": "table.timeseries_unpivot",
+      "manifestDigest": "sha256:db9c168f3eecb9a1b14ff2368524e53759de9e79eb601eff49bf928cf88a1871",
+      "runtime": "native",
+      "smokeDigest": "sha256:7994077310eebdb92a60e00557090f8e200a5d628bc34e7a84dae80a0d4ee34c",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "table",
+      "id": "table.validate",
+      "manifestDigest": "sha256:6c2a8523e1ffb63700d98380e24a4c78ffbb62d720ef5f69275fc1a058343533",
+      "runtime": "native",
+      "smokeDigest": "sha256:ff15866f820e574d400da9f148b671b44323a40512498d72e4b96db80671294a",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "timeseries",
+      "id": "timeseries.aggregate",
+      "manifestDigest": "sha256:560d00500eea86cf28682f1e97b5ddbe9985ed783e038b3adde729fe0493454c",
+      "runtime": "native",
+      "smokeDigest": "sha256:d6b3dcf416e619431cb695d7e72ba6a2efb945256a5070e72054f5f1c9461077",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "timeseries",
+      "id": "timeseries.autocorrelation",
+      "manifestDigest": "sha256:d1b781ab92b777c63a7dafd2bdf060b91bd1fb00b98dc53e703a2dfb0816ca35",
+      "runtime": "native",
+      "smokeDigest": "sha256:ecd05d7a4106d992fbdde99e7adaa39145de4aa71645676047fddcd05eb6d592",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "timeseries",
+      "id": "timeseries.baseline_anomaly",
+      "manifestDigest": "sha256:bd5914a5f7f4cab50a9e1894e07fd6a04ef1bd9b3c1f025997b96af3e0227434",
+      "runtime": "native",
+      "smokeDigest": "sha256:2b1cf66164f5acc3ccdbb2953189baa5fe99e65938ab8e5a1b8c2b5a6a7eaf2e",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "timeseries",
+      "id": "timeseries.chronological_split",
+      "manifestDigest": "sha256:f15218bf31634d78939c928939e2f074aa61cc0634f43e81c2b1eb50106c621a",
+      "runtime": "native",
+      "smokeDigest": "sha256:c12b06fdf8d8bbab55b1fc251ca3b1c273af3b62f38ce2934fc94fc0934381a9",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "timeseries",
+      "id": "timeseries.completeness",
+      "manifestDigest": "sha256:ffae006910bd95318f39a05529bf5a96aef62ad3f85fe2bf9af11e72e56b1fc4",
+      "runtime": "native",
+      "smokeDigest": "sha256:d472b22fc5fd0a9dd343758960904874b8fe866c133e78d673ab1e3f0eacd574",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "timeseries",
+      "id": "timeseries.cross_correlation",
+      "manifestDigest": "sha256:2579eb5e71063ab3c8c38c6c4e549431476167c0c98913842e41f0e39bc5bf4b",
+      "runtime": "native",
+      "smokeDigest": "sha256:737a8d6b19eea234fc5780ea6fe657a97782625a8c49a6b83fc76c6f4d4b298d",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "timeseries",
+      "id": "timeseries.empirical_percentile",
+      "manifestDigest": "sha256:131c4b926c4df5a25956288f02f81c1575c430bd04db75683811e40588a5d895",
+      "runtime": "native",
+      "smokeDigest": "sha256:164324ab2eff50359fa655b5c64486d7c1ffbb0477a0f3bd3d20195db3d61cf9",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "timeseries",
+      "id": "timeseries.gap_runs",
+      "manifestDigest": "sha256:5ef12e0a3e5e62c70feb21338891b7ca8ccb72f49ba1e594d32661ee1efa44d0",
+      "runtime": "native",
+      "smokeDigest": "sha256:36619b094e72b27cd65ef59514360eb2701d26cf8f5fac01ab1900afd3335d9e",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "timeseries",
+      "id": "timeseries.lag_change",
+      "manifestDigest": "sha256:ffe5cd34c1bb78e4583c2fad92e54740b087f935690f07a6d471f24af21617db",
+      "runtime": "native",
+      "smokeDigest": "sha256:398814d53cd6b56c7e3b409fecba5636f868a6b8781ec07ca4e659d320873041",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "timeseries",
+      "id": "timeseries.period_change",
+      "manifestDigest": "sha256:4ec6a0669cc030ea293f26fc8e691e08d7746a0862e22386825e0b025115b0db",
+      "runtime": "native",
+      "smokeDigest": "sha256:0d25d16113f096248458db690a07ba951c69df958306fe0db240c6a76b4bf567",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "timeseries",
+      "id": "timeseries.rate_of_change",
+      "manifestDigest": "sha256:b1846175894cf2029e44478ba01ebddf23aca61112fae80f7470bad2cc42d420",
+      "runtime": "native",
+      "smokeDigest": "sha256:56885f047c0bcb266228927c9afa05a75df6170b38da605ad4a441d3c2d56a47",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "timeseries",
+      "id": "timeseries.regularize",
+      "manifestDigest": "sha256:5a9dfa660bff9bc0fbb516da567c6771d28539fb7bc5eaf44b355a39c68b073b",
+      "runtime": "native",
+      "smokeDigest": "sha256:f93f6c2f258bd3c20a5fdc59a90783815ecac64cf5387bd1f7bb6f27f83cf27f",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "timeseries",
+      "id": "timeseries.rolling_statistics",
+      "manifestDigest": "sha256:7f1f26c978ccdc3d92971e391c330a3ca41b483a18363530e9b394afaecd5165",
+      "runtime": "native",
+      "smokeDigest": "sha256:5e551dd187754b82243896e5f9970542308f25c538a5d5069b17c37f2d2f9b03",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "timeseries",
+      "id": "timeseries.seasonal_anomaly",
+      "manifestDigest": "sha256:d7ce8ff3ba346a37bb8d46e403c74df99e80ce9469aa240551d2081a4596dea2",
+      "runtime": "native",
+      "smokeDigest": "sha256:6cd32afdb71c93a9879a736f5ab84a88ddc6cd739794e08af73aec606a7865fa",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "timeseries",
+      "id": "timeseries.snapshot",
+      "manifestDigest": "sha256:574ba199c432947f317539b527bd7b762478d8da80558a5bc01071a5e0a645b0",
+      "runtime": "native",
+      "smokeDigest": "sha256:cbcaccaa89913a17c372126d516030282bab63016f0fdfd9cc84eb9ec5acc048",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "timeseries",
+      "id": "timeseries.supervised_windows",
+      "manifestDigest": "sha256:5a6773a427fb9d1976b1b68fa284b9601fd07ed1abc2c96fe7e887c37330ff34",
+      "runtime": "native",
+      "smokeDigest": "sha256:d4c864eaf13c37e4aaa90bd4c19cfe0ab5702f3ca603c8619c5b8fad7af3becb",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "timeseries",
+      "id": "timeseries.threshold_events",
+      "manifestDigest": "sha256:dbc9dc0ae991324b6965b5fb232b580210cc518e8a33d438818482151064eb04",
+      "runtime": "native",
+      "smokeDigest": "sha256:f4c90c9bc71091eda29a0ea8e3e22ce29540038a129271f2bd4fd079df0bcda2",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "vector",
+      "id": "vector.buffer",
+      "manifestDigest": "sha256:3e52f8134f6c982928b18d813780a10b64c47fd573afacb444f716e295f05205",
+      "runtime": "native",
+      "smokeDigest": "sha256:0361ce362d02f63a99fe1fc4040f3fc72f65e2f97846906b6280da0df9e7bcc1",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "vector",
+      "id": "vector.centroid",
+      "manifestDigest": "sha256:7bbb6d22cdacd11cc7cb8d5051c515b6260319eb98711001bc301bdafd6f96fd",
+      "runtime": "qgis",
+      "smokeDigest": "sha256:0e24557b60fce8d11a8a97dd5de7ed6d0c31573e0222ccd2bc2f2da6e3dd374b",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "vector",
+      "id": "vector.clip",
+      "manifestDigest": "sha256:25482169907756dae2558ae5eb2ccd52d0be6ea45c05c7520b713263c4745bbd",
+      "runtime": "qgis",
+      "smokeDigest": "sha256:6020db25ca7e2c132a9c2188ec7955826b04baec4b0e48eff6d1ff32025f5ad9",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "vector",
+      "id": "vector.convex_hull",
+      "manifestDigest": "sha256:5bf97502aafafc6694b4ae737c6c3dd2226fc728f64bfbf7d359d083262a0df5",
+      "runtime": "qgis",
+      "smokeDigest": "sha256:1fcc7ad90418b64393113fbb3f31e229743b1eebc5bc10839afcb8dcc511aabc",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "vector",
+      "id": "vector.dissolve",
+      "manifestDigest": "sha256:c97982818f467dd18fb5bd9089fc7d3dd530929ab0d9a4d6c86320bc01f441e7",
+      "runtime": "qgis",
+      "smokeDigest": "sha256:6faf6e352318e754741cddb4c89ba70fdac666224285e80ef1b25c1211b1011d",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "vector",
+      "id": "vector.envelope",
+      "manifestDigest": "sha256:0fda91d573aa093cee06199c460965248bad0bad3c17fb394ce93cca61a77aaf",
+      "runtime": "native",
+      "smokeDigest": "sha256:82c01b592e83eb4815b4e0aa67dae4850990f2ccaf50831fbbc0448304075640",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "vector",
+      "id": "vector.extract_by_extent",
+      "manifestDigest": "sha256:479dba572b38919898a4e8a1a95e6bd2fb77dab007349f829d716adf6c8fdbad",
+      "runtime": "qgis",
+      "smokeDigest": "sha256:77dc0d0dda70b4533b315898ac91e9ed4617bfeac7f204ae00e41ebea611311e",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "vector",
+      "id": "vector.from_xy",
+      "manifestDigest": "sha256:248e777072ddcd186664083bc627f5edf963c2fd1ce84dcb3cf94f3b37afcf8e",
+      "runtime": "native",
+      "smokeDigest": "sha256:1d7243fd1de17955bac652f0375675fa091cd721c0376cc0c140c9a59fd47cb4",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "vector",
+      "id": "vector.merge",
+      "manifestDigest": "sha256:929d51f1a2e008ac36920999a79cb49005bf018c25091dd95599f37afac9f8a7",
+      "runtime": "qgis",
+      "smokeDigest": "sha256:c80b16209aa4a12dfd6561e944c0dd3607d8d48992cdbe087ad6c84b2cb640ca",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "vector",
+      "id": "vector.multipart_to_singleparts",
+      "manifestDigest": "sha256:badce69590d091ee5b21fd5b66245a70631bab20dcb7f509bd6794da5520d680",
+      "runtime": "qgis",
+      "smokeDigest": "sha256:26929f0a16caf111fdf0911ef2dbfa30addba7ab6bd46d671090064e10a39afa",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "vector",
+      "id": "vector.nearest_join",
+      "manifestDigest": "sha256:5afd97c241e3fd57e20b40e2eb91d2ce82bd80071cd941e510a2a67660217caf",
+      "runtime": "qgis",
+      "smokeDigest": "sha256:eaf00892af6fbcced3eb66d04c3256f4a6e01fcb1329f69cf4d95942068f4e3f",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "vector",
+      "id": "vector.overlay",
+      "manifestDigest": "sha256:190308fd85425e10bc422f02276abb711e6b7f5f7a55390555ee4476f05b934f",
+      "runtime": "qgis",
+      "smokeDigest": "sha256:eb1921c5e628e9540877139f3dcc57edea8bac2ace627a769072e3b91dee8ca9",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "vector",
+      "id": "vector.point_on_surface",
+      "manifestDigest": "sha256:6c407c5911ff34e9fdfdcc0a2d884ad16bf8a5ed67d1a0ec82f1a0a313b149d2",
+      "runtime": "qgis",
+      "smokeDigest": "sha256:fac6ce236a7c99cb1b388e634530e10acc499cf86d6d66a1eb9d1ee75ac2920a",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "vector",
+      "id": "vector.simplify",
+      "manifestDigest": "sha256:25fb5c60531f357b21768cba30cce1f407c1e6f4e52253714614b8918f1b653b",
+      "runtime": "qgis",
+      "smokeDigest": "sha256:374d60aec4ca2570efafd780d9e91f2e92b21ccaeb2ac4201706e7d0ab153b5b",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "vector",
+      "id": "vector.spatial_join",
+      "manifestDigest": "sha256:d24a82b353bb51ede94d3e6483381d2fc2ff1983c3d0f808d07b84d91104a521",
+      "runtime": "qgis",
+      "smokeDigest": "sha256:01b3a0ebb6e302753d012326a25507df239c16360044d3e0ac378b0c1ebfdf96",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "vector",
+      "id": "vector.tag_membership",
+      "manifestDigest": "sha256:fb6e335f8dc8ce11211f06fb92bba8cb94ef7df54a291920f006d2f722341dc6",
+      "runtime": "native",
+      "smokeDigest": "sha256:762c8f7121e393d3a6b52bb1e6f3ec8c0e046a25c6c649d598e5cc79d692c241",
+      "version": "1.0.0"
+    }
+  ],
+  "schemaVersion": "operator-catalog-index.v1"
+}

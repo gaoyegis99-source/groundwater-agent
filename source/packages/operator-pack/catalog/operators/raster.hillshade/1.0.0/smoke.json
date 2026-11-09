@@ -1,0 +1,26 @@
+{
+  "expectedOutputs": {
+    "raster": {
+      "format": "geotiff",
+      "kind": "artifact",
+      "mediaType": "image/tiff"
+    }
+  },
+  "inputs": {
+    "raster": {
+      "fixtureId": "terrain"
+    }
+  },
+  "operator": {
+    "id": "raster.hillshade",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "algorithm": "horn",
+    "altitudeDegrees": 45,
+    "azimuthDegrees": 270,
+    "band": 1,
+    "computeEdges": false
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

@@ -1,0 +1,80 @@
+{
+  "description": "Creates a binary stream mask using a minimum contributing-cell threshold.",
+  "domain": "hydrology",
+  "errorCodes": [
+    "CRS_REQUIRED",
+    "PROJECTED_CRS_REQUIRED",
+    "ACCUMULATION_INVALID",
+    "RASTER_INVALID"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-hydrology-stream_extract",
+      "inputs": {
+        "accumulation": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "hydrology.stream_extract",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "minimumContributingCells": 1
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "hydrology.stream_extract",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "accumulation",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "streams"
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "minimumContributingCells": {
+        "minimum": 1,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "minimumContributingCells"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "hydrology",
+    "stream",
+    "accumulation"
+  ],
+  "timeoutSeconds": 3600,
+  "title": "Extract stream raster",
+  "version": "1.0.0"
+}

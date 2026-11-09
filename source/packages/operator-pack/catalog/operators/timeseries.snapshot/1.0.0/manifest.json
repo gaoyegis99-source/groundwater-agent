@@ -1,0 +1,136 @@
+{
+  "description": "Select one record per group at an explicit target time using a fixed matching rule and maximum age.",
+  "domain": "timeseries",
+  "errorCodes": [
+    "DUPLICATE_TIMESTAMP",
+    "FIELD_REQUIRED",
+    "NON_NUMERIC_VALUE",
+    "OUTPUT_VALIDATION_FAILED",
+    "SELECTION_UNSUPPORTED",
+    "TIMESTAMP_INVALID",
+    "TIMEZONE_UNSUPPORTED"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-timeseries-snapshot",
+      "inputs": {
+        "observations": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "timeseries.snapshot",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "groupField": "station",
+        "maxAgeDays": 2,
+        "selection": "nearest",
+        "targetTime": "2024-01-03",
+        "timeField": "time",
+        "valueField": "value"
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "timeseries.snapshot",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "csv",
+        "parquet",
+        "arrow-ipc-file"
+      ],
+      "mediaTypes": [
+        "text/csv",
+        "application/vnd.apache.parquet",
+        "application/vnd.apache.arrow.file"
+      ],
+      "name": "observations",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "parquet"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "snapshot"
+    },
+    {
+      "formats": [
+        "parquet"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "diagnostics"
+    },
+    {
+      "kind": "value",
+      "name": "summary",
+      "schema": {
+        "type": "object"
+      }
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "groupField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxAgeDays": {
+        "minimum": 0,
+        "type": "number"
+      },
+      "selection": {
+        "enum": [
+          "exact",
+          "latestAtOrBefore",
+          "nearest"
+        ],
+        "type": "string"
+      },
+      "targetTime": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "timeField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "valueField": {
+        "minLength": 1,
+        "type": "string"
+      }
+    },
+    "required": [
+      "groupField",
+      "timeField",
+      "valueField",
+      "targetTime",
+      "selection",
+      "maxAgeDays"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "timeseries",
+    "timeseries",
+    "snapshot"
+  ],
+  "timeoutSeconds": 1800,
+  "title": "Select a time-series snapshot",
+  "version": "1.0.0"
+}

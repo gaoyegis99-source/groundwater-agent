@@ -1,0 +1,12 @@
+{
+  "goal": "对北区监测样本的 number 列做描述统计",
+  "steps": [
+    {
+      "step_id": "s1",
+      "title": "运行 number 列描述统计",
+      "tool": "run_summary",
+      "purpose": "对北区监测样本的 number 列计算描述性统计量"
+    }
+  ],
+  "reason": "用户要求对“北区监测样本”的 number 列做描述统计。搜索在该名称下仅返回一个候选：resource_id 00000000-1111-4000-8000-000000000001（family_id 00000000-1111-4000-8000-000000000002，version 1，kind=INPUT，format=csv），inspect_resource 返回 checksum sha256:0b5687cbfcd153d02cd251672454b8cd43b95b0ac9c78e3579ed93ff8ad072e9。inspect_resource_table 确认该资源实际字段仅有 number（physical_type=int64）一列，故 number 列映射成立，无需猜测列名或单位。计划对 resourceId=00000000-1111-4000-8000-000000000001、axis=columns、column=number 调用 run_summary。"
+}

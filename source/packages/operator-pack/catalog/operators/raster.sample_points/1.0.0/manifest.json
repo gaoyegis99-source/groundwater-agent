@@ -1,0 +1,139 @@
+{
+  "description": "Sample one raster band at explicit two-dimensional points without reprojection.",
+  "domain": "raster",
+  "errorCodes": [
+    "BAND_INVALID",
+    "CRS_MISMATCH",
+    "CRS_REQUIRED",
+    "DUPLICATE_ID",
+    "FIELD_REQUIRED",
+    "GEOMETRY_TYPE_UNSUPPORTED",
+    "OUTPUT_VALIDATION_FAILED"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-raster-sample_points",
+      "inputs": {
+        "points": {
+          "artifactId": "art_example_02"
+        },
+        "raster": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "raster.sample_points",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "band": 1,
+        "idField": "id",
+        "method": "nearest",
+        "outputKind": "table"
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "raster.sample_points",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "geotiff",
+        "cog"
+      ],
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "raster",
+      "required": true
+    },
+    {
+      "cardinality": "one",
+      "formats": [
+        "geopackage",
+        "geojson",
+        "flatgeobuf",
+        "geoparquet"
+      ],
+      "mediaTypes": [
+        "application/geopackage+sqlite3",
+        "application/geo+json",
+        "application/flatgeobuf",
+        "application/vnd.apache.parquet"
+      ],
+      "name": "points",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "geopackage",
+        "geoparquet",
+        "parquet"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.apache.parquet",
+        "application/geopackage+sqlite3"
+      ],
+      "name": "samples"
+    },
+    {
+      "kind": "value",
+      "name": "summary",
+      "schema": {
+        "type": "object"
+      }
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "band": {
+        "default": 1,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "idField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "method": {
+        "default": "nearest",
+        "enum": [
+          "nearest",
+          "bilinear"
+        ],
+        "type": "string"
+      },
+      "outputKind": {
+        "default": "table",
+        "enum": [
+          "table",
+          "vector"
+        ],
+        "type": "string"
+      },
+      "pointsLayer": {
+        "minLength": 1,
+        "type": "string"
+      }
+    },
+    "required": [
+      "idField"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "raster",
+    "sample_points"
+  ],
+  "timeoutSeconds": 3600,
+  "title": "Sample raster at points",
+  "version": "1.0.0"
+}

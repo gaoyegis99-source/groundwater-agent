@@ -1,0 +1,27 @@
+{
+  "expectedOutputs": {
+    "observations": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    },
+    "summary": {
+      "kind": "value"
+    }
+  },
+  "inputs": {
+    "observations": {
+      "fixtureId": "groundwater.timeseries"
+    }
+  },
+  "operator": {
+    "id": "statistics.mad_outliers",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "groupField": "station",
+    "threshold": 3.5,
+    "valueField": "value"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

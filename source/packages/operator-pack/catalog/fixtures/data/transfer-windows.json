@@ -1,0 +1,11 @@
+{
+  "carryFields": [
+    "x",
+    "y"
+  ],
+  "featureFields": [
+    "depth",
+    "rain"
+  ],
+  "schemaVersion": "supervised-window-fields.v1"
+}

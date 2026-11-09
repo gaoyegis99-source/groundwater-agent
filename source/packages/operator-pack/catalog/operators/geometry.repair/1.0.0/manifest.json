@@ -1,0 +1,88 @@
+{
+  "description": "Repair invalid geometries operator.",
+  "domain": "geometry",
+  "errorCodes": [
+    "CRS_REQUIRED",
+    "LAYER_REQUIRED",
+    "UNSUPPORTED_DIMENSION",
+    "GEOMETRY_REPAIR_FAILED",
+    "BLOCKED_BY_ENVIRONMENT"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-geometry-repair",
+      "inputs": {
+        "vector": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "geometry.repair",
+        "version": "1.0.0"
+      },
+      "parameters": {},
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "geometry.repair",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "flatgeobuf",
+        "geojson",
+        "geopackage",
+        "geoparquet",
+        "parquet"
+      ],
+      "mediaTypes": [
+        "application/geopackage+sqlite3",
+        "application/geo+json",
+        "application/flatgeobuf",
+        "application/vnd.apache.parquet"
+      ],
+      "name": "vector",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "geopackage"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/geopackage+sqlite3"
+      ],
+      "name": "vector"
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "layer": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "method": {
+        "default": "structure",
+        "enum": [
+          "linework",
+          "structure"
+        ],
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "runtime": "qgis",
+  "tags": [
+    "geometry",
+    "repair"
+  ],
+  "timeoutSeconds": 3600,
+  "title": "Repair invalid geometries",
+  "version": "1.0.0"
+}

@@ -1,0 +1,17 @@
+[project]
+name = "groundwater-v6-qgis-runtime"
+version = "0.0.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "platform-operator-pack[native]==2.0.0",
+  "platform-executor-service==7.0.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+platform-operator-pack = { path = "../../packages/operator-pack" }
+platform-executor-service = { path = "../../services/executor" }
+platform-data-client = { path = "../../services/data/client" }
+platform-protocol-contracts = { path = "../../packages/protocol-contracts" }

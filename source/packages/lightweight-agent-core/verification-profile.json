@@ -1,0 +1,37 @@
+{
+  "schema_version": "v6-developer-verification-profile-v1",
+  "dependency_group": "verification",
+  "required_distributions": {"pytest": "8.3.4", "hypothesis": "6.170.9"},
+  "required_suites": [
+    "tests/test_state_invariants.py",
+    "tests/test_execution_identity.py",
+    "tests/test_model_dispatch_process_crash.py",
+    "tests/test_host_runtime.py",
+    "tests/test_journal_scaling.py",
+    "tests/test_journal_cells.py",
+    "tests/test_cell_delta_process_crash.py",
+    "tests/test_persistent_state.py",
+    "tests/test_web.py",
+    "tests/test_wheel_delivery.py",
+    "tests/test_csv_statistics_delivery.py",
+    "tests/test_verification_contract.py",
+    "tests/test_live_boundaries.py"
+  ],
+  "input_patterns": [
+    "pyproject.toml", "uv.lock", "README.md", "verification-profile.json",
+    "src/platform_lightweight_agent/**/*.py",
+    "src/platform_lightweight_agent/console/*.html",
+    "src/platform_lightweight_agent/console/*.js",
+    "src/platform_lightweight_agent/console/*.css",
+    "src/platform_lightweight_agent/templates/**/*.json",
+    "src/platform_lightweight_agent/templates/**/*.md",
+    "src/platform_lightweight_agent/templates/**/*.jinja",
+    "src/platform_lightweight_agent/templates/**/*.toml",
+    "src/platform_lightweight_agent/templates/**/*.yml",
+    "tests/**/*.py", "tests/**/*.json", "scripts/*.py",
+    "examples/**/*.py", "examples/**/*.json", "examples/**/*.toml",
+    "examples/**/*.md", "examples/**/*.txt", "examples/**/*.csv",
+    "examples/**/*.whl", "examples/**/*.sha256", "examples/**/*.lock",
+    "scripts/delivery_baseline/*.py", "scripts/delivery_baseline/README.md"
+  ]
+}

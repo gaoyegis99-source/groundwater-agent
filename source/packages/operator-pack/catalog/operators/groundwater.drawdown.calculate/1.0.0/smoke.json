@@ -1,0 +1,32 @@
+{
+  "expectedOutputs": {
+    "drawdowns": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    },
+    "summary": {
+      "kind": "value"
+    }
+  },
+  "inputs": {
+    "observations": {
+      "fixtureId": "monitoring.timeseries"
+    }
+  },
+  "operator": {
+    "id": "groundwater.drawdown.calculate",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "baselineEnd": "2021-12-31",
+    "baselineStart": "2020-01-01",
+    "baselineStatistic": "max",
+    "groupField": "station",
+    "headField": "value",
+    "headUnit": "m",
+    "referenceMode": "baselinePeriod",
+    "timeField": "time"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

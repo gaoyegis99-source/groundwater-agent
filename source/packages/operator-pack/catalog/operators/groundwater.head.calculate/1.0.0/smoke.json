@@ -1,0 +1,28 @@
+{
+  "expectedOutputs": {
+    "heads": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    },
+    "summary": {
+      "kind": "value"
+    }
+  },
+  "inputs": {
+    "observations": {
+      "fixtureId": "groundwater.timeseries"
+    }
+  },
+  "operator": {
+    "id": "groundwater.head.calculate",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "depthToWaterField": "depth_to_water_m",
+    "depthToWaterUnit": "m",
+    "referenceElevationField": "reference_elevation_m",
+    "referenceElevationUnit": "m"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

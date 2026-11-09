@@ -1,0 +1,20 @@
+{
+  "expectedOutputs": {
+    "accumulation": {
+      "format": "geotiff",
+      "kind": "artifact",
+      "mediaType": "image/tiff"
+    }
+  },
+  "inputs": {
+    "flowDirection": {
+      "fixtureId": "flow.direction"
+    }
+  },
+  "operator": {
+    "id": "hydrology.flow_accumulation",
+    "version": "1.0.0"
+  },
+  "parameters": {},
+  "schemaVersion": "operator-smoke-test.v1"
+}

@@ -1,0 +1,27 @@
+{
+  "schema_version": "yaozhanbao-case-relocation.v1",
+  "case_id": "yaozhanbao-transfer-case-20261009",
+  "source_manifest_relative_path": "payload/source-package/original-transfer-20261009-029d28edd3/prepared/inputs.json",
+  "source_manifest_sha256": "1c9efa8c837293f492ad35544f4e71050720b7be9710bbb7b93cb9fef4172415",
+  "resources": {
+    "workbook": "payload/resources/workbook/潜水数据大表1.xlsx",
+    "imagery": "payload/resources/imagery/yazhanbao-2024-rgb.tif",
+    "boundary": "payload/resources/spatial/腰站堡_面状边界.gpkg",
+    "counties": "payload/resources/spatial/GIS0065__县界.gpkg",
+    "townships": "payload/resources/spatial/GIS0064__乡镇界.gpkg",
+    "rivers": "payload/resources/spatial/GIS0066__盆地水系.gpkg",
+    "groundwater_systems": "payload/resources/spatial/GIS0068__盆地地下水系统细分.gpkg",
+    "railways": "payload/resources/spatial/GIS0074__铁路.gpkg",
+    "basin_boundary": "payload/resources/spatial/GIS0059__张家口盆地范围.gpkg",
+    "monthMapping": "payload/resources/rules/monthMapping.json",
+    "sourceFilter": "payload/resources/rules/sourceFilter.json",
+    "targetFilter": "payload/resources/rules/targetFilter.json",
+    "source-scaler-rules": "payload/resources/rules/source-scaler-rules.json",
+    "target-scaler-rules": "payload/resources/rules/target-scaler-rules.json",
+    "source-windows-rules": "payload/resources/rules/source-windows-rules.json",
+    "target-windows-rules": "payload/resources/rules/target-windows-rules.json",
+    "holdout-windows-rules": "payload/resources/rules/holdout-windows-rules.json",
+    "inverse-rules": "payload/resources/rules/inverse-rules.json",
+    "imagery-rules": "payload/resources/rules/imagery-rules.json"
+  }
+}

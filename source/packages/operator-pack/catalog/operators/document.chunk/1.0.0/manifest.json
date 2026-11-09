@@ -1,0 +1,103 @@
+{
+  "description": "Split ordered document blocks into deterministic overlapping Unicode-character windows while retaining source offsets.",
+  "domain": "document",
+  "errorCodes": [
+    "FIELD_REQUIRED",
+    "FORMAT_UNSUPPORTED",
+    "HEADER_INVALID",
+    "OUTPUT_FIELD_CONFLICT",
+    "OUTPUT_ROW_LIMIT_EXCEEDED",
+    "OUTPUT_VALIDATION_FAILED",
+    "PARAMETER_INVALID",
+    "RULESET_INVALID"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-document-chunk",
+      "inputs": {
+        "blocks": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "document.chunk",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "maxCharacters": 20,
+        "maxChunks": 100,
+        "overlapCharacters": 2
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "document.chunk",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "parquet"
+      ],
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "blocks",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "parquet"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "chunks"
+    },
+    {
+      "kind": "value",
+      "name": "summary",
+      "schema": {
+        "type": "object"
+      }
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "maxCharacters": {
+        "maximum": 1000000,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "maxChunks": {
+        "maximum": 5000000,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "overlapCharacters": {
+        "maximum": 999999,
+        "minimum": 0,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "maxCharacters",
+      "overlapCharacters",
+      "maxChunks"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "document",
+    "chunk"
+  ],
+  "timeoutSeconds": 600,
+  "title": "Chunk document blocks",
+  "version": "1.0.0"
+}

@@ -1,0 +1,36 @@
+{
+  "expectedOutputs": {
+    "classified": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    },
+    "events": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    },
+    "summary": {
+      "kind": "value"
+    }
+  },
+  "inputs": {
+    "observations": {
+      "fixtureId": "advanced.timeseries"
+    }
+  },
+  "operator": {
+    "id": "timeseries.threshold_events",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "comparison": "above",
+    "frequency": "month",
+    "groupField": "station",
+    "thresholdSource": "scalar",
+    "thresholdValue": 2.0,
+    "timeField": "time",
+    "valueField": "value"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

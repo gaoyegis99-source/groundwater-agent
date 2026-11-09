@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "operator-smoke-test.v1",
+  "operator": {
+    "id": "groundwater.porous.pest_calibrate",
+    "version": "1.0.0"
+  },
+  "inputs": {
+    "model_package": {
+      "fixtureId": "transfer.fields"
+    },
+    "observations": {
+      "fixtureId": "transfer.fields"
+    }
+  },
+  "parameters": {},
+  "expectedOutputs": {
+    "calibrated_parameters": {
+      "kind": "value"
+    },
+    "residual_diagnostics": {
+      "kind": "value"
+    },
+    "calibration_package": {
+      "kind": "artifact",
+      "mediaType": "application/zip",
+      "format": "zip"
+    },
+    "run_receipt": {
+      "kind": "artifact",
+      "mediaType": "application/json",
+      "format": "json"
+    }
+  }
+}

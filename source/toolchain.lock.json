@@ -1,0 +1,42 @@
+{
+  "schema": "groundwater-toolchain-lock.v1",
+  "platform": "linux-amd64",
+  "python": {
+    "implementation": "cpython",
+    "version": "3.12.8",
+    "provisioner": "uv",
+    "installed_binary_sha256": "0dc3a692fa85fcdb7f1a5877d2adf179809ac417a07ffde2373c832863800a15"
+  },
+  "tools": {
+    "uv": {
+      "version": "0.8.14",
+      "provisioner": "host",
+      "installed_binary_sha256": "85e88052bc9f54adccb8a96e3a44625c8f39696374b4604a01a62d6ea1acf5b2"
+    },
+    "node": {
+      "version": "22.23.1",
+      "provisioner": "host",
+      "installed_binary_sha256": "93956de2e59480474a7b46571da1651180b1a050cdf32641ebec4ce6e478e068"
+    },
+    "npm": {
+      "version": "10.9.8",
+      "provisioner": "host",
+      "installed_binary_sha256": "8e5f6f3429f8cdbe693cdc29904e9d5a7b127a494bd15c804bd54c7403bfcbe7"
+    },
+    "docker": {
+      "version": "28.1.1",
+      "provisioner": "host",
+      "installed_binary_sha256": "afa884fe4ff068a7ebe8339dd577c00150d2606cdb1bf57989d672bd86cc475f"
+    },
+    "compose": {
+      "version": "2.35.1",
+      "provisioner": "host",
+      "installed_binary_sha256": "bcc332e1b20d6ba241662e011648aaa5fa60efab844069d4e5a63664243e73e1"
+    },
+    "buildx": {
+      "version": "0.23.0",
+      "provisioner": "host",
+      "installed_binary_sha256": "244ca61f3565c24db5d49cbe1560ac8810226a837a74be2b62a6ed1484cd2e61"
+    }
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "schemaVersion": "executable-model.v4",
+  "modelId": "groundwater.source-sustainability",
+  "version": "1.0.0",
+  "workflowRef": {
+    "workflowId": "groundwater.source-sustainability",
+    "version": "1.0.0",
+    "checksum": "sha256:e750627daac6deb708df78c04e8561567110aed3ce7e03c8225cea40f28c9b98"
+  },
+  "tool": {
+    "name": "run_source_sustainability",
+    "description": "通过受管第三方服务执行地下水水源地可持续利用综合评价。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "assessmentVersionId": {"type": "string", "minLength": 1}
+      },
+      "required": ["assessmentVersionId"],
+      "additionalProperties": false
+    }
+  },
+  "inputBindings": {"assessment_input": "assessmentVersionId"},
+  "defaultParameters": {},
+  "parameterBindings": {},
+  "deadlineSeconds": 300,
+  "maxParallelNodes": 1,
+  "finalOutputs": [
+    "sustainability-result",
+    "sustainability-result-file",
+    "sustainability-run-receipt"
+  ],
+  "executionService": "executor",
+  "executorId": "workflow-dag",
+  "outputPublications": {
+    "sustainability-result": {
+      "title": "水源地综合评价结构化结果",
+      "mediaType": "application/json",
+      "format": "json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "第三方水源地综合评价结构化结果。",
+        "fields": {}, "grain": null, "time_range": null, "timezone": null,
+        "crs": null, "vertical_datum": null,
+        "limitations": ["非正式评价；中点权重属于实现选择。"],
+        "source": "groundwater-sustainability@0.7.0"
+      }
+    },
+    "sustainability-result-file": {
+      "title": "水源地综合评价 JSON 文件",
+      "mediaType": "application/json",
+      "format": "json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "经 SHA256 校验的第三方评价结果文件。",
+        "fields": {}, "grain": null, "time_range": null, "timezone": null,
+        "crs": null, "vertical_datum": null,
+        "limitations": ["calculated_at 为易变元数据。"],
+        "source": "groundwater-sustainability@0.7.0"
+      }
+    },
+    "sustainability-run-receipt": {
+      "title": "第三方运行凭据",
+      "mediaType": "application/json",
+      "format": "json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "平台生成的不含密钥的第三方任务、版本和产物摘要凭据。",
+        "fields": {}, "grain": null, "time_range": null, "timezone": null,
+        "crs": null, "vertical_datum": null, "limitations": [],
+        "source": "executor-remote-http"
+      }
+    }
+  }
+}

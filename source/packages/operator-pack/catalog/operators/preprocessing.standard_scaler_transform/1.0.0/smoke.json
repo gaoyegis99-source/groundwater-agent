@@ -1,0 +1,23 @@
+{
+  "expectedOutputs": {
+    "data": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    }
+  },
+  "inputs": {
+    "data": {
+      "fixtureId": "transfer.unpivot-data"
+    },
+    "scaler": {
+      "fixtureId": "transfer.scaler-scaler"
+    }
+  },
+  "operator": {
+    "id": "preprocessing.standard_scaler_transform",
+    "version": "1.0.0"
+  },
+  "parameters": {},
+  "schemaVersion": "operator-smoke-test.v1"
+}

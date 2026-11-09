@@ -1,0 +1,30 @@
+{
+  "expectedOutputs": {
+    "direction": {
+      "format": "geotiff",
+      "kind": "artifact",
+      "mediaType": "image/tiff"
+    },
+    "magnitude": {
+      "format": "geotiff",
+      "kind": "artifact",
+      "mediaType": "image/tiff"
+    },
+    "summary": {
+      "kind": "value"
+    }
+  },
+  "inputs": {
+    "head": {
+      "fixtureId": "groundwater.head.plane"
+    }
+  },
+  "operator": {
+    "id": "groundwater.hydraulic_gradient",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "band": 1
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

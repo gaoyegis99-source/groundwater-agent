@@ -1,0 +1,81 @@
+{
+  "schemaVersion": "workflow.v6",
+  "workflowId": "groundwater.monitoring-trend",
+  "version": "1.0.0",
+  "inputs": [
+    {
+      "name": "observations",
+      "cardinality": "one",
+      "mediaTypes": ["text/csv", "application/vnd.apache.parquet", "application/vnd.apache.arrow.file"],
+      "formats": ["csv", "parquet", "arrow-ipc-file"]
+    }
+  ],
+  "parameters": ["groupField", "timeField", "valueField", "frequency", "expectedStart", "expectedEnd", "baselineStart", "baselineEnd", "comparisonStart", "comparisonEnd", "aggregation", "alpha", "threshold"],
+  "nodes": [
+    {
+      "nodeId": "aggregate", "operatorId": "timeseries.aggregate", "operatorVersion": "1.0.0",
+      "inputs": {"observations": {"workflowInput": "observations"}},
+      "parameters": {
+        "groupField": {"workflowParameter": "groupField"}, "timeField": {"workflowParameter": "timeField"},
+        "valueField": {"workflowParameter": "valueField"}, "frequency": {"workflowParameter": "frequency"}
+      }
+    },
+    {
+      "nodeId": "completeness", "operatorId": "timeseries.completeness", "operatorVersion": "1.0.0",
+      "inputs": {"observations": {"workflowInput": "observations"}},
+      "parameters": {
+        "groupField": {"workflowParameter": "groupField"}, "timeField": {"workflowParameter": "timeField"},
+        "valueField": {"workflowParameter": "valueField"}, "frequency": {"workflowParameter": "frequency"},
+        "expectedStart": {"workflowParameter": "expectedStart"}, "expectedEnd": {"workflowParameter": "expectedEnd"}
+      }
+    },
+    {
+      "nodeId": "linear-trend", "operatorId": "statistics.linear_trend", "operatorVersion": "1.0.0",
+      "inputs": {"observations": {"workflowInput": "observations"}},
+      "parameters": {
+        "groupField": {"workflowParameter": "groupField"}, "timeField": {"workflowParameter": "timeField"},
+        "valueField": {"workflowParameter": "valueField"}
+      }
+    },
+    {
+      "nodeId": "mann-kendall", "operatorId": "statistics.mann_kendall", "operatorVersion": "1.0.0",
+      "inputs": {"observations": {"workflowInput": "observations"}},
+      "parameters": {
+        "groupField": {"workflowParameter": "groupField"}, "timeField": {"workflowParameter": "timeField"},
+        "valueField": {"workflowParameter": "valueField"}, "alpha": {"workflowParameter": "alpha"}
+      }
+    },
+    {
+      "nodeId": "mad-outliers", "operatorId": "statistics.mad_outliers", "operatorVersion": "1.0.0",
+      "inputs": {"observations": {"workflowInput": "observations"}},
+      "parameters": {
+        "groupField": {"workflowParameter": "groupField"}, "valueField": {"workflowParameter": "valueField"},
+        "threshold": {"workflowParameter": "threshold"}
+      }
+    },
+    {
+      "nodeId": "period-change", "operatorId": "timeseries.period_change", "operatorVersion": "1.0.0",
+      "inputs": {"observations": {"workflowInput": "observations"}},
+      "parameters": {
+        "groupField": {"workflowParameter": "groupField"}, "timeField": {"workflowParameter": "timeField"},
+        "valueField": {"workflowParameter": "valueField"}, "baselineStart": {"workflowParameter": "baselineStart"},
+        "baselineEnd": {"workflowParameter": "baselineEnd"}, "comparisonStart": {"workflowParameter": "comparisonStart"},
+        "comparisonEnd": {"workflowParameter": "comparisonEnd"}, "aggregation": {"workflowParameter": "aggregation"}
+      }
+    }
+  ],
+  "outputs": [
+    {"name": "aggregated-series", "nodeOutput": {"nodeId": "aggregate", "port": "series"}},
+    {"name": "aggregate-summary", "nodeOutput": {"nodeId": "aggregate", "port": "summary"}},
+    {"name": "completeness-profiles", "nodeOutput": {"nodeId": "completeness", "port": "profiles"}},
+    {"name": "completeness-summary", "nodeOutput": {"nodeId": "completeness", "port": "summary"}},
+    {"name": "linear-trends", "nodeOutput": {"nodeId": "linear-trend", "port": "trends"}},
+    {"name": "linear-summary", "nodeOutput": {"nodeId": "linear-trend", "port": "summary"}},
+    {"name": "mann-kendall-trends", "nodeOutput": {"nodeId": "mann-kendall", "port": "trends"}},
+    {"name": "mann-kendall-summary", "nodeOutput": {"nodeId": "mann-kendall", "port": "summary"}},
+    {"name": "outlier-observations", "nodeOutput": {"nodeId": "mad-outliers", "port": "observations"}},
+    {"name": "outlier-summary", "nodeOutput": {"nodeId": "mad-outliers", "port": "summary"}},
+    {"name": "period-changes", "nodeOutput": {"nodeId": "period-change", "port": "changes"}},
+    {"name": "period-change-summary", "nodeOutput": {"nodeId": "period-change", "port": "summary"}}
+  ]
+}

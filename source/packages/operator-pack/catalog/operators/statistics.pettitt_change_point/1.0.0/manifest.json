@@ -1,0 +1,110 @@
+{
+  "description": "Detect one rank-based location change and report the earliest maximum statistic.",
+  "domain": "statistics",
+  "errorCodes": [
+    "DUPLICATE_TIMESTAMP",
+    "FIELD_REQUIRED",
+    "INSUFFICIENT_OBSERVATIONS",
+    "NON_NUMERIC_VALUE",
+    "OUTPUT_VALIDATION_FAILED",
+    "TIMESTAMP_INVALID",
+    "TIMEZONE_UNSUPPORTED"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-statistics-pettitt_change_point",
+      "inputs": {
+        "observations": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "statistics.pettitt_change_point",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "alpha": 0.05,
+        "groupField": "station",
+        "timeField": "time",
+        "valueField": "value"
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "statistics.pettitt_change_point",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "csv",
+        "parquet",
+        "arrow-ipc-file"
+      ],
+      "mediaTypes": [
+        "text/csv",
+        "application/vnd.apache.parquet",
+        "application/vnd.apache.arrow.file"
+      ],
+      "name": "observations",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "parquet"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "changePoints"
+    },
+    {
+      "kind": "value",
+      "name": "summary",
+      "schema": {
+        "type": "object"
+      }
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "alpha": {
+        "default": 0.05,
+        "exclusiveMaximum": 1,
+        "exclusiveMinimum": 0,
+        "type": "number"
+      },
+      "groupField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "timeField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "valueField": {
+        "minLength": 1,
+        "type": "string"
+      }
+    },
+    "required": [
+      "groupField",
+      "timeField",
+      "valueField"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "statistics",
+    "pettitt_change_point"
+  ],
+  "timeoutSeconds": 1800,
+  "title": "Pettitt change-point test",
+  "version": "1.0.0"
+}

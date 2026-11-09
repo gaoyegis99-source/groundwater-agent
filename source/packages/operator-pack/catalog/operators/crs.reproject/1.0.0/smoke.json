@@ -1,0 +1,22 @@
+{
+  "expectedOutputs": {
+    "data": {
+      "format": "geopackage",
+      "kind": "artifact",
+      "mediaType": "application/geopackage+sqlite3"
+    }
+  },
+  "inputs": {
+    "data": {
+      "fixtureId": "wgs84"
+    }
+  },
+  "operator": {
+    "id": "crs.reproject",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "targetCrs": "EPSG:3857"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

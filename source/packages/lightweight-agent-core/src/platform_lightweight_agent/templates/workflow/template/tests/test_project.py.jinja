@@ -1,0 +1,77 @@
+import json
+from pathlib import Path
+
+from platform_lightweight_agent.api import (
+    ApprovalDecision,
+    FunctionToolExecutor,
+    SQLiteRunJournal,
+    WorkflowEngine,
+)
+from platform_lightweight_agent.drivers import (
+    SCRIPTED_DECISIONS_SCHEMA_V1,
+    ScriptedAgentDriver,
+)
+from platform_lightweight_agent.portability import (
+    compile_execution_plan,
+    compile_project_context,
+)
+
+import runtime_tools
+
+
+ROOT = Path(__file__).parents[1]
+
+
+def _scripted_driver() -> ScriptedAgentDriver:
+    raw = json.loads((ROOT / "scripted-decisions.json").read_text(encoding="utf-8"))
+    assert raw["schema_version"] == SCRIPTED_DECISIONS_SCHEMA_V1
+    return ScriptedAgentDriver(raw["agents"])
+
+
+def _executor() -> FunctionToolExecutor:
+    executor = FunctionToolExecutor()
+    runtime_tools.register(executor)
+    return executor
+
+
+def test_project_contract_and_plan_compile_together() -> None:
+    context = compile_project_context(ROOT)
+    plan = compile_execution_plan(context.project).to_mapping()
+
+    assert context.workflow.schema_version == "v6-light-workflow-v4"
+    assert plan["definition_digest"] == context.workflow.definition_digest
+    assert plan["effects"] == "not_executed"
+    assert plan["steps"][0]["driver_requirement"] == "primary"
+
+
+def test_offline_agent_execution_and_sqlite_resume(tmp_path: Path) -> None:
+    context = compile_project_context(ROOT)
+    journal_path = tmp_path / "runs.sqlite"
+    first = WorkflowEngine(
+        SQLiteRunJournal(journal_path),
+        _executor(),
+        {"primary": _scripted_driver()},
+        workflows=context.subworkflows,
+    )
+
+    waiting = first.run(
+        context.workflow,
+        {"request": "Find the aquifer example."},
+        run_id="offline-template",
+    )
+
+    assert waiting.status == "WAITING_APPROVAL"
+    approval_id = next(iter(waiting.state["v3"]["pending_approvals"]))
+    rebuilt = WorkflowEngine(
+        SQLiteRunJournal(journal_path),
+        _executor(),
+        {"primary": _scripted_driver()},
+        workflows=context.subworkflows,
+    )
+    completed = rebuilt.resume(
+        waiting.run_id,
+        approvals=(ApprovalDecision(approval_id, True),),
+    )
+
+    assert completed.status == "SUCCEEDED"
+    assert completed.state["v3"]["output"] == {"message": "example:aquifer"}

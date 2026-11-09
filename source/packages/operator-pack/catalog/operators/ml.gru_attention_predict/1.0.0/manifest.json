@@ -1,0 +1,149 @@
+{
+  "description": "eval/no_grad 推理，按样本序号附加标准化 predicted 列，保留 actual、persistence 和索引；不训练也不评估。",
+  "domain": "ml",
+  "errorCodes": [
+    "RULESET_INVALID",
+    "RULESET_TOO_LARGE",
+    "INPUT_CARDINALITY_INVALID",
+    "FIELD_REQUIRED",
+    "DUPLICATE_FIELD",
+    "NON_NUMERIC_VALUE",
+    "OUTPUT_FIELD_CONFLICT",
+    "EMPTY_RESULT",
+    "TIME_AXIS_MISMATCH",
+    "DUPLICATE_TIMESTAMP",
+    "DUPLICATE_SERIES",
+    "TIMEZONE_UNSUPPORTED",
+    "TRAINING_WINDOW_INSUFFICIENT",
+    "HOLDOUT_REQUIRED",
+    "TARGET_NOT_FOUND",
+    "TENSOR_SHAPE_INVALID",
+    "ATTENTION_DIMENSIONS_INVALID",
+    "MODEL_WEIGHTS_INVALID",
+    "TRAINING_NON_FINITE",
+    "PREDICTION_NON_FINITE",
+    "SAMPLE_INDEX_INVALID",
+    "CRS_REQUIRED",
+    "CRS_MISMATCH",
+    "EMPTY_GEOMETRY",
+    "INVALID_GEOMETRY",
+    "GEOMETRY_TYPE_INVALID",
+    "COORDINATE_INVALID",
+    "METRIC_CRS_REQUIRED",
+    "EXTENT_INVALID",
+    "ROTATED_GRID_UNSUPPORTED",
+    "BAND_INVALID",
+    "IMAGERY_COVERAGE_INSUFFICIENT"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-ml-gru_attention_predict",
+      "inputs": {
+        "features": {
+          "artifactId": "art_example_01"
+        },
+        "modelSpec": {
+          "artifactId": "art_example_04"
+        },
+        "sampleIndex": {
+          "artifactId": "art_example_02"
+        },
+        "weights": {
+          "artifactId": "art_example_03"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "ml.gru_attention_predict",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "device": "cpu"
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "ml.gru_attention_predict",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "npy"
+      ],
+      "mediaTypes": [
+        "application/x-npy"
+      ],
+      "name": "features",
+      "required": true
+    },
+    {
+      "cardinality": "one",
+      "formats": [
+        "parquet"
+      ],
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "sampleIndex",
+      "required": true
+    },
+    {
+      "cardinality": "one",
+      "formats": [
+        "pytorch-state-dict"
+      ],
+      "mediaTypes": [
+        "application/vnd.pytorch"
+      ],
+      "name": "weights",
+      "required": true
+    },
+    {
+      "cardinality": "one",
+      "formats": [
+        "json"
+      ],
+      "mediaTypes": [
+        "application/json"
+      ],
+      "name": "modelSpec",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "parquet"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "predictions"
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "device": {
+        "enum": [
+          "cpu"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "device"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "ml",
+    "structured"
+  ],
+  "timeoutSeconds": 1800,
+  "title": "使用固定模型推理",
+  "version": "1.0.0"
+}

@@ -1,0 +1,1899 @@
+{
+  "schemaVersion": "workflow.v6",
+  "workflowId": "groundwater.transfer-learning-analysis",
+  "version": "1.0.0",
+  "inputs": [
+    {
+      "name": "workbook",
+      "cardinality": "one",
+      "mediaTypes": [
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      ],
+      "formats": [
+        "xlsx"
+      ]
+    },
+    {
+      "name": "monthMapping",
+      "cardinality": "one",
+      "mediaTypes": [
+        "application/json"
+      ],
+      "formats": [
+        "json"
+      ]
+    },
+    {
+      "name": "sourceFilter",
+      "cardinality": "one",
+      "mediaTypes": [
+        "application/json"
+      ],
+      "formats": [
+        "json"
+      ]
+    },
+    {
+      "name": "targetFilter",
+      "cardinality": "one",
+      "mediaTypes": [
+        "application/json"
+      ],
+      "formats": [
+        "json"
+      ]
+    },
+    {
+      "name": "boundary",
+      "cardinality": "one",
+      "mediaTypes": [
+        "application/geopackage+sqlite3"
+      ],
+      "formats": [
+        "geopackage"
+      ]
+    },
+    {
+      "name": "imagery",
+      "cardinality": "one",
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "formats": [
+        "geotiff"
+      ]
+    },
+    {
+      "name": "counties",
+      "cardinality": "one",
+      "mediaTypes": [
+        "application/geopackage+sqlite3"
+      ],
+      "formats": [
+        "geopackage"
+      ]
+    },
+    {
+      "name": "townships",
+      "cardinality": "one",
+      "mediaTypes": [
+        "application/geopackage+sqlite3"
+      ],
+      "formats": [
+        "geopackage"
+      ]
+    },
+    {
+      "name": "rivers",
+      "cardinality": "one",
+      "mediaTypes": [
+        "application/geopackage+sqlite3"
+      ],
+      "formats": [
+        "geopackage"
+      ]
+    },
+    {
+      "name": "groundwater_systems",
+      "cardinality": "one",
+      "mediaTypes": [
+        "application/geopackage+sqlite3"
+      ],
+      "formats": [
+        "geopackage"
+      ]
+    },
+    {
+      "name": "railways",
+      "cardinality": "one",
+      "mediaTypes": [
+        "application/geopackage+sqlite3"
+      ],
+      "formats": [
+        "geopackage"
+      ]
+    },
+    {
+      "name": "basin_boundary",
+      "cardinality": "one",
+      "mediaTypes": [
+        "application/geopackage+sqlite3"
+      ],
+      "formats": [
+        "geopackage"
+      ]
+    },
+    {
+      "name": "source-scaler-rules",
+      "cardinality": "one",
+      "formats": [
+        "json"
+      ],
+      "mediaTypes": [
+        "application/json"
+      ]
+    },
+    {
+      "name": "target-scaler-rules",
+      "cardinality": "one",
+      "formats": [
+        "json"
+      ],
+      "mediaTypes": [
+        "application/json"
+      ]
+    },
+    {
+      "name": "source-windows-rules",
+      "cardinality": "one",
+      "formats": [
+        "json"
+      ],
+      "mediaTypes": [
+        "application/json"
+      ]
+    },
+    {
+      "name": "target-windows-rules",
+      "cardinality": "one",
+      "formats": [
+        "json"
+      ],
+      "mediaTypes": [
+        "application/json"
+      ]
+    },
+    {
+      "name": "holdout-windows-rules",
+      "cardinality": "one",
+      "formats": [
+        "json"
+      ],
+      "mediaTypes": [
+        "application/json"
+      ]
+    },
+    {
+      "name": "inverse-rules",
+      "cardinality": "one",
+      "formats": [
+        "json"
+      ],
+      "mediaTypes": [
+        "application/json"
+      ]
+    },
+    {
+      "name": "imagery-rules",
+      "cardinality": "one",
+      "formats": [
+        "json"
+      ],
+      "mediaTypes": [
+        "application/json"
+      ]
+    }
+  ],
+  "parameters": [
+    "unpivot.timeField",
+    "source-split.groupField",
+    "source-split.timeField",
+    "source-split.trainRatio",
+    "source-split.inputWindow",
+    "source-windows.groupField",
+    "source-windows.timeField",
+    "source-windows.targetField",
+    "source-windows.inputWindow",
+    "target-split.groupField",
+    "target-split.timeField",
+    "target-split.trainRatio",
+    "target-split.inputWindow",
+    "target-windows.groupField",
+    "target-windows.timeField",
+    "target-windows.targetField",
+    "target-windows.inputWindow",
+    "holdout-windows.groupField",
+    "holdout-windows.timeField",
+    "holdout-windows.targetField",
+    "holdout-windows.inputWindow",
+    "pretrain.hiddenSize",
+    "pretrain.numLayers",
+    "pretrain.numHeads",
+    "pretrain.dropout",
+    "pretrain.epochs",
+    "pretrain.batchSize",
+    "pretrain.learningRate",
+    "pretrain.seed",
+    "pretrain.device",
+    "finetune.epochs",
+    "finetune.batchSize",
+    "finetune.learningRate",
+    "finetune.seed",
+    "finetune.device",
+    "predict.device",
+    "inverse.scalerField",
+    "evaluate.groupField",
+    "evaluate.actualField",
+    "evaluate.predictedField",
+    "evaluate.baselineField",
+    "evaluate.unit",
+    "boundary-projected.layer",
+    "boundary-projected.targetCrs",
+    "extent.layer",
+    "extent.paddingMeters",
+    "extent.aspectRatio",
+    "imagery.extentLayer",
+    "imagery.minimumCoverage",
+    "counties-projected.layer",
+    "counties-projected.targetCrs",
+    "counties-clipped.vectorLayer",
+    "counties-clipped.maskLayer",
+    "townships-projected.layer",
+    "townships-projected.targetCrs",
+    "townships-clipped.vectorLayer",
+    "townships-clipped.maskLayer",
+    "rivers-projected.layer",
+    "rivers-projected.targetCrs",
+    "rivers-clipped.vectorLayer",
+    "rivers-clipped.maskLayer",
+    "groundwater_systems-projected.layer",
+    "groundwater_systems-projected.targetCrs",
+    "groundwater_systems-clipped.vectorLayer",
+    "groundwater_systems-clipped.maskLayer",
+    "railways-projected.layer",
+    "railways-projected.targetCrs",
+    "railways-clipped.vectorLayer",
+    "railways-clipped.maskLayer",
+    "basin_boundary-projected.layer",
+    "basin_boundary-projected.targetCrs",
+    "basin_boundary-clipped.vectorLayer",
+    "basin_boundary-clipped.maskLayer",
+    "prediction-points.xField",
+    "prediction-points.yField",
+    "prediction-points.sourceCrs",
+    "prediction-membership.polygonLayer",
+    "prediction-membership.outputField",
+    "map-month.groupField",
+    "map-month.timeField",
+    "map-month.valueField",
+    "map-month.targetTime",
+    "map-month.selection",
+    "map-month.maxAgeDays",
+    "map-points.xField",
+    "map-points.yField",
+    "map-points.sourceCrs",
+    "map-membership.polygonLayer",
+    "map-membership.outputField",
+    "extract.sheetName",
+    "extract.headerRow",
+    "extract.formulaMode",
+    "extract.maxOutputRows",
+    "prediction-points-wgs84.layer",
+    "prediction-points-wgs84.targetCrs",
+    "prediction-points-geojson.layer",
+    "prediction-points-geojson.outputFormat",
+    "map-points-wgs84.layer",
+    "map-points-wgs84.targetCrs",
+    "map-points-geojson.layer",
+    "map-points-geojson.outputFormat",
+    "boundary-wgs84.layer",
+    "boundary-wgs84.targetCrs",
+    "boundary-geojson.layer",
+    "boundary-geojson.outputFormat",
+    "counties-wgs84.layer",
+    "counties-wgs84.targetCrs",
+    "counties-geojson.layer",
+    "counties-geojson.outputFormat",
+    "townships-wgs84.layer",
+    "townships-wgs84.targetCrs",
+    "townships-geojson.layer",
+    "townships-geojson.outputFormat",
+    "rivers-wgs84.layer",
+    "rivers-wgs84.targetCrs",
+    "rivers-geojson.layer",
+    "rivers-geojson.outputFormat",
+    "groundwater_systems-wgs84.layer",
+    "groundwater_systems-wgs84.targetCrs",
+    "groundwater_systems-geojson.layer",
+    "groundwater_systems-geojson.outputFormat",
+    "railways-wgs84.layer",
+    "railways-wgs84.targetCrs",
+    "railways-geojson.layer",
+    "railways-geojson.outputFormat",
+    "basin_boundary-wgs84.layer",
+    "basin_boundary-wgs84.targetCrs",
+    "basin_boundary-geojson.layer",
+    "basin_boundary-geojson.outputFormat",
+    "imagery-cog.outputFormat",
+    "imagery-wgs84.targetCrs",
+    "imagery-wgs84.resampling"
+  ],
+  "nodes": [
+    {
+      "nodeId": "extract",
+      "operatorId": "spreadsheet.extract_table",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "workbook": {
+          "workflowInput": "workbook"
+        }
+      },
+      "parameters": {
+        "sheetName": {
+          "workflowParameter": "extract.sheetName"
+        },
+        "headerRow": {
+          "workflowParameter": "extract.headerRow"
+        },
+        "formulaMode": {
+          "workflowParameter": "extract.formulaMode"
+        },
+        "maxOutputRows": {
+          "workflowParameter": "extract.maxOutputRows"
+        }
+      }
+    },
+    {
+      "nodeId": "unpivot",
+      "operatorId": "table.timeseries_unpivot",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "nodeOutput": {
+            "nodeId": "extract",
+            "port": "data"
+          }
+        },
+        "mapping": {
+          "workflowInput": "monthMapping"
+        }
+      },
+      "parameters": {
+        "timeField": {
+          "workflowParameter": "unpivot.timeField"
+        }
+      }
+    },
+    {
+      "nodeId": "source-rows",
+      "operatorId": "table.filter",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "nodeOutput": {
+            "nodeId": "unpivot",
+            "port": "data"
+          }
+        },
+        "rules": {
+          "workflowInput": "sourceFilter"
+        }
+      },
+      "parameters": {}
+    },
+    {
+      "nodeId": "source-split",
+      "operatorId": "timeseries.chronological_split",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "nodeOutput": {
+            "nodeId": "source-rows",
+            "port": "matched"
+          }
+        }
+      },
+      "parameters": {
+        "groupField": {
+          "workflowParameter": "source-split.groupField"
+        },
+        "timeField": {
+          "workflowParameter": "source-split.timeField"
+        },
+        "trainRatio": {
+          "workflowParameter": "source-split.trainRatio"
+        },
+        "inputWindow": {
+          "workflowParameter": "source-split.inputWindow"
+        }
+      }
+    },
+    {
+      "nodeId": "source-scaler",
+      "operatorId": "preprocessing.standard_scaler_fit",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "nodeOutput": {
+            "nodeId": "source-split",
+            "port": "fitRows"
+          }
+        },
+        "rules": {
+          "workflowInput": "source-scaler-rules"
+        }
+      },
+      "parameters": {}
+    },
+    {
+      "nodeId": "source-scaled",
+      "operatorId": "preprocessing.standard_scaler_transform",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "nodeOutput": {
+            "nodeId": "source-rows",
+            "port": "matched"
+          }
+        },
+        "scaler": {
+          "nodeOutput": {
+            "nodeId": "source-scaler",
+            "port": "scaler"
+          }
+        }
+      },
+      "parameters": {}
+    },
+    {
+      "nodeId": "source-windows",
+      "operatorId": "timeseries.supervised_windows",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "nodeOutput": {
+            "nodeId": "source-scaled",
+            "port": "data"
+          }
+        },
+        "targets": {
+          "nodeOutput": {
+            "nodeId": "source-split",
+            "port": "trainTargets"
+          }
+        },
+        "rules": {
+          "workflowInput": "source-windows-rules"
+        }
+      },
+      "parameters": {
+        "groupField": {
+          "workflowParameter": "source-windows.groupField"
+        },
+        "timeField": {
+          "workflowParameter": "source-windows.timeField"
+        },
+        "targetField": {
+          "workflowParameter": "source-windows.targetField"
+        },
+        "inputWindow": {
+          "workflowParameter": "source-windows.inputWindow"
+        }
+      }
+    },
+    {
+      "nodeId": "target-rows",
+      "operatorId": "table.filter",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "nodeOutput": {
+            "nodeId": "unpivot",
+            "port": "data"
+          }
+        },
+        "rules": {
+          "workflowInput": "targetFilter"
+        }
+      },
+      "parameters": {}
+    },
+    {
+      "nodeId": "target-split",
+      "operatorId": "timeseries.chronological_split",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "nodeOutput": {
+            "nodeId": "target-rows",
+            "port": "matched"
+          }
+        }
+      },
+      "parameters": {
+        "groupField": {
+          "workflowParameter": "target-split.groupField"
+        },
+        "timeField": {
+          "workflowParameter": "target-split.timeField"
+        },
+        "trainRatio": {
+          "workflowParameter": "target-split.trainRatio"
+        },
+        "inputWindow": {
+          "workflowParameter": "target-split.inputWindow"
+        }
+      }
+    },
+    {
+      "nodeId": "target-scaler",
+      "operatorId": "preprocessing.standard_scaler_fit",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "nodeOutput": {
+            "nodeId": "target-split",
+            "port": "fitRows"
+          }
+        },
+        "rules": {
+          "workflowInput": "target-scaler-rules"
+        }
+      },
+      "parameters": {}
+    },
+    {
+      "nodeId": "target-scaled",
+      "operatorId": "preprocessing.standard_scaler_transform",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "nodeOutput": {
+            "nodeId": "target-rows",
+            "port": "matched"
+          }
+        },
+        "scaler": {
+          "nodeOutput": {
+            "nodeId": "target-scaler",
+            "port": "scaler"
+          }
+        }
+      },
+      "parameters": {}
+    },
+    {
+      "nodeId": "target-windows",
+      "operatorId": "timeseries.supervised_windows",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "nodeOutput": {
+            "nodeId": "target-scaled",
+            "port": "data"
+          }
+        },
+        "targets": {
+          "nodeOutput": {
+            "nodeId": "target-split",
+            "port": "trainTargets"
+          }
+        },
+        "rules": {
+          "workflowInput": "target-windows-rules"
+        }
+      },
+      "parameters": {
+        "groupField": {
+          "workflowParameter": "target-windows.groupField"
+        },
+        "timeField": {
+          "workflowParameter": "target-windows.timeField"
+        },
+        "targetField": {
+          "workflowParameter": "target-windows.targetField"
+        },
+        "inputWindow": {
+          "workflowParameter": "target-windows.inputWindow"
+        }
+      }
+    },
+    {
+      "nodeId": "holdout-windows",
+      "operatorId": "timeseries.supervised_windows",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "nodeOutput": {
+            "nodeId": "target-scaled",
+            "port": "data"
+          }
+        },
+        "targets": {
+          "nodeOutput": {
+            "nodeId": "target-split",
+            "port": "holdoutTargets"
+          }
+        },
+        "rules": {
+          "workflowInput": "holdout-windows-rules"
+        }
+      },
+      "parameters": {
+        "groupField": {
+          "workflowParameter": "holdout-windows.groupField"
+        },
+        "timeField": {
+          "workflowParameter": "holdout-windows.timeField"
+        },
+        "targetField": {
+          "workflowParameter": "holdout-windows.targetField"
+        },
+        "inputWindow": {
+          "workflowParameter": "holdout-windows.inputWindow"
+        }
+      }
+    },
+    {
+      "nodeId": "pretrain",
+      "operatorId": "ml.gru_attention_pretrain",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "features": {
+          "nodeOutput": {
+            "nodeId": "source-windows",
+            "port": "features"
+          }
+        },
+        "targets": {
+          "nodeOutput": {
+            "nodeId": "source-windows",
+            "port": "targets"
+          }
+        }
+      },
+      "parameters": {
+        "hiddenSize": {
+          "workflowParameter": "pretrain.hiddenSize"
+        },
+        "numLayers": {
+          "workflowParameter": "pretrain.numLayers"
+        },
+        "numHeads": {
+          "workflowParameter": "pretrain.numHeads"
+        },
+        "dropout": {
+          "workflowParameter": "pretrain.dropout"
+        },
+        "epochs": {
+          "workflowParameter": "pretrain.epochs"
+        },
+        "batchSize": {
+          "workflowParameter": "pretrain.batchSize"
+        },
+        "learningRate": {
+          "workflowParameter": "pretrain.learningRate"
+        },
+        "seed": {
+          "workflowParameter": "pretrain.seed"
+        },
+        "device": {
+          "workflowParameter": "pretrain.device"
+        }
+      }
+    },
+    {
+      "nodeId": "finetune",
+      "operatorId": "ml.gru_attention_finetune",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "features": {
+          "nodeOutput": {
+            "nodeId": "target-windows",
+            "port": "features"
+          }
+        },
+        "targets": {
+          "nodeOutput": {
+            "nodeId": "target-windows",
+            "port": "targets"
+          }
+        },
+        "weights": {
+          "nodeOutput": {
+            "nodeId": "pretrain",
+            "port": "weights"
+          }
+        },
+        "modelSpec": {
+          "nodeOutput": {
+            "nodeId": "pretrain",
+            "port": "modelSpec"
+          }
+        }
+      },
+      "parameters": {
+        "epochs": {
+          "workflowParameter": "finetune.epochs"
+        },
+        "batchSize": {
+          "workflowParameter": "finetune.batchSize"
+        },
+        "learningRate": {
+          "workflowParameter": "finetune.learningRate"
+        },
+        "seed": {
+          "workflowParameter": "finetune.seed"
+        },
+        "device": {
+          "workflowParameter": "finetune.device"
+        }
+      }
+    },
+    {
+      "nodeId": "predict",
+      "operatorId": "ml.gru_attention_predict",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "features": {
+          "nodeOutput": {
+            "nodeId": "holdout-windows",
+            "port": "features"
+          }
+        },
+        "sampleIndex": {
+          "nodeOutput": {
+            "nodeId": "holdout-windows",
+            "port": "sampleIndex"
+          }
+        },
+        "weights": {
+          "nodeOutput": {
+            "nodeId": "finetune",
+            "port": "weights"
+          }
+        },
+        "modelSpec": {
+          "nodeOutput": {
+            "nodeId": "finetune",
+            "port": "modelSpec"
+          }
+        }
+      },
+      "parameters": {
+        "device": {
+          "workflowParameter": "predict.device"
+        }
+      }
+    },
+    {
+      "nodeId": "inverse",
+      "operatorId": "preprocessing.standard_scaler_inverse",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "nodeOutput": {
+            "nodeId": "predict",
+            "port": "predictions"
+          }
+        },
+        "scaler": {
+          "nodeOutput": {
+            "nodeId": "target-scaler",
+            "port": "scaler"
+          }
+        },
+        "rules": {
+          "workflowInput": "inverse-rules"
+        }
+      },
+      "parameters": {
+        "scalerField": {
+          "workflowParameter": "inverse.scalerField"
+        }
+      }
+    },
+    {
+      "nodeId": "evaluate",
+      "operatorId": "statistics.regression_metrics",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "predictions": {
+          "nodeOutput": {
+            "nodeId": "inverse",
+            "port": "data"
+          }
+        }
+      },
+      "parameters": {
+        "groupField": {
+          "workflowParameter": "evaluate.groupField"
+        },
+        "actualField": {
+          "workflowParameter": "evaluate.actualField"
+        },
+        "predictedField": {
+          "workflowParameter": "evaluate.predictedField"
+        },
+        "baselineField": {
+          "workflowParameter": "evaluate.baselineField"
+        },
+        "unit": {
+          "workflowParameter": "evaluate.unit"
+        }
+      }
+    },
+    {
+      "nodeId": "boundary-projected",
+      "operatorId": "crs.reproject",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "workflowInput": "boundary"
+        }
+      },
+      "parameters": {
+        "layer": {
+          "workflowParameter": "boundary-projected.layer"
+        },
+        "targetCrs": {
+          "workflowParameter": "boundary-projected.targetCrs"
+        }
+      }
+    },
+    {
+      "nodeId": "extent",
+      "operatorId": "vector.envelope",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "vector": {
+          "nodeOutput": {
+            "nodeId": "boundary-projected",
+            "port": "data"
+          }
+        }
+      },
+      "parameters": {
+        "layer": {
+          "workflowParameter": "extent.layer"
+        },
+        "paddingMeters": {
+          "workflowParameter": "extent.paddingMeters"
+        },
+        "aspectRatio": {
+          "workflowParameter": "extent.aspectRatio"
+        }
+      }
+    },
+    {
+      "nodeId": "imagery",
+      "operatorId": "raster.window",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "raster": {
+          "workflowInput": "imagery"
+        },
+        "extent": {
+          "nodeOutput": {
+            "nodeId": "extent",
+            "port": "extent"
+          }
+        },
+        "rules": {
+          "workflowInput": "imagery-rules"
+        }
+      },
+      "parameters": {
+        "extentLayer": {
+          "workflowParameter": "imagery.extentLayer"
+        },
+        "minimumCoverage": {
+          "workflowParameter": "imagery.minimumCoverage"
+        }
+      }
+    },
+    {
+      "nodeId": "counties-projected",
+      "operatorId": "crs.reproject",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "workflowInput": "counties"
+        }
+      },
+      "parameters": {
+        "layer": {
+          "workflowParameter": "counties-projected.layer"
+        },
+        "targetCrs": {
+          "workflowParameter": "counties-projected.targetCrs"
+        }
+      }
+    },
+    {
+      "nodeId": "counties-clipped",
+      "operatorId": "vector.clip",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "vector": {
+          "nodeOutput": {
+            "nodeId": "counties-projected",
+            "port": "data"
+          }
+        },
+        "mask": {
+          "nodeOutput": {
+            "nodeId": "extent",
+            "port": "extent"
+          }
+        }
+      },
+      "parameters": {
+        "vectorLayer": {
+          "workflowParameter": "counties-clipped.vectorLayer"
+        },
+        "maskLayer": {
+          "workflowParameter": "counties-clipped.maskLayer"
+        }
+      }
+    },
+    {
+      "nodeId": "townships-projected",
+      "operatorId": "crs.reproject",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "workflowInput": "townships"
+        }
+      },
+      "parameters": {
+        "layer": {
+          "workflowParameter": "townships-projected.layer"
+        },
+        "targetCrs": {
+          "workflowParameter": "townships-projected.targetCrs"
+        }
+      }
+    },
+    {
+      "nodeId": "townships-clipped",
+      "operatorId": "vector.clip",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "vector": {
+          "nodeOutput": {
+            "nodeId": "townships-projected",
+            "port": "data"
+          }
+        },
+        "mask": {
+          "nodeOutput": {
+            "nodeId": "extent",
+            "port": "extent"
+          }
+        }
+      },
+      "parameters": {
+        "vectorLayer": {
+          "workflowParameter": "townships-clipped.vectorLayer"
+        },
+        "maskLayer": {
+          "workflowParameter": "townships-clipped.maskLayer"
+        }
+      }
+    },
+    {
+      "nodeId": "rivers-projected",
+      "operatorId": "crs.reproject",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "workflowInput": "rivers"
+        }
+      },
+      "parameters": {
+        "layer": {
+          "workflowParameter": "rivers-projected.layer"
+        },
+        "targetCrs": {
+          "workflowParameter": "rivers-projected.targetCrs"
+        }
+      }
+    },
+    {
+      "nodeId": "rivers-clipped",
+      "operatorId": "vector.clip",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "vector": {
+          "nodeOutput": {
+            "nodeId": "rivers-projected",
+            "port": "data"
+          }
+        },
+        "mask": {
+          "nodeOutput": {
+            "nodeId": "extent",
+            "port": "extent"
+          }
+        }
+      },
+      "parameters": {
+        "vectorLayer": {
+          "workflowParameter": "rivers-clipped.vectorLayer"
+        },
+        "maskLayer": {
+          "workflowParameter": "rivers-clipped.maskLayer"
+        }
+      }
+    },
+    {
+      "nodeId": "groundwater_systems-projected",
+      "operatorId": "crs.reproject",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "workflowInput": "groundwater_systems"
+        }
+      },
+      "parameters": {
+        "layer": {
+          "workflowParameter": "groundwater_systems-projected.layer"
+        },
+        "targetCrs": {
+          "workflowParameter": "groundwater_systems-projected.targetCrs"
+        }
+      }
+    },
+    {
+      "nodeId": "groundwater_systems-clipped",
+      "operatorId": "vector.clip",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "vector": {
+          "nodeOutput": {
+            "nodeId": "groundwater_systems-projected",
+            "port": "data"
+          }
+        },
+        "mask": {
+          "nodeOutput": {
+            "nodeId": "extent",
+            "port": "extent"
+          }
+        }
+      },
+      "parameters": {
+        "vectorLayer": {
+          "workflowParameter": "groundwater_systems-clipped.vectorLayer"
+        },
+        "maskLayer": {
+          "workflowParameter": "groundwater_systems-clipped.maskLayer"
+        }
+      }
+    },
+    {
+      "nodeId": "railways-projected",
+      "operatorId": "crs.reproject",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "workflowInput": "railways"
+        }
+      },
+      "parameters": {
+        "layer": {
+          "workflowParameter": "railways-projected.layer"
+        },
+        "targetCrs": {
+          "workflowParameter": "railways-projected.targetCrs"
+        }
+      }
+    },
+    {
+      "nodeId": "railways-clipped",
+      "operatorId": "vector.clip",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "vector": {
+          "nodeOutput": {
+            "nodeId": "railways-projected",
+            "port": "data"
+          }
+        },
+        "mask": {
+          "nodeOutput": {
+            "nodeId": "extent",
+            "port": "extent"
+          }
+        }
+      },
+      "parameters": {
+        "vectorLayer": {
+          "workflowParameter": "railways-clipped.vectorLayer"
+        },
+        "maskLayer": {
+          "workflowParameter": "railways-clipped.maskLayer"
+        }
+      }
+    },
+    {
+      "nodeId": "basin_boundary-projected",
+      "operatorId": "crs.reproject",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "workflowInput": "basin_boundary"
+        }
+      },
+      "parameters": {
+        "layer": {
+          "workflowParameter": "basin_boundary-projected.layer"
+        },
+        "targetCrs": {
+          "workflowParameter": "basin_boundary-projected.targetCrs"
+        }
+      }
+    },
+    {
+      "nodeId": "basin_boundary-clipped",
+      "operatorId": "vector.clip",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "vector": {
+          "nodeOutput": {
+            "nodeId": "basin_boundary-projected",
+            "port": "data"
+          }
+        },
+        "mask": {
+          "nodeOutput": {
+            "nodeId": "extent",
+            "port": "extent"
+          }
+        }
+      },
+      "parameters": {
+        "vectorLayer": {
+          "workflowParameter": "basin_boundary-clipped.vectorLayer"
+        },
+        "maskLayer": {
+          "workflowParameter": "basin_boundary-clipped.maskLayer"
+        }
+      }
+    },
+    {
+      "nodeId": "prediction-points",
+      "operatorId": "vector.from_xy",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "nodeOutput": {
+            "nodeId": "evaluate",
+            "port": "evaluated"
+          }
+        }
+      },
+      "parameters": {
+        "xField": {
+          "workflowParameter": "prediction-points.xField"
+        },
+        "yField": {
+          "workflowParameter": "prediction-points.yField"
+        },
+        "sourceCrs": {
+          "workflowParameter": "prediction-points.sourceCrs"
+        }
+      }
+    },
+    {
+      "nodeId": "prediction-membership",
+      "operatorId": "vector.tag_membership",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "points": {
+          "nodeOutput": {
+            "nodeId": "prediction-points",
+            "port": "points"
+          }
+        },
+        "polygons": {
+          "workflowInput": "boundary"
+        }
+      },
+      "parameters": {
+        "polygonLayer": {
+          "workflowParameter": "prediction-membership.polygonLayer"
+        },
+        "outputField": {
+          "workflowParameter": "prediction-membership.outputField"
+        }
+      }
+    },
+    {
+      "nodeId": "map-month",
+      "operatorId": "timeseries.snapshot",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "observations": {
+          "nodeOutput": {
+            "nodeId": "evaluate",
+            "port": "evaluated"
+          }
+        }
+      },
+      "parameters": {
+        "groupField": {
+          "workflowParameter": "map-month.groupField"
+        },
+        "timeField": {
+          "workflowParameter": "map-month.timeField"
+        },
+        "valueField": {
+          "workflowParameter": "map-month.valueField"
+        },
+        "targetTime": {
+          "workflowParameter": "map-month.targetTime"
+        },
+        "selection": {
+          "workflowParameter": "map-month.selection"
+        },
+        "maxAgeDays": {
+          "workflowParameter": "map-month.maxAgeDays"
+        }
+      }
+    },
+    {
+      "nodeId": "map-points",
+      "operatorId": "vector.from_xy",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "nodeOutput": {
+            "nodeId": "map-month",
+            "port": "snapshot"
+          }
+        }
+      },
+      "parameters": {
+        "xField": {
+          "workflowParameter": "map-points.xField"
+        },
+        "yField": {
+          "workflowParameter": "map-points.yField"
+        },
+        "sourceCrs": {
+          "workflowParameter": "map-points.sourceCrs"
+        }
+      }
+    },
+    {
+      "nodeId": "map-membership",
+      "operatorId": "vector.tag_membership",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "points": {
+          "nodeOutput": {
+            "nodeId": "map-points",
+            "port": "points"
+          }
+        },
+        "polygons": {
+          "workflowInput": "boundary"
+        }
+      },
+      "parameters": {
+        "polygonLayer": {
+          "workflowParameter": "map-membership.polygonLayer"
+        },
+        "outputField": {
+          "workflowParameter": "map-membership.outputField"
+        }
+      }
+    },
+    {
+      "nodeId": "prediction-points-wgs84",
+      "operatorId": "crs.reproject",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "nodeOutput": {
+            "nodeId": "prediction-membership",
+            "port": "points"
+          }
+        }
+      },
+      "parameters": {
+        "layer": {
+          "workflowParameter": "prediction-points-wgs84.layer"
+        },
+        "targetCrs": {
+          "workflowParameter": "prediction-points-wgs84.targetCrs"
+        }
+      }
+    },
+    {
+      "nodeId": "prediction-points-geojson",
+      "operatorId": "data.convert",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "nodeOutput": {
+            "nodeId": "prediction-points-wgs84",
+            "port": "data"
+          }
+        }
+      },
+      "parameters": {
+        "layer": {
+          "workflowParameter": "prediction-points-geojson.layer"
+        },
+        "outputFormat": {
+          "workflowParameter": "prediction-points-geojson.outputFormat"
+        }
+      }
+    },
+    {
+      "nodeId": "map-points-wgs84",
+      "operatorId": "crs.reproject",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "nodeOutput": {
+            "nodeId": "map-membership",
+            "port": "points"
+          }
+        }
+      },
+      "parameters": {
+        "layer": {
+          "workflowParameter": "map-points-wgs84.layer"
+        },
+        "targetCrs": {
+          "workflowParameter": "map-points-wgs84.targetCrs"
+        }
+      }
+    },
+    {
+      "nodeId": "map-points-geojson",
+      "operatorId": "data.convert",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "nodeOutput": {
+            "nodeId": "map-points-wgs84",
+            "port": "data"
+          }
+        }
+      },
+      "parameters": {
+        "layer": {
+          "workflowParameter": "map-points-geojson.layer"
+        },
+        "outputFormat": {
+          "workflowParameter": "map-points-geojson.outputFormat"
+        }
+      }
+    },
+    {
+      "nodeId": "boundary-wgs84",
+      "operatorId": "crs.reproject",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "nodeOutput": {
+            "nodeId": "boundary-projected",
+            "port": "data"
+          }
+        }
+      },
+      "parameters": {
+        "layer": {
+          "workflowParameter": "boundary-wgs84.layer"
+        },
+        "targetCrs": {
+          "workflowParameter": "boundary-wgs84.targetCrs"
+        }
+      }
+    },
+    {
+      "nodeId": "boundary-geojson",
+      "operatorId": "data.convert",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "nodeOutput": {
+            "nodeId": "boundary-wgs84",
+            "port": "data"
+          }
+        }
+      },
+      "parameters": {
+        "layer": {
+          "workflowParameter": "boundary-geojson.layer"
+        },
+        "outputFormat": {
+          "workflowParameter": "boundary-geojson.outputFormat"
+        }
+      }
+    },
+    {
+      "nodeId": "counties-wgs84",
+      "operatorId": "crs.reproject",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "nodeOutput": {
+            "nodeId": "counties-clipped",
+            "port": "vector"
+          }
+        }
+      },
+      "parameters": {
+        "layer": {
+          "workflowParameter": "counties-wgs84.layer"
+        },
+        "targetCrs": {
+          "workflowParameter": "counties-wgs84.targetCrs"
+        }
+      }
+    },
+    {
+      "nodeId": "counties-geojson",
+      "operatorId": "data.convert",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "nodeOutput": {
+            "nodeId": "counties-wgs84",
+            "port": "data"
+          }
+        }
+      },
+      "parameters": {
+        "layer": {
+          "workflowParameter": "counties-geojson.layer"
+        },
+        "outputFormat": {
+          "workflowParameter": "counties-geojson.outputFormat"
+        }
+      }
+    },
+    {
+      "nodeId": "townships-wgs84",
+      "operatorId": "crs.reproject",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "nodeOutput": {
+            "nodeId": "townships-clipped",
+            "port": "vector"
+          }
+        }
+      },
+      "parameters": {
+        "layer": {
+          "workflowParameter": "townships-wgs84.layer"
+        },
+        "targetCrs": {
+          "workflowParameter": "townships-wgs84.targetCrs"
+        }
+      }
+    },
+    {
+      "nodeId": "townships-geojson",
+      "operatorId": "data.convert",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "nodeOutput": {
+            "nodeId": "townships-wgs84",
+            "port": "data"
+          }
+        }
+      },
+      "parameters": {
+        "layer": {
+          "workflowParameter": "townships-geojson.layer"
+        },
+        "outputFormat": {
+          "workflowParameter": "townships-geojson.outputFormat"
+        }
+      }
+    },
+    {
+      "nodeId": "rivers-wgs84",
+      "operatorId": "crs.reproject",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "nodeOutput": {
+            "nodeId": "rivers-clipped",
+            "port": "vector"
+          }
+        }
+      },
+      "parameters": {
+        "layer": {
+          "workflowParameter": "rivers-wgs84.layer"
+        },
+        "targetCrs": {
+          "workflowParameter": "rivers-wgs84.targetCrs"
+        }
+      }
+    },
+    {
+      "nodeId": "rivers-geojson",
+      "operatorId": "data.convert",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "nodeOutput": {
+            "nodeId": "rivers-wgs84",
+            "port": "data"
+          }
+        }
+      },
+      "parameters": {
+        "layer": {
+          "workflowParameter": "rivers-geojson.layer"
+        },
+        "outputFormat": {
+          "workflowParameter": "rivers-geojson.outputFormat"
+        }
+      }
+    },
+    {
+      "nodeId": "groundwater_systems-wgs84",
+      "operatorId": "crs.reproject",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "nodeOutput": {
+            "nodeId": "groundwater_systems-clipped",
+            "port": "vector"
+          }
+        }
+      },
+      "parameters": {
+        "layer": {
+          "workflowParameter": "groundwater_systems-wgs84.layer"
+        },
+        "targetCrs": {
+          "workflowParameter": "groundwater_systems-wgs84.targetCrs"
+        }
+      }
+    },
+    {
+      "nodeId": "groundwater_systems-geojson",
+      "operatorId": "data.convert",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "nodeOutput": {
+            "nodeId": "groundwater_systems-wgs84",
+            "port": "data"
+          }
+        }
+      },
+      "parameters": {
+        "layer": {
+          "workflowParameter": "groundwater_systems-geojson.layer"
+        },
+        "outputFormat": {
+          "workflowParameter": "groundwater_systems-geojson.outputFormat"
+        }
+      }
+    },
+    {
+      "nodeId": "railways-wgs84",
+      "operatorId": "crs.reproject",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "nodeOutput": {
+            "nodeId": "railways-clipped",
+            "port": "vector"
+          }
+        }
+      },
+      "parameters": {
+        "layer": {
+          "workflowParameter": "railways-wgs84.layer"
+        },
+        "targetCrs": {
+          "workflowParameter": "railways-wgs84.targetCrs"
+        }
+      }
+    },
+    {
+      "nodeId": "railways-geojson",
+      "operatorId": "data.convert",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "nodeOutput": {
+            "nodeId": "railways-wgs84",
+            "port": "data"
+          }
+        }
+      },
+      "parameters": {
+        "layer": {
+          "workflowParameter": "railways-geojson.layer"
+        },
+        "outputFormat": {
+          "workflowParameter": "railways-geojson.outputFormat"
+        }
+      }
+    },
+    {
+      "nodeId": "basin_boundary-wgs84",
+      "operatorId": "crs.reproject",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "nodeOutput": {
+            "nodeId": "basin_boundary-clipped",
+            "port": "vector"
+          }
+        }
+      },
+      "parameters": {
+        "layer": {
+          "workflowParameter": "basin_boundary-wgs84.layer"
+        },
+        "targetCrs": {
+          "workflowParameter": "basin_boundary-wgs84.targetCrs"
+        }
+      }
+    },
+    {
+      "nodeId": "basin_boundary-geojson",
+      "operatorId": "data.convert",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "nodeOutput": {
+            "nodeId": "basin_boundary-wgs84",
+            "port": "data"
+          }
+        }
+      },
+      "parameters": {
+        "layer": {
+          "workflowParameter": "basin_boundary-geojson.layer"
+        },
+        "outputFormat": {
+          "workflowParameter": "basin_boundary-geojson.outputFormat"
+        }
+      }
+    },
+    {
+      "nodeId": "imagery-wgs84",
+      "operatorId": "raster.reproject",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "raster": {
+          "nodeOutput": {
+            "nodeId": "imagery",
+            "port": "raster"
+          }
+        }
+      },
+      "parameters": {
+        "targetCrs": {
+          "workflowParameter": "imagery-wgs84.targetCrs"
+        },
+        "resampling": {
+          "workflowParameter": "imagery-wgs84.resampling"
+        }
+      }
+    },
+    {
+      "nodeId": "imagery-cog",
+      "operatorId": "data.convert",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "nodeOutput": {
+            "nodeId": "imagery-wgs84",
+            "port": "raster"
+          }
+        }
+      },
+      "parameters": {
+        "outputFormat": {
+          "workflowParameter": "imagery-cog.outputFormat"
+        }
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "name": "source-scaler",
+      "nodeOutput": {
+        "nodeId": "source-scaler",
+        "port": "scaler"
+      }
+    },
+    {
+      "name": "target-scaler",
+      "nodeOutput": {
+        "nodeId": "target-scaler",
+        "port": "scaler"
+      }
+    },
+    {
+      "name": "target-split",
+      "nodeOutput": {
+        "nodeId": "target-split",
+        "port": "split"
+      }
+    },
+    {
+      "name": "pretrained-weights",
+      "nodeOutput": {
+        "nodeId": "pretrain",
+        "port": "weights"
+      }
+    },
+    {
+      "name": "pretrained-model-spec",
+      "nodeOutput": {
+        "nodeId": "pretrain",
+        "port": "modelSpec"
+      }
+    },
+    {
+      "name": "pretrain-loss",
+      "nodeOutput": {
+        "nodeId": "pretrain",
+        "port": "loss"
+      }
+    },
+    {
+      "name": "finetuned-weights",
+      "nodeOutput": {
+        "nodeId": "finetune",
+        "port": "weights"
+      }
+    },
+    {
+      "name": "finetuned-model-spec",
+      "nodeOutput": {
+        "nodeId": "finetune",
+        "port": "modelSpec"
+      }
+    },
+    {
+      "name": "finetune-loss",
+      "nodeOutput": {
+        "nodeId": "finetune",
+        "port": "loss"
+      }
+    },
+    {
+      "name": "predictions",
+      "nodeOutput": {
+        "nodeId": "evaluate",
+        "port": "evaluated"
+      }
+    },
+    {
+      "name": "metrics",
+      "nodeOutput": {
+        "nodeId": "evaluate",
+        "port": "overall"
+      }
+    },
+    {
+      "name": "per-well-metrics",
+      "nodeOutput": {
+        "nodeId": "evaluate",
+        "port": "perGroup"
+      }
+    },
+    {
+      "name": "prediction-points",
+      "nodeOutput": {
+        "nodeId": "prediction-points-geojson",
+        "port": "data"
+      }
+    },
+    {
+      "name": "map-points",
+      "nodeOutput": {
+        "nodeId": "map-points-geojson",
+        "port": "data"
+      }
+    },
+    {
+      "name": "boundary",
+      "nodeOutput": {
+        "nodeId": "boundary-geojson",
+        "port": "data"
+      }
+    },
+    {
+      "name": "extent",
+      "nodeOutput": {
+        "nodeId": "extent",
+        "port": "extent"
+      }
+    },
+    {
+      "name": "imagery",
+      "nodeOutput": {
+        "nodeId": "imagery-cog",
+        "port": "data"
+      }
+    },
+    {
+      "name": "imagery-coverage",
+      "nodeOutput": {
+        "nodeId": "imagery",
+        "port": "coverage"
+      }
+    },
+    {
+      "name": "map-month-diagnostics",
+      "nodeOutput": {
+        "nodeId": "map-month",
+        "port": "diagnostics"
+      }
+    },
+    {
+      "name": "counties",
+      "nodeOutput": {
+        "nodeId": "counties-geojson",
+        "port": "data"
+      }
+    },
+    {
+      "name": "townships",
+      "nodeOutput": {
+        "nodeId": "townships-geojson",
+        "port": "data"
+      }
+    },
+    {
+      "name": "rivers",
+      "nodeOutput": {
+        "nodeId": "rivers-geojson",
+        "port": "data"
+      }
+    },
+    {
+      "name": "groundwater_systems",
+      "nodeOutput": {
+        "nodeId": "groundwater_systems-geojson",
+        "port": "data"
+      }
+    },
+    {
+      "name": "railways",
+      "nodeOutput": {
+        "nodeId": "railways-geojson",
+        "port": "data"
+      }
+    },
+    {
+      "name": "basin_boundary",
+      "nodeOutput": {
+        "nodeId": "basin_boundary-geojson",
+        "port": "data"
+      }
+    }
+  ]
+}

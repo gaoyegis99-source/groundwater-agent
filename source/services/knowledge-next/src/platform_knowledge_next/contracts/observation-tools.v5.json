@@ -1,0 +1,2135 @@
+{
+  "contract": "knowledge-tools-v5",
+  "schemaVersion": "observation-tools.v5",
+  "tools": [
+    {
+      "description": "Knowledge Next retrieve evidence with lifecycle and exact Data binding validation.",
+      "progress": {
+        "capability": "knowledge.retrieve",
+        "semanticRole": "EVIDENCE_DISCOVERY",
+        "templateKey": "knowledge.retrieve",
+        "title": "检索候选知识证据",
+        "runningSummaryTemplate": "正在{objective}。",
+        "processingTitle": "筛选候选证据",
+        "processingSummaryTemplate": "Agent 正在根据“{objective}”的候选结果选择需要完整读取的知识单元。",
+        "outcomes": {
+          "evidence.candidates_found": {
+            "summary": "找到 {candidateCount} 个候选知识单元，下一步可按版本和校验和读取全文。",
+            "factsSchema": {
+              "additionalProperties": false,
+              "properties": {"candidateCount": {"minimum": 1, "type": "integer"}},
+              "required": ["candidateCount"],
+              "type": "object"
+            }
+          },
+          "evidence.no_match": {
+            "summary": "当前条件未找到候选知识单元。",
+            "factsSchema": {
+              "additionalProperties": false,
+              "properties": {},
+              "required": [],
+              "type": "object"
+            }
+          }
+        }
+      },
+      "inputSchema": {
+        "$defs": {
+          "Budget": {
+            "additionalProperties": false,
+            "properties": {
+              "max_chars": {
+                "default": 16000,
+                "maximum": 32000,
+                "minimum": 1,
+                "title": "Max Chars",
+                "type": "integer"
+              },
+              "max_units": {
+                "default": 8,
+                "maximum": 16,
+                "minimum": 1,
+                "title": "Max Units",
+                "type": "integer"
+              }
+            },
+            "title": "Budget",
+            "type": "object"
+          },
+          "DataBinding": {
+            "additionalProperties": false,
+            "properties": {
+              "dataset_id": {
+                "maxLength": 160,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+                "title": "Dataset Id",
+                "type": "string"
+              },
+              "field_id": {
+                "anyOf": [
+                  {
+                    "pattern": "^f[0-9]+$",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Field Id"
+              },
+              "project_id": {
+                "maxLength": 160,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+                "title": "Project Id",
+                "type": "string"
+              },
+              "semantic_id": {
+                "maxLength": 160,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+                "title": "Semantic Id",
+                "type": "string"
+              },
+              "service_binding": {
+                "const": "data-primary",
+                "default": "data-primary",
+                "title": "Service Binding",
+                "type": "string"
+              },
+              "version_id": {
+                "maxLength": 160,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+                "title": "Version Id",
+                "type": "string"
+              }
+            },
+            "required": [
+              "project_id",
+              "dataset_id",
+              "version_id",
+              "semantic_id"
+            ],
+            "title": "DataBinding",
+            "type": "object"
+          },
+          "RetrievalMetadataFilter": {
+            "additionalProperties": false,
+            "properties": {
+              "language": {
+                "anyOf": [
+                  {
+                    "maxLength": 35,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Language"
+              },
+              "review_due": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Review Due"
+              },
+              "source_kinds": {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 8,
+                "title": "Source Kinds",
+                "type": "array"
+              }
+            },
+            "title": "RetrievalMetadataFilter",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "scope": {
+                  "const": "general"
+                }
+              },
+              "required": [
+                "scope"
+              ]
+            },
+            "then": {
+              "properties": {
+                "binding": {
+                  "type": "null"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "scope": {
+                  "enum": [
+                    "bound",
+                    "combined"
+                  ]
+                }
+              },
+              "required": [
+                "scope"
+              ]
+            },
+            "then": {
+              "properties": {
+                "binding": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "binding"
+              ]
+            }
+          }
+        ],
+        "properties": {
+          "binding": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/DataBinding"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "budget": {
+            "$ref": "#/$defs/Budget"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Kind"
+          },
+          "metadata_filters": {
+            "$ref": "#/$defs/RetrievalMetadataFilter"
+          },
+          "min_score": {
+            "default": 0,
+            "maximum": 1,
+            "minimum": 0,
+            "title": "Min Score",
+            "type": "number"
+          },
+          "mode": {
+            "default": "hybrid",
+            "enum": [
+              "hybrid",
+              "lexical"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "purpose": {
+            "default": "",
+            "maxLength": 256,
+            "title": "Purpose",
+            "type": "string"
+          },
+          "query": {
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "enum": [
+                  "general",
+                  "bound",
+                  "combined"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Scope"
+          },
+          "top_k": {
+            "default": 5,
+            "maximum": 16,
+            "minimum": 1,
+            "title": "Top K",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "Retrieval",
+        "type": "object"
+      },
+      "name": "retrieve_evidence",
+      "outputSchema": {
+        "$defs": {
+          "DataBinding": {
+            "additionalProperties": false,
+            "properties": {
+              "datasetId": {
+                "maxLength": 160,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+                "title": "Dataset Id",
+                "type": "string"
+              },
+              "fieldId": {
+                "anyOf": [
+                  {
+                    "pattern": "^f[0-9]+$",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Field Id"
+              },
+              "projectId": {
+                "maxLength": 160,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+                "title": "Project Id",
+                "type": "string"
+              },
+              "semanticId": {
+                "maxLength": 160,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+                "title": "Semantic Id",
+                "type": "string"
+              },
+              "serviceBinding": {
+                "const": "data-primary",
+                "default": "data-primary",
+                "title": "Service Binding",
+                "type": "string"
+              },
+              "versionId": {
+                "maxLength": 160,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+                "title": "Version Id",
+                "type": "string"
+              }
+            },
+            "required": [
+              "projectId",
+              "datasetId",
+              "versionId",
+              "semanticId"
+            ],
+            "title": "DataBinding",
+            "type": "object"
+          },
+          "EvidenceBundleV1": {
+            "additionalProperties": false,
+            "properties": {
+              "budget": {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "title": "Budget",
+                "type": "object"
+              },
+              "coverage": {
+                "additionalProperties": true,
+                "title": "Coverage",
+                "type": "object"
+              },
+              "indexGeneration": {
+                "title": "Index Generation",
+                "type": "string"
+              },
+              "items": {
+                "items": {
+                  "$ref": "#/$defs/EvidenceItem"
+                },
+                "title": "Items",
+                "type": "array"
+              },
+              "knowledgeRevision": {
+                "title": "Knowledge Revision",
+                "type": "integer"
+              },
+              "observedAt": {
+                "title": "Observed At",
+                "type": "string"
+              },
+              "receiptId": {
+                "title": "Receipt Id",
+                "type": "string"
+              },
+              "schemaVersion": {
+                "const": "evidence-bundle.v1",
+                "default": "evidence-bundle.v1",
+                "title": "Schema Version",
+                "type": "string"
+              },
+              "status": {
+                "enum": [
+                  "OK",
+                  "NO_MATCH",
+                  "PARTIAL"
+                ],
+                "title": "Status",
+                "type": "string"
+              },
+              "timingsMs": {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "title": "Timings Ms",
+                "type": "object"
+              }
+            },
+            "required": [
+              "status",
+              "receiptId",
+              "knowledgeRevision",
+              "indexGeneration",
+              "observedAt",
+              "items",
+              "coverage",
+              "budget",
+              "timingsMs"
+            ],
+            "title": "EvidenceBundleV1",
+            "type": "object"
+          },
+          "EvidenceItem": {
+            "additionalProperties": false,
+            "properties": {
+              "bindingMatch": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "GENERAL",
+                      "EXACT",
+                      "NOT_CHECKED",
+                      "MISMATCH"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Binding Match"
+              },
+              "bindings": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "$ref": "#/$defs/DataBinding"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Bindings"
+              },
+              "bindingsVerifiedAt": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Bindings Verified At"
+              },
+              "checksum": {
+                "title": "Checksum",
+                "type": "string"
+              },
+              "content": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Content"
+              },
+              "documentTitle": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Document Title"
+              },
+              "evidenceId": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Evidence Id"
+              },
+              "knowledgeId": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Knowledge Id"
+              },
+              "lifecycleRevision": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Lifecycle Revision"
+              },
+              "locator": {
+                "anyOf": [
+                  {
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "integer"
+                        }
+                      ]
+                    },
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Locator"
+              },
+              "rank": {
+                "anyOf": [
+                  {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Rank"
+              },
+              "rankingReason": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Ranking Reason"
+              },
+              "rankingSignals": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Ranking Signals"
+              },
+              "relevanceScore": {
+                "anyOf": [
+                  {
+                    "maximum": 1,
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Relevance Score"
+              },
+              "requiredUnits": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Required Units",
+                "type": "array"
+              },
+              "reviewDue": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Review Due"
+              },
+              "scope": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "GENERAL",
+                      "DATA_BOUND"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Scope"
+              },
+              "sources": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "$ref": "#/$defs/Source"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Sources"
+              },
+              "status": {
+                "enum": [
+                  "OK",
+                  "STALE",
+                  "WITHDRAWN",
+                  "EXPIRED",
+                  "NOT_FOUND",
+                  "NEEDS_EXPANSION"
+                ],
+                "title": "Status",
+                "type": "string"
+              },
+              "unitId": {
+                "title": "Unit Id",
+                "type": "string"
+              },
+              "versionId": {
+                "title": "Version Id",
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "versionId",
+              "unitId",
+              "checksum"
+            ],
+            "title": "EvidenceItem",
+            "type": "object"
+          },
+          "Source": {
+            "additionalProperties": false,
+            "properties": {
+              "accessedAt": {
+                "anyOf": [
+                  {
+                    "format": "date",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Accessed At"
+              },
+              "kind": {
+                "maxLength": 80,
+                "minLength": 1,
+                "title": "Kind",
+                "type": "string"
+              },
+              "lifecycleStatus": {
+                "default": "ACTIVE",
+                "enum": [
+                  "ACTIVE",
+                  "WITHDRAWN"
+                ],
+                "title": "Lifecycle Status",
+                "type": "string"
+              },
+              "publishedAt": {
+                "anyOf": [
+                  {
+                    "format": "date",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Published At"
+              },
+              "publisher": {
+                "maxLength": 300,
+                "minLength": 1,
+                "title": "Publisher",
+                "type": "string"
+              },
+              "reviewAfter": {
+                "format": "date",
+                "title": "Review After",
+                "type": "string"
+              },
+              "sourceId": {
+                "maxLength": 160,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+                "title": "Source Id",
+                "type": "string"
+              },
+              "title": {
+                "maxLength": 500,
+                "minLength": 1,
+                "title": "Title",
+                "type": "string"
+              },
+              "url": {
+                "anyOf": [
+                  {
+                    "maxLength": 2048,
+                    "pattern": "^https://",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Url"
+              },
+              "validThrough": {
+                "anyOf": [
+                  {
+                    "format": "date",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Valid Through"
+              },
+              "version": {
+                "anyOf": [
+                  {
+                    "maxLength": 100,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Version"
+              }
+            },
+            "required": [
+              "sourceId",
+              "kind",
+              "title",
+              "publisher",
+              "reviewAfter"
+            ],
+            "title": "Source",
+            "type": "object"
+          }
+        },
+        "$ref": "#/$defs/EvidenceBundleV1"
+      },
+      "path": "/internal/tools/v5/retrieve_evidence",
+      "timeoutSeconds": 30
+    },
+    {
+      "description": "Knowledge Next read evidence with lifecycle and exact Data binding validation.",
+      "progress": {
+        "capability": "knowledge.evidence.read",
+        "semanticRole": "EVIDENCE_READ",
+        "templateKey": "knowledge.evidence.read",
+        "title": "读取并核验证据",
+        "runningSummaryTemplate": "正在{objective}。",
+        "processingTitle": "组织证据结论",
+        "processingSummaryTemplate": "Agent 正在根据“{objective}”的完整证据组织结论、限制和来源。",
+        "outcomes": {
+          "evidence.read": {
+            "summary": "已读取并核验 {readableCount} 个可引用知识单元；另有 {rejectedCount} 个单元不可引用。",
+            "factsSchema": {
+              "additionalProperties": false,
+              "properties": {
+                "readableCount": {"minimum": 0, "type": "integer"},
+                "rejectedCount": {"minimum": 0, "type": "integer"}
+              },
+              "required": ["readableCount", "rejectedCount"],
+              "type": "object"
+            }
+          }
+        }
+      },
+      "inputSchema": {
+        "$defs": {
+          "Budget": {
+            "additionalProperties": false,
+            "properties": {
+              "max_chars": {
+                "default": 16000,
+                "maximum": 32000,
+                "minimum": 1,
+                "title": "Max Chars",
+                "type": "integer"
+              },
+              "max_units": {
+                "default": 8,
+                "maximum": 16,
+                "minimum": 1,
+                "title": "Max Units",
+                "type": "integer"
+              }
+            },
+            "title": "Budget",
+            "type": "object"
+          },
+          "EvidenceRef": {
+            "additionalProperties": false,
+            "properties": {
+              "checksum": {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+                "title": "Checksum",
+                "type": "string"
+              },
+              "unit_id": {
+                "maxLength": 160,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+                "title": "Unit Id",
+                "type": "string"
+              },
+              "version_id": {
+                "maxLength": 160,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+                "title": "Version Id",
+                "type": "string"
+              }
+            },
+            "required": [
+              "version_id",
+              "unit_id",
+              "checksum"
+            ],
+            "title": "EvidenceRef",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "budget": {
+            "$ref": "#/$defs/Budget"
+          },
+          "refs": {
+            "items": {
+              "$ref": "#/$defs/EvidenceRef"
+            },
+            "maxItems": 16,
+            "minItems": 1,
+            "title": "Refs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "refs"
+        ],
+        "title": "EvidenceRead",
+        "type": "object"
+      },
+      "name": "read_evidence",
+      "outputSchema": {
+        "$defs": {
+          "DataBinding": {
+            "additionalProperties": false,
+            "properties": {
+              "datasetId": {
+                "maxLength": 160,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+                "title": "Dataset Id",
+                "type": "string"
+              },
+              "fieldId": {
+                "anyOf": [
+                  {
+                    "pattern": "^f[0-9]+$",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Field Id"
+              },
+              "projectId": {
+                "maxLength": 160,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+                "title": "Project Id",
+                "type": "string"
+              },
+              "semanticId": {
+                "maxLength": 160,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+                "title": "Semantic Id",
+                "type": "string"
+              },
+              "serviceBinding": {
+                "const": "data-primary",
+                "default": "data-primary",
+                "title": "Service Binding",
+                "type": "string"
+              },
+              "versionId": {
+                "maxLength": 160,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+                "title": "Version Id",
+                "type": "string"
+              }
+            },
+            "required": [
+              "projectId",
+              "datasetId",
+              "versionId",
+              "semanticId"
+            ],
+            "title": "DataBinding",
+            "type": "object"
+          },
+          "EvidenceBundleV1": {
+            "additionalProperties": false,
+            "properties": {
+              "budget": {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "title": "Budget",
+                "type": "object"
+              },
+              "coverage": {
+                "additionalProperties": true,
+                "title": "Coverage",
+                "type": "object"
+              },
+              "indexGeneration": {
+                "title": "Index Generation",
+                "type": "string"
+              },
+              "items": {
+                "items": {
+                  "$ref": "#/$defs/EvidenceItem"
+                },
+                "title": "Items",
+                "type": "array"
+              },
+              "knowledgeRevision": {
+                "title": "Knowledge Revision",
+                "type": "integer"
+              },
+              "observedAt": {
+                "title": "Observed At",
+                "type": "string"
+              },
+              "receiptId": {
+                "title": "Receipt Id",
+                "type": "string"
+              },
+              "schemaVersion": {
+                "const": "evidence-bundle.v1",
+                "default": "evidence-bundle.v1",
+                "title": "Schema Version",
+                "type": "string"
+              },
+              "status": {
+                "enum": [
+                  "OK",
+                  "NO_MATCH",
+                  "PARTIAL"
+                ],
+                "title": "Status",
+                "type": "string"
+              },
+              "timingsMs": {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "title": "Timings Ms",
+                "type": "object"
+              }
+            },
+            "required": [
+              "status",
+              "receiptId",
+              "knowledgeRevision",
+              "indexGeneration",
+              "observedAt",
+              "items",
+              "coverage",
+              "budget",
+              "timingsMs"
+            ],
+            "title": "EvidenceBundleV1",
+            "type": "object"
+          },
+          "EvidenceItem": {
+            "additionalProperties": false,
+            "properties": {
+              "bindingMatch": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "GENERAL",
+                      "EXACT",
+                      "NOT_CHECKED",
+                      "MISMATCH"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Binding Match"
+              },
+              "bindings": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "$ref": "#/$defs/DataBinding"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Bindings"
+              },
+              "bindingsVerifiedAt": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Bindings Verified At"
+              },
+              "checksum": {
+                "title": "Checksum",
+                "type": "string"
+              },
+              "content": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Content"
+              },
+              "documentTitle": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Document Title"
+              },
+              "evidenceId": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Evidence Id"
+              },
+              "knowledgeId": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Knowledge Id"
+              },
+              "lifecycleRevision": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Lifecycle Revision"
+              },
+              "locator": {
+                "anyOf": [
+                  {
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "integer"
+                        }
+                      ]
+                    },
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Locator"
+              },
+              "rank": {
+                "anyOf": [
+                  {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Rank"
+              },
+              "rankingReason": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Ranking Reason"
+              },
+              "rankingSignals": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Ranking Signals"
+              },
+              "relevanceScore": {
+                "anyOf": [
+                  {
+                    "maximum": 1,
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Relevance Score"
+              },
+              "requiredUnits": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Required Units",
+                "type": "array"
+              },
+              "reviewDue": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Review Due"
+              },
+              "scope": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "GENERAL",
+                      "DATA_BOUND"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Scope"
+              },
+              "sources": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "$ref": "#/$defs/Source"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Sources"
+              },
+              "status": {
+                "enum": [
+                  "OK",
+                  "STALE",
+                  "WITHDRAWN",
+                  "EXPIRED",
+                  "NOT_FOUND",
+                  "NEEDS_EXPANSION"
+                ],
+                "title": "Status",
+                "type": "string"
+              },
+              "unitId": {
+                "title": "Unit Id",
+                "type": "string"
+              },
+              "versionId": {
+                "title": "Version Id",
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "versionId",
+              "unitId",
+              "checksum"
+            ],
+            "title": "EvidenceItem",
+            "type": "object"
+          },
+          "Source": {
+            "additionalProperties": false,
+            "properties": {
+              "accessedAt": {
+                "anyOf": [
+                  {
+                    "format": "date",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Accessed At"
+              },
+              "kind": {
+                "maxLength": 80,
+                "minLength": 1,
+                "title": "Kind",
+                "type": "string"
+              },
+              "lifecycleStatus": {
+                "default": "ACTIVE",
+                "enum": [
+                  "ACTIVE",
+                  "WITHDRAWN"
+                ],
+                "title": "Lifecycle Status",
+                "type": "string"
+              },
+              "publishedAt": {
+                "anyOf": [
+                  {
+                    "format": "date",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Published At"
+              },
+              "publisher": {
+                "maxLength": 300,
+                "minLength": 1,
+                "title": "Publisher",
+                "type": "string"
+              },
+              "reviewAfter": {
+                "format": "date",
+                "title": "Review After",
+                "type": "string"
+              },
+              "sourceId": {
+                "maxLength": 160,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+                "title": "Source Id",
+                "type": "string"
+              },
+              "title": {
+                "maxLength": 500,
+                "minLength": 1,
+                "title": "Title",
+                "type": "string"
+              },
+              "url": {
+                "anyOf": [
+                  {
+                    "maxLength": 2048,
+                    "pattern": "^https://",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Url"
+              },
+              "validThrough": {
+                "anyOf": [
+                  {
+                    "format": "date",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Valid Through"
+              },
+              "version": {
+                "anyOf": [
+                  {
+                    "maxLength": 100,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Version"
+              }
+            },
+            "required": [
+              "sourceId",
+              "kind",
+              "title",
+              "publisher",
+              "reviewAfter"
+            ],
+            "title": "Source",
+            "type": "object"
+          }
+        },
+        "$ref": "#/$defs/EvidenceBundleV1"
+      },
+      "path": "/internal/tools/v5/read_evidence",
+      "timeoutSeconds": 30
+    },
+    {
+      "description": "Knowledge Next lookup knowledge with lifecycle and exact Data binding validation.",
+      "progress": {
+        "capability": "knowledge.lookup",
+        "semanticRole": "EVIDENCE_DISCOVERY",
+        "templateKey": "knowledge.lookup",
+        "title": "按标识查找知识",
+        "runningSummaryTemplate": "正在{objective}。",
+        "processingTitle": "核对知识标识",
+        "processingSummaryTemplate": "Agent 正在根据“{objective}”的查找结果确定下一项读取动作。",
+        "outcomes": {
+          "evidence.candidates_found": {
+            "summary": "按精确条件找到 {candidateCount} 个候选知识单元。",
+            "factsSchema": {
+              "additionalProperties": false,
+              "properties": {"candidateCount": {"minimum": 1, "type": "integer"}},
+              "required": ["candidateCount"],
+              "type": "object"
+            }
+          },
+          "evidence.no_match": {
+            "summary": "未找到与该精确条件匹配的知识单元。",
+            "factsSchema": {
+              "additionalProperties": false,
+              "properties": {},
+              "required": [],
+              "type": "object"
+            }
+          }
+        }
+      },
+      "inputSchema": {
+        "$defs": {
+          "Budget": {
+            "additionalProperties": false,
+            "properties": {
+              "max_chars": {
+                "default": 16000,
+                "maximum": 32000,
+                "minimum": 1,
+                "title": "Max Chars",
+                "type": "integer"
+              },
+              "max_units": {
+                "default": 8,
+                "maximum": 16,
+                "minimum": 1,
+                "title": "Max Units",
+                "type": "integer"
+              }
+            },
+            "title": "Budget",
+            "type": "object"
+          },
+          "DataBinding": {
+            "additionalProperties": false,
+            "properties": {
+              "dataset_id": {
+                "maxLength": 160,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+                "title": "Dataset Id",
+                "type": "string"
+              },
+              "field_id": {
+                "anyOf": [
+                  {
+                    "pattern": "^f[0-9]+$",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Field Id"
+              },
+              "project_id": {
+                "maxLength": 160,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+                "title": "Project Id",
+                "type": "string"
+              },
+              "semantic_id": {
+                "maxLength": 160,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+                "title": "Semantic Id",
+                "type": "string"
+              },
+              "service_binding": {
+                "const": "data-primary",
+                "default": "data-primary",
+                "title": "Service Binding",
+                "type": "string"
+              },
+              "version_id": {
+                "maxLength": 160,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+                "title": "Version Id",
+                "type": "string"
+              }
+            },
+            "required": [
+              "project_id",
+              "dataset_id",
+              "version_id",
+              "semantic_id"
+            ],
+            "title": "DataBinding",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "binding": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/DataBinding"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "budget": {
+            "$ref": "#/$defs/Budget"
+          },
+          "key": {
+            "anyOf": [
+              {
+                "maxLength": 160,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Key"
+          }
+        },
+        "title": "Lookup",
+        "type": "object"
+      },
+      "name": "lookup_knowledge",
+      "outputSchema": {
+        "$defs": {
+          "DataBinding": {
+            "additionalProperties": false,
+            "properties": {
+              "datasetId": {
+                "maxLength": 160,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+                "title": "Dataset Id",
+                "type": "string"
+              },
+              "fieldId": {
+                "anyOf": [
+                  {
+                    "pattern": "^f[0-9]+$",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Field Id"
+              },
+              "projectId": {
+                "maxLength": 160,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+                "title": "Project Id",
+                "type": "string"
+              },
+              "semanticId": {
+                "maxLength": 160,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+                "title": "Semantic Id",
+                "type": "string"
+              },
+              "serviceBinding": {
+                "const": "data-primary",
+                "default": "data-primary",
+                "title": "Service Binding",
+                "type": "string"
+              },
+              "versionId": {
+                "maxLength": 160,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+                "title": "Version Id",
+                "type": "string"
+              }
+            },
+            "required": [
+              "projectId",
+              "datasetId",
+              "versionId",
+              "semanticId"
+            ],
+            "title": "DataBinding",
+            "type": "object"
+          },
+          "EvidenceBundleV1": {
+            "additionalProperties": false,
+            "properties": {
+              "budget": {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "title": "Budget",
+                "type": "object"
+              },
+              "coverage": {
+                "additionalProperties": true,
+                "title": "Coverage",
+                "type": "object"
+              },
+              "indexGeneration": {
+                "title": "Index Generation",
+                "type": "string"
+              },
+              "items": {
+                "items": {
+                  "$ref": "#/$defs/EvidenceItem"
+                },
+                "title": "Items",
+                "type": "array"
+              },
+              "knowledgeRevision": {
+                "title": "Knowledge Revision",
+                "type": "integer"
+              },
+              "observedAt": {
+                "title": "Observed At",
+                "type": "string"
+              },
+              "receiptId": {
+                "title": "Receipt Id",
+                "type": "string"
+              },
+              "schemaVersion": {
+                "const": "evidence-bundle.v1",
+                "default": "evidence-bundle.v1",
+                "title": "Schema Version",
+                "type": "string"
+              },
+              "status": {
+                "enum": [
+                  "OK",
+                  "NO_MATCH",
+                  "PARTIAL"
+                ],
+                "title": "Status",
+                "type": "string"
+              },
+              "timingsMs": {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "title": "Timings Ms",
+                "type": "object"
+              }
+            },
+            "required": [
+              "status",
+              "receiptId",
+              "knowledgeRevision",
+              "indexGeneration",
+              "observedAt",
+              "items",
+              "coverage",
+              "budget",
+              "timingsMs"
+            ],
+            "title": "EvidenceBundleV1",
+            "type": "object"
+          },
+          "EvidenceItem": {
+            "additionalProperties": false,
+            "properties": {
+              "bindingMatch": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "GENERAL",
+                      "EXACT",
+                      "NOT_CHECKED",
+                      "MISMATCH"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Binding Match"
+              },
+              "bindings": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "$ref": "#/$defs/DataBinding"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Bindings"
+              },
+              "bindingsVerifiedAt": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Bindings Verified At"
+              },
+              "checksum": {
+                "title": "Checksum",
+                "type": "string"
+              },
+              "content": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Content"
+              },
+              "documentTitle": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Document Title"
+              },
+              "evidenceId": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Evidence Id"
+              },
+              "knowledgeId": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Knowledge Id"
+              },
+              "lifecycleRevision": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Lifecycle Revision"
+              },
+              "locator": {
+                "anyOf": [
+                  {
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "integer"
+                        }
+                      ]
+                    },
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Locator"
+              },
+              "rank": {
+                "anyOf": [
+                  {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Rank"
+              },
+              "rankingReason": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Ranking Reason"
+              },
+              "rankingSignals": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Ranking Signals"
+              },
+              "relevanceScore": {
+                "anyOf": [
+                  {
+                    "maximum": 1,
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Relevance Score"
+              },
+              "requiredUnits": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Required Units",
+                "type": "array"
+              },
+              "reviewDue": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Review Due"
+              },
+              "scope": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "GENERAL",
+                      "DATA_BOUND"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Scope"
+              },
+              "sources": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "$ref": "#/$defs/Source"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Sources"
+              },
+              "status": {
+                "enum": [
+                  "OK",
+                  "STALE",
+                  "WITHDRAWN",
+                  "EXPIRED",
+                  "NOT_FOUND",
+                  "NEEDS_EXPANSION"
+                ],
+                "title": "Status",
+                "type": "string"
+              },
+              "unitId": {
+                "title": "Unit Id",
+                "type": "string"
+              },
+              "versionId": {
+                "title": "Version Id",
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "versionId",
+              "unitId",
+              "checksum"
+            ],
+            "title": "EvidenceItem",
+            "type": "object"
+          },
+          "Source": {
+            "additionalProperties": false,
+            "properties": {
+              "accessedAt": {
+                "anyOf": [
+                  {
+                    "format": "date",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Accessed At"
+              },
+              "kind": {
+                "maxLength": 80,
+                "minLength": 1,
+                "title": "Kind",
+                "type": "string"
+              },
+              "lifecycleStatus": {
+                "default": "ACTIVE",
+                "enum": [
+                  "ACTIVE",
+                  "WITHDRAWN"
+                ],
+                "title": "Lifecycle Status",
+                "type": "string"
+              },
+              "publishedAt": {
+                "anyOf": [
+                  {
+                    "format": "date",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Published At"
+              },
+              "publisher": {
+                "maxLength": 300,
+                "minLength": 1,
+                "title": "Publisher",
+                "type": "string"
+              },
+              "reviewAfter": {
+                "format": "date",
+                "title": "Review After",
+                "type": "string"
+              },
+              "sourceId": {
+                "maxLength": 160,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+                "title": "Source Id",
+                "type": "string"
+              },
+              "title": {
+                "maxLength": 500,
+                "minLength": 1,
+                "title": "Title",
+                "type": "string"
+              },
+              "url": {
+                "anyOf": [
+                  {
+                    "maxLength": 2048,
+                    "pattern": "^https://",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Url"
+              },
+              "validThrough": {
+                "anyOf": [
+                  {
+                    "format": "date",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Valid Through"
+              },
+              "version": {
+                "anyOf": [
+                  {
+                    "maxLength": 100,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Version"
+              }
+            },
+            "required": [
+              "sourceId",
+              "kind",
+              "title",
+              "publisher",
+              "reviewAfter"
+            ],
+            "title": "Source",
+            "type": "object"
+          }
+        },
+        "$ref": "#/$defs/EvidenceBundleV1"
+      },
+      "path": "/internal/tools/v5/lookup_knowledge",
+      "timeoutSeconds": 30
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "operator-smoke-test.v1",
+  "operator": {
+    "id": "groundwater.porous.result_render",
+    "version": "1.0.0"
+  },
+  "inputs": {
+    "result_package": {
+      "fixtureId": "transfer.fields"
+    }
+  },
+  "parameters": {},
+  "expectedOutputs": {
+    "rendered_figure": {
+      "kind": "artifact",
+      "mediaType": "image/png",
+      "format": "png"
+    },
+    "vtu_pvd_package": {
+      "kind": "artifact",
+      "mediaType": "application/zip",
+      "format": "zip"
+    },
+    "metadata": {
+      "kind": "value"
+    },
+    "run_receipt": {
+      "kind": "artifact",
+      "mediaType": "application/json",
+      "format": "json"
+    }
+  }
+}

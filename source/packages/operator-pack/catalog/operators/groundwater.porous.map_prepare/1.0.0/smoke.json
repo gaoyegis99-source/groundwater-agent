@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "operator-smoke-test.v1",
+  "operator": {
+    "id": "groundwater.porous.map_prepare",
+    "version": "1.0.0"
+  },
+  "inputs": {
+    "map_input": {
+      "fixtureId": "transfer.fields"
+    }
+  },
+  "parameters": {},
+  "expectedOutputs": {
+    "geospatial_output": {
+      "kind": "artifact",
+      "mediaType": "image/tiff",
+      "format": "geotiff"
+    },
+    "crs_attribution_metadata": {
+      "kind": "value"
+    },
+    "run_receipt": {
+      "kind": "artifact",
+      "mediaType": "application/json",
+      "format": "json"
+    }
+  }
+}

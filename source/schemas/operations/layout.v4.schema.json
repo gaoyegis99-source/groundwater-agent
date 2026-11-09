@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://groundwater.local/schemas/operations/layout.v4.schema.json",
+  "title": "Groundwater research project layout v4",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "project", "source", "lifecycle", "docker", "ports", "accounts", "shared_runtime_paths", "shared_docker_resources"],
+  "properties": {
+    "schema_version": {"const": 4},
+    "project": {"const": "groundwater-v6"},
+    "source": {"const": "source"},
+    "worktrees": {"type": "object", "additionalProperties": {"type": "string", "pattern": "^worktrees/[A-Za-z0-9._-]+$"}},
+    "lifecycle": {
+      "type": "object", "additionalProperties": false,
+      "required": ["config", "data", "state", "cache", "runtime"],
+      "properties": {
+        "config": {"const": "xdg-config"}, "data": {"const": "xdg-data"},
+        "state": {"const": "xdg-state"}, "cache": {"const": "xdg-cache"},
+        "runtime": {"const": "xdg-runtime"}
+      }
+    },
+    "docker": {
+      "type": "object", "additionalProperties": false,
+      "required": ["data_root", "socket", "default_address_pool", "network_size", "authoritative_volumes"],
+      "properties": {
+        "data_root": {"const": "xdg-cache/docker"}, "socket": {"const": "docker.sock"},
+        "default_address_pool": {"type": "string"},
+        "network_size": {"type": "integer", "minimum": 16, "maximum": 28},
+        "authoritative_volumes": {"const": false}
+      }
+    },
+    "ports": {
+      "type": "object", "additionalProperties": false, "required": ["research"],
+      "properties": {"research": {"type": "object", "additionalProperties": false, "required": ["gateway"], "properties": {"gateway": {"const": 28186}}}}
+    },
+    "accounts": {
+      "type": "object", "additionalProperties": false, "required": ["research"],
+      "properties": {"research": {"type": "string", "minLength": 1}}
+    },
+    "shared_runtime_paths": {"type": "array", "maxItems": 0},
+    "shared_docker_resources": {"type": "array", "maxItems": 0}
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "description": "Calculate the original Mann-Kendall test with tie correction and a Theil-Sen slope.",
+  "domain": "statistics",
+  "errorCodes": [
+    "DUPLICATE_TIMESTAMP",
+    "FIELD_REQUIRED",
+    "INPUT_METADATA_INVALID",
+    "NON_NUMERIC_VALUE",
+    "OUTPUT_VALIDATION_FAILED",
+    "TIMESTAMP_AMBIGUOUS",
+    "TIMESTAMP_INVALID",
+    "TIMEZONE_UNSUPPORTED"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-statistics-mann_kendall",
+      "inputs": {
+        "observations": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "statistics.mann_kendall",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "alpha": 0.05,
+        "groupField": "station",
+        "timeField": "time",
+        "valueField": "value"
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "statistics.mann_kendall",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "csv",
+        "parquet",
+        "arrow-ipc-file"
+      ],
+      "mediaTypes": [
+        "text/csv",
+        "application/vnd.apache.parquet",
+        "application/vnd.apache.arrow.file"
+      ],
+      "name": "observations",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "parquet"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "trends"
+    },
+    {
+      "kind": "value",
+      "name": "summary",
+      "schema": {
+        "type": "object"
+      }
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "alpha": {
+        "default": 0.05,
+        "exclusiveMaximum": 1,
+        "exclusiveMinimum": 0,
+        "type": "number"
+      },
+      "groupField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "timeField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "valueField": {
+        "minLength": 1,
+        "type": "string"
+      }
+    },
+    "required": [
+      "groupField",
+      "timeField",
+      "valueField"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "statistics",
+    "statistics",
+    "mann_kendall"
+  ],
+  "timeoutSeconds": 1800,
+  "title": "Mann-Kendall trend test",
+  "version": "1.0.0"
+}

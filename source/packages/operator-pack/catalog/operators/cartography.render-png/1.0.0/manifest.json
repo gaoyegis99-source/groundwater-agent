@@ -1,0 +1,81 @@
+{
+  "description": "Render GeoJSON features or the first GeoTIFF/COG raster band to a 1024 x 768 PNG with coordinate axes and a legend. No reprojection or network access.",
+  "domain": "cartography",
+  "errorCodes": [
+    "CARTOGRAPHY_SOURCE_INVALID",
+    "CARTOGRAPHY_FIELD_INVALID",
+    "CARTOGRAPHY_FORMAT_UNSUPPORTED",
+    "CRS_REQUIRED",
+    "ROTATED_GRID_UNSUPPORTED"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-cartography-render",
+      "inputs": {
+        "data": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "cartography.render-png",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "title": "Monitoring values",
+        "valueField": "value"
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "cartography.render-png",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "geojson",
+        "geotiff",
+        "cog"
+      ],
+      "mediaTypes": [
+        "application/geo+json",
+        "image/tiff"
+      ],
+      "name": "data",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "png"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "image/png"
+      ],
+      "name": "image"
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "title": {
+        "type": "string"
+      },
+      "valueField": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "cartography",
+    "png"
+  ],
+  "timeoutSeconds": 1800,
+  "title": "Render a static PNG map",
+  "version": "1.0.0"
+}

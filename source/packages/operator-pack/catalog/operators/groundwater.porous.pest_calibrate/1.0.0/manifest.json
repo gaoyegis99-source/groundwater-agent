@@ -1,0 +1,115 @@
+{
+  "id": "groundwater.porous.pest_calibrate",
+  "version": "1.0.0",
+  "title": "Pest Calibrate",
+  "description": "Execute fixed third-party operation pest.calibrate through deployment service binding porous-groundwater.",
+  "domain": "groundwater",
+  "tags": [
+    "groundwater",
+    "third-party",
+    "remote-http",
+    "pest.calibrate"
+  ],
+  "runtime": "remote_http",
+  "remoteBinding": {
+    "serviceId": "porous-groundwater",
+    "operationType": "pest.calibrate"
+  },
+  "timeoutSeconds": 7200,
+  "memoryLimitBytes": 1073741824,
+  "inputs": [
+    {
+      "name": "model_package",
+      "cardinality": "one",
+      "required": true,
+      "mediaTypes": [
+        "application/zip"
+      ],
+      "formats": [
+        "zip"
+      ]
+    },
+    {
+      "name": "observations",
+      "cardinality": "one",
+      "required": true,
+      "mediaTypes": [
+        "application/json"
+      ],
+      "formats": [
+        "json"
+      ]
+    }
+  ],
+  "parametersSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {},
+    "required": []
+  },
+  "outputs": [
+    {
+      "name": "calibrated_parameters",
+      "kind": "value",
+      "schema": {
+        "type": "object"
+      }
+    },
+    {
+      "name": "residual_diagnostics",
+      "kind": "value",
+      "schema": {
+        "type": "object"
+      }
+    },
+    {
+      "name": "calibration_package",
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/zip"
+      ],
+      "formats": [
+        "zip"
+      ]
+    },
+    {
+      "name": "run_receipt",
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/json"
+      ],
+      "formats": [
+        "json"
+      ]
+    }
+  ],
+  "errorCodes": [
+    "REMOTE_AUTHENTICATION_FAILED",
+    "REMOTE_BINDING_INVALID",
+    "REMOTE_INTEGRITY_FAILED",
+    "REMOTE_OPERATION_FAILED",
+    "REMOTE_PROTOCOL_INVALID",
+    "REMOTE_SUBMISSION_UNCERTAIN",
+    "REMOTE_VERSION_MISMATCH"
+  ],
+  "examples": [
+    {
+      "schemaVersion": "operator-execution-request.v1",
+      "clientRequestId": "example-groundwater-porous-pest_calibrate",
+      "operator": {
+        "id": "groundwater.porous.pest_calibrate",
+        "version": "1.0.0"
+      },
+      "mode": "ASYNC",
+      "inputs": {
+        "model_package": {
+          "artifactId": "art_example_01"
+        },
+        "observations": {
+          "artifactId": "art_example_02"
+        }
+      },
+      "parameters": {}
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+[Unit]
+Description=Groundwater V6 consistent backup for %i
+Requires=groundwater-v6@%i.service
+After=groundwater-v6@%i.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=@ENV_FILE@
+ExecStart=@LAUNCHER@ backup %i
+TimeoutStartSec=14400

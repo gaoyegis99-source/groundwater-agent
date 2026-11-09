@@ -1,0 +1,25 @@
+{
+  "$id": "standard-scaler-fields.v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "fields": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 1024,
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "schemaVersion": {
+      "const": "standard-scaler-fields.v1"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "fields"
+  ],
+  "type": "object"
+}

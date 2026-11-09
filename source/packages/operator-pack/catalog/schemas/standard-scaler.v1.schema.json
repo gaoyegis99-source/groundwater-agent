@@ -1,0 +1,52 @@
+{
+  "$id": "standard-scaler.v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "features": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "count": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "field": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "mean": {
+            "type": "number"
+          },
+          "scale": {
+            "exclusiveMinimum": 0,
+            "type": "number"
+          },
+          "variance": {
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "field",
+          "mean",
+          "variance",
+          "scale",
+          "count"
+        ],
+        "type": "object"
+      },
+      "maxItems": 1024,
+      "minItems": 1,
+      "type": "array"
+    },
+    "schemaVersion": {
+      "const": "standard-scaler.v1"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "features"
+  ],
+  "type": "object"
+}

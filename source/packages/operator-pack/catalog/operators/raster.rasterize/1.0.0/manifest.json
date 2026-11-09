@@ -1,0 +1,170 @@
+{
+  "description": "Rasterize vector features operator.",
+  "domain": "raster",
+  "errorCodes": [
+    "CRS_REQUIRED",
+    "LAYER_REQUIRED",
+    "FIELD_REQUIRED",
+    "EXTENT_INVALID",
+    "RASTER_INVALID",
+    "BLOCKED_BY_ENVIRONMENT"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-raster-rasterize",
+      "inputs": {
+        "vector": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "raster.rasterize",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "burnValue": 1,
+        "extentMaxX": 100,
+        "extentMaxY": 100,
+        "extentMinX": 0,
+        "extentMinY": 0,
+        "noData": 0,
+        "outputType": "Byte",
+        "pixelSizeX": 10,
+        "pixelSizeY": 10
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "raster.rasterize",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "flatgeobuf",
+        "geojson",
+        "geopackage",
+        "geoparquet",
+        "parquet"
+      ],
+      "mediaTypes": [
+        "application/geopackage+sqlite3",
+        "application/geo+json",
+        "application/flatgeobuf",
+        "application/vnd.apache.parquet"
+      ],
+      "name": "vector",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "raster"
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "oneOf": [
+      {
+        "not": {
+          "required": [
+            "burnValue"
+          ]
+        },
+        "required": [
+          "burnField"
+        ]
+      },
+      {
+        "not": {
+          "required": [
+            "burnField"
+          ]
+        },
+        "required": [
+          "burnValue"
+        ]
+      }
+    ],
+    "properties": {
+      "allTouched": {
+        "default": false,
+        "type": "boolean"
+      },
+      "burnField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "burnValue": {
+        "type": "number"
+      },
+      "extentMaxX": {
+        "type": "number"
+      },
+      "extentMaxY": {
+        "type": "number"
+      },
+      "extentMinX": {
+        "type": "number"
+      },
+      "extentMinY": {
+        "type": "number"
+      },
+      "layer": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "noData": {
+        "type": "number"
+      },
+      "outputType": {
+        "enum": [
+          "Byte",
+          "UInt16",
+          "Int16",
+          "UInt32",
+          "Int32",
+          "Float32",
+          "Float64"
+        ],
+        "type": "string"
+      },
+      "pixelSizeX": {
+        "exclusiveMinimum": 0,
+        "type": "number"
+      },
+      "pixelSizeY": {
+        "exclusiveMinimum": 0,
+        "type": "number"
+      }
+    },
+    "required": [
+      "extentMinX",
+      "extentMinY",
+      "extentMaxX",
+      "extentMaxY",
+      "pixelSizeX",
+      "pixelSizeY",
+      "outputType",
+      "noData"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "raster",
+    "rasterize"
+  ],
+  "timeoutSeconds": 3600,
+  "title": "Rasterize vector features",
+  "version": "1.0.0"
+}

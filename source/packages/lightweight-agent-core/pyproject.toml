@@ -1,0 +1,139 @@
+[build-system]
+requires = ["setuptools>=75.8.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "platform-lightweight-agent-core"
+version = "0.2.0"
+description = "Embeddable, dependency-light workflow Agent kernel for V6"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.optional-dependencies]
+authoring = ["copier==9.19.1", "jsonschema==4.26.0"]
+evaluation = [
+  "pydantic-evals==1.107.9",
+  "genai-prices==0.0.73",
+  "anyio==4.15.1",
+  "jsonschema==4.26.0",
+  "immutables==0.21",
+]
+openai-agents = ["openai-agents==0.22.3", "jsonschema==4.26.0", "socksio==1.0.0"]
+pydantic-ai = ["pydantic-ai-slim==1.107.9", "jsonschema==4.26.0"]
+pydantic-ai-anthropic = ["pydantic-ai-slim[anthropic]==1.107.9", "jsonschema==4.26.0"]
+pydantic-ai-google = ["pydantic-ai-slim[google]==1.107.9", "jsonschema==4.26.0"]
+pydantic-ai-openai = ["pydantic-ai-slim[openai]==1.107.9", "jsonschema==4.26.0"]
+workflow = ["anyio==4.15.1", "jsonschema==4.26.0", "immutables==0.21"]
+yaml = ["PyYAML>=6,<7"]
+web = ["fastapi>=0.115,<1", "sse-starlette==3.5.1", "uvicorn>=0.30,<1"]
+
+[project.scripts]
+platform-agent-workflow = "platform_lightweight_agent.cli:main"
+
+[dependency-groups]
+architecture = ["import-linter==2.15"]
+development = ["jsonpatch==1.35", "pytest==8.3.4", "ruff==0.15.16"]
+invariant-testing = ["hypothesis==6.170.9"]
+verification = [
+    {include-group = "development"},
+    {include-group = "invariant-testing"},
+    {include-group = "architecture"},
+]
+browser-testing = ["playwright==1.63.0"]
+
+[tool.importlinter]
+root_package = "platform_lightweight_agent"
+
+[[tool.importlinter.contracts]]
+name = "Foundation modules do not depend on orchestration or adapters"
+type = "forbidden"
+source_modules = [
+  "platform_lightweight_agent.spec",
+  "platform_lightweight_agent.journal",
+  "platform_lightweight_agent.files",
+  "platform_lightweight_agent.workflow_transitions",
+  "platform_lightweight_agent.runtime_contracts",
+  "platform_lightweight_agent.runtime_ports",
+  "platform_lightweight_agent.runtime_services",
+  "platform_lightweight_agent.state_edits",
+]
+forbidden_modules = [
+  "platform_lightweight_agent.cli",
+  "platform_lightweight_agent.domain",
+  "platform_lightweight_agent._driver_common",
+  "platform_lightweight_agent.driver_openai_agents",
+  "platform_lightweight_agent.driver_pydantic_ai",
+  "platform_lightweight_agent.drivers",
+  "platform_lightweight_agent.engine",
+  "platform_lightweight_agent.evaluation",
+  "platform_lightweight_agent.host",
+  "platform_lightweight_agent.portability",
+  "platform_lightweight_agent.runtime",
+  "platform_lightweight_agent.web",
+  "platform_lightweight_agent.workflow_v3",
+]
+as_packages = false
+allow_indirect_imports = true
+
+[[tool.importlinter.contracts]]
+name = "Framework adapters do not own host or authoring assembly"
+type = "forbidden"
+allow_indirect_imports = true
+source_modules = [
+  "platform_lightweight_agent.adapters",
+  "platform_lightweight_agent._driver_common",
+  "platform_lightweight_agent.driver_openai_agents",
+  "platform_lightweight_agent.driver_pydantic_ai",
+  "platform_lightweight_agent.drivers",
+]
+forbidden_modules = [
+  "platform_lightweight_agent.cli",
+  "platform_lightweight_agent.domain",
+  "platform_lightweight_agent.evaluation",
+  "platform_lightweight_agent.host",
+  "platform_lightweight_agent.portability",
+  "platform_lightweight_agent.runtime",
+  "platform_lightweight_agent.web",
+]
+as_packages = false
+
+[[tool.importlinter.contracts]]
+name = "Async scheduler does not own adapters or authoring assembly"
+type = "forbidden"
+allow_indirect_imports = true
+source_modules = ["platform_lightweight_agent.workflow_v3"]
+forbidden_modules = [
+  "platform_lightweight_agent.adapters",
+  "platform_lightweight_agent.cli",
+  "platform_lightweight_agent.domain",
+  "platform_lightweight_agent._driver_common",
+  "platform_lightweight_agent.driver_openai_agents",
+  "platform_lightweight_agent.driver_pydantic_ai",
+  "platform_lightweight_agent.drivers",
+  "platform_lightweight_agent.evaluation",
+  "platform_lightweight_agent.host",
+  "platform_lightweight_agent.portability",
+  "platform_lightweight_agent.runtime",
+  "platform_lightweight_agent.web",
+]
+as_packages = false
+
+[tool.setuptools.packages.find]
+where = ["src"]
+exclude = ["*.__pycache__", "*.__pycache__.*"]
+
+[tool.setuptools.package-data]
+platform_lightweight_agent = [
+    "console/*.html",
+    "console/*.js",
+    "console/*.css",
+    "templates/**/*.json",
+    "templates/**/*.md",
+    "templates/**/*.md.jinja",
+    "templates/**/*.py",
+    "templates/**/*.py.jinja",
+    "templates/**/*.toml",
+    "templates/**/*.toml.jinja",
+    "templates/**/*.yml",
+]

@@ -1,0 +1,36 @@
+{
+  "$id": "supervised-window-fields.v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "carryFields": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 1024,
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "featureFields": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 1024,
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "schemaVersion": {
+      "const": "supervised-window-fields.v1"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "featureFields",
+    "carryFields"
+  ],
+  "type": "object"
+}

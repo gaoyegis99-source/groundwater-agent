@@ -1,0 +1,103 @@
+{
+  "description": "Extract vector features by extent operator.",
+  "domain": "vector",
+  "errorCodes": [
+    "CRS_REQUIRED",
+    "LAYER_REQUIRED",
+    "EXTENT_INVALID",
+    "INVALID_GEOMETRY",
+    "BLOCKED_BY_ENVIRONMENT"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-vector-extract_by_extent",
+      "inputs": {
+        "vector": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "vector.extract_by_extent",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "extentMaxX": 1.0,
+        "extentMaxY": 1.0,
+        "extentMinX": 1.0,
+        "extentMinY": 1.0
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "vector.extract_by_extent",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "flatgeobuf",
+        "geojson",
+        "geopackage",
+        "geoparquet",
+        "parquet"
+      ],
+      "mediaTypes": [
+        "application/geopackage+sqlite3",
+        "application/geo+json",
+        "application/flatgeobuf",
+        "application/vnd.apache.parquet"
+      ],
+      "name": "vector",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "geopackage"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/geopackage+sqlite3"
+      ],
+      "name": "vector"
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "extentMaxX": {
+        "type": "number"
+      },
+      "extentMaxY": {
+        "type": "number"
+      },
+      "extentMinX": {
+        "type": "number"
+      },
+      "extentMinY": {
+        "type": "number"
+      },
+      "layer": {
+        "minLength": 1,
+        "type": "string"
+      }
+    },
+    "required": [
+      "extentMinX",
+      "extentMinY",
+      "extentMaxX",
+      "extentMaxY"
+    ],
+    "type": "object"
+  },
+  "runtime": "qgis",
+  "tags": [
+    "vector",
+    "extract-by-extent"
+  ],
+  "timeoutSeconds": 3600,
+  "title": "Extract vector features by extent",
+  "version": "1.0.0"
+}

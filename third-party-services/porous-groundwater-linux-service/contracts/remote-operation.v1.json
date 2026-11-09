@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:groundwater:porous:remote-operation.v1",
+  "title": "Porous groundwater fixed remote operations",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["operationType", "clientRequestId", "inputs", "parameters"],
+  "properties": {
+    "operationType": {
+      "enum": [
+        "model.compile",
+        "flow_transport.simulate",
+        "pest.calibrate",
+        "scenario.compare",
+        "result.analyze",
+        "result.render",
+        "map.prepare",
+        "inversion.train",
+        "inversion.sample",
+        "agri.invert"
+      ]
+    },
+    "clientRequestId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/artifact"}
+    },
+    "parameters": {"type": "object"}
+  },
+  "$defs": {
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifactId", "mediaType", "format", "sizeBytes", "sha256"],
+      "properties": {
+        "artifactId": {"type": "string"},
+        "mediaType": {"type": "string", "minLength": 1},
+        "format": {"type": "string", "minLength": 1},
+        "sizeBytes": {"type": "integer", "minimum": 1},
+        "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+      }
+    }
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "operator-smoke-test.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "operator", "inputs", "parameters", "expectedOutputs"],
+  "properties": {
+    "schemaVersion": {"const": "operator-smoke-test.v1"},
+    "operator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"}
+      }
+    },
+    "inputs": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "oneOf": [
+          {"$ref": "#/$defs/fixture"},
+          {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/fixture"}}
+        ]
+      }
+    },
+    "parameters": {"type": "object"},
+    "expectedOutputs": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {"$ref": "#/$defs/output"}
+    }
+  },
+  "$defs": {
+    "fixture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fixtureId"],
+      "properties": {"fixtureId": {"type": "string", "minLength": 1}}
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": {"enum": ["artifact", "value"]},
+        "mediaType": {"type": "string"},
+        "format": {"type": "string"}
+      }
+    }
+  }
+}

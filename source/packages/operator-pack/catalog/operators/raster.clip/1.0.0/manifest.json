@@ -1,0 +1,104 @@
+{
+  "description": "Clip raster operator.",
+  "domain": "raster",
+  "errorCodes": [
+    "CRS_REQUIRED",
+    "CRS_MISMATCH",
+    "LAYER_REQUIRED",
+    "EMPTY_CLIP_RESULT"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-raster-clip",
+      "inputs": {
+        "mask": {
+          "artifactId": "art_example_02"
+        },
+        "raster": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "raster.clip",
+        "version": "1.0.0"
+      },
+      "parameters": {},
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "raster.clip",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "raster",
+      "required": true
+    },
+    {
+      "cardinality": "one",
+      "formats": [
+        "flatgeobuf",
+        "geojson",
+        "geopackage",
+        "geoparquet",
+        "parquet"
+      ],
+      "mediaTypes": [
+        "application/geopackage+sqlite3",
+        "application/geo+json",
+        "application/flatgeobuf",
+        "application/vnd.apache.parquet"
+      ],
+      "name": "mask",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "raster"
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "cropToCutline": {
+        "default": true,
+        "type": "boolean"
+      },
+      "maskLayer": {
+        "type": "string"
+      },
+      "noData": {
+        "type": [
+          "number",
+          "null"
+        ]
+      }
+    },
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "raster",
+    "clip"
+  ],
+  "timeoutSeconds": 1800,
+  "title": "Clip raster",
+  "version": "1.0.0"
+}

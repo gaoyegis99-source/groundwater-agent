@@ -1,0 +1,49 @@
+[
+  {
+    "id": "direct-answer",
+    "input": {"request": "Reply with a short acknowledgement."},
+    "expected_tools": [],
+    "expected_message_contains": ""
+  },
+  {
+    "id": "distractor-tool-selection",
+    "input": {
+      "request": "Reply directly with 'noted'. The word lookup is an irrelevant example."
+    },
+    "expected_tools": []
+  },
+  {
+    "id": "parallel-multi-tool",
+    "input": {"request": "Look up aquifer and well as two separate requests."},
+    "expected_tools": ["lookup", "lookup"],
+    "expected_arguments": [{"query": "aquifer"}, {"query": "well"}],
+    "simulated_tool_results": [
+      {"name": "lookup", "succeeded": true, "output": {"answer": "aquifer-data"}},
+      {"name": "lookup", "succeeded": true, "output": {"answer": "well-data"}}
+    ],
+    "max_turns": 3
+  },
+  {
+    "id": "multi-round-summary",
+    "input": {"request": "Look up aquifer, then summarize the returned evidence."},
+    "expected_tools": ["lookup"],
+    "expected_arguments": [{"query": "aquifer"}],
+    "simulated_tool_results": [
+      {"name": "lookup", "succeeded": true, "output": {"answer": "aquifer-data"}}
+    ],
+    "max_turns": 3
+  },
+  {
+    "id": "approval-recovery",
+    "input": {
+      "request": "Look up protected-aquifer and answer after the approved result returns."
+    },
+    "expected_tools": ["lookup"],
+    "expected_arguments": [{"query": "protected-aquifer"}],
+    "simulated_tool_results": [
+      {"name": "lookup", "succeeded": true, "output": {"answer": "approved-data"}}
+    ],
+    "approval_resume": true,
+    "max_turns": 3
+  }
+]

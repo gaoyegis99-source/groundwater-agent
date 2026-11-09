@@ -1,0 +1,97 @@
+{
+  "description": "Select, order, rename, and strictly cast columns from a declarative rule artifact.",
+  "domain": "table",
+  "errorCodes": [
+    "FIELD_REQUIRED",
+    "FORMAT_UNSUPPORTED",
+    "HEADER_INVALID",
+    "OUTPUT_FIELD_CONFLICT",
+    "OUTPUT_ROW_LIMIT_EXCEEDED",
+    "OUTPUT_VALIDATION_FAILED",
+    "PARAMETER_INVALID",
+    "RULESET_INVALID",
+    "TYPE_CAST_FAILED"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-table-project",
+      "inputs": {
+        "data": {
+          "artifactId": "art_example_01"
+        },
+        "rules": {
+          "artifactId": "art_example_99"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "table.project",
+        "version": "1.0.0"
+      },
+      "parameters": {},
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "table.project",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "csv",
+        "parquet",
+        "arrow-ipc-file"
+      ],
+      "mediaTypes": [
+        "text/csv",
+        "application/vnd.apache.parquet",
+        "application/vnd.apache.arrow.file"
+      ],
+      "name": "data",
+      "required": true
+    },
+    {
+      "cardinality": "one",
+      "formats": [
+        "json"
+      ],
+      "mediaTypes": [
+        "application/json"
+      ],
+      "name": "rules",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "parquet"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "data"
+    },
+    {
+      "kind": "value",
+      "name": "summary",
+      "schema": {
+        "type": "object"
+      }
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {},
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "table",
+    "project"
+  ],
+  "timeoutSeconds": 1200,
+  "title": "Project and cast table columns",
+  "version": "1.0.0"
+}

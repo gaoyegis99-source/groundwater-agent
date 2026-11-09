@@ -1,0 +1,2153 @@
+{
+  "operators": {
+    "cartography.render-png@1.0.0": {
+      "implementationRevision": "sha256:19666de82d2e1207081806cbe3e38761c90882b46ea1eed34b4bf8f346befe71",
+      "sourceDigest": "sha256:840f1540cc433f705b6903d95e041ea003358e006ffc449c1a4f0ef0c29c4737",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/cartography.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "crs.reproject@1.0.0": {
+      "implementationRevision": "sha256:e8f2d5e00d32a55b4b97c4af5ba43ec7d5a95fe9152d4f96cda4bc83a57f3fa7",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "data.convert@1.0.0": {
+      "implementationRevision": "sha256:4c1d632e67c0ed5ab6d789644395855e2619828a9f61c8a9127a7511cb5cca60",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "data.inspect@1.0.0": {
+      "implementationRevision": "sha256:464a471bff1151f163f7b285ed91d7e9ed510f2ec3e0bc2c459b55f2a4b3825f",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "document.chunk@1.0.0": {
+      "implementationRevision": "sha256:2deb06e8f76ba74f0ed1f463bdc1e205862ac0ab30af4c874a092e54ed76afc0",
+      "sourceDigest": "sha256:138c82cc560038106e71eb32fbde07bb88cddf3151ee2c81e9f45f3b68280e9c",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/document_chunk.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "document.text_extract@1.0.0": {
+      "implementationRevision": "sha256:0c4b82506366a60bb891fb48c69983c7c772f2474add8a4de00d63f123e7bd7a",
+      "sourceDigest": "sha256:63a89dbc9107e31bfbe2d3ba91a9d080441132dce5ef4f865c1f177d94c23102",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/document_text_extract.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/pdf_text_common_v1.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "geometry.repair@1.0.0": {
+      "implementationRevision": "sha256:b9dfa616d306c9ea2837c8c449f1494ca3a7dc856fbcc1bf248b2916ccfe2cd7",
+      "sourceDigest": "sha256:9a321b576741d1290d8dfd2a1504954da6bc262e66778d3a579e0c13f078c690",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/qgis.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "geometry.validate@1.0.0": {
+      "implementationRevision": "sha256:dd61ff4881b3d95c0c455fe16c877770eb0d659bc6c2b4d07f83e8425ebdf3ed",
+      "sourceDigest": "sha256:9a321b576741d1290d8dfd2a1504954da6bc262e66778d3a579e0c13f078c690",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/qgis.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "groundwater.darcy_velocity@1.0.0": {
+      "implementationRevision": "sha256:f5501ed4c6051a7f90ce2adfbe636370f53af007bdc26b9dcbdd8e8e86cbdc25",
+      "sourceDigest": "sha256:c471142d9733395f7390c8258be768362d503be1e8da45d0b0540b2ab00b8db3",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/darcy_velocity.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/groundwater.py",
+        "src/moperators/operators/groundwater_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "groundwater.drawdown.calculate@1.0.0": {
+      "implementationRevision": "sha256:5d3088b59ea925f9c2fd61c5ec0e56920bbeb56f62590cfbc26274483ade8fc6",
+      "sourceDigest": "sha256:27e8557c5a9ae74921caaadfb5ba15b0dac390bec25972d63a2cef954f5e4a51",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/groundwater_drawdown.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "groundwater.head.calculate@1.0.0": {
+      "implementationRevision": "sha256:b87b360cdd52ad56d249379d80d172c5d1bed4b355f6d44c0fbe8ef2216b212c",
+      "sourceDigest": "sha256:e9d369fe1eb3b9816654a39158c001ffd24b733990796867719b62d74bb3f332",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/analysis_common.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/head_calculate.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "groundwater.hydraulic_gradient@1.0.0": {
+      "implementationRevision": "sha256:1de544e274524fbe222e89df729c8b0ba1acce35662c7d4abde3cec0f9770224",
+      "sourceDigest": "sha256:30a2be5f811f1a2485438ac048e81647e10ab109522b29d99bca1d2f040a703e",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/groundwater.py",
+        "src/moperators/operators/groundwater_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/hydraulic_gradient.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "groundwater.porous.agri_invert@1.0.0": {
+      "implementationRevision": "sha256:fade4173150651c3e95ff02642109d2d696bc601f1a1e32887147b0cdf64c4ae",
+      "sourceDigest": "sha256:de8d986d700de9ac206bd344fc5fc7f7c9249148e99bda2ea15ec1a959086cf7",
+      "sourceFiles": [
+        "src/moperators/catalog.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "groundwater.porous.flow_transport_simulate@1.0.0": {
+      "implementationRevision": "sha256:9a3c264a56c4268afeaf0bdad6041569aa4ea5c47e1f1904565b154dd01ed217",
+      "sourceDigest": "sha256:de8d986d700de9ac206bd344fc5fc7f7c9249148e99bda2ea15ec1a959086cf7",
+      "sourceFiles": [
+        "src/moperators/catalog.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "groundwater.porous.inversion_sample@1.0.0": {
+      "implementationRevision": "sha256:3ecf9280f6aae916bba5eeff398fda671a38727a5d0f0759ecec58a362ef03b8",
+      "sourceDigest": "sha256:de8d986d700de9ac206bd344fc5fc7f7c9249148e99bda2ea15ec1a959086cf7",
+      "sourceFiles": [
+        "src/moperators/catalog.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "groundwater.porous.inversion_train@1.0.0": {
+      "implementationRevision": "sha256:c7fe5adff5b339065c124512c9392a46a9ee87ac0027891d9a146f341f53a5ff",
+      "sourceDigest": "sha256:de8d986d700de9ac206bd344fc5fc7f7c9249148e99bda2ea15ec1a959086cf7",
+      "sourceFiles": [
+        "src/moperators/catalog.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "groundwater.porous.map_prepare@1.0.0": {
+      "implementationRevision": "sha256:120bed3b74b85821d410d760c320206c0633f33abdf0ca3d48b01f511de50b55",
+      "sourceDigest": "sha256:de8d986d700de9ac206bd344fc5fc7f7c9249148e99bda2ea15ec1a959086cf7",
+      "sourceFiles": [
+        "src/moperators/catalog.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "groundwater.porous.model_compile@1.0.0": {
+      "implementationRevision": "sha256:f19445dcb0b9de9686e09061da0a0ba5b5496eb2e8acede27605f276bbca504f",
+      "sourceDigest": "sha256:de8d986d700de9ac206bd344fc5fc7f7c9249148e99bda2ea15ec1a959086cf7",
+      "sourceFiles": [
+        "src/moperators/catalog.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "groundwater.porous.pest_calibrate@1.0.0": {
+      "implementationRevision": "sha256:a9e8d4613a6404de1e201fe903ba663e36ffa974f5b4a04c0044695effc0f8ae",
+      "sourceDigest": "sha256:de8d986d700de9ac206bd344fc5fc7f7c9249148e99bda2ea15ec1a959086cf7",
+      "sourceFiles": [
+        "src/moperators/catalog.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "groundwater.porous.result_analyze@1.0.0": {
+      "implementationRevision": "sha256:0f6a1bdd801b47ef6eaa8441159fac5ccae6b011cb4d5f2f7fac78af72f1709a",
+      "sourceDigest": "sha256:de8d986d700de9ac206bd344fc5fc7f7c9249148e99bda2ea15ec1a959086cf7",
+      "sourceFiles": [
+        "src/moperators/catalog.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "groundwater.porous.result_render@1.0.0": {
+      "implementationRevision": "sha256:f91db706151279417ae582fd114fb0aee83f03b937ccbaeeb5a5b59d59226b66",
+      "sourceDigest": "sha256:de8d986d700de9ac206bd344fc5fc7f7c9249148e99bda2ea15ec1a959086cf7",
+      "sourceFiles": [
+        "src/moperators/catalog.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "groundwater.porous.scenario_compare@1.0.0": {
+      "implementationRevision": "sha256:9f963c084165a31dca9c0851036bf1b8fba7ac08ed537069dc760cad8825eb17",
+      "sourceDigest": "sha256:de8d986d700de9ac206bd344fc5fc7f7c9249148e99bda2ea15ec1a959086cf7",
+      "sourceFiles": [
+        "src/moperators/catalog.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "groundwater.source_sustainability.evaluate@1.0.0": {
+      "implementationRevision": "sha256:c962e7f2a271af682f9db9fd0e4080a29ce3baca17d4d420fa5b10e1070517be",
+      "sourceDigest": "sha256:de8d986d700de9ac206bd344fc5fc7f7c9249148e99bda2ea15ec1a959086cf7",
+      "sourceFiles": [
+        "src/moperators/catalog.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "hydrology.basins@1.0.0": {
+      "implementationRevision": "sha256:02a35c1354f2d10ce7f0aa5c477befaa85c31afe63aee959406f371336e248f7",
+      "sourceDigest": "sha256:9e1a946a36ee42e823b3acc0ef66e5df4d056e95b00a09e5ab7571e0e9d32d07",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/hydrology.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "hydrology.fill_sinks@1.0.0": {
+      "implementationRevision": "sha256:e9cc12d6f53bdd779729abf6c69b27a09375f36f0db6eeca383682cc8e2768e1",
+      "sourceDigest": "sha256:098d97f5036d338b92d6e865a689cdb69f407feaadfb8987e358c8f5cc6fbd5f",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/hydrology.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/qgis.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "hydrology.flow_accumulation@1.0.0": {
+      "implementationRevision": "sha256:7ea8e080fdef96d3494ad426995376b0fdde9dc9dc566d0369edda16466424ef",
+      "sourceDigest": "sha256:9e1a946a36ee42e823b3acc0ef66e5df4d056e95b00a09e5ab7571e0e9d32d07",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/hydrology.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "hydrology.flow_direction@1.0.0": {
+      "implementationRevision": "sha256:e6f475fb0692cee3302caec13ba28f05f3e0bbbd2f3e65e32ecea6e67e4a5be0",
+      "sourceDigest": "sha256:9e1a946a36ee42e823b3acc0ef66e5df4d056e95b00a09e5ab7571e0e9d32d07",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/hydrology.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "hydrology.snap_pour_points@1.0.0": {
+      "implementationRevision": "sha256:7453d10cf5268296cd6d56845c8881497045917d12781b4dd5b66f2d3081606f",
+      "sourceDigest": "sha256:9e1a946a36ee42e823b3acc0ef66e5df4d056e95b00a09e5ab7571e0e9d32d07",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/hydrology.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "hydrology.stream_extract@1.0.0": {
+      "implementationRevision": "sha256:6f672652c13cb002c2bc31ce89b0cfda54cc1abb29608f0bb5f73bf6735f45ff",
+      "sourceDigest": "sha256:9e1a946a36ee42e823b3acc0ef66e5df4d056e95b00a09e5ab7571e0e9d32d07",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/hydrology.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "hydrology.stream_order@1.0.0": {
+      "implementationRevision": "sha256:e72749b6001c9a15637090a76b18fba4bbf09b17cc7cd4088939c094ca4e7722",
+      "sourceDigest": "sha256:9e1a946a36ee42e823b3acc0ef66e5df4d056e95b00a09e5ab7571e0e9d32d07",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/hydrology.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "hydrology.watershed@1.0.0": {
+      "implementationRevision": "sha256:b8e8c27476882e96edb0c4ebd0f9ffa312c2f9038d61307fc6c5f855b5c0266a",
+      "sourceDigest": "sha256:9e1a946a36ee42e823b3acc0ef66e5df4d056e95b00a09e5ab7571e0e9d32d07",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/hydrology.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "ml.gru_attention_finetune@1.0.0": {
+      "implementationRevision": "sha256:8425549f1ab4463712ab5b61752fb7958e758bd867123265383a4105d046ce14",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "ml.gru_attention_predict@1.0.0": {
+      "implementationRevision": "sha256:61ca9ce9d33261a77049892e1287619c42422dc0afe2640350ca805b67a919b6",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "ml.gru_attention_pretrain@1.0.0": {
+      "implementationRevision": "sha256:ddb95810ae0369e64e03bf0accd302cfa2b685d79c2ed3580f3e48d7af34c396",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "points.interpolate.idw@1.0.0": {
+      "implementationRevision": "sha256:ddafb047da4da6d38ad12f9c6227e4834f7570fc4d40b43de1e5a6d604b8a42d",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "preprocessing.standard_scaler_fit@1.0.0": {
+      "implementationRevision": "sha256:41eb33b7e97532566a3c5efcd636fb95af35ee3778ef45662ca5951810282e28",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "preprocessing.standard_scaler_inverse@1.0.0": {
+      "implementationRevision": "sha256:ab28e853149a6c087e70e81add49789f4534fc2710b2c87e2695241f49b617e7",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "preprocessing.standard_scaler_transform@1.0.0": {
+      "implementationRevision": "sha256:1e245ef941e58566ed985da6d070e24f33e88e4696ae83ed97de5e18205c622e",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "raster.algebra@1.0.0": {
+      "implementationRevision": "sha256:43768194b695d4a09d64ef69da22f66a63923446c8729136965c07ff8dedb25a",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "raster.aspect@1.0.0": {
+      "implementationRevision": "sha256:256371d83015db2b515a5e3cca493dccd6a135d73cab0e8e9738f57b7beeaca6",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "raster.cell_statistics@1.0.0": {
+      "implementationRevision": "sha256:8c0a24e16502899980d1e0ac78a4b79bb0fde978308d9a118f4efd072e8e811f",
+      "sourceDigest": "sha256:912fb77cbda95802d74d6ba1dc59bd11b1dd2bf775600f0f92b2e1711366ae4f",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/raster_cell_statistics.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "raster.clip@1.0.0": {
+      "implementationRevision": "sha256:03b293ca768592586880a4501a3cf07fcafcb9b48eb062a536d8306e693637c5",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "raster.contour@1.0.0": {
+      "implementationRevision": "sha256:45d6de7de837301a6a9443ab59117a65c1ac46c515ed87c2610c80c9f349b0b4",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "raster.fill_nodata@1.0.0": {
+      "implementationRevision": "sha256:1e723afdac40a0e05c8fdf4f9c587cdd03b2daf568e0da6c9b0db29311699443",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "raster.hillshade@1.0.0": {
+      "implementationRevision": "sha256:2455eaf0758902e0d562c5094355bff9a08a0716333340d5afd8ef9e3c62eb40",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "raster.mosaic@1.0.0": {
+      "implementationRevision": "sha256:1c1baf4325e7618d876ecd118757c61452c67752bb9105e46ba0d97cfba4f778",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "raster.polygonize@1.0.0": {
+      "implementationRevision": "sha256:41847e36d4839caec5435337b7f734b2d7ef50d64ccf791ee4b5ece1a7599fa6",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "raster.proximity@1.0.0": {
+      "implementationRevision": "sha256:fab296e14ae46707511d1dc3a8fc91baba6afb44ede17ebd78775cbb84a4b8ca",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "raster.rasterize@1.0.0": {
+      "implementationRevision": "sha256:bba28084cd2035b1c71eeefb8112a286ddf01f87f00ca99ecf6bc711f0ad7015",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "raster.reclassify@1.0.0": {
+      "implementationRevision": "sha256:866e3dbb385e82c0205a9a481be95bd4582a48f6380a7bf56d9ac4a6778c359f",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "raster.reproject@1.0.0": {
+      "implementationRevision": "sha256:c3926036a407a445da7a8b412fae4bf395f406b2e6475b7d07944f5e870c8329",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "raster.resample@1.0.0": {
+      "implementationRevision": "sha256:ad8669d9a84d7af655b09934bcbbc2c6688352c5b1855f56245bab1ca10e279b",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "raster.sample_points@1.0.0": {
+      "implementationRevision": "sha256:cf5d0c6afa10fe2802744ae1c405c11ff6515e3c5120c69d929af7b07a60065e",
+      "sourceDigest": "sha256:4b74cda66848a861bd040db4416a1eec4b0ee315b22843fa86f0ed9cf43fee47",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/raster_sample_points.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "raster.slope@1.0.0": {
+      "implementationRevision": "sha256:c82fbeb48197f7e63c4cf7788235c68d8443590473efbe2522ff546cba585444",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "raster.statistics@1.0.0": {
+      "implementationRevision": "sha256:5c9e80d90f5d2c266c9c05fc96ec35349d73d6845c13bcce21e649c189f39d2a",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "raster.window@1.0.0": {
+      "implementationRevision": "sha256:a32578dfdabb601ee20b63470dcd686dadbc2bd27c2cc595c45cea6a0498105c",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "raster.zonal_statistics@1.0.0": {
+      "implementationRevision": "sha256:2af408da577753dead211a32e08fc4e3ce3f3870fbe81ebdfea988bfc621e657",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "spreadsheet.extract_table@1.0.0": {
+      "implementationRevision": "sha256:1783e2fe00b0cd521c12993a0c1dd148ef6fc9151eb976ab2558e09a8cc9dec2",
+      "sourceDigest": "sha256:34f3c481f949f063fb9de3ee3cda8646d55171b94bb2af4a9eb95ed8b6ca5f8e",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/spreadsheet_extract_table.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "statistics.describe@1.0.0": {
+      "implementationRevision": "sha256:caf8b2a92c87b17002195a5cda7d84c45bc06cea66bc0d2f5561ab1ca36618f5",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "statistics.linear_trend@1.0.0": {
+      "implementationRevision": "sha256:0816e6915326b24ffe866b7f41b9c08d69ec13e6e71c7db51c121b57fa06eb3a",
+      "sourceDigest": "sha256:3ea7752189e0846998e24e598c49dde105e68af91efec87e08af9d2e470265af",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/analysis_common.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "statistics.mad_outliers@1.0.0": {
+      "implementationRevision": "sha256:e5296cebc605e2cafa73257f8186be7d0780cee895559db2130dd7024fb889ef",
+      "sourceDigest": "sha256:991aa83d8b087728ef7fec37caeeb6ad32d9ec7e6c916559ec4c935e11a31470",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/analysis_common.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mad_outliers.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "statistics.mann_kendall@1.0.0": {
+      "implementationRevision": "sha256:2df85e6bb1ed4f23c7fc26792a0269bbe66fcb0c0678153ca048c6d408214496",
+      "sourceDigest": "sha256:3ea7752189e0846998e24e598c49dde105e68af91efec87e08af9d2e470265af",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/analysis_common.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "statistics.pettitt_change_point@1.0.0": {
+      "implementationRevision": "sha256:c0dfb998719718f50b07de48212617719bff02ef11371f4ae38eb1f8aa402c8f",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "statistics.regression_metrics@1.0.0": {
+      "implementationRevision": "sha256:1d2224528326877af8002054898c2c378d0883cc89d36a4efb8f57c2ae0f8979",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "statistics.seasonal_mann_kendall@1.0.0": {
+      "implementationRevision": "sha256:a7125727fa329ae6c290a7371caaa0cfd29e888dc753438287a9912a5a35893f",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "table.deduplicate@1.0.0": {
+      "implementationRevision": "sha256:3240ad9f44da2512ca6f6cb340659a741d3344b0a1f0a56c76a53df8087bfaac",
+      "sourceDigest": "sha256:11fa113bad2c526f0478d1df386b697f232a087fa022c8a10b9eeaed1a7bdce3",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_deduplicate.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "table.filter@1.0.0": {
+      "implementationRevision": "sha256:2c82acbfb13db1a7f08ac8521909e60a8fce67ef2730dc4a9a3509436bd60773",
+      "sourceDigest": "sha256:8a808348dd64c121b512a24502c4e1c01cc885ca66ca33fa79ad28499ab17b01",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/table_filter.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "table.join@1.0.0": {
+      "implementationRevision": "sha256:dbddc04ebf6fefb06a044918dc9f84888d2c173e4f6fcde67ace1358038f5fd0",
+      "sourceDigest": "sha256:eb92936446bbf8b2c785a385a3960364a601fd6231ba57494019c49de35bda2e",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/table_join.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "table.profile@1.0.0": {
+      "implementationRevision": "sha256:9b9ccde2fd05387191bb33341c14b1bd87c2c168b70577db097eb48b3c7bfb9c",
+      "sourceDigest": "sha256:bf356d68896bc77c25ee1e3f237ddb1d23b814c60cc9ccf21e86c9b78b4eb685",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/table_profile.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "table.project@1.0.0": {
+      "implementationRevision": "sha256:dc1268e7a149eacd63569b403dbf82ba62854f646acbb277b73a3109e8a2a17a",
+      "sourceDigest": "sha256:589e74c97c979b9ef4a485143be9c543b52577f76745ab2dbfb61571d6e41216",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/table_project.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "table.sort@1.0.0": {
+      "implementationRevision": "sha256:1364f6cd71017578cea0443756ad1ecfa96b9733b9408a3cc68be660f5ad3938",
+      "sourceDigest": "sha256:2014c53948d64cc4e7eaf95a5fdbb737c57fc3cc00c0f4033236802995f0dee7",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/table_sort.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "table.timeseries_unpivot@1.0.0": {
+      "implementationRevision": "sha256:6eee7aeea26b223839e854051fb6875cc6e46c5493977c0a677ee9ddf7074cb4",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "table.validate@1.0.0": {
+      "implementationRevision": "sha256:c2f96bbccd2845d53d1452fed5e3188000c5bbd2abecbff92be5d2e57ee7438c",
+      "sourceDigest": "sha256:6b32c34ed9d0ef1727a3ac274e2db19ac2e7216196bae7187ef9c396e86059de",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/table_validate.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "timeseries.aggregate@1.0.0": {
+      "implementationRevision": "sha256:1140ad13f6d618c18426e3cf5a439851d7c7e1aec6a14db2f470a206fe626b3f",
+      "sourceDigest": "sha256:2ebe8c0abfb352bfbe6d4d2fbcd147b5dbd6308760464824e012fd5fd9e957c4",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/analysis_common.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/timeseries_aggregate.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "timeseries.autocorrelation@1.0.0": {
+      "implementationRevision": "sha256:13cb14261dc31695e4b495202d44a029994ff525e66b3d28150e48664e77c587",
+      "sourceDigest": "sha256:23ee147e2ed4f26b38ec0884514b3439519af4ffe29b9fd3b39e9cd2e3b47ae1",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/timeseries_autocorrelation.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "timeseries.baseline_anomaly@1.0.0": {
+      "implementationRevision": "sha256:7cc4267a23f44c5b2f98911af070a896c2b4f21ee8b6ade024eb16dab91c068b",
+      "sourceDigest": "sha256:8a48f7027d0c633ddc7590eddb55c655b33f67312f398aaefa0a5503722ab251",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/timeseries_baseline_anomaly.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "timeseries.chronological_split@1.0.0": {
+      "implementationRevision": "sha256:dae82a5d40843792096b32b1599d40ee2e3dd39270bf96df4a1d1d12b6fccb50",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "timeseries.completeness@1.0.0": {
+      "implementationRevision": "sha256:6ac9e97ca18a5c9f34382f56909d880cadb455579026885e719d6ab84a1ef4fc",
+      "sourceDigest": "sha256:ac2abbea260486ed72f7c6f8f0d856aa4625879bafaec73b1d83ba6b57a52aa0",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/analysis_common.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/timeseries_completeness.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "timeseries.cross_correlation@1.0.0": {
+      "implementationRevision": "sha256:a4452b7823a473869c098cc206ad5d2da097da557b193ef4cda13cb68d94f732",
+      "sourceDigest": "sha256:a8a589b64a1bccb594aec881985c174518e139df24dd0ad95292b69613d47125",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/timeseries_cross_correlation.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "timeseries.empirical_percentile@1.0.0": {
+      "implementationRevision": "sha256:b6ff4c744bc4ac57fcf5a58b23fbf3f50c783905953f3a3b9cc9ec0d950f83f0",
+      "sourceDigest": "sha256:3af9078696d77f1b6db32a85cf60713077352b6c24ef170c7ad1fb3e3b3ed8cd",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/advanced_timeseries_common.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/timeseries_empirical_percentile.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "timeseries.gap_runs@1.0.0": {
+      "implementationRevision": "sha256:e309335e763f21b8d5df9980366f4a5b2dd59c382857461a3c65e39136638d30",
+      "sourceDigest": "sha256:c1cf8b9378d7717d701cb38e6c1a88517a90822743d5a64b2f164356c7008c3d",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/timeseries_gap_runs.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "timeseries.lag_change@1.0.0": {
+      "implementationRevision": "sha256:3d34e366384608576990104c8abb50480c47ff6826ec0cb65ada0281cdd27d7e",
+      "sourceDigest": "sha256:2eb9a06ee46b01ff35ee470a26dbc83201ec9a2e7dcbe8c0ef705f90b582bebe",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/advanced_timeseries_common.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/timeseries_lag_change.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "timeseries.period_change@1.0.0": {
+      "implementationRevision": "sha256:a6e7f118df664a52421715d07c13eaccc84fa4aea73bca417e002b1d1d54ddde",
+      "sourceDigest": "sha256:b6ff6ed93593715b813e2e5afff9f0255cc5567116189a6fa3f2a84f21185b1c",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/analysis_common.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/period_change.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "timeseries.rate_of_change@1.0.0": {
+      "implementationRevision": "sha256:511f3c76c8022d79dbc0164c774271e2e0ab9731671b134731d4f1c6435e7107",
+      "sourceDigest": "sha256:c98914a083f0bf5362f262f62b42e92bed0d4a70bba4c9098776a28bc2488240",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/advanced_timeseries_common.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/timeseries_rate_of_change.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "timeseries.regularize@1.0.0": {
+      "implementationRevision": "sha256:d3cbbd90f87162022f33c73e3d571a7a33273d8098f8168184efb2977d43a0bc",
+      "sourceDigest": "sha256:292a6f9cb60d057aff8eda6805684d48019e4ecb9370200199f7157c108b2ab2",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/advanced_timeseries_common.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/timeseries_regularize.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "timeseries.rolling_statistics@1.0.0": {
+      "implementationRevision": "sha256:40a5da2d2e05d892a579a2557ac7ce1dbf098d7509af5515e574cb46b2ff561c",
+      "sourceDigest": "sha256:ad777fc3abcbb4dbd31589f29d61bdd0244ab793d481644bf889642cbf86d383",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/timeseries_rolling_statistics.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "timeseries.seasonal_anomaly@1.0.0": {
+      "implementationRevision": "sha256:f50926a2da1293c6893c75fb21f43f8d0b28ffca6f37e687191e50245801d94e",
+      "sourceDigest": "sha256:7b2bc272bcf627c86bb0725d7e17463dc6175da02f94336b2874ca8d0aaad8ee",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/advanced_timeseries_common.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/timeseries_seasonal_anomaly.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "timeseries.snapshot@1.0.0": {
+      "implementationRevision": "sha256:f9881c4f0665b024528d7e4445826248ce20a741b076576ae2595898df905dc6",
+      "sourceDigest": "sha256:af84601a1fb35fb7a53654250dde0e9a70dd525b46f8b009cf8207f16d01b54e",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/analysis_common.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/timeseries_snapshot.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "timeseries.supervised_windows@1.0.0": {
+      "implementationRevision": "sha256:7211a0f2805507c000a093426aa2b6e8423d0d6554afe477cff8ab5ed2fa2e20",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "timeseries.threshold_events@1.0.0": {
+      "implementationRevision": "sha256:1abcfa3e1110f7afa68bf4ba13416fa85daf3935c78f5ae70b8d063c1e2ce269",
+      "sourceDigest": "sha256:f062ccce48593f1e70f5598542ad951236f73468ef3eea799811c6c400bd2197",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/advanced_timeseries_common.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/timeseries_threshold_events.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "vector.buffer@1.0.0": {
+      "implementationRevision": "sha256:7c63c9507a0f7c47ef43d791b8982259ff2da2c27012b4ef73150af060c314a4",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "vector.centroid@1.0.0": {
+      "implementationRevision": "sha256:f441f4fe59dd0a9e69622ad2f82187795a0fae17bb0d50dfa595d4354ee0abb3",
+      "sourceDigest": "sha256:9a321b576741d1290d8dfd2a1504954da6bc262e66778d3a579e0c13f078c690",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/qgis.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "vector.clip@1.0.0": {
+      "implementationRevision": "sha256:7b3c174007e60d26fa52637b2956603dd68b5402706c39dffc3c2840fb01d879",
+      "sourceDigest": "sha256:9a321b576741d1290d8dfd2a1504954da6bc262e66778d3a579e0c13f078c690",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/qgis.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "vector.convex_hull@1.0.0": {
+      "implementationRevision": "sha256:b6b96bf9d7df6aad0287b67681884fc366b5e2f85432d9cd9473603c3e9f5842",
+      "sourceDigest": "sha256:9a321b576741d1290d8dfd2a1504954da6bc262e66778d3a579e0c13f078c690",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/qgis.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "vector.dissolve@1.0.0": {
+      "implementationRevision": "sha256:2e836bf8f4def70b52ace14de360322ee8b5bfc933e892a2fe984720224d9e30",
+      "sourceDigest": "sha256:9a321b576741d1290d8dfd2a1504954da6bc262e66778d3a579e0c13f078c690",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/qgis.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "vector.envelope@1.0.0": {
+      "implementationRevision": "sha256:64576a4bbd4da66c745109c961703f0096d73e22562aa31e6a132d4ccaf1f64e",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "vector.extract_by_extent@1.0.0": {
+      "implementationRevision": "sha256:10b3d5221ebf627b7baf5aa5d740796128e905ed2710113e9c81a45ca632aff4",
+      "sourceDigest": "sha256:9a321b576741d1290d8dfd2a1504954da6bc262e66778d3a579e0c13f078c690",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/qgis.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "vector.from_xy@1.0.0": {
+      "implementationRevision": "sha256:21e35d6b9500a98afc91f5134be2ddd6353ae8f037598f85eb5f3111b70742b6",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "vector.merge@1.0.0": {
+      "implementationRevision": "sha256:a9134b3ccd39fbbe3b6ad96f2065422de2d6bf5cda0f83164e107af2aee51005",
+      "sourceDigest": "sha256:9a321b576741d1290d8dfd2a1504954da6bc262e66778d3a579e0c13f078c690",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/qgis.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "vector.multipart_to_singleparts@1.0.0": {
+      "implementationRevision": "sha256:ce49d1f7196dc0cc331483467e570c9114e63fde9ac5916d679db6e98c31e093",
+      "sourceDigest": "sha256:9a321b576741d1290d8dfd2a1504954da6bc262e66778d3a579e0c13f078c690",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/qgis.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "vector.nearest_join@1.0.0": {
+      "implementationRevision": "sha256:e4b0bd8aa55071afa7ceddccab9b747801e91b29c91d067c4542d5d3258ce455",
+      "sourceDigest": "sha256:9a321b576741d1290d8dfd2a1504954da6bc262e66778d3a579e0c13f078c690",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/qgis.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "vector.overlay@1.0.0": {
+      "implementationRevision": "sha256:c0ee78246e75418eaa805758a4684be70d60e4e7224cddc5e80ccd47a86b0514",
+      "sourceDigest": "sha256:9a321b576741d1290d8dfd2a1504954da6bc262e66778d3a579e0c13f078c690",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/qgis.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "vector.point_on_surface@1.0.0": {
+      "implementationRevision": "sha256:cb7ef2b3e9a0318d57f1a36a8e989be0a0e46d781c1495bd504016b10d2bfeef",
+      "sourceDigest": "sha256:9a321b576741d1290d8dfd2a1504954da6bc262e66778d3a579e0c13f078c690",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/qgis.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "vector.simplify@1.0.0": {
+      "implementationRevision": "sha256:fcb540804a7ad71a87a7b37d880662efde66613501f5a8bceb6a89a31aeda6f1",
+      "sourceDigest": "sha256:9a321b576741d1290d8dfd2a1504954da6bc262e66778d3a579e0c13f078c690",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/qgis.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "vector.spatial_join@1.0.0": {
+      "implementationRevision": "sha256:f1a079e693bdd97787a82ba9fd0bf1e24a1616226daa0d7589e8f4c861b5428c",
+      "sourceDigest": "sha256:9a321b576741d1290d8dfd2a1504954da6bc262e66778d3a579e0c13f078c690",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/qgis.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
+    "vector.tag_membership@1.0.0": {
+      "implementationRevision": "sha256:df45df365fd37b68189a6117553c55e80055fb6d82c825bb8cf0bad6788b2076",
+      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    }
+  },
+  "schemaVersion": "operator-implementation-lock.v1"
+}

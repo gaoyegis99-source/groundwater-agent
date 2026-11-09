@@ -1,0 +1,26 @@
+apiVersion: platform.module/v9
+kind: Service
+metadata:
+  name: knowledge-next
+  version: 4.0.0
+  distribution:
+    name: platform-knowledge-next
+    version: 2.0.0
+spec:
+  owner: knowledge
+  process:
+    command: [uvicorn, platform_knowledge_next.api:create_app, --factory, --host, 0.0.0.0, --port, "8000"]
+  provides: [knowledge-http-v3, knowledge-tools-v5]
+  requires: [embedding-provider-v1, data-http-v3]
+  httpContracts:
+    knowledge-http-v3:
+      basePath: /knowledge/v3
+      openapi: contracts/openapi-v3.json
+  observationToolContracts:
+    knowledge-tools-v5:
+      file: src/platform_knowledge_next/contracts/observation-tools.v5.json
+  executors: []
+  health: {live: /internal/health/live, ready: /internal/health/ready}
+  storage:
+    authority: knowledge-version-evidence-lifecycle
+    paths: [/var/lib/postgresql/data]

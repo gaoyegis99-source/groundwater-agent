@@ -1,0 +1,22 @@
+{
+  "expectedOutputs": {
+    "vector": {
+      "format": "geopackage",
+      "kind": "artifact",
+      "mediaType": "application/geopackage+sqlite3"
+    }
+  },
+  "inputs": {
+    "vector": {
+      "fixtureId": "multipart"
+    }
+  },
+  "operator": {
+    "id": "vector.multipart_to_singleparts",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "layer": "multipart"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

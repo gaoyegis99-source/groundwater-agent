@@ -1,0 +1,117 @@
+{
+  "description": "Extract deterministic text and source-located blocks from UTF-8 text, Markdown, DOCX, or text-layer PDF artifacts.",
+  "domain": "document",
+  "errorCodes": [
+    "DOCUMENT_ENCRYPTED",
+    "DOCUMENT_INVALID",
+    "DOCUMENT_LIMIT_EXCEEDED",
+    "ENCODING_UNSUPPORTED",
+    "FIELD_REQUIRED",
+    "FORMAT_UNSUPPORTED",
+    "HEADER_INVALID",
+    "OUTPUT_FIELD_CONFLICT",
+    "OUTPUT_ROW_LIMIT_EXCEEDED",
+    "OUTPUT_VALIDATION_FAILED",
+    "PARAMETER_INVALID",
+    "RULESET_INVALID",
+    "TEXT_LAYER_REQUIRED"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-document-text_extract",
+      "inputs": {
+        "document": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "document.text_extract",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "maxOutputCharacters": 1000000,
+        "maxPages": 100
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "document.text_extract",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "text",
+        "markdown",
+        "pdf",
+        "docx"
+      ],
+      "mediaTypes": [
+        "text/plain",
+        "text/markdown",
+        "application/pdf",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      ],
+      "name": "document",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "markdown"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "text/markdown"
+      ],
+      "name": "text"
+    },
+    {
+      "formats": [
+        "parquet"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "blocks"
+    },
+    {
+      "kind": "value",
+      "name": "summary",
+      "schema": {
+        "type": "object"
+      }
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "maxOutputCharacters": {
+        "maximum": 50000000,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "maxPages": {
+        "maximum": 10000,
+        "minimum": 1,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "maxPages",
+      "maxOutputCharacters"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "document",
+    "text_extract"
+  ],
+  "timeoutSeconds": 1200,
+  "title": "Extract document text",
+  "version": "1.0.0"
+}

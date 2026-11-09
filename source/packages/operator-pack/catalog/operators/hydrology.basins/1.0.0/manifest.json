@@ -1,0 +1,71 @@
+{
+  "description": "Labels every D8 outlet basin in row-major outlet order.",
+  "domain": "hydrology",
+  "errorCodes": [
+    "CRS_REQUIRED",
+    "PROJECTED_CRS_REQUIRED",
+    "FLOW_DIRECTION_INVALID",
+    "FLOW_CYCLE",
+    "RASTER_INVALID"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-hydrology-basins",
+      "inputs": {
+        "flowDirection": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "hydrology.basins",
+        "version": "1.0.0"
+      },
+      "parameters": {},
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "hydrology.basins",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "flowDirection",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "basins"
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {},
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "hydrology",
+    "basin",
+    "d8"
+  ],
+  "timeoutSeconds": 3600,
+  "title": "Delineate D8 basins",
+  "version": "1.0.0"
+}

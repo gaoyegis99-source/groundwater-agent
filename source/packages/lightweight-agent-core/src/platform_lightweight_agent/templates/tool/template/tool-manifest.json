@@ -1,0 +1,6 @@
+{
+  "tool_id": "example.lookup",
+  "version": "1.0.0",
+  "display_name": "Example lookup",
+  "permissions": []
+}

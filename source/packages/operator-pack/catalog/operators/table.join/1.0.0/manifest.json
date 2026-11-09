@@ -1,0 +1,148 @@
+{
+  "description": "Join two tables by explicit key mappings with cardinality and output-row guards.",
+  "domain": "table",
+  "errorCodes": [
+    "FIELD_REQUIRED",
+    "FORMAT_UNSUPPORTED",
+    "HEADER_INVALID",
+    "JOIN_CARDINALITY_VIOLATION",
+    "OUTPUT_FIELD_CONFLICT",
+    "OUTPUT_ROW_LIMIT_EXCEEDED",
+    "OUTPUT_VALIDATION_FAILED",
+    "PARAMETER_INVALID",
+    "RULESET_INVALID"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-table-join",
+      "inputs": {
+        "left": {
+          "artifactId": "art_example_01"
+        },
+        "right": {
+          "artifactId": "art_example_02"
+        },
+        "rules": {
+          "artifactId": "art_example_03"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "table.join",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "cardinality": "oneToOne",
+        "joinType": "left",
+        "maxOutputRows": 1000
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "table.join",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "csv",
+        "parquet",
+        "arrow-ipc-file"
+      ],
+      "mediaTypes": [
+        "text/csv",
+        "application/vnd.apache.parquet",
+        "application/vnd.apache.arrow.file"
+      ],
+      "name": "left",
+      "required": true
+    },
+    {
+      "cardinality": "one",
+      "formats": [
+        "csv",
+        "parquet",
+        "arrow-ipc-file"
+      ],
+      "mediaTypes": [
+        "text/csv",
+        "application/vnd.apache.parquet",
+        "application/vnd.apache.arrow.file"
+      ],
+      "name": "right",
+      "required": true
+    },
+    {
+      "cardinality": "one",
+      "formats": [
+        "json"
+      ],
+      "mediaTypes": [
+        "application/json"
+      ],
+      "name": "rules",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "parquet"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "data"
+    },
+    {
+      "kind": "value",
+      "name": "summary",
+      "schema": {
+        "type": "object"
+      }
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "cardinality": {
+        "enum": [
+          "oneToOne",
+          "oneToMany",
+          "manyToOne",
+          "manyToMany"
+        ],
+        "type": "string"
+      },
+      "joinType": {
+        "enum": [
+          "inner",
+          "left",
+          "right",
+          "full"
+        ],
+        "type": "string"
+      },
+      "maxOutputRows": {
+        "maximum": 5000000,
+        "minimum": 1,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "joinType",
+      "cardinality",
+      "maxOutputRows"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "table",
+    "join"
+  ],
+  "timeoutSeconds": 1800,
+  "title": "Join tables",
+  "version": "1.0.0"
+}

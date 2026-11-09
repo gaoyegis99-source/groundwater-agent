@@ -1,0 +1,23 @@
+{
+  "expectedOutputs": {
+    "streamOrder": {
+      "format": "geotiff",
+      "kind": "artifact",
+      "mediaType": "image/tiff"
+    }
+  },
+  "inputs": {
+    "flowDirection": {
+      "fixtureId": "flow.direction"
+    },
+    "streams": {
+      "fixtureId": "streams"
+    }
+  },
+  "operator": {
+    "id": "hydrology.stream_order",
+    "version": "1.0.0"
+  },
+  "parameters": {},
+  "schemaVersion": "operator-smoke-test.v1"
+}

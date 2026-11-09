@@ -1,0 +1,173 @@
+{
+  "description": "Calculate lagged Pearson correlation between two explicitly aligned grouped series.",
+  "domain": "timeseries",
+  "errorCodes": [
+    "DUPLICATE_PERIOD",
+    "DUPLICATE_TIMESTAMP",
+    "FIELD_REQUIRED",
+    "FREQUENCY_UNSUPPORTED",
+    "LAG_RANGE_INVALID",
+    "NON_NUMERIC_VALUE",
+    "OUTPUT_VALIDATION_FAILED",
+    "TIMESTAMP_INVALID",
+    "TIMEZONE_UNSUPPORTED"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-timeseries-cross_correlation",
+      "inputs": {
+        "left": {
+          "artifactId": "art_example_01"
+        },
+        "right": {
+          "artifactId": "art_example_02"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "timeseries.cross_correlation",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "frequency": "month",
+        "leftGroupField": "station",
+        "leftTimeField": "time",
+        "leftValueField": "left_value",
+        "maximumLagPeriods": 0,
+        "minPairs": 3,
+        "minimumLagPeriods": 0,
+        "rightGroupField": "station",
+        "rightTimeField": "time",
+        "rightValueField": "right_value"
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "timeseries.cross_correlation",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "csv",
+        "parquet",
+        "arrow-ipc-file"
+      ],
+      "mediaTypes": [
+        "text/csv",
+        "application/vnd.apache.parquet",
+        "application/vnd.apache.arrow.file"
+      ],
+      "name": "left",
+      "required": true
+    },
+    {
+      "cardinality": "one",
+      "formats": [
+        "csv",
+        "parquet",
+        "arrow-ipc-file"
+      ],
+      "mediaTypes": [
+        "text/csv",
+        "application/vnd.apache.parquet",
+        "application/vnd.apache.arrow.file"
+      ],
+      "name": "right",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "parquet"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "correlations"
+    },
+    {
+      "kind": "value",
+      "name": "summary",
+      "schema": {
+        "type": "object"
+      }
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "frequency": {
+        "enum": [
+          "day",
+          "month",
+          "quarter",
+          "year"
+        ],
+        "type": "string"
+      },
+      "leftGroupField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "leftTimeField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "leftValueField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "maximumLagPeriods": {
+        "maximum": 120,
+        "minimum": -120,
+        "type": "integer"
+      },
+      "minPairs": {
+        "default": 3,
+        "minimum": 2,
+        "type": "integer"
+      },
+      "minimumLagPeriods": {
+        "maximum": 120,
+        "minimum": -120,
+        "type": "integer"
+      },
+      "rightGroupField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "rightTimeField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "rightValueField": {
+        "minLength": 1,
+        "type": "string"
+      }
+    },
+    "required": [
+      "leftGroupField",
+      "leftTimeField",
+      "leftValueField",
+      "rightGroupField",
+      "rightTimeField",
+      "rightValueField",
+      "frequency",
+      "minimumLagPeriods",
+      "maximumLagPeriods",
+      "minPairs"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "timeseries",
+    "cross_correlation"
+  ],
+  "timeoutSeconds": 1800,
+  "title": "Calculate time-series cross-correlation",
+  "version": "1.0.0"
+}

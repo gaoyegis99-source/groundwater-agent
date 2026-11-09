@@ -1,0 +1,47 @@
+{
+  "$id": "table-sort-rules.v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "keys": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "direction": {
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          },
+          "field": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "nulls": {
+            "enum": [
+              "first",
+              "last"
+            ]
+          }
+        },
+        "required": [
+          "field",
+          "direction",
+          "nulls"
+        ],
+        "type": "object"
+      },
+      "maxItems": 64,
+      "minItems": 1,
+      "type": "array"
+    },
+    "schemaVersion": {
+      "const": "table-sort-rules.v1"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "keys"
+  ],
+  "type": "object"
+}

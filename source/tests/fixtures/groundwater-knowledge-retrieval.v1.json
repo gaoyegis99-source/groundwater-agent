@@ -1,0 +1,2089 @@
+{
+  "schemaVersion": "knowledge-retrieval-eval.v1",
+  "domainPackage": {
+    "domainId": "groundwater",
+    "version": "2.2.1",
+    "checksum": "sha256:bdc83851dd31a10899da6bd8d93cf359af7ace6a5be3a0c05f2a5412d6359d1a"
+  },
+  "cases": [
+    {
+      "caseId": "gw-project-overview-template-standard",
+      "query": "地下水项目概览应该填写哪些内容",
+      "expectedKnowledgeId": "gw-project-overview-template",
+      "variant": "STANDARD",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-project-overview-template-synonym",
+      "query": "研究目标和资料分组如何记录",
+      "expectedKnowledgeId": "gw-project-overview-template",
+      "variant": "SYNONYM",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-project-overview-template-boundary",
+      "query": "没有实时目录能否声称项目资源完整",
+      "expectedKnowledgeId": "gw-project-overview-template",
+      "variant": "BOUNDARY",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-data-dictionary-template-standard",
+      "query": "地下水资源数据字典需要哪些字段",
+      "expectedKnowledgeId": "gw-data-dictionary-template",
+      "variant": "STANDARD",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-data-dictionary-template-synonym",
+      "query": "如何记录 resource_id、version、checksum 和单位",
+      "expectedKnowledgeId": "gw-data-dictionary-template",
+      "variant": "SYNONYM",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-data-dictionary-template-boundary",
+      "query": "通用演示列名能否当成选定文件的事实",
+      "expectedKnowledgeId": "gw-data-dictionary-template",
+      "variant": "BOUNDARY",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-model-evidence-template-standard",
+      "query": "模型参数依据模板怎样填写",
+      "expectedKnowledgeId": "gw-model-evidence-template",
+      "variant": "STANDARD",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-model-evidence-template-synonym",
+      "query": "任务、资源字段与模型参数如何对齐",
+      "expectedKnowledgeId": "gw-model-evidence-template",
+      "variant": "SYNONYM",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-model-evidence-template-boundary",
+      "query": "字段依据不完整时能否直接执行模型",
+      "expectedKnowledgeId": "gw-model-evidence-template",
+      "variant": "BOUNDARY",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-vertical-hydraulic-gradient-standard",
+      "query": "垂向水力梯度怎样计算",
+      "expectedKnowledgeId": "gw-vertical-hydraulic-gradient",
+      "variant": "STANDARD",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-vertical-hydraulic-gradient-synonym",
+      "query": "浅井水头高于深井说明什么",
+      "expectedKnowledgeId": "gw-vertical-hydraulic-gradient",
+      "variant": "SYNONYM",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-vertical-hydraulic-gradient-boundary",
+      "query": "当前流场模型能否计算垂向流",
+      "expectedKnowledgeId": "gw-vertical-hydraulic-gradient",
+      "variant": "BOUNDARY",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-nested-well-comparison-standard",
+      "query": "成组浅深井怎样比较",
+      "expectedKnowledgeId": "gw-nested-well-comparison",
+      "variant": "STANDARD",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-nested-well-comparison-synonym",
+      "query": "同一地点不同层位能否放进一个流场",
+      "expectedKnowledgeId": "gw-nested-well-comparison",
+      "variant": "SYNONYM",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-nested-well-comparison-boundary",
+      "query": "井组水头不同是否代表层间流",
+      "expectedKnowledgeId": "gw-nested-well-comparison",
+      "variant": "BOUNDARY",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-surface-water-groundwater-interaction-standard",
+      "query": "河流是补给地下水还是接受排泄",
+      "expectedKnowledgeId": "gw-surface-water-groundwater-interaction",
+      "variant": "STANDARD",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-surface-water-groundwater-interaction-synonym",
+      "query": "地下水流向河道能否证明交换",
+      "expectedKnowledgeId": "gw-surface-water-groundwater-interaction",
+      "variant": "SYNONYM",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-surface-water-groundwater-interaction-boundary",
+      "query": "只有井水位能否判断河地下水关系",
+      "expectedKnowledgeId": "gw-surface-water-groundwater-interaction",
+      "variant": "BOUNDARY",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-recharge-response-lag-standard",
+      "query": "降雨后多久地下水位会上升",
+      "expectedKnowledgeId": "gw-recharge-response-lag",
+      "variant": "STANDARD",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-recharge-response-lag-synonym",
+      "query": "浅井和深井为何响应时间不同",
+      "expectedKnowledgeId": "gw-recharge-response-lag",
+      "variant": "SYNONYM",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-recharge-response-lag-boundary",
+      "query": "降雨与水位同期变化能否证明补给",
+      "expectedKnowledgeId": "gw-recharge-response-lag",
+      "variant": "BOUNDARY",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-hydrogeologic-boundaries-standard",
+      "query": "定水头边界和隔水边界有什么区别",
+      "expectedKnowledgeId": "gw-hydrogeologic-boundaries",
+      "variant": "STANDARD",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-hydrogeologic-boundaries-synonym",
+      "query": "IDW会不会识别断层和河流",
+      "expectedKnowledgeId": "gw-hydrogeologic-boundaries",
+      "variant": "SYNONYM",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-hydrogeologic-boundaries-boundary",
+      "query": "边界附近流向怎样谨慎解释",
+      "expectedKnowledgeId": "gw-hydrogeologic-boundaries",
+      "variant": "BOUNDARY",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-source-sink-conceptualization-standard",
+      "query": "抽水井附近水头漏斗怎样解释",
+      "expectedKnowledgeId": "gw-source-sink-conceptualization",
+      "variant": "STANDARD",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-source-sink-conceptualization-synonym",
+      "query": "泉和河流算不算地下水汇",
+      "expectedKnowledgeId": "gw-source-sink-conceptualization",
+      "variant": "SYNONYM",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-source-sink-conceptualization-boundary",
+      "query": "当前模型会不会模拟源汇",
+      "expectedKnowledgeId": "gw-source-sink-conceptualization",
+      "variant": "BOUNDARY",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-anisotropy-heterogeneity-scale-standard",
+      "query": "水平垂向K为何不同",
+      "expectedKnowledgeId": "gw-anisotropy-heterogeneity-scale",
+      "variant": "STANDARD",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-anisotropy-heterogeneity-scale-synonym",
+      "query": "局部试验K能否代表整个区域",
+      "expectedKnowledgeId": "gw-anisotropy-heterogeneity-scale",
+      "variant": "SYNONYM",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-anisotropy-heterogeneity-scale-boundary",
+      "query": "统一水力传导系数会造成什么限制",
+      "expectedKnowledgeId": "gw-anisotropy-heterogeneity-scale",
+      "variant": "BOUNDARY",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-density-temperature-limitations-standard",
+      "query": "盐水区水位能否直接比较水头",
+      "expectedKnowledgeId": "gw-density-temperature-limitations",
+      "variant": "STANDARD",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-density-temperature-limitations-synonym",
+      "query": "温度和密度会怎样影响压力换算",
+      "expectedKnowledgeId": "gw-density-temperature-limitations",
+      "variant": "SYNONYM",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-density-temperature-limitations-boundary",
+      "query": "当前模型能否分析变密度流",
+      "expectedKnowledgeId": "gw-density-temperature-limitations",
+      "variant": "BOUNDARY",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-confined-pressure-response-standard",
+      "query": "承压井水位变化是否等于储水量变化",
+      "expectedKnowledgeId": "gw-confined-pressure-response",
+      "variant": "STANDARD",
+      "category": "BOUNDARY"
+    },
+    {
+      "caseId": "gw-confined-pressure-response-synonym",
+      "query": "气压为何影响承压井",
+      "expectedKnowledgeId": "gw-confined-pressure-response",
+      "variant": "SYNONYM",
+      "category": "BOUNDARY"
+    },
+    {
+      "caseId": "gw-confined-pressure-response-boundary",
+      "query": "周期水位波动能否都解释为补给",
+      "expectedKnowledgeId": "gw-confined-pressure-response",
+      "variant": "BOUNDARY",
+      "category": "BOUNDARY"
+    },
+    {
+      "caseId": "gw-contours-gradient-flow-standard",
+      "query": "地下水流向是否垂直等水头线",
+      "expectedKnowledgeId": "gw-contours-gradient-flow",
+      "variant": "STANDARD",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-contours-gradient-flow-synonym",
+      "query": "等值线越密说明什么",
+      "expectedKnowledgeId": "gw-contours-gradient-flow",
+      "variant": "SYNONYM",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-contours-gradient-flow-boundary",
+      "query": "局部箭头能否代表整个区域流向",
+      "expectedKnowledgeId": "gw-contours-gradient-flow",
+      "variant": "BOUNDARY",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-multi-snapshot-comparison-standard",
+      "query": "两个日期流场怎样公平比较",
+      "expectedKnowledgeId": "gw-multi-snapshot-comparison",
+      "variant": "STANDARD",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-multi-snapshot-comparison-synonym",
+      "query": "不同井集的水头栅格能否直接相减",
+      "expectedKnowledgeId": "gw-multi-snapshot-comparison",
+      "variant": "SYNONYM",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-multi-snapshot-comparison-boundary",
+      "query": "流向变化如何区分参数变化",
+      "expectedKnowledgeId": "gw-multi-snapshot-comparison",
+      "variant": "BOUNDARY",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-spatial-validation-boundaries-standard",
+      "query": "如何留一口井验证IDW",
+      "expectedKnowledgeId": "gw-spatial-validation-boundaries",
+      "variant": "STANDARD",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-spatial-validation-boundaries-synonym",
+      "query": "井点残差能否证明流场准确",
+      "expectedKnowledgeId": "gw-spatial-validation-boundaries",
+      "variant": "SYNONYM",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-spatial-validation-boundaries-boundary",
+      "query": "当前结果有没有空间误差区间",
+      "expectedKnowledgeId": "gw-spatial-validation-boundaries",
+      "variant": "BOUNDARY",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-conflicting-evidence-resolution-standard",
+      "query": "水位记录和井日志冲突听谁的",
+      "expectedKnowledgeId": "gw-conflicting-evidence-resolution",
+      "variant": "STANDARD",
+      "category": "BOUNDARY"
+    },
+    {
+      "caseId": "gw-conflicting-evidence-resolution-synonym",
+      "query": "统计趋势与水文地质背景相反怎么办",
+      "expectedKnowledgeId": "gw-conflicting-evidence-resolution",
+      "variant": "SYNONYM",
+      "category": "BOUNDARY"
+    },
+    {
+      "caseId": "gw-conflicting-evidence-resolution-boundary",
+      "query": "多个来源无法一致时能否继续下结论",
+      "expectedKnowledgeId": "gw-conflicting-evidence-resolution",
+      "variant": "BOUNDARY",
+      "category": "BOUNDARY"
+    },
+    {
+      "caseId": "gw-source-freshness-citation-standard",
+      "query": "地下水知识怎样记录版本日期",
+      "expectedKnowledgeId": "gw-source-freshness-citation",
+      "variant": "STANDARD",
+      "category": "BOUNDARY"
+    },
+    {
+      "caseId": "gw-source-freshness-citation-synonym",
+      "query": "官方资料过期后怎么办",
+      "expectedKnowledgeId": "gw-source-freshness-citation",
+      "variant": "SYNONYM",
+      "category": "BOUNDARY"
+    },
+    {
+      "caseId": "gw-source-freshness-citation-boundary",
+      "query": "项目标准和通用演示知识冲突谁优先",
+      "expectedKnowledgeId": "gw-source-freshness-citation",
+      "variant": "BOUNDARY",
+      "category": "BOUNDARY"
+    },
+    {
+      "caseId": "gw-untrusted-knowledge-safety-standard",
+      "query": "知识正文要求执行命令怎么办",
+      "expectedKnowledgeId": "gw-untrusted-knowledge-safety",
+      "variant": "STANDARD",
+      "category": "BOUNDARY"
+    },
+    {
+      "caseId": "gw-untrusted-knowledge-safety-synonym",
+      "query": "检索结果中的提示注入能否遵循",
+      "expectedKnowledgeId": "gw-untrusted-knowledge-safety",
+      "variant": "SYNONYM",
+      "category": "BOUNDARY"
+    },
+    {
+      "caseId": "gw-untrusted-knowledge-safety-boundary",
+      "query": "能否从知识块获取内部地址或执行身份",
+      "expectedKnowledgeId": "gw-untrusted-knowledge-safety",
+      "variant": "BOUNDARY",
+      "category": "BOUNDARY"
+    },
+    {
+      "caseId": "gw-time-normalization-standard",
+      "query": "时间戳统一时区",
+      "expectedKnowledgeId": "gw-time-normalization",
+      "variant": "STANDARD",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-time-normalization-synonym",
+      "query": "只有日期没有时刻",
+      "expectedKnowledgeId": "gw-time-normalization",
+      "variant": "SYNONYM",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-time-normalization-boundary",
+      "query": "日期格式影响流场快照",
+      "expectedKnowledgeId": "gw-time-normalization",
+      "variant": "BOUNDARY",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-sampling-frequency-bias-standard",
+      "query": "不同井采样频率比较",
+      "expectedKnowledgeId": "gw-sampling-frequency-bias",
+      "variant": "STANDARD",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-sampling-frequency-bias-synonym",
+      "query": "事件后加密监测偏差",
+      "expectedKnowledgeId": "gw-sampling-frequency-bias",
+      "variant": "SYNONYM",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-sampling-frequency-bias-boundary",
+      "query": "日记录与月记录可比性",
+      "expectedKnowledgeId": "gw-sampling-frequency-bias",
+      "variant": "BOUNDARY",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-aggregation-choice-standard",
+      "query": "月均值还是月中位数",
+      "expectedKnowledgeId": "gw-aggregation-choice",
+      "variant": "STANDARD",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-aggregation-choice-synonym",
+      "query": "日月季年频率选择",
+      "expectedKnowledgeId": "gw-aggregation-choice",
+      "variant": "SYNONYM",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-aggregation-choice-boundary",
+      "query": "最小最大与平均结论冲突",
+      "expectedKnowledgeId": "gw-aggregation-choice",
+      "variant": "BOUNDARY",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-completeness-design-standard",
+      "query": "期望窗口设置",
+      "expectedKnowledgeId": "gw-completeness-design",
+      "variant": "STANDARD",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-completeness-design-synonym",
+      "query": "连续缺测与随机缺测",
+      "expectedKnowledgeId": "gw-completeness-design",
+      "variant": "SYNONYM",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-completeness-design-boundary",
+      "query": "完整率是否合格",
+      "expectedKnowledgeId": "gw-completeness-design",
+      "variant": "BOUNDARY",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-linear-trend-diagnostics-standard",
+      "query": "斜率单位与正负",
+      "expectedKnowledgeId": "gw-linear-trend-diagnostics",
+      "variant": "STANDARD",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-linear-trend-diagnostics-synonym",
+      "query": "先降后升的非线性",
+      "expectedKnowledgeId": "gw-linear-trend-diagnostics",
+      "variant": "SYNONYM",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-linear-trend-diagnostics-boundary",
+      "query": "异常端点影响趋势",
+      "expectedKnowledgeId": "gw-linear-trend-diagnostics",
+      "variant": "BOUNDARY",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-mann-kendall-cautions-standard",
+      "query": "MK显著含义",
+      "expectedKnowledgeId": "gw-mann-kendall-cautions",
+      "variant": "STANDARD",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-mann-kendall-cautions-synonym",
+      "query": "重复值自相关季节性",
+      "expectedKnowledgeId": "gw-mann-kendall-cautions",
+      "variant": "SYNONYM",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-mann-kendall-cautions-boundary",
+      "query": "线性趋势与MK不一致",
+      "expectedKnowledgeId": "gw-mann-kendall-cautions",
+      "variant": "BOUNDARY",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-mad-outlier-review-standard",
+      "query": "MAD阈值3.5",
+      "expectedKnowledgeId": "gw-mad-outlier-review",
+      "variant": "STANDARD",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-mad-outlier-review-synonym",
+      "query": "MAD为零",
+      "expectedKnowledgeId": "gw-mad-outlier-review",
+      "variant": "SYNONYM",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-mad-outlier-review-boundary",
+      "query": "异常水位能否直接删除",
+      "expectedKnowledgeId": "gw-mad-outlier-review",
+      "variant": "BOUNDARY",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-period-comparison-design-standard",
+      "query": "基准期对比期选择",
+      "expectedKnowledgeId": "gw-period-comparison-design",
+      "variant": "STANDARD",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-period-comparison-design-synonym",
+      "query": "丰枯水期比较",
+      "expectedKnowledgeId": "gw-period-comparison-design",
+      "variant": "SYNONYM",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-period-comparison-design-boundary",
+      "query": "期间差与全年趋势矛盾",
+      "expectedKnowledgeId": "gw-period-comparison-design",
+      "variant": "BOUNDARY",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-indicator-direction-standard",
+      "query": "地下水水头和埋深单位怎样统一",
+      "expectedKnowledgeId": "gw-indicator-direction",
+      "variant": "STANDARD",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-indicator-direction-synonym",
+      "query": "埋深",
+      "expectedKnowledgeId": "gw-indicator-direction",
+      "variant": "SYNONYM",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-indicator-direction-boundary",
+      "query": "水位高程和 hydraulic head 的方向怎样解释",
+      "expectedKnowledgeId": "gw-indicator-direction",
+      "variant": "BOUNDARY",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-snapshot-selection-policy-standard",
+      "query": "exact nearest latestAtOrBefore",
+      "expectedKnowledgeId": "gw-snapshot-selection-policy",
+      "variant": "STANDARD",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-snapshot-selection-policy-synonym",
+      "query": "最大观测年龄",
+      "expectedKnowledgeId": "gw-snapshot-selection-policy",
+      "variant": "SYNONYM",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-snapshot-selection-policy-boundary",
+      "query": "同井同刻冲突值",
+      "expectedKnowledgeId": "gw-snapshot-selection-policy",
+      "variant": "BOUNDARY",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-idw-validation-standard",
+      "query": "验证IDW水头栅格",
+      "expectedKnowledgeId": "gw-idw-validation",
+      "variant": "STANDARD",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-idw-validation-synonym",
+      "query": "power邻点敏感性",
+      "expectedKnowledgeId": "gw-idw-validation",
+      "variant": "SYNONYM",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-idw-validation-boundary",
+      "query": "结果不稳定是否换克里金",
+      "expectedKnowledgeId": "gw-idw-validation",
+      "variant": "BOUNDARY",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-raster-resolution-standard",
+      "query": "流场像元大小选择",
+      "expectedKnowledgeId": "gw-raster-resolution",
+      "variant": "STANDARD",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-raster-resolution-synonym",
+      "query": "细栅格是否更精确",
+      "expectedKnowledgeId": "gw-raster-resolution",
+      "variant": "SYNONYM",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-raster-resolution-boundary",
+      "query": "经纬度能否用250米像元",
+      "expectedKnowledgeId": "gw-raster-resolution",
+      "variant": "BOUNDARY",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-boundary-effects-standard",
+      "query": "凸包边缘可靠性",
+      "expectedKnowledgeId": "gw-boundary-effects",
+      "variant": "STANDARD",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-boundary-effects-synonym",
+      "query": "断层隔水边界",
+      "expectedKnowledgeId": "gw-boundary-effects",
+      "variant": "SYNONYM",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-boundary-effects-boundary",
+      "query": "流场栅格外推区域",
+      "expectedKnowledgeId": "gw-boundary-effects",
+      "variant": "BOUNDARY",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-darcy-sensitivity-standard",
+      "query": "通量对K和梯度敏感性",
+      "expectedKnowledgeId": "gw-darcy-sensitivity",
+      "variant": "STANDARD",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-darcy-sensitivity-synonym",
+      "query": "孔隙度减半",
+      "expectedKnowledgeId": "gw-darcy-sensitivity",
+      "variant": "SYNONYM",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-darcy-sensitivity-boundary",
+      "query": "K与孔隙度情景",
+      "expectedKnowledgeId": "gw-darcy-sensitivity",
+      "variant": "BOUNDARY",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-evidence-provenance-standard",
+      "query": "趋势证据链",
+      "expectedKnowledgeId": "gw-evidence-provenance",
+      "variant": "STANDARD",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-evidence-provenance-synonym",
+      "query": "井点到速度的追溯",
+      "expectedKnowledgeId": "gw-evidence-provenance",
+      "variant": "SYNONYM",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-evidence-provenance-boundary",
+      "query": "知识内容与项目事实区分",
+      "expectedKnowledgeId": "gw-evidence-provenance",
+      "variant": "BOUNDARY",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-pressure-transducer-records-standard",
+      "query": "压力传感器怎样安装记录水位",
+      "expectedKnowledgeId": "gw-pressure-transducer-records",
+      "variant": "STANDARD",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-pressure-transducer-records-synonym",
+      "query": "连续水位怎样用人工测量校核",
+      "expectedKnowledgeId": "gw-pressure-transducer-records",
+      "variant": "SYNONYM",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-pressure-transducer-records-boundary",
+      "query": "传感器漂移后哪些记录需要修订",
+      "expectedKnowledgeId": "gw-pressure-transducer-records",
+      "variant": "BOUNDARY",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-barometric-temperature-effects-standard",
+      "query": "绝压传感器怎样做气压补偿",
+      "expectedKnowledgeId": "gw-barometric-temperature-effects",
+      "variant": "STANDARD",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-barometric-temperature-effects-synonym",
+      "query": "温度变化会不会造成水位假信号",
+      "expectedKnowledgeId": "gw-barometric-temperature-effects",
+      "variant": "SYNONYM",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-barometric-temperature-effects-boundary",
+      "query": "没有项目方法能否自行修正气压影响",
+      "expectedKnowledgeId": "gw-barometric-temperature-effects",
+      "variant": "BOUNDARY",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-manual-calibration-checks-standard",
+      "query": "钢尺和电测水位计怎样校准",
+      "expectedKnowledgeId": "gw-manual-calibration-checks",
+      "variant": "STANDARD",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-manual-calibration-checks-synonym",
+      "query": "两次人工测量不一致怎么办",
+      "expectedKnowledgeId": "gw-manual-calibration-checks",
+      "variant": "SYNONYM",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-manual-calibration-checks-boundary",
+      "query": "为什么必须记录水位仪器编号",
+      "expectedKnowledgeId": "gw-manual-calibration-checks",
+      "variant": "BOUNDARY",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-dry-flowing-well-states-standard",
+      "query": "井干应该记录成零还是缺失",
+      "expectedKnowledgeId": "gw-dry-flowing-well-states",
+      "variant": "STANDARD",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-dry-flowing-well-states-synonym",
+      "query": "自流井水位怎样表示",
+      "expectedKnowledgeId": "gw-dry-flowing-well-states",
+      "variant": "SYNONYM",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-dry-flowing-well-states-boundary",
+      "query": "低于探头量程的数据能否进入趋势分析",
+      "expectedKnowledgeId": "gw-dry-flowing-well-states",
+      "variant": "BOUNDARY",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-static-pumping-recovery-state-standard",
+      "query": "抽水时测得的是静水位吗",
+      "expectedKnowledgeId": "gw-static-pumping-recovery-state",
+      "variant": "STANDARD",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-static-pumping-recovery-state-synonym",
+      "query": "停泵多久才能作为背景水位",
+      "expectedKnowledgeId": "gw-static-pumping-recovery-state",
+      "variant": "SYNONYM",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-static-pumping-recovery-state-boundary",
+      "query": "抽水状态不明怎样解释趋势",
+      "expectedKnowledgeId": "gw-static-pumping-recovery-state",
+      "variant": "BOUNDARY",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-well-integrity-obstruction-standard",
+      "query": "井深变浅说明什么",
+      "expectedKnowledgeId": "gw-well-integrity-obstruction",
+      "variant": "STANDARD",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-well-integrity-obstruction-synonym",
+      "query": "筛管堵塞会不会影响水位",
+      "expectedKnowledgeId": "gw-well-integrity-obstruction",
+      "variant": "SYNONYM",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-well-integrity-obstruction-boundary",
+      "query": "异常水位是否可能来自井况",
+      "expectedKnowledgeId": "gw-well-integrity-obstruction",
+      "variant": "BOUNDARY",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-telemetry-clock-transfer-standard",
+      "query": "记录器时钟漂移怎样发现",
+      "expectedKnowledgeId": "gw-telemetry-clock-transfer",
+      "variant": "STANDARD",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-telemetry-clock-transfer-synonym",
+      "query": "接收时间能否当采样时间",
+      "expectedKnowledgeId": "gw-telemetry-clock-transfer",
+      "variant": "SYNONYM",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-telemetry-clock-transfer-boundary",
+      "query": "遥测重传为什么会产生重复记录",
+      "expectedKnowledgeId": "gw-telemetry-clock-transfer",
+      "variant": "BOUNDARY",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-sensor-range-resolution-standard",
+      "query": "传感器量程不足会怎样",
+      "expectedKnowledgeId": "gw-sensor-range-resolution",
+      "variant": "STANDARD",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-sensor-range-resolution-synonym",
+      "query": "水位变化小于分辨率还能解释吗",
+      "expectedKnowledgeId": "gw-sensor-range-resolution",
+      "variant": "SYNONYM",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-sensor-range-resolution-boundary",
+      "query": "分辨率和精度是不是一回事",
+      "expectedKnowledgeId": "gw-sensor-range-resolution",
+      "variant": "BOUNDARY",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-quality-flags-qualifiers-standard",
+      "query": "暂定水位能否进入分析",
+      "expectedKnowledgeId": "gw-quality-flags-qualifiers",
+      "variant": "STANDARD",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-quality-flags-qualifiers-synonym",
+      "query": "估算值和实测值怎样区分",
+      "expectedKnowledgeId": "gw-quality-flags-qualifiers",
+      "variant": "SYNONYM",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-quality-flags-qualifiers-boundary",
+      "query": "修订标记为什么必须保留",
+      "expectedKnowledgeId": "gw-quality-flags-qualifiers",
+      "variant": "BOUNDARY",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-record-revision-audit-standard",
+      "query": "水位修订需要记录什么",
+      "expectedKnowledgeId": "gw-record-revision-audit",
+      "variant": "STANDARD",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-record-revision-audit-synonym",
+      "query": "连续记录改了一段怎样审计",
+      "expectedKnowledgeId": "gw-record-revision-audit",
+      "variant": "SYNONYM",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-record-revision-audit-boundary",
+      "query": "为什么不能覆盖原始水位",
+      "expectedKnowledgeId": "gw-record-revision-audit",
+      "variant": "BOUNDARY",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-elevation-survey-datum-standard",
+      "query": "井口高程不准会怎样影响流场",
+      "expectedKnowledgeId": "gw-elevation-survey-datum",
+      "variant": "STANDARD",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-elevation-survey-datum-synonym",
+      "query": "不同垂直基准能否直接计算水头",
+      "expectedKnowledgeId": "gw-elevation-survey-datum",
+      "variant": "SYNONYM",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-elevation-survey-datum-boundary",
+      "query": "测量点高程改变怎样留痕",
+      "expectedKnowledgeId": "gw-elevation-survey-datum",
+      "variant": "BOUNDARY",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-screen-construction-metadata-standard",
+      "query": "为什么筛管深度影响井间比较",
+      "expectedKnowledgeId": "gw-screen-construction-metadata",
+      "variant": "STANDARD",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-screen-construction-metadata-synonym",
+      "query": "混合开放层段能否插值同一流场",
+      "expectedKnowledgeId": "gw-screen-construction-metadata",
+      "variant": "SYNONYM",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-screen-construction-metadata-boundary",
+      "query": "井深和筛管深度有什么区别",
+      "expectedKnowledgeId": "gw-screen-construction-metadata",
+      "variant": "BOUNDARY",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-well-replacement-continuity-standard",
+      "query": "旧井和新井水位能否拼接",
+      "expectedKnowledgeId": "gw-well-replacement-continuity",
+      "variant": "STANDARD",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-well-replacement-continuity-synonym",
+      "query": "监测井改名是否还是同一序列",
+      "expectedKnowledgeId": "gw-well-replacement-continuity",
+      "variant": "SYNONYM",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-well-replacement-continuity-boundary",
+      "query": "替换井怎样建立重叠对比",
+      "expectedKnowledgeId": "gw-well-replacement-continuity",
+      "variant": "BOUNDARY",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-network-change-control-standard",
+      "query": "增井会不会改变区域趋势",
+      "expectedKnowledgeId": "gw-network-change-control",
+      "variant": "STANDARD",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-network-change-control-synonym",
+      "query": "停测井怎样影响跨期比较",
+      "expectedKnowledgeId": "gw-network-change-control",
+      "variant": "SYNONYM",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-network-change-control-boundary",
+      "query": "监测频率调整后还能直接比较吗",
+      "expectedKnowledgeId": "gw-network-change-control",
+      "variant": "BOUNDARY",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-source-acceptance-provenance-standard",
+      "query": "外部单位水位数据怎样接收",
+      "expectedKnowledgeId": "gw-source-acceptance-provenance",
+      "variant": "STANDARD",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-source-acceptance-provenance-synonym",
+      "query": "采集方法不同能否合并",
+      "expectedKnowledgeId": "gw-source-acceptance-provenance",
+      "variant": "SYNONYM",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-source-acceptance-provenance-boundary",
+      "query": "数据来源和审查状态需要保存什么",
+      "expectedKnowledgeId": "gw-source-acceptance-provenance",
+      "variant": "BOUNDARY",
+      "category": "FIELD_QUALITY"
+    },
+    {
+      "caseId": "gw-scenario-seasonal-decline-standard",
+      "query": "趋势显著能否说明抽水导致水位下降",
+      "expectedKnowledgeId": "gw-scenario-seasonal-decline",
+      "variant": "STANDARD",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-scenario-seasonal-decline-synonym",
+      "query": "枯水期埋深增加能否归因于抽水",
+      "expectedKnowledgeId": "gw-scenario-seasonal-decline",
+      "variant": "SYNONYM",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-scenario-seasonal-decline-boundary",
+      "query": "显著趋势只描述统计证据",
+      "expectedKnowledgeId": "gw-scenario-seasonal-decline",
+      "variant": "BOUNDARY",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-scenario-recovery-recharge-standard",
+      "query": "先下降后回升",
+      "expectedKnowledgeId": "gw-scenario-recovery-recharge",
+      "variant": "STANDARD",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-scenario-recovery-recharge-synonym",
+      "query": "降雨能否证明补给",
+      "expectedKnowledgeId": "gw-scenario-recovery-recharge",
+      "variant": "SYNONYM",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-scenario-recovery-recharge-boundary",
+      "query": "V形水位序列回答",
+      "expectedKnowledgeId": "gw-scenario-recovery-recharge",
+      "variant": "BOUNDARY",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-scenario-pumping-disturbance-standard",
+      "query": "抽水时短期骤降",
+      "expectedKnowledgeId": "gw-scenario-pumping-disturbance",
+      "variant": "STANDARD",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-scenario-pumping-disturbance-synonym",
+      "query": "是否删除抽水事件",
+      "expectedKnowledgeId": "gw-scenario-pumping-disturbance",
+      "variant": "SYNONYM",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-scenario-pumping-disturbance-boundary",
+      "query": "能否反演抽水试验参数",
+      "expectedKnowledgeId": "gw-scenario-pumping-disturbance",
+      "variant": "BOUNDARY",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-scenario-sensor-drift-standard",
+      "query": "传感器漂移伪趋势",
+      "expectedKnowledgeId": "gw-scenario-sensor-drift",
+      "variant": "STANDARD",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-scenario-sensor-drift-synonym",
+      "query": "更换仪器后阶跃",
+      "expectedKnowledgeId": "gw-scenario-sensor-drift",
+      "variant": "SYNONYM",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-scenario-sensor-drift-boundary",
+      "query": "统计结果与人工校测不一致",
+      "expectedKnowledgeId": "gw-scenario-sensor-drift",
+      "variant": "BOUNDARY",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-scenario-datum-change-standard",
+      "query": "井口测量点改变",
+      "expectedKnowledgeId": "gw-scenario-datum-change",
+      "variant": "STANDARD",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-scenario-datum-change-synonym",
+      "query": "参考高程错误影响流向",
+      "expectedKnowledgeId": "gw-scenario-datum-change",
+      "variant": "SYNONYM",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-scenario-datum-change-boundary",
+      "query": "基准更正后重算",
+      "expectedKnowledgeId": "gw-scenario-datum-change",
+      "variant": "BOUNDARY",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-scenario-missing-months-standard",
+      "query": "关键季节连续缺测",
+      "expectedKnowledgeId": "gw-scenario-missing-months",
+      "variant": "STANDARD",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-scenario-missing-months-synonym",
+      "query": "对比期缺低水位月份",
+      "expectedKnowledgeId": "gw-scenario-missing-months",
+      "variant": "SYNONYM",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-scenario-missing-months-boundary",
+      "query": "能否插值冒充实测",
+      "expectedKnowledgeId": "gw-scenario-missing-months",
+      "variant": "BOUNDARY",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-scenario-duplicate-records-standard",
+      "query": "同井同刻重复",
+      "expectedKnowledgeId": "gw-scenario-duplicate-records",
+      "variant": "STANDARD",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-scenario-duplicate-records-synonym",
+      "query": "同一时刻不同水位",
+      "expectedKnowledgeId": "gw-scenario-duplicate-records",
+      "variant": "SYNONYM",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-scenario-duplicate-records-boundary",
+      "query": "去重前后趋势变化",
+      "expectedKnowledgeId": "gw-scenario-duplicate-records",
+      "variant": "BOUNDARY",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-scenario-small-sample-standard",
+      "query": "六个月能否判断趋势",
+      "expectedKnowledgeId": "gw-scenario-small-sample",
+      "variant": "STANDARD",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-scenario-small-sample-synonym",
+      "query": "短序列斜率年化",
+      "expectedKnowledgeId": "gw-scenario-small-sample",
+      "variant": "SYNONYM",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-scenario-small-sample-boundary",
+      "query": "能否插值造点",
+      "expectedKnowledgeId": "gw-scenario-small-sample",
+      "variant": "BOUNDARY",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-scenario-stale-snapshot-standard",
+      "query": "30天窗口是否同步",
+      "expectedKnowledgeId": "gw-scenario-stale-snapshot",
+      "variant": "STANDARD",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-scenario-stale-snapshot-synonym",
+      "query": "7天14天30天比较",
+      "expectedKnowledgeId": "gw-scenario-stale-snapshot",
+      "variant": "SYNONYM",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-scenario-stale-snapshot-boundary",
+      "query": "事件前旧观测能否使用",
+      "expectedKnowledgeId": "gw-scenario-stale-snapshot",
+      "variant": "BOUNDARY",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-scenario-crs-mismatch-standard",
+      "query": "经纬度误标UTM",
+      "expectedKnowledgeId": "gw-scenario-crs-mismatch",
+      "variant": "STANDARD",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-scenario-crs-mismatch-synonym",
+      "query": "x y轴互换",
+      "expectedKnowledgeId": "gw-scenario-crs-mismatch",
+      "variant": "SYNONYM",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-scenario-crs-mismatch-boundary",
+      "query": "EPSG4326能否设置250米像元",
+      "expectedKnowledgeId": "gw-scenario-crs-mismatch",
+      "variant": "BOUNDARY",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-scenario-sparse-edge-standard",
+      "query": "井点集中一侧",
+      "expectedKnowledgeId": "gw-scenario-sparse-edge",
+      "variant": "STANDARD",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-scenario-sparse-edge-synonym",
+      "query": "稀疏井网邻点数",
+      "expectedKnowledgeId": "gw-scenario-sparse-edge",
+      "variant": "SYNONYM",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-scenario-sparse-edge-boundary",
+      "query": "能否直接确定新井位置",
+      "expectedKnowledgeId": "gw-scenario-sparse-edge",
+      "variant": "BOUNDARY",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-scenario-idw-bullseye-standard",
+      "query": "IDW靶心",
+      "expectedKnowledgeId": "gw-scenario-idw-bullseye",
+      "variant": "STANDARD",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-scenario-idw-bullseye-synonym",
+      "query": "power增加圆环",
+      "expectedKnowledgeId": "gw-scenario-idw-bullseye",
+      "variant": "SYNONYM",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-scenario-idw-bullseye-boundary",
+      "query": "局部高水头传播到Darcy速度",
+      "expectedKnowledgeId": "gw-scenario-idw-bullseye",
+      "variant": "BOUNDARY",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-scenario-parameter-range-standard",
+      "query": "K和孔隙度只有范围",
+      "expectedKnowledgeId": "gw-scenario-parameter-range",
+      "variant": "STANDARD",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-scenario-parameter-range-synonym",
+      "query": "低中高参数组合",
+      "expectedKnowledgeId": "gw-scenario-parameter-range",
+      "variant": "SYNONYM",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-scenario-parameter-range-boundary",
+      "query": "能否估算污染到达时间",
+      "expectedKnowledgeId": "gw-scenario-parameter-range",
+      "variant": "BOUNDARY",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-scenario-conflicting-results-standard",
+      "query": "斜率上升但MK不显著",
+      "expectedKnowledgeId": "gw-scenario-conflicting-results",
+      "variant": "STANDARD",
+      "category": "BOUNDARY"
+    },
+    {
+      "caseId": "gw-scenario-conflicting-results-synonym",
+      "query": "显著但幅度小",
+      "expectedKnowledgeId": "gw-scenario-conflicting-results",
+      "variant": "SYNONYM",
+      "category": "BOUNDARY"
+    },
+    {
+      "caseId": "gw-scenario-conflicting-results-boundary",
+      "query": "期间与全年方向相反",
+      "expectedKnowledgeId": "gw-scenario-conflicting-results",
+      "variant": "BOUNDARY",
+      "category": "BOUNDARY"
+    },
+    {
+      "caseId": "gw-scenario-flow-direction-shift-standard",
+      "query": "快照窗口流向相反",
+      "expectedKnowledgeId": "gw-scenario-flow-direction-shift",
+      "variant": "STANDARD",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-scenario-flow-direction-shift-synonym",
+      "query": "邻点数使方向旋转",
+      "expectedKnowledgeId": "gw-scenario-flow-direction-shift",
+      "variant": "SYNONYM",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-scenario-flow-direction-shift-boundary",
+      "query": "何时可说总体向东流",
+      "expectedKnowledgeId": "gw-scenario-flow-direction-shift",
+      "variant": "BOUNDARY",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-task-routing-standard",
+      "query": "地下水问题该选趋势还是流场分析",
+      "expectedKnowledgeId": "gw-task-routing",
+      "variant": "STANDARD",
+      "category": "BOUNDARY"
+    },
+    {
+      "caseId": "gw-task-routing-synonym",
+      "query": "分析各井水位升降应该使用什么模型",
+      "expectedKnowledgeId": "gw-task-routing",
+      "variant": "SYNONYM",
+      "category": "BOUNDARY"
+    },
+    {
+      "caseId": "gw-task-routing-boundary",
+      "query": "污染评价和三维数值模拟是否属于当前能力",
+      "expectedKnowledgeId": "gw-task-routing",
+      "variant": "BOUNDARY",
+      "category": "BOUNDARY"
+    },
+    {
+      "caseId": "gw-water-level-head-standard",
+      "query": "地下水埋深水位和水头有什么区别",
+      "expectedKnowledgeId": "gw-water-level-head",
+      "variant": "STANDARD",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-water-level-head-synonym",
+      "query": "参考高程减去埋深得到什么",
+      "expectedKnowledgeId": "gw-water-level-head",
+      "variant": "SYNONYM",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-water-level-head-boundary",
+      "query": "承压井水位能否当作潜水面",
+      "expectedKnowledgeId": "gw-water-level-head",
+      "variant": "BOUNDARY",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-monitoring-data-contract-standard",
+      "query": "地下水监测表需要哪些字段和单位",
+      "expectedKnowledgeId": "gw-monitoring-data-contract",
+      "variant": "STANDARD",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-monitoring-data-contract-synonym",
+      "query": "时间重复值缺失值怎样处理",
+      "expectedKnowledgeId": "gw-monitoring-data-contract",
+      "variant": "SYNONYM",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-monitoring-data-contract-boundary",
+      "query": "井点仪器基准质量元数据包括什么",
+      "expectedKnowledgeId": "gw-monitoring-data-contract",
+      "variant": "BOUNDARY",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-trend-preparation-standard",
+      "query": "地下水趋势按日月季年怎样聚合",
+      "expectedKnowledgeId": "gw-trend-preparation",
+      "variant": "STANDARD",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-trend-preparation-synonym",
+      "query": "趋势分析前怎样检查完整率和覆盖期",
+      "expectedKnowledgeId": "gw-trend-preparation",
+      "variant": "SYNONYM",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-trend-preparation-boundary",
+      "query": "基准期与对比期如何选择",
+      "expectedKnowledgeId": "gw-trend-preparation",
+      "variant": "BOUNDARY",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-trend-methods-standard",
+      "query": "地下水线性趋势怎样解释",
+      "expectedKnowledgeId": "gw-trend-methods",
+      "variant": "STANDARD",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-trend-methods-synonym",
+      "query": "Mann Kendall alpha 0.05表示什么",
+      "expectedKnowledgeId": "gw-trend-methods",
+      "variant": "SYNONYM",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-trend-methods-boundary",
+      "query": "MAD阈值3.5怎样识别异常",
+      "expectedKnowledgeId": "gw-trend-methods",
+      "variant": "BOUNDARY",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-trend-interpretation-standard",
+      "query": "埋深增加和水头上升方向怎样解释",
+      "expectedKnowledgeId": "gw-trend-interpretation",
+      "variant": "STANDARD",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-trend-interpretation-synonym",
+      "query": "统计显著是否代表变化幅度很大",
+      "expectedKnowledgeId": "gw-trend-interpretation",
+      "variant": "SYNONYM",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-trend-interpretation-boundary",
+      "query": "趋势能否证明降雨或抽水原因",
+      "expectedKnowledgeId": "gw-trend-interpretation",
+      "variant": "BOUNDARY",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-flow-input-and-snapshot-standard",
+      "query": "地下水流场需要哪些输入字段",
+      "expectedKnowledgeId": "gw-flow-input-and-snapshot",
+      "variant": "STANDARD",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-flow-input-and-snapshot-synonym",
+      "query": "latestAtOrBefore和30天窗口是什么",
+      "expectedKnowledgeId": "gw-flow-input-and-snapshot",
+      "variant": "SYNONYM",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-flow-input-and-snapshot-boundary",
+      "query": "流场为什么需要投影坐标和井点覆盖",
+      "expectedKnowledgeId": "gw-flow-input-and-snapshot",
+      "variant": "BOUNDARY",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-idw-and-gradient-standard",
+      "query": "IDW反距离加权是什么",
+      "expectedKnowledgeId": "gw-idw-and-gradient",
+      "variant": "STANDARD",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-idw-and-gradient-synonym",
+      "query": "power 2和12个邻点是不是行业标准",
+      "expectedKnowledgeId": "gw-idw-and-gradient",
+      "variant": "SYNONYM",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-idw-and-gradient-boundary",
+      "query": "水力梯度和地下水流向怎样解释",
+      "expectedKnowledgeId": "gw-idw-and-gradient",
+      "variant": "BOUNDARY",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-darcy-velocity-standard",
+      "query": "Darcy定律怎样计算地下水通量",
+      "expectedKnowledgeId": "gw-darcy-velocity",
+      "variant": "STANDARD",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-darcy-velocity-synonym",
+      "query": "Darcy通量和渗流速度有什么区别",
+      "expectedKnowledgeId": "gw-darcy-velocity",
+      "variant": "SYNONYM",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-darcy-velocity-boundary",
+      "query": "K孔隙度和单位不明能否计算速度",
+      "expectedKnowledgeId": "gw-darcy-velocity",
+      "variant": "BOUNDARY",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-demo-playbook-standard",
+      "query": "地下水趋势演示字段和参数怎样设置",
+      "expectedKnowledgeId": "gw-demo-playbook",
+      "variant": "STANDARD",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-demo-playbook-synonym",
+      "query": "EPSG32650四邻点K为2的流场演示",
+      "expectedKnowledgeId": "gw-demo-playbook",
+      "variant": "SYNONYM",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-demo-playbook-boundary",
+      "query": "演示回答为什么需要确认和限制",
+      "expectedKnowledgeId": "gw-demo-playbook",
+      "variant": "BOUNDARY",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-aquifer-framework-standard",
+      "query": "含水层隔水层饱和带是什么",
+      "expectedKnowledgeId": "gw-aquifer-framework",
+      "variant": "STANDARD",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-aquifer-framework-synonym",
+      "query": "承压含水层与潜水含水层区别",
+      "expectedKnowledgeId": "gw-aquifer-framework",
+      "variant": "SYNONYM",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-aquifer-framework-boundary",
+      "query": "不同层位井能否放在同一个流场",
+      "expectedKnowledgeId": "gw-aquifer-framework",
+      "variant": "BOUNDARY",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-recharge-discharge-context-standard",
+      "query": "地下水补给和排泄有哪些来源",
+      "expectedKnowledgeId": "gw-recharge-discharge-context",
+      "variant": "STANDARD",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-recharge-discharge-context-synonym",
+      "query": "降雨后水位上升能否证明补给",
+      "expectedKnowledgeId": "gw-recharge-discharge-context",
+      "variant": "SYNONYM",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-recharge-discharge-context-boundary",
+      "query": "抽水和河流如何影响地下水背景",
+      "expectedKnowledgeId": "gw-recharge-discharge-context",
+      "variant": "BOUNDARY",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-well-representativeness-standard",
+      "query": "监测井代表性怎样判断",
+      "expectedKnowledgeId": "gw-well-representativeness",
+      "variant": "STANDARD",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-well-representativeness-synonym",
+      "query": "筛管层位不同的井能否比较",
+      "expectedKnowledgeId": "gw-well-representativeness",
+      "variant": "SYNONYM",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-well-representativeness-boundary",
+      "query": "一口井能否代表整个区域地下水",
+      "expectedKnowledgeId": "gw-well-representativeness",
+      "variant": "BOUNDARY",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-measurement-quality-control-standard",
+      "query": "地下水位现场测量怎样做质控",
+      "expectedKnowledgeId": "gw-measurement-quality-control",
+      "variant": "STANDARD",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-measurement-quality-control-synonym",
+      "query": "固定测量点和仪器校准为何重要",
+      "expectedKnowledgeId": "gw-measurement-quality-control",
+      "variant": "SYNONYM",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-measurement-quality-control-boundary",
+      "query": "异常水位能否未经复核直接删除",
+      "expectedKnowledgeId": "gw-measurement-quality-control",
+      "variant": "BOUNDARY",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-time-series-seasonality-standard",
+      "query": "地下水时间序列季节性怎样识别",
+      "expectedKnowledgeId": "gw-time-series-seasonality",
+      "variant": "STANDARD",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-time-series-seasonality-synonym",
+      "query": "丰水期枯水期如何影响趋势",
+      "expectedKnowledgeId": "gw-time-series-seasonality",
+      "variant": "SYNONYM",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-time-series-seasonality-boundary",
+      "query": "季节波动能否当作长期趋势",
+      "expectedKnowledgeId": "gw-time-series-seasonality",
+      "variant": "BOUNDARY",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-missing-duplicate-review-standard",
+      "query": "地下水缺测重复异常怎样复核",
+      "expectedKnowledgeId": "gw-missing-duplicate-review",
+      "variant": "STANDARD",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-missing-duplicate-review-synonym",
+      "query": "同井同时间两个值怎么处理",
+      "expectedKnowledgeId": "gw-missing-duplicate-review",
+      "variant": "SYNONYM",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-missing-duplicate-review-boundary",
+      "query": "缺失数据能否直接插值填补",
+      "expectedKnowledgeId": "gw-missing-duplicate-review",
+      "variant": "BOUNDARY",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-trend-period-design-standard",
+      "query": "趋势分析时间窗口怎样设计",
+      "expectedKnowledgeId": "gw-trend-period-design",
+      "variant": "STANDARD",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-trend-period-design-synonym",
+      "query": "上半年对下半年会混入季节性吗",
+      "expectedKnowledgeId": "gw-trend-period-design",
+      "variant": "SYNONYM",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-trend-period-design-boundary",
+      "query": "改变期间后结论变化怎样说明",
+      "expectedKnowledgeId": "gw-trend-period-design",
+      "variant": "BOUNDARY",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-cross-well-comparison-standard",
+      "query": "不同监测井趋势怎样比较",
+      "expectedKnowledgeId": "gw-cross-well-comparison",
+      "variant": "STANDARD",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-cross-well-comparison-synonym",
+      "query": "埋深水头层位不同还能横向比较吗",
+      "expectedKnowledgeId": "gw-cross-well-comparison",
+      "variant": "SYNONYM",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-cross-well-comparison-boundary",
+      "query": "区域趋势能否用显著井数量代表",
+      "expectedKnowledgeId": "gw-cross-well-comparison",
+      "variant": "BOUNDARY",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-snapshot-consistency-standard",
+      "query": "地下水流场快照怎样保证时间一致",
+      "expectedKnowledgeId": "gw-snapshot-consistency",
+      "variant": "STANDARD",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-snapshot-consistency-synonym",
+      "query": "旧观测拼接成快照有什么风险",
+      "expectedKnowledgeId": "gw-snapshot-consistency",
+      "variant": "SYNONYM",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-snapshot-consistency-boundary",
+      "query": "exact nearest latestAtOrBefore怎样选",
+      "expectedKnowledgeId": "gw-snapshot-consistency",
+      "variant": "BOUNDARY",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-coordinate-systems-standard",
+      "query": "地下水井点CRS怎样确认",
+      "expectedKnowledgeId": "gw-coordinate-systems",
+      "variant": "STANDARD",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-coordinate-systems-synonym",
+      "query": "经纬度和投影坐标有什么区别",
+      "expectedKnowledgeId": "gw-coordinate-systems",
+      "variant": "SYNONYM",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-coordinate-systems-boundary",
+      "query": "EPSG代码或坐标轴错误会怎样",
+      "expectedKnowledgeId": "gw-coordinate-systems",
+      "variant": "BOUNDARY",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-spatial-sampling-coverage-standard",
+      "query": "井网空间覆盖怎样判断",
+      "expectedKnowledgeId": "gw-spatial-sampling-coverage",
+      "variant": "STANDARD",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-spatial-sampling-coverage-synonym",
+      "query": "井点分布不均会怎样影响IDW",
+      "expectedKnowledgeId": "gw-spatial-sampling-coverage",
+      "variant": "SYNONYM",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-spatial-sampling-coverage-boundary",
+      "query": "监测范围外能否可靠外推流场",
+      "expectedKnowledgeId": "gw-spatial-sampling-coverage",
+      "variant": "BOUNDARY",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-idw-sensitivity-standard",
+      "query": "IDW幂和邻点数怎样做敏感性分析",
+      "expectedKnowledgeId": "gw-idw-sensitivity",
+      "variant": "STANDARD",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-idw-sensitivity-synonym",
+      "query": "power变大为什么会出现局部靶心",
+      "expectedKnowledgeId": "gw-idw-sensitivity",
+      "variant": "SYNONYM",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-idw-sensitivity-boundary",
+      "query": "参数变化导致流向变化怎么办",
+      "expectedKnowledgeId": "gw-idw-sensitivity",
+      "variant": "BOUNDARY",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-gradient-quality-standard",
+      "query": "水力梯度质量怎样检查",
+      "expectedKnowledgeId": "gw-gradient-quality",
+      "variant": "STANDARD",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-gradient-quality-synonym",
+      "query": "局部高梯度可能来自哪些错误",
+      "expectedKnowledgeId": "gw-gradient-quality",
+      "variant": "SYNONYM",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-gradient-quality-boundary",
+      "query": "流向箭头能否代表真实流线",
+      "expectedKnowledgeId": "gw-gradient-quality",
+      "variant": "BOUNDARY",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-hydraulic-conductivity-standard",
+      "query": "水力传导系数K是什么",
+      "expectedKnowledgeId": "gw-hydraulic-conductivity",
+      "variant": "STANDARD",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-hydraulic-conductivity-synonym",
+      "query": "K的米每天单位和来源怎样核对",
+      "expectedKnowledgeId": "gw-hydraulic-conductivity",
+      "variant": "SYNONYM",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-hydraulic-conductivity-boundary",
+      "query": "统一标量K能否表达各向异性",
+      "expectedKnowledgeId": "gw-hydraulic-conductivity",
+      "variant": "BOUNDARY",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-effective-porosity-standard",
+      "query": "有效孔隙度与总孔隙度区别",
+      "expectedKnowledgeId": "gw-effective-porosity",
+      "variant": "STANDARD",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-effective-porosity-synonym",
+      "query": "孔隙度减小为何渗流速度增大",
+      "expectedKnowledgeId": "gw-effective-porosity",
+      "variant": "SYNONYM",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-effective-porosity-boundary",
+      "query": "有效孔隙度未知能否给出速度结论",
+      "expectedKnowledgeId": "gw-effective-porosity",
+      "variant": "BOUNDARY",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-flow-result-interpretation-standard",
+      "query": "地下水流场结果应该按什么顺序阅读",
+      "expectedKnowledgeId": "gw-flow-result-interpretation",
+      "variant": "STANDARD",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-flow-result-interpretation-synonym",
+      "query": "水头栅格梯度流向怎样综合解释",
+      "expectedKnowledgeId": "gw-flow-result-interpretation",
+      "variant": "SYNONYM",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-flow-result-interpretation-boundary",
+      "query": "Darcy速度高值是否等于污染风险",
+      "expectedKnowledgeId": "gw-flow-result-interpretation",
+      "variant": "BOUNDARY",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-uncertainty-communication-standard",
+      "query": "地下水分析有哪些不确定性",
+      "expectedKnowledgeId": "gw-uncertainty-communication",
+      "variant": "STANDARD",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-uncertainty-communication-synonym",
+      "query": "趋势结果怎样用有限制语言表达",
+      "expectedKnowledgeId": "gw-uncertainty-communication",
+      "variant": "SYNONYM",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-uncertainty-communication-boundary",
+      "query": "流场插值和参数假设如何说明",
+      "expectedKnowledgeId": "gw-uncertainty-communication",
+      "variant": "BOUNDARY",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-analysis-checklists-standard",
+      "query": "趋势分析执行前检查清单",
+      "expectedKnowledgeId": "gw-analysis-checklists",
+      "variant": "STANDARD",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-analysis-checklists-synonym",
+      "query": "流场分析执行前需要核对什么",
+      "expectedKnowledgeId": "gw-analysis-checklists",
+      "variant": "SYNONYM",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-analysis-checklists-boundary",
+      "query": "地下水结果出来后怎样复核",
+      "expectedKnowledgeId": "gw-analysis-checklists",
+      "variant": "BOUNDARY",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-question-patterns-standard",
+      "query": "水位升降问题怎样路由到趋势模型",
+      "expectedKnowledgeId": "gw-question-patterns",
+      "variant": "STANDARD",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-question-patterns-synonym",
+      "query": "向哪里流怎样路由到流场模型",
+      "expectedKnowledgeId": "gw-question-patterns",
+      "variant": "SYNONYM",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-question-patterns-boundary",
+      "query": "污染评价MODFLOW请求应该怎样处理",
+      "expectedKnowledgeId": "gw-question-patterns",
+      "variant": "BOUNDARY",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-domain-glossary-standard",
+      "query": "地下水监测核心术语中英文",
+      "expectedKnowledgeId": "gw-domain-glossary",
+      "variant": "STANDARD",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-domain-glossary-synonym",
+      "query": "线性趋势MK和MAD术语解释",
+      "expectedKnowledgeId": "gw-domain-glossary",
+      "variant": "SYNONYM",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-domain-glossary-boundary",
+      "query": "snapshot IDW Darcy flux术语是什么",
+      "expectedKnowledgeId": "gw-domain-glossary",
+      "variant": "BOUNDARY",
+      "category": "GENERAL"
+    },
+    {
+      "caseId": "gw-model-card-summary-standard",
+      "query": "summary 描述统计模型需要什么输入，产出什么具名结果",
+      "expectedKnowledgeId": "gw-model-card-summary",
+      "variant": "STANDARD",
+      "category": "MODEL_CARD"
+    },
+    {
+      "caseId": "gw-model-card-summary-synonym",
+      "query": "只想概览一个数值列或 NPY 数组，应选哪个模型以及怎样设置 column 和 axis",
+      "expectedKnowledgeId": "gw-model-card-summary",
+      "variant": "SYNONYM",
+      "category": "MODEL_CARD"
+    },
+    {
+      "caseId": "gw-model-card-summary-boundary",
+      "query": "描述统计 summary 的 JSON 结果能直接接静态制图或者证明时间趋势吗",
+      "expectedKnowledgeId": "gw-model-card-summary",
+      "variant": "BOUNDARY",
+      "category": "MODEL_CARD"
+    },
+    {
+      "caseId": "gw-model-card-monitoring-trend-standard",
+      "query": "monitoring-trend 模型卡中的六个分析分支和十二项输出是什么",
+      "expectedKnowledgeId": "gw-model-card-monitoring-trend",
+      "variant": "STANDARD",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-model-card-monitoring-trend-synonym",
+      "query": "推荐逐井时间变化流程时，资源字段、频率、聚合和基准对比期间缺哪些参数要补",
+      "expectedKnowledgeId": "gw-model-card-monitoring-trend",
+      "variant": "SYNONYM",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-model-card-monitoring-trend-boundary",
+      "query": "监测趋势的 Parquet 与 JSON 结果能直接接 render_map 画空间地图吗",
+      "expectedKnowledgeId": "gw-model-card-monitoring-trend",
+      "variant": "BOUNDARY",
+      "category": "TREND"
+    },
+    {
+      "caseId": "gw-model-card-flow-field-standard",
+      "query": "flow-field 模型卡的输入条件和水头到速度计算链是什么",
+      "expectedKnowledgeId": "gw-model-card-flow-field",
+      "variant": "STANDARD",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-model-card-flow-field-synonym",
+      "query": "推荐流场分析后绘图，K、孔隙度、坐标系和新建水头字段需要什么依据",
+      "expectedKnowledgeId": "gw-model-card-flow-field",
+      "variant": "SYNONYM",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-model-card-flow-field-boundary",
+      "query": "流场分析尚未产生栅格时，可以预填制图资源 ID 或把它当 MODFLOW 吗",
+      "expectedKnowledgeId": "gw-model-card-flow-field",
+      "variant": "BOUNDARY",
+      "category": "FLOW"
+    },
+    {
+      "caseId": "gw-model-card-monitoring-coverage-standard",
+      "query": "monitoring-coverage 模型需要什么井点输入，如何生成 coverage 凸包结果",
+      "expectedKnowledgeId": "gw-model-card-monitoring-coverage",
+      "variant": "STANDARD",
+      "category": "MODEL_CARD"
+    },
+    {
+      "caseId": "gw-model-card-monitoring-coverage-synonym",
+      "query": "想看井网的整体几何覆盖范围并出静态图，应推荐哪个模型和后续步骤",
+      "expectedKnowledgeId": "gw-model-card-monitoring-coverage",
+      "variant": "SYNONYM",
+      "category": "MODEL_CARD"
+    },
+    {
+      "caseId": "gw-model-card-monitoring-coverage-boundary",
+      "query": "只有两个井点能执行覆盖凸包模型吗，凸包能代表含水层边界吗",
+      "expectedKnowledgeId": "gw-model-card-monitoring-coverage",
+      "variant": "BOUNDARY",
+      "category": "MODEL_CARD"
+    },
+    {
+      "caseId": "gw-model-card-transfer-learning-analysis-standard",
+      "query": "transfer-learning-analysis 模型卡要求的十九项输入和回测任务是什么",
+      "expectedKnowledgeId": "gw-model-card-transfer-learning-analysis",
+      "variant": "STANDARD",
+      "category": "MODEL_CARD"
+    },
+    {
+      "caseId": "gw-model-card-transfer-learning-analysis-synonym",
+      "query": "推荐源域预训练和目标域微调流程时，训练轮数、内存和 map-points 制图如何说明",
+      "expectedKnowledgeId": "gw-model-card-transfer-learning-analysis",
+      "variant": "SYNONYM",
+      "category": "MODEL_CARD"
+    },
+    {
+      "caseId": "gw-model-card-transfer-learning-analysis-boundary",
+      "query": "迁移学习单步留出回测能宣称多年未来预测，或者省掉案例规则直接运行吗",
+      "expectedKnowledgeId": "gw-model-card-transfer-learning-analysis",
+      "variant": "BOUNDARY",
+      "category": "MODEL_CARD"
+    },
+    {
+      "caseId": "gw-model-card-render-map-standard",
+      "query": "render-map 静态制图模型支持哪些输入格式和 PNG 输出规格",
+      "expectedKnowledgeId": "gw-model-card-render-map",
+      "variant": "STANDARD",
+      "category": "MODEL_CARD"
+    },
+    {
+      "caseId": "gw-model-card-render-map-synonym",
+      "query": "把已有井点 GeoJSON 或分析栅格画成一张图，sourceResourceId 和 valueField 怎样选",
+      "expectedKnowledgeId": "gw-model-card-render-map",
+      "variant": "SYNONYM",
+      "category": "MODEL_CARD"
+    },
+    {
+      "caseId": "gw-model-card-render-map-boundary",
+      "query": "推荐分析接制图时，上游结果尚未发布能填 sourceResourceId 吗，能做多图层 PDF 吗",
+      "expectedKnowledgeId": "gw-model-card-render-map",
+      "variant": "BOUNDARY",
+      "category": "MODEL_CARD"
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "$id": "table-project-rules.v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "columns": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "source": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "target": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "string",
+              "boolean",
+              "int64",
+              "float64",
+              "date",
+              "timestamp"
+            ]
+          }
+        },
+        "required": [
+          "source",
+          "target",
+          "type"
+        ],
+        "type": "object"
+      },
+      "maxItems": 1024,
+      "minItems": 1,
+      "type": "array"
+    },
+    "schemaVersion": {
+      "const": "table-project-rules.v1"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "columns"
+  ],
+  "type": "object"
+}

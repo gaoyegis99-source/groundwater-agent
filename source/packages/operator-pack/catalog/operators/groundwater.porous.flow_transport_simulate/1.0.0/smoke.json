@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "operator-smoke-test.v1",
+  "operator": {
+    "id": "groundwater.porous.flow_transport_simulate",
+    "version": "1.0.0"
+  },
+  "inputs": {
+    "model_package": {
+      "fixtureId": "transfer.fields"
+    }
+  },
+  "parameters": {},
+  "expectedOutputs": {
+    "calculation_summary": {
+      "kind": "value"
+    },
+    "effective_parameters": {
+      "kind": "value"
+    },
+    "result_package": {
+      "kind": "artifact",
+      "mediaType": "application/zip",
+      "format": "zip"
+    },
+    "run_receipt": {
+      "kind": "artifact",
+      "mediaType": "application/json",
+      "format": "json"
+    }
+  }
+}

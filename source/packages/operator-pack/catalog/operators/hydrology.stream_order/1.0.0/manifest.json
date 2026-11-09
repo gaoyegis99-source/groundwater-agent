@@ -1,0 +1,89 @@
+{
+  "description": "Calculates Strahler order for a binary stream mask and fixed-code D8 directions.",
+  "domain": "hydrology",
+  "errorCodes": [
+    "CRS_REQUIRED",
+    "CRS_MISMATCH",
+    "PROJECTED_CRS_REQUIRED",
+    "GRID_MISMATCH",
+    "FLOW_DIRECTION_INVALID",
+    "FLOW_CYCLE",
+    "STREAM_MASK_INVALID",
+    "RASTER_INVALID"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-hydrology-stream_order",
+      "inputs": {
+        "flowDirection": {
+          "artifactId": "art_example_01"
+        },
+        "streams": {
+          "artifactId": "art_example_02"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "hydrology.stream_order",
+        "version": "1.0.0"
+      },
+      "parameters": {},
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "hydrology.stream_order",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "flowDirection",
+      "required": true
+    },
+    {
+      "cardinality": "one",
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "streams",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "streamOrder"
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {},
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "hydrology",
+    "stream",
+    "strahler"
+  ],
+  "timeoutSeconds": 3600,
+  "title": "Strahler stream order",
+  "version": "1.0.0"
+}

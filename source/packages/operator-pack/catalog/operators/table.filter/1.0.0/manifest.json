@@ -1,0 +1,106 @@
+{
+  "description": "Split rows into matched and rejected outputs using a bounded declarative predicate tree.",
+  "domain": "table",
+  "errorCodes": [
+    "FIELD_REQUIRED",
+    "FORMAT_UNSUPPORTED",
+    "HEADER_INVALID",
+    "OUTPUT_FIELD_CONFLICT",
+    "OUTPUT_ROW_LIMIT_EXCEEDED",
+    "OUTPUT_VALIDATION_FAILED",
+    "PARAMETER_INVALID",
+    "RULESET_INVALID"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-table-filter",
+      "inputs": {
+        "data": {
+          "artifactId": "art_example_01"
+        },
+        "rules": {
+          "artifactId": "art_example_99"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "table.filter",
+        "version": "1.0.0"
+      },
+      "parameters": {},
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "table.filter",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "csv",
+        "parquet",
+        "arrow-ipc-file"
+      ],
+      "mediaTypes": [
+        "text/csv",
+        "application/vnd.apache.parquet",
+        "application/vnd.apache.arrow.file"
+      ],
+      "name": "data",
+      "required": true
+    },
+    {
+      "cardinality": "one",
+      "formats": [
+        "json"
+      ],
+      "mediaTypes": [
+        "application/json"
+      ],
+      "name": "rules",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "parquet"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "matched"
+    },
+    {
+      "formats": [
+        "parquet"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "rejected"
+    },
+    {
+      "kind": "value",
+      "name": "summary",
+      "schema": {
+        "type": "object"
+      }
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {},
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "table",
+    "filter"
+  ],
+  "timeoutSeconds": 1200,
+  "title": "Filter table rows",
+  "version": "1.0.0"
+}

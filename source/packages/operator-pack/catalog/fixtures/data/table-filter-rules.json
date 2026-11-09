@@ -1,0 +1,8 @@
+{
+  "condition": {
+    "field": "value",
+    "op": "gte",
+    "value": 2.0
+  },
+  "schemaVersion": "table-filter-rules.v1"
+}

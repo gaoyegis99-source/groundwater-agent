@@ -1,0 +1,133 @@
+{
+  "description": "Rank observations against an explicit overall, monthly, or quarterly baseline using deterministic midranks for ties.",
+  "domain": "timeseries",
+  "errorCodes": [
+    "DUPLICATE_TIMESTAMP",
+    "FIELD_REQUIRED",
+    "FREQUENCY_UNSUPPORTED",
+    "INSUFFICIENT_OBSERVATIONS",
+    "NON_NUMERIC_VALUE",
+    "OUTPUT_VALIDATION_FAILED",
+    "TIMESTAMP_INVALID",
+    "TIMEZONE_UNSUPPORTED",
+    "TIME_RANGE_INVALID"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-timeseries-empirical_percentile",
+      "inputs": {
+        "observations": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "timeseries.empirical_percentile",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "baselineEnd": "2021-12-31",
+        "baselineStart": "2020-01-01",
+        "groupField": "station",
+        "minBaselineObservations": 4,
+        "referenceSeason": "overall",
+        "timeField": "time",
+        "valueField": "value"
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "timeseries.empirical_percentile",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "csv",
+        "parquet",
+        "arrow-ipc-file"
+      ],
+      "mediaTypes": [
+        "text/csv",
+        "application/vnd.apache.parquet",
+        "application/vnd.apache.arrow.file"
+      ],
+      "name": "observations",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "parquet"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "percentiles"
+    },
+    {
+      "kind": "value",
+      "name": "summary",
+      "schema": {
+        "type": "object"
+      }
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "baselineEnd": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "baselineStart": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "groupField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "minBaselineObservations": {
+        "minimum": 1,
+        "type": "integer"
+      },
+      "referenceSeason": {
+        "enum": [
+          "overall",
+          "month",
+          "quarter"
+        ],
+        "type": "string"
+      },
+      "timeField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "valueField": {
+        "minLength": 1,
+        "type": "string"
+      }
+    },
+    "required": [
+      "groupField",
+      "timeField",
+      "valueField",
+      "referenceSeason",
+      "baselineStart",
+      "baselineEnd",
+      "minBaselineObservations"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "timeseries",
+    "empirical_percentile"
+  ],
+  "timeoutSeconds": 1800,
+  "title": "Calculate empirical historical percentile",
+  "version": "1.0.0"
+}

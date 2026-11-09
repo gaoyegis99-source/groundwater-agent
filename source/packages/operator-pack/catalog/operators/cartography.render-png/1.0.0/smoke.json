@@ -1,0 +1,23 @@
+{
+  "expectedOutputs": {
+    "image": {
+      "format": "png",
+      "kind": "artifact",
+      "mediaType": "image/png"
+    }
+  },
+  "inputs": {
+    "data": {
+      "fixtureId": "cartography.points"
+    }
+  },
+  "operator": {
+    "id": "cartography.render-png",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "title": "Monitoring values",
+    "valueField": "value"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

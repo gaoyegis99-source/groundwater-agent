@@ -1,0 +1,113 @@
+{
+  "description": "Calculate one statistic across two to sixteen exactly aligned raster bands.",
+  "domain": "raster",
+  "errorCodes": [
+    "BAND_INVALID",
+    "CRS_REQUIRED",
+    "GRID_MISMATCH",
+    "INPUT_CARDINALITY_INVALID",
+    "OUTPUT_VALIDATION_FAILED"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-raster-cell_statistics",
+      "inputs": {
+        "rasters": [
+          {
+            "artifactId": "art_example_01"
+          },
+          {
+            "artifactId": "art_example_02"
+          }
+        ]
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "raster.cell_statistics",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "band": 1,
+        "minimumValidInputs": 2,
+        "statistic": "mean"
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "raster.cell_statistics",
+  "inputs": [
+    {
+      "cardinality": "many",
+      "formats": [
+        "geotiff",
+        "cog"
+      ],
+      "maxItems": 16,
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "rasters",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "raster"
+    },
+    {
+      "kind": "value",
+      "name": "summary",
+      "schema": {
+        "type": "object"
+      }
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "band": {
+        "default": 1,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "minimumValidInputs": {
+        "default": 1,
+        "maximum": 16,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "statistic": {
+        "enum": [
+          "min",
+          "max",
+          "mean",
+          "median",
+          "sum",
+          "populationStddev"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "statistic"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "raster",
+    "cell_statistics"
+  ],
+  "timeoutSeconds": 3600,
+  "title": "Calculate cell statistics",
+  "version": "1.0.0"
+}

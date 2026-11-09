@@ -1,0 +1,614 @@
+{
+  "fixtures": {
+    "accumulation": {
+      "format": "geotiff",
+      "mediaType": "image/tiff",
+      "path": "data/accumulation.tif",
+      "sha256": "sha256:57ff6223ce21b1910ba0981c13b3f3ed4c0bcd64dae5d74e14b3d8080e20aa6e",
+      "sizeBytes": 435
+    },
+    "advanced.timeseries": {
+      "format": "parquet",
+      "mediaType": "application/vnd.apache.parquet",
+      "path": "data/advanced-timeseries.parquet",
+      "sha256": "sha256:a1274030f2c6d79c3fc428ef639379e56ee7a3350da024af2e3e4178e0d40f87",
+      "sizeBytes": 1303
+    },
+    "cartography.points": {
+      "format": "geojson",
+      "mediaType": "application/geo+json",
+      "path": "data/cartography-points.geojson",
+      "sha256": "sha256:4af9986221817cfa63dbdae70ea8cc5b5045b2f5e183b62ce9bc9b1bd4c7032b",
+      "sizeBytes": 345
+    },
+    "classes": {
+      "format": "geotiff",
+      "mediaType": "image/tiff",
+      "path": "data/classes.tif",
+      "sha256": "sha256:bf9027a617af09acb75bcc433eb72012ab0f840229be8fd9ba7861409f093104",
+      "sizeBytes": 391
+    },
+    "detailed": {
+      "format": "geopackage",
+      "mediaType": "application/geopackage+sqlite3",
+      "path": "data/detailed.gpkg",
+      "sha256": "sha256:da4e4bacb3974c9cf0f287ffcc8f72e490ad58b8b10ff1c7a8fc99c34f014cfa",
+      "sizeBytes": 98304
+    },
+    "dissolve": {
+      "format": "geopackage",
+      "mediaType": "application/geopackage+sqlite3",
+      "path": "data/dissolve.gpkg",
+      "sha256": "sha256:3f997b26c632fbf9ab2215dda96dc76ab4c0726863cec6c83e1e40da8deecdc0",
+      "sizeBytes": 98304
+    },
+    "flow.direction": {
+      "format": "geotiff",
+      "mediaType": "image/tiff",
+      "path": "data/flow-direction.tif",
+      "sha256": "sha256:dfd4a24bb10e18270a3d06587150196aac3b8183deb38e7260570bce71107fde",
+      "sizeBytes": 402
+    },
+    "groundwater.direction": {
+      "format": "geotiff",
+      "mediaType": "image/tiff",
+      "path": "data/groundwater-direction.tif",
+      "sha256": "sha256:f73dcdd2dd26355b0760a6009caa1afe7f34b29622e3fbe0dd0bbfe234fbfbe9",
+      "sizeBytes": 482
+    },
+    "groundwater.gradient": {
+      "format": "geotiff",
+      "mediaType": "image/tiff",
+      "path": "data/groundwater-gradient.tif",
+      "sha256": "sha256:45e2058ba7349418ff6362ab9c127827b150a7cdb0074a176cb79f49d47937f0",
+      "sizeBytes": 482
+    },
+    "groundwater.head.plane": {
+      "format": "geotiff",
+      "mediaType": "image/tiff",
+      "path": "data/groundwater-head-plane.tif",
+      "sha256": "sha256:6e707c1022402d91bfdcc1ca20297b33de1658bc3bffdc8560bc5d242645ec96",
+      "sizeBytes": 482
+    },
+    "groundwater.timeseries": {
+      "format": "parquet",
+      "mediaType": "application/vnd.apache.parquet",
+      "path": "data/groundwater-timeseries.parquet",
+      "sha256": "sha256:afba412e76b433ad2b7a53cc7b5593cfc425a0e2eafc736e3fb37d209263a71a",
+      "sizeBytes": 1833
+    },
+    "holes": {
+      "format": "geotiff",
+      "mediaType": "image/tiff",
+      "path": "data/holes.tif",
+      "sha256": "sha256:ce6725c5d3026140d188898389a0190af2a7b0047dd45e13477a47fe26ab67b0",
+      "sizeBytes": 482
+    },
+    "hydrology.conditioned": {
+      "format": "geotiff",
+      "mediaType": "image/tiff",
+      "path": "data/hydrology-conditioned.tif",
+      "sha256": "sha256:4ea7b1a416ed07a12834e95da6c7229650c80c22a681b5fc64f6ef1808a9dc34",
+      "sizeBytes": 578
+    },
+    "hydrology.dem": {
+      "format": "geotiff",
+      "mediaType": "image/tiff",
+      "path": "data/hydrology-dem.tif",
+      "sha256": "sha256:3a0a080fd611ac5fc50a907bb6d50e6d2a37287ba3d250712cf89706d7a67423",
+      "sizeBytes": 578
+    },
+    "invalid": {
+      "format": "geopackage",
+      "mediaType": "application/geopackage+sqlite3",
+      "path": "data/invalid.gpkg",
+      "sha256": "sha256:d0dabff173416762bf6bbd33f4d3209800b49a56d0f65325988efaf3551f8082",
+      "sizeBytes": 98304
+    },
+    "join.source": {
+      "format": "geopackage",
+      "mediaType": "application/geopackage+sqlite3",
+      "path": "data/join-source.gpkg",
+      "sha256": "sha256:a860eb065d35bdfcaa505c11ae51e73a217a53594666699efa32370efd12d38d",
+      "sizeBytes": 98304
+    },
+    "join.target": {
+      "format": "geopackage",
+      "mediaType": "application/geopackage+sqlite3",
+      "path": "data/join-target.gpkg",
+      "sha256": "sha256:5c1f34863bf65ca2b8fde45960284d6a07b78ea7816160f0057909d1d4ffb1ff",
+      "sizeBytes": 98304
+    },
+    "left": {
+      "format": "geopackage",
+      "mediaType": "application/geopackage+sqlite3",
+      "path": "data/left.gpkg",
+      "sha256": "sha256:d47f08576e14510129d6e13d3c1e2cc82f0974786d88ea175659fc463977ff66",
+      "sizeBytes": 98304
+    },
+    "mask": {
+      "format": "geopackage",
+      "mediaType": "application/geopackage+sqlite3",
+      "path": "data/mask.gpkg",
+      "sha256": "sha256:6f1c222facafa9242ff66516905a9ffc23e0b0e9eaec00abb018d501cbafefae",
+      "sizeBytes": 98304
+    },
+    "monitoring.points": {
+      "format": "geojson",
+      "mediaType": "application/geo+json",
+      "path": "data/monitoring-points.geojson",
+      "sha256": "sha256:996885a289f86ffd95fbed3a8125d2447ac2f93ae2d0627f6a01c3b0ecedcf2e",
+      "sizeBytes": 770
+    },
+    "monitoring.raster.left": {
+      "format": "geotiff",
+      "mediaType": "image/tiff",
+      "path": "data/monitoring-raster-left.tif",
+      "sha256": "sha256:226734d9d03c49a317c9107d5610028cab60798170a18b34f5030ed6b2a0e9f6",
+      "sizeBytes": 418
+    },
+    "monitoring.raster.right": {
+      "format": "geotiff",
+      "mediaType": "image/tiff",
+      "path": "data/monitoring-raster-right.tif",
+      "sha256": "sha256:5c96b4e314a42141ec43a80cae1c73c4a2d5bea6bc41ab55865cfbf0b654aaf7",
+      "sizeBytes": 418
+    },
+    "monitoring.timeseries": {
+      "format": "parquet",
+      "mediaType": "application/vnd.apache.parquet",
+      "path": "data/monitoring-timeseries.parquet",
+      "sha256": "sha256:e26d0e609d0dff73b74bce9eb58f9d23b8d90d084b64a22c5daad399806fd101",
+      "sizeBytes": 2150
+    },
+    "multipart": {
+      "format": "geopackage",
+      "mediaType": "application/geopackage+sqlite3",
+      "path": "data/multipart.gpkg",
+      "sha256": "sha256:22c6579f5ff9e54f8b0839ace3037aef54b5b88eb570851a14aa9878ddddcf59",
+      "sizeBytes": 98304
+    },
+    "nearest.source": {
+      "format": "geopackage",
+      "mediaType": "application/geopackage+sqlite3",
+      "path": "data/nearest-source.gpkg",
+      "sha256": "sha256:a773169fbbd0dd858097ea8422d0a61d837146ed2096781d9248cffbf8430669",
+      "sizeBytes": 98304
+    },
+    "nearest.target": {
+      "format": "geopackage",
+      "mediaType": "application/geopackage+sqlite3",
+      "path": "data/nearest-target.gpkg",
+      "sha256": "sha256:84ca4716dc8fd6b700f14df7af934c159c145f6ee6bf3cde055fc152a6560d0a",
+      "sizeBytes": 98304
+    },
+    "point": {
+      "format": "geopackage",
+      "mediaType": "application/geopackage+sqlite3",
+      "path": "data/point.gpkg",
+      "sha256": "sha256:01434c832044375d6b5f6756ab8f2341b313debfec73c715422f874000608541",
+      "sizeBytes": 98304
+    },
+    "point.cloud": {
+      "format": "las",
+      "mediaType": "application/vnd.las",
+      "path": "data/point-cloud.las",
+      "sha256": "sha256:0179daf779535dbf5a4b8445c381dc31af86c065a9f6bf7a5a2f25192bfb2b7a",
+      "sizeBytes": 247
+    },
+    "pour.points": {
+      "format": "geopackage",
+      "mediaType": "application/geopackage+sqlite3",
+      "path": "data/pour-points.gpkg",
+      "sha256": "sha256:ab004d5db414496d297f6d65aca3266a7c9e9707cb0378c686b99c9054e6feb2",
+      "sizeBytes": 98304
+    },
+    "proximity": {
+      "format": "geotiff",
+      "mediaType": "image/tiff",
+      "path": "data/proximity.tif",
+      "sha256": "sha256:11ba6138a8f4d513cb89551721fd556599b9ab4cc3fe55387e63981b65fb7648",
+      "sizeBytes": 482
+    },
+    "raster": {
+      "format": "geotiff",
+      "mediaType": "image/tiff",
+      "path": "data/raster.tif",
+      "sha256": "sha256:7d18cf2666922a5d71f74c980d2c7adca72dd00149f37fc4c42dbcb4bd3eaaa4",
+      "sizeBytes": 446
+    },
+    "raster.addend": {
+      "format": "geotiff",
+      "mediaType": "image/tiff",
+      "path": "data/raster-addend.tif",
+      "sha256": "sha256:b145e604fc9ae6d0f44204d7e2e1e4eb4020b9267cba2f1b4e082e3cf1220850",
+      "sizeBytes": 446
+    },
+    "raster.overlap": {
+      "format": "geotiff",
+      "mediaType": "image/tiff",
+      "path": "data/raster-overlap.tif",
+      "sha256": "sha256:53b37b8310edf4b6466f177a34c4dd4dcaa4e253060a9c39db1b0e8a6465fb06",
+      "sizeBytes": 446
+    },
+    "right": {
+      "format": "geopackage",
+      "mediaType": "application/geopackage+sqlite3",
+      "path": "data/right.gpkg",
+      "sha256": "sha256:03010e9830830268004ab2016455c3c9fb062ce44806f370a7278546cb3f6760",
+      "sizeBytes": 98304
+    },
+    "rules": {
+      "format": "csv",
+      "mediaType": "text/csv",
+      "path": "data/rules.csv",
+      "sha256": "sha256:0d5930d82cccf73793e05dde5f50fe0ed01a4cda092ffe75ac1f7158f7603972",
+      "sizeBytes": 50
+    },
+    "snap.points": {
+      "format": "geopackage",
+      "mediaType": "application/geopackage+sqlite3",
+      "path": "data/snap-points.gpkg",
+      "sha256": "sha256:f080a467b28959c4edaf4dc306ccd72db65f43d788b4359d17707fefa22ade1b",
+      "sizeBytes": 98304
+    },
+    "streams": {
+      "format": "geotiff",
+      "mediaType": "image/tiff",
+      "path": "data/streams.tif",
+      "sha256": "sha256:e414d14d4e1ef319aa9ec5e42027467da7fec8b7aa8eff3a61d98309ad9296ba",
+      "sizeBytes": 400
+    },
+    "table": {
+      "format": "csv",
+      "mediaType": "text/csv",
+      "path": "data/table.csv",
+      "sha256": "sha256:ae239a596021b1f384e87ce3a0e7c8f64de1319728c0bac2c00abe970f8f32c6",
+      "sizeBytes": 45
+    },
+    "table.document.blocks": {
+      "format": "parquet",
+      "mediaType": "application/vnd.apache.parquet",
+      "path": "data/document-blocks.parquet",
+      "sha256": "sha256:ce33dbd460ba1ba68c56f683ef848ba3df45fd63b1724cf9e4fe2c1788fb6899",
+      "sizeBytes": 1101
+    },
+    "table.document.deduplicate.rules": {
+      "format": "json",
+      "mediaType": "application/json",
+      "path": "data/table-deduplicate-rules.json",
+      "sha256": "sha256:40b8ba6cd03bb9def9866758342111679de9e99fd91528d129fa83138067edd9",
+      "sizeBytes": 78
+    },
+    "table.document.docx": {
+      "format": "docx",
+      "mediaType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "path": "data/table-document.docx",
+      "sha256": "sha256:2fbf0f3a3f0430f17002a89da8543a2c7a5a2ac47342aadcc325f48eef985feb",
+      "sizeBytes": 36731
+    },
+    "table.document.filter.rules": {
+      "format": "json",
+      "mediaType": "application/json",
+      "path": "data/table-filter-rules.json",
+      "sha256": "sha256:1ad8bb865a434656ab585ce0f894bbaceffafdd8d96ead04573747d17830744b",
+      "sizeBytes": 125
+    },
+    "table.document.join.rules": {
+      "format": "json",
+      "mediaType": "application/json",
+      "path": "data/table-join-rules.json",
+      "sha256": "sha256:cdcbf6ec6268744cd1864ffd668394e5af4f4e2361e54cec4dcdc059e221d370",
+      "sizeBytes": 114
+    },
+    "table.document.pdf": {
+      "format": "pdf",
+      "mediaType": "application/pdf",
+      "path": "data/table-document.pdf",
+      "sha256": "sha256:4a5020f079103b26f30c3c0a931aea3d15128eb3609c3e8fa875f194ca78e5bf",
+      "sizeBytes": 567
+    },
+    "table.document.project.rules": {
+      "format": "json",
+      "mediaType": "application/json",
+      "path": "data/table-project-rules.json",
+      "sha256": "sha256:090715ffb4609e8de687f7dc8217521cef886c22eb43058c3d5889ca02b261d1",
+      "sizeBytes": 241
+    },
+    "table.document.sort.rules": {
+      "format": "json",
+      "mediaType": "application/json",
+      "path": "data/table-sort-rules.json",
+      "sha256": "sha256:b94f7c7e3d23e70a31e2b65af78f71bf781380daf075d411b45f6574a7fae423",
+      "sizeBytes": 147
+    },
+    "table.document.table": {
+      "format": "parquet",
+      "mediaType": "application/vnd.apache.parquet",
+      "path": "data/table-document.parquet",
+      "sha256": "sha256:c8ee674992e754a5ca461c1b79239f642e382a090c5c747285da4c65eba59bdc",
+      "sizeBytes": 1032
+    },
+    "table.document.text": {
+      "format": "text",
+      "mediaType": "text/plain",
+      "path": "data/table-document.txt",
+      "sha256": "sha256:17861e53e7dbd64eb5646992fb358aa2a40e76a8597174c466432ef86442f481",
+      "sizeBytes": 43
+    },
+    "table.document.validation.rules": {
+      "format": "json",
+      "mediaType": "application/json",
+      "path": "data/table-validation-rules.json",
+      "sha256": "sha256:8d8a08e0cae8901fd6b3c822d02b7c7e90bf24ddd9826a4218ff31659b06a922",
+      "sizeBytes": 281
+    },
+    "table.document.workbook": {
+      "format": "xlsx",
+      "mediaType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "path": "data/table-document.xlsx",
+      "sha256": "sha256:cb12e1beda6d420189aa74ddfe177a8892a82a536ce9d060992b795c57d591c8",
+      "sizeBytes": 4871
+    },
+    "terrain": {
+      "format": "geotiff",
+      "mediaType": "image/tiff",
+      "path": "data/terrain.tif",
+      "sha256": "sha256:8643a3e11eef9d948fb0a70df39e46ddb525987989bdb41f07dadcb747e85e60",
+      "sizeBytes": 482
+    },
+    "transfer.bands": {
+      "format": "json",
+      "mediaType": "application/json",
+      "path": "data/transfer-bands.json",
+      "sha256": "sha256:c1715330cd0b671b9f763b935755f067f8fab7b9d2f776a04ddca0dcd1b926dd",
+      "sizeBytes": 86
+    },
+    "transfer.boundary": {
+      "format": "geopackage",
+      "mediaType": "application/geopackage+sqlite3",
+      "path": "data/transfer-boundary.gpkg",
+      "sha256": "sha256:f24cd4e68fb098695b1568e409f2a00f56370a040b9c02951d6316ceb819a826",
+      "sizeBytes": 73728
+    },
+    "transfer.envelope-extent": {
+      "format": "geopackage",
+      "mediaType": "application/geopackage+sqlite3",
+      "path": "data/transfer-envelope-extent.geopackage",
+      "sha256": "sha256:e255e385ca32f03ddaa87b3e152b10eceea6b0da7101a74fc0d10fa62cb18f7f",
+      "sizeBytes": 73728
+    },
+    "transfer.fields": {
+      "format": "json",
+      "mediaType": "application/json",
+      "path": "data/transfer-fields.json",
+      "sha256": "sha256:9bd8c8845b9e8f7e16095a1f729ed4ce8403ec3f58b17844c12ff3d7e415fb70",
+      "sizeBytes": 94
+    },
+    "transfer.finetune-loss": {
+      "format": "parquet",
+      "mediaType": "application/vnd.apache.parquet",
+      "path": "data/transfer-finetune-loss.parquet",
+      "sha256": "sha256:9d5fd8b61638e375376aeb293af4170d1f52196e4d38a979532bd58b2f93e22e",
+      "sizeBytes": 813
+    },
+    "transfer.finetune-modelSpec": {
+      "format": "json",
+      "mediaType": "application/json",
+      "path": "data/transfer-finetune-modelSpec.json",
+      "sha256": "sha256:c21dcc238300765dbadbab93b10d7aec1af894b7c0cbed11a0187126bfd0feb3",
+      "sizeBytes": 132
+    },
+    "transfer.finetune-weights": {
+      "format": "pytorch-state-dict",
+      "mediaType": "application/vnd.pytorch",
+      "path": "data/transfer-finetune-weights.pytorch-state-dict",
+      "sha256": "sha256:ae8d65f5a68ad9195ab1c98b43c1dc2709d46d870e290ba9d37b29c0915ffa8d",
+      "sizeBytes": 6591
+    },
+    "transfer.inverse": {
+      "format": "json",
+      "mediaType": "application/json",
+      "path": "data/transfer-inverse.json",
+      "sha256": "sha256:51e15f36cde8bead11644cf86556f12e07012e8e0c027799fbb5abd21d9dc927",
+      "sizeBytes": 119
+    },
+    "transfer.inverse-data": {
+      "format": "parquet",
+      "mediaType": "application/vnd.apache.parquet",
+      "path": "data/transfer-inverse-data.parquet",
+      "sha256": "sha256:b7b5d53a95248146ec31966d08b47c87df560d649411a6544b85e787eec37d69",
+      "sizeBytes": 2847
+    },
+    "transfer.mapping": {
+      "format": "json",
+      "mediaType": "application/json",
+      "path": "data/transfer-mapping.json",
+      "sha256": "sha256:370d33fb1205ab968dc61d1872a37faca7f6bd86c562fa623b45cfcab6338b60",
+      "sizeBytes": 3082
+    },
+    "transfer.membership-points": {
+      "format": "geopackage",
+      "mediaType": "application/geopackage+sqlite3",
+      "path": "data/transfer-membership-points.geopackage",
+      "sha256": "sha256:295d38defca9189439c847f53c4d2da52d214422e028606999fd279766503708",
+      "sizeBytes": 73728
+    },
+    "transfer.metrics-evaluated": {
+      "format": "parquet",
+      "mediaType": "application/vnd.apache.parquet",
+      "path": "data/transfer-metrics-evaluated.parquet",
+      "sha256": "sha256:1afca9897e71834c85a7165a566aa7daf0f29b02a02b7b5c26363414c1ac18c6",
+      "sizeBytes": 3683
+    },
+    "transfer.metrics-overall": {
+      "format": "json",
+      "mediaType": "application/json",
+      "path": "data/transfer-metrics-overall.json",
+      "sha256": "sha256:ec41f30b8b3766769b3181ba6443bccbecb3d71eed236a308989db0608688a5a",
+      "sizeBytes": 317
+    },
+    "transfer.metrics-perGroup": {
+      "format": "parquet",
+      "mediaType": "application/vnd.apache.parquet",
+      "path": "data/transfer-metrics-perGroup.parquet",
+      "sha256": "sha256:e059a578d9541790efd3cce493d8c909afa28347284225e4b45b38bb6dc9b97a",
+      "sizeBytes": 1892
+    },
+    "transfer.points-points": {
+      "format": "geopackage",
+      "mediaType": "application/geopackage+sqlite3",
+      "path": "data/transfer-points-points.geopackage",
+      "sha256": "sha256:429bb6030c8c93c529e2d3d93a448de5f4791656ef4ee3d5344d22b7634c2fb6",
+      "sizeBytes": 73728
+    },
+    "transfer.predict-predictions": {
+      "format": "parquet",
+      "mediaType": "application/vnd.apache.parquet",
+      "path": "data/transfer-predict-predictions.parquet",
+      "sha256": "sha256:1f852d0bb57c9ba8980da2ae5f80c77618a431baadd48afc369a1a5d05e34448",
+      "sizeBytes": 3025
+    },
+    "transfer.pretrain-loss": {
+      "format": "parquet",
+      "mediaType": "application/vnd.apache.parquet",
+      "path": "data/transfer-pretrain-loss.parquet",
+      "sha256": "sha256:224f944207c88acc80d897897c9cc035d726154b22fd1e001bd0ca8f4a1d5938",
+      "sizeBytes": 813
+    },
+    "transfer.pretrain-modelSpec": {
+      "format": "json",
+      "mediaType": "application/json",
+      "path": "data/transfer-pretrain-modelSpec.json",
+      "sha256": "sha256:c21dcc238300765dbadbab93b10d7aec1af894b7c0cbed11a0187126bfd0feb3",
+      "sizeBytes": 132
+    },
+    "transfer.pretrain-weights": {
+      "format": "pytorch-state-dict",
+      "mediaType": "application/vnd.pytorch",
+      "path": "data/transfer-pretrain-weights.pytorch-state-dict",
+      "sha256": "sha256:ff89a57d93753e8bf1ff0f6b5d6a54295e664849df7b5b85f325840813939788",
+      "sizeBytes": 6591
+    },
+    "transfer.raster-coverage": {
+      "format": "json",
+      "mediaType": "application/json",
+      "path": "data/transfer-raster-coverage.json",
+      "sha256": "sha256:3fcf6ea9e43a0e1150d151659b2b4f90cb7630fb9a3f279ed0f6b8b20965207d",
+      "sizeBytes": 55
+    },
+    "transfer.raster-raster": {
+      "format": "geotiff",
+      "mediaType": "image/tiff",
+      "path": "data/transfer-raster-raster.geotiff",
+      "sha256": "sha256:eb4b10efb7a0e5c7cd18cdbbfe0c04bbbd77221961ce58d0ef4e0cb3e9161a1a",
+      "sizeBytes": 991
+    },
+    "transfer.rgb": {
+      "format": "geotiff",
+      "mediaType": "image/tiff",
+      "path": "data/transfer-rgb.tif",
+      "sha256": "sha256:448acf60e5c02d37d5f51b71426a4075c1e8266fecd6986431b5a1255026ec17",
+      "sizeBytes": 1572
+    },
+    "transfer.scaled-data": {
+      "format": "parquet",
+      "mediaType": "application/vnd.apache.parquet",
+      "path": "data/transfer-scaled-data.parquet",
+      "sha256": "sha256:1574fc3b52d20463a1f7374cb2bdbdafe1003414896ae4d4249486aac9938756",
+      "sizeBytes": 2520
+    },
+    "transfer.scaler-scaler": {
+      "format": "json",
+      "mediaType": "application/json",
+      "path": "data/transfer-scaler-scaler.json",
+      "sha256": "sha256:b28c5944d023a88f554d70f30641628b40a946d4613c722460851468b27d2299",
+      "sizeBytes": 258
+    },
+    "transfer.split-fitRows": {
+      "format": "parquet",
+      "mediaType": "application/vnd.apache.parquet",
+      "path": "data/transfer-split-fitRows.parquet",
+      "sha256": "sha256:4db68d9442740e53b9edc7f2ffcf9db9ab00490d6f0bb4c48ae02077a16819a2",
+      "sizeBytes": 2445
+    },
+    "transfer.split-holdoutTargets": {
+      "format": "parquet",
+      "mediaType": "application/vnd.apache.parquet",
+      "path": "data/transfer-split-holdoutTargets.parquet",
+      "sha256": "sha256:dcfa4aa667b8fce732ae27cd1228522154b111f9aa405c0e9898899be6819f89",
+      "sizeBytes": 2281
+    },
+    "transfer.split-split": {
+      "format": "json",
+      "mediaType": "application/json",
+      "path": "data/transfer-split-split.json",
+      "sha256": "sha256:3799a0fdd4bba5a1229969bb386e4e3842ea5b1e197e2d044a58992fcc9047d0",
+      "sizeBytes": 127
+    },
+    "transfer.split-trainTargets": {
+      "format": "parquet",
+      "mediaType": "application/vnd.apache.parquet",
+      "path": "data/transfer-split-trainTargets.parquet",
+      "sha256": "sha256:7869488db25b97f4d763cd58c23ff28a19cc8f2d3e8f16419ce87f00390abd90",
+      "sizeBytes": 2399
+    },
+    "transfer.unpivot-data": {
+      "format": "parquet",
+      "mediaType": "application/vnd.apache.parquet",
+      "path": "data/transfer-unpivot-data.parquet",
+      "sha256": "sha256:8a077007b5c3befd6d39b2a997189699dfd572f064752f3b13d2c927d346fadf",
+      "sizeBytes": 2502
+    },
+    "transfer.wide": {
+      "format": "parquet",
+      "mediaType": "application/vnd.apache.parquet",
+      "path": "data/transfer-wide.parquet",
+      "sha256": "sha256:afaf09daa67d6d6261fc5dea09cde8c25ffc8773d7bb774209b9994f05774497",
+      "sizeBytes": 9970
+    },
+    "transfer.windows": {
+      "format": "json",
+      "mediaType": "application/json",
+      "path": "data/transfer-windows.json",
+      "sha256": "sha256:c423a7d04879fca250d4622a596f8eb2bafb0e71307d2f7ab37408569b61f484",
+      "sizeBytes": 144
+    },
+    "transfer.windows-features": {
+      "format": "npy",
+      "mediaType": "application/x-npy",
+      "path": "data/transfer-windows-features.npy",
+      "sha256": "sha256:bf4444e8ccbddbfe335293d9308771f53ae21c12aec4dece343f08155c210a87",
+      "sizeBytes": 560
+    },
+    "transfer.windows-sampleIndex": {
+      "format": "parquet",
+      "mediaType": "application/vnd.apache.parquet",
+      "path": "data/transfer-windows-sampleIndex.parquet",
+      "sha256": "sha256:0c35bdbbb407548aef546aac1e25cb20f58193aed8be4dfa76faaa9052ba75b9",
+      "sizeBytes": 2672
+    },
+    "transfer.windows-targets": {
+      "format": "npy",
+      "mediaType": "application/x-npy",
+      "path": "data/transfer-windows-targets.npy",
+      "sha256": "sha256:71deaf4d6a3c1717785141b535ff09e96f98847d5e8effd88cf41239c8992697",
+      "sizeBytes": 200
+    },
+    "wgs84": {
+      "format": "geojson",
+      "mediaType": "application/geo+json",
+      "path": "data/wgs84.geojson",
+      "sha256": "sha256:a0cdfa6265e6df9389cda12b5642fd7b4f9119b6652bef1c83039e30ff74aaae",
+      "sizeBytes": 574
+    },
+    "zones": {
+      "format": "geopackage",
+      "mediaType": "application/geopackage+sqlite3",
+      "path": "data/zones.gpkg",
+      "sha256": "sha256:44670de7dfdf3a593bc9f3cdf9336bd83707ecaf1a32772c302650e03213fe6e",
+      "sizeBytes": 98304
+    }
+  },
+  "schemaVersion": "operator-fixtures.v1"
+}

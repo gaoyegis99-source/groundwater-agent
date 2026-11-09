@@ -1,0 +1,23 @@
+{
+  "expectedOutputs": {
+    "vector": {
+      "format": "geopackage",
+      "kind": "artifact",
+      "mediaType": "application/geopackage+sqlite3"
+    }
+  },
+  "inputs": {
+    "vector": {
+      "fixtureId": "detailed"
+    }
+  },
+  "operator": {
+    "id": "vector.point_on_surface",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "allParts": false,
+    "layer": "detailed"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

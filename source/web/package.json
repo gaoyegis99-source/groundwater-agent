@@ -1,0 +1,46 @@
+{
+  "name": "platform-web-shell",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit && vite build",
+    "test": "vitest run",
+    "contracts:generate": "PYTHONPATH=.. python -m scripts.development.generate_web_contracts",
+    "contracts:check": "PYTHONPATH=.. python -m scripts.development.generate_web_contracts --check",
+    "test:e2e:build": "playwright test --config playwright.build.config.ts",
+    "test:e2e:yaozhanbao": "playwright test e2e/v12-yaozhanbao-workflow.spec.ts",
+    "test:e2e": "playwright test e2e/message-routing.spec.ts e2e/v12-database-formats.spec.ts e2e/v12-live.spec.ts e2e/v12-question-matrix.spec.ts"
+  },
+  "dependencies": {
+    "@noble/hashes": "2.4.0",
+    "@platform/ui-boundary": "1.0.0",
+    "echarts": "6.1.0",
+    "ol": "10.11.0",
+    "react": "19.3.0",
+    "react-aria-components": "1.22.1",
+    "react-dom": "19.3.0",
+    "react-markdown": "10.1.0",
+    "remark-gfm": "4.0.1"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
+    "@playwright/test": "1.58.2",
+    "@rolldown/binding-wasm32-wasi": "1.2.13",
+    "@testing-library/jest-dom": "6.9.1",
+    "@testing-library/react": "16.3.0",
+    "@testing-library/user-event": "14.6.1",
+    "@types/mdast": "4.0.4",
+    "@types/node": "22.19.0",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "ajv": "8.17.1",
+    "jsdom": "27.2.0",
+    "openapi-typescript": "7.13.0",
+    "typescript": "5.9.3",
+    "vite": "8.3.4",
+    "vitest": "5.0.3"
+  }
+}

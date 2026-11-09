@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://groundwater.local/schemas/operations/instance-manifest.v4.schema.json",
+  "title": "Groundwater research instance manifest v4",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "instanceId", "profile", "composeProject", "dataRoot", "stateRoot", "ports", "assemblyDigest", "createdAt", "status"],
+  "properties": {
+    "schemaVersion": {"const": "instance-manifest.v4"},
+    "instanceId": {"type": "string", "pattern": "^[a-z0-9][a-z0-9.-]{0,62}$"},
+    "profile": {"const": "research"},
+    "composeProject": {"type": "string"},
+    "dataRoot": {"type": "string", "pattern": "^/"},
+    "stateRoot": {"type": "string", "pattern": "^/"},
+    "ports": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gateway"],
+      "properties": {
+        "gateway": {"type": "integer", "minimum": 1024, "maximum": 65535}
+      }
+    },
+    "assemblyDigest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "legacyReleaseId": {"type": "string", "pattern": "^sha256-[0-9a-f]{64}$"},
+    "createdAt": {"type": "string", "format": "date-time"},
+    "status": {"enum": ["created", "active", "stopped", "restored", "destroyed"]}
+  }
+}

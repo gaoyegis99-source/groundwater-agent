@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "operator-smoke-test.v1",
+  "operator": {
+    "id": "groundwater.porous.agri_invert",
+    "version": "1.0.0"
+  },
+  "inputs": {
+    "agricultural_data": {
+      "fixtureId": "transfer.fields"
+    }
+  },
+  "parameters": {},
+  "expectedOutputs": {
+    "posterior_arrays": {
+      "kind": "artifact",
+      "mediaType": "application/x-npy",
+      "format": "npy"
+    },
+    "metrics": {
+      "kind": "value"
+    },
+    "report_package": {
+      "kind": "artifact",
+      "mediaType": "application/zip",
+      "format": "zip"
+    },
+    "run_receipt": {
+      "kind": "artifact",
+      "mediaType": "application/json",
+      "format": "json"
+    }
+  }
+}

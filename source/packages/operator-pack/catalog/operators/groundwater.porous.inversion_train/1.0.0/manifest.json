@@ -1,0 +1,104 @@
+{
+  "id": "groundwater.porous.inversion_train",
+  "version": "1.0.0",
+  "title": "Inversion Train",
+  "description": "Execute fixed third-party operation inversion.train through deployment service binding porous-groundwater.",
+  "domain": "groundwater",
+  "tags": [
+    "groundwater",
+    "third-party",
+    "remote-http",
+    "inversion.train"
+  ],
+  "runtime": "remote_http",
+  "remoteBinding": {
+    "serviceId": "porous-groundwater",
+    "operationType": "inversion.train"
+  },
+  "timeoutSeconds": 21600,
+  "memoryLimitBytes": 1073741824,
+  "inputs": [
+    {
+      "name": "training_data",
+      "cardinality": "one",
+      "required": true,
+      "mediaTypes": [
+        "application/zip"
+      ],
+      "formats": [
+        "zip"
+      ]
+    }
+  ],
+  "parametersSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {},
+    "required": []
+  },
+  "outputs": [
+    {
+      "name": "weights",
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/octet-stream"
+      ],
+      "formats": [
+        "binary"
+      ]
+    },
+    {
+      "name": "metrics",
+      "kind": "value",
+      "schema": {
+        "type": "object"
+      }
+    },
+    {
+      "name": "report_package",
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/zip"
+      ],
+      "formats": [
+        "zip"
+      ]
+    },
+    {
+      "name": "run_receipt",
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/json"
+      ],
+      "formats": [
+        "json"
+      ]
+    }
+  ],
+  "errorCodes": [
+    "REMOTE_AUTHENTICATION_FAILED",
+    "REMOTE_BINDING_INVALID",
+    "REMOTE_INTEGRITY_FAILED",
+    "REMOTE_OPERATION_FAILED",
+    "REMOTE_PROTOCOL_INVALID",
+    "REMOTE_SUBMISSION_UNCERTAIN",
+    "REMOTE_VERSION_MISMATCH"
+  ],
+  "examples": [
+    {
+      "schemaVersion": "operator-execution-request.v1",
+      "clientRequestId": "example-groundwater-porous-inversion_train",
+      "operator": {
+        "id": "groundwater.porous.inversion_train",
+        "version": "1.0.0"
+      },
+      "mode": "ASYNC",
+      "inputs": {
+        "training_data": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "parameters": {}
+    }
+  ]
+}

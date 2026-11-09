@@ -1,0 +1,37 @@
+from {{ project_name | replace('-', '_') | replace('.', '_') }} import lookup
+from platform_lightweight_agent.api import (
+    FunctionToolExecutor,
+    ToolExecutionRequest,
+    ToolReference,
+)
+from platform_lightweight_agent.testing import assert_sync_action_replay
+
+
+def test_lookup() -> None:
+    assert lookup({"query": "aquifer"}) == {"answer": "example:aquifer"}
+
+
+def test_lookup_action_replay_contract() -> None:
+    effects: list[str] = []
+
+    def observed_lookup(arguments):  # type: ignore[no-untyped-def]
+        effects.append(str(arguments["query"]))
+        return lookup(arguments)
+
+    reference = ToolReference(
+        "example.lookup", "1.0.0", "sha256:" + "0" * 64
+    )
+    executor = FunctionToolExecutor()
+    executor.register(reference, observed_lookup)
+    request = ToolExecutionRequest(
+        "contract-action", reference, {"query": "aquifer"}
+    )
+
+    result = assert_sync_action_replay(
+        executor,
+        request,
+        effect_observer=lambda: tuple(effects),
+    )
+
+    assert result.output == {"answer": "example:aquifer"}
+    assert effects == ["aquifer"]

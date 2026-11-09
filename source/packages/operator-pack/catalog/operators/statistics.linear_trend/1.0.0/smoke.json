@@ -1,0 +1,27 @@
+{
+  "expectedOutputs": {
+    "summary": {
+      "kind": "value"
+    },
+    "trends": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    }
+  },
+  "inputs": {
+    "observations": {
+      "fixtureId": "groundwater.timeseries"
+    }
+  },
+  "operator": {
+    "id": "statistics.linear_trend",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "groupField": "station",
+    "timeField": "time",
+    "valueField": "value"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

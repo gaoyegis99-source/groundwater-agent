@@ -1,0 +1,32 @@
+{
+  "expectedOutputs": {
+    "raster": {
+      "format": "geotiff",
+      "kind": "artifact",
+      "mediaType": "image/tiff"
+    }
+  },
+  "inputs": {
+    "vector": {
+      "fixtureId": "zones"
+    }
+  },
+  "operator": {
+    "id": "raster.rasterize",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "allTouched": false,
+    "burnField": "id",
+    "extentMaxX": 400,
+    "extentMaxY": 400,
+    "extentMinX": 0,
+    "extentMinY": 0,
+    "layer": "zones",
+    "noData": 0,
+    "outputType": "Byte",
+    "pixelSizeX": 100,
+    "pixelSizeY": 100
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

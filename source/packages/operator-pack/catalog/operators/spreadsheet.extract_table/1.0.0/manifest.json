@@ -1,0 +1,115 @@
+{
+  "description": "Extract one explicitly selected XLSX worksheet into a lineage-preserving Parquet table without evaluating formulas.",
+  "domain": "table",
+  "errorCodes": [
+    "FIELD_REQUIRED",
+    "FORMAT_UNSUPPORTED",
+    "FORMULA_VALUE_UNAVAILABLE",
+    "HEADER_INVALID",
+    "MERGED_CELLS_UNSUPPORTED",
+    "OUTPUT_FIELD_CONFLICT",
+    "OUTPUT_ROW_LIMIT_EXCEEDED",
+    "OUTPUT_VALIDATION_FAILED",
+    "PARAMETER_INVALID",
+    "RULESET_INVALID",
+    "SHEET_REQUIRED",
+    "WORKBOOK_INVALID"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-spreadsheet-extract_table",
+      "inputs": {
+        "workbook": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "spreadsheet.extract_table",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "formulaMode": "formulaText",
+        "headerRow": 1,
+        "maxOutputRows": 1000,
+        "sheetName": "Data"
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "spreadsheet.extract_table",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "xlsx"
+      ],
+      "mediaTypes": [
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      ],
+      "name": "workbook",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "parquet"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "data"
+    },
+    {
+      "kind": "value",
+      "name": "summary",
+      "schema": {
+        "type": "object"
+      }
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "formulaMode": {
+        "enum": [
+          "formulaText",
+          "cachedValue"
+        ],
+        "type": "string"
+      },
+      "headerRow": {
+        "minimum": 1,
+        "type": "integer"
+      },
+      "maxOutputRows": {
+        "maximum": 5000000,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "sheetName": {
+        "minLength": 1,
+        "type": "string"
+      }
+    },
+    "required": [
+      "sheetName",
+      "headerRow",
+      "formulaMode",
+      "maxOutputRows"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "table",
+    "spreadsheet",
+    "extract_table"
+  ],
+  "timeoutSeconds": 600,
+  "title": "Extract XLSX table",
+  "version": "1.0.0"
+}

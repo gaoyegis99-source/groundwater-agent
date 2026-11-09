@@ -1,0 +1,29 @@
+{
+  "expectedOutputs": {
+    "changes": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    },
+    "summary": {
+      "kind": "value"
+    }
+  },
+  "inputs": {
+    "observations": {
+      "fixtureId": "advanced.timeseries"
+    }
+  },
+  "operator": {
+    "id": "timeseries.lag_change",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "frequency": "month",
+    "groupField": "station",
+    "lagPeriods": 2,
+    "timeField": "time",
+    "valueField": "value"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

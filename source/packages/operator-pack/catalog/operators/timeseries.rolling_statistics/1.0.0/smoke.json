@@ -1,0 +1,29 @@
+{
+  "expectedOutputs": {
+    "statistics": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    },
+    "summary": {
+      "kind": "value"
+    }
+  },
+  "inputs": {
+    "observations": {
+      "fixtureId": "monitoring.timeseries"
+    }
+  },
+  "operator": {
+    "id": "timeseries.rolling_statistics",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "groupField": "station",
+    "minObservations": 2,
+    "timeField": "time",
+    "valueField": "value",
+    "windowDays": 370
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

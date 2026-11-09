@@ -1,0 +1,144 @@
+{
+  "description": "IDW interpolation operator.",
+  "domain": "points",
+  "errorCodes": [
+    "CRS_REQUIRED",
+    "FIELD_REQUIRED",
+    "EXTENT_INCOMPLETE",
+    "EMPTY_INTERPOLATION_INPUT"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-points-interpolate-idw",
+      "inputs": {
+        "points": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "points.interpolate.idw",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "pixelSize": 1.0,
+        "targetCrs": "EPSG:3857",
+        "valueField": "value"
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "points.interpolate.idw",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "arrow-ipc-file",
+        "csv",
+        "flatgeobuf",
+        "geojson",
+        "geopackage",
+        "geoparquet",
+        "json",
+        "parquet"
+      ],
+      "mediaTypes": [
+        "application/geopackage+sqlite3",
+        "application/geo+json",
+        "application/flatgeobuf",
+        "application/vnd.apache.parquet",
+        "text/csv",
+        "application/json",
+        "application/vnd.apache.arrow.file"
+      ],
+      "name": "points",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "raster"
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "extentMaxX": {
+        "type": "number"
+      },
+      "extentMaxY": {
+        "type": "number"
+      },
+      "extentMinX": {
+        "type": "number"
+      },
+      "extentMinY": {
+        "type": "number"
+      },
+      "layer": {
+        "type": "string"
+      },
+      "neighborCount": {
+        "default": 12,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "pixelSize": {
+        "exclusiveMinimum": 0,
+        "type": "number"
+      },
+      "power": {
+        "default": 2,
+        "exclusiveMinimum": 0,
+        "type": "number"
+      },
+      "searchRadius": {
+        "exclusiveMinimum": 0,
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "sourceCrs": {
+        "pattern": "^[A-Za-z][A-Za-z0-9_]*:[A-Za-z0-9._-]+$",
+        "type": "string"
+      },
+      "targetCrs": {
+        "pattern": "^[A-Za-z][A-Za-z0-9_]*:[A-Za-z0-9._-]+$",
+        "type": "string"
+      },
+      "valueField": {
+        "type": "string"
+      },
+      "xField": {
+        "type": "string"
+      },
+      "yField": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "valueField",
+      "targetCrs",
+      "pixelSize"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "points",
+    "idw"
+  ],
+  "timeoutSeconds": 3600,
+  "title": "IDW interpolation",
+  "version": "1.0.0"
+}

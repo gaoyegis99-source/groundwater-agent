@@ -1,0 +1,14 @@
+# Optional HTTP connectivity to the independently running Data deployment.
+services:
+  api:
+    environment:
+      KNOWLEDGE_DATA_URL: http://data-api:8000
+    networks: [knowledge-store, knowledge-service, data-contract]
+  worker:
+    environment:
+      KNOWLEDGE_DATA_URL: http://data-api:8000
+    networks: [knowledge-store, knowledge-service, data-contract]
+networks:
+  data-contract:
+    external: true
+    name: ${V6_DATA_CONTRACT_NETWORK:?V6_DATA_CONTRACT_NETWORK is required}

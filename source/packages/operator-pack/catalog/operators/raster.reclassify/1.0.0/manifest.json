@@ -1,0 +1,122 @@
+{
+  "description": "Reclassify raster values operator.",
+  "domain": "raster",
+  "errorCodes": [
+    "CRS_REQUIRED",
+    "BAND_INVALID",
+    "RULES_INVALID",
+    "OUTPUT_TYPE_INVALID",
+    "BLOCKED_BY_ENVIRONMENT"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-raster-reclassify",
+      "inputs": {
+        "raster": {
+          "artifactId": "art_example_01"
+        },
+        "rules": {
+          "artifactId": "art_example_02"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "raster.reclassify",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "noData": 1.0,
+        "outputType": "uint8"
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "raster.reclassify",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "raster",
+      "required": true
+    },
+    {
+      "cardinality": "one",
+      "formats": [
+        "arrow-ipc-file",
+        "csv",
+        "geoparquet",
+        "json",
+        "parquet"
+      ],
+      "mediaTypes": [
+        "text/csv",
+        "application/json",
+        "application/vnd.apache.parquet",
+        "application/vnd.apache.arrow.file"
+      ],
+      "name": "rules",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "raster"
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "band": {
+        "default": 1,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "defaultValue": {
+        "type": "number"
+      },
+      "noData": {
+        "type": "number"
+      },
+      "outputType": {
+        "enum": [
+          "uint8",
+          "uint16",
+          "int16",
+          "uint32",
+          "int32",
+          "float32",
+          "float64"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "outputType",
+      "noData"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "raster",
+    "reclassify"
+  ],
+  "timeoutSeconds": 3600,
+  "title": "Reclassify raster values",
+  "version": "1.0.0"
+}

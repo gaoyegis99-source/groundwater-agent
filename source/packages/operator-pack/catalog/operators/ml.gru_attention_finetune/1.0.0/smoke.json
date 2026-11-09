@@ -1,0 +1,45 @@
+{
+  "expectedOutputs": {
+    "loss": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    },
+    "modelSpec": {
+      "format": "json",
+      "kind": "artifact",
+      "mediaType": "application/json"
+    },
+    "weights": {
+      "format": "pytorch-state-dict",
+      "kind": "artifact",
+      "mediaType": "application/vnd.pytorch"
+    }
+  },
+  "inputs": {
+    "features": {
+      "fixtureId": "transfer.windows-features"
+    },
+    "modelSpec": {
+      "fixtureId": "transfer.pretrain-modelSpec"
+    },
+    "targets": {
+      "fixtureId": "transfer.windows-targets"
+    },
+    "weights": {
+      "fixtureId": "transfer.pretrain-weights"
+    }
+  },
+  "operator": {
+    "id": "ml.gru_attention_finetune",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "batchSize": 8,
+    "device": "cpu",
+    "epochs": 1,
+    "learningRate": 0.001,
+    "seed": 43
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

@@ -1,0 +1,25 @@
+{
+  "expectedOutputs": {
+    "data": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    }
+  },
+  "inputs": {
+    "data": {
+      "fixtureId": "transfer.wide"
+    },
+    "mapping": {
+      "fixtureId": "transfer.mapping"
+    }
+  },
+  "operator": {
+    "id": "table.timeseries_unpivot",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "timeField": "time"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

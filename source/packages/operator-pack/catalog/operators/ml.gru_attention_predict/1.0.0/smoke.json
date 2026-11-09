@@ -1,0 +1,31 @@
+{
+  "expectedOutputs": {
+    "predictions": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    }
+  },
+  "inputs": {
+    "features": {
+      "fixtureId": "transfer.windows-features"
+    },
+    "modelSpec": {
+      "fixtureId": "transfer.finetune-modelSpec"
+    },
+    "sampleIndex": {
+      "fixtureId": "transfer.windows-sampleIndex"
+    },
+    "weights": {
+      "fixtureId": "transfer.finetune-weights"
+    }
+  },
+  "operator": {
+    "id": "ml.gru_attention_predict",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "device": "cpu"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

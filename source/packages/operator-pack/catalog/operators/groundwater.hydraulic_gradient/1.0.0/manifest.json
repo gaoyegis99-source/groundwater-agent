@@ -1,0 +1,98 @@
+{
+  "description": "Calculate dimensionless hydraulic-gradient magnitude and downhill azimuth on a north-up metre grid.",
+  "domain": "groundwater",
+  "errorCodes": [
+    "BAND_REQUIRED",
+    "CRS_REQUIRED",
+    "OUTPUT_VALIDATION_FAILED",
+    "ROTATED_GRID_UNSUPPORTED",
+    "UNIT_UNSUPPORTED"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-groundwater-hydraulic_gradient",
+      "inputs": {
+        "head": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "groundwater.hydraulic_gradient",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "band": 1
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "groundwater.hydraulic_gradient",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "geotiff",
+        "cog"
+      ],
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "head",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "magnitude"
+    },
+    {
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "direction"
+    },
+    {
+      "kind": "value",
+      "name": "summary",
+      "schema": {
+        "type": "object"
+      }
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "band": {
+        "default": 1,
+        "minimum": 1,
+        "type": "integer"
+      }
+    },
+    "required": [],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "groundwater",
+    "groundwater",
+    "hydraulic_gradient"
+  ],
+  "timeoutSeconds": 1800,
+  "title": "Calculate hydraulic gradient",
+  "version": "1.0.0"
+}

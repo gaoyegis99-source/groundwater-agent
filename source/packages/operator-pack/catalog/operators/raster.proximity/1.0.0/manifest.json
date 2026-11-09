@@ -1,0 +1,96 @@
+{
+  "description": "Calculate raster proximity operator.",
+  "domain": "raster",
+  "errorCodes": [
+    "CRS_REQUIRED",
+    "PROJECTED_CRS_REQUIRED",
+    "BAND_INVALID",
+    "RASTER_INVALID",
+    "BLOCKED_BY_ENVIRONMENT"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-raster-proximity",
+      "inputs": {
+        "raster": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "raster.proximity",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "targetValue": 1.0
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "raster.proximity",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "raster",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "raster"
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "band": {
+        "default": 1,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "distanceUnit": {
+        "default": "pixel",
+        "enum": [
+          "pixel",
+          "metre"
+        ],
+        "type": "string"
+      },
+      "maxDistance": {
+        "exclusiveMinimum": 0,
+        "type": "number"
+      },
+      "targetValue": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "targetValue"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "raster",
+    "proximity"
+  ],
+  "timeoutSeconds": 3600,
+  "title": "Calculate raster proximity",
+  "version": "1.0.0"
+}

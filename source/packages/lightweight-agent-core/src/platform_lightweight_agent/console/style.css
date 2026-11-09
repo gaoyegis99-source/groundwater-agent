@@ -1,0 +1,29 @@
+:root {
+  color-scheme: light dark;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+body { margin: 0 auto; max-width: 88rem; padding: 1rem; }
+header p, #notice { color: #666; }
+.toolbar, .controls { align-items: center; display: flex; flex-wrap: wrap; gap: .75rem; }
+.session { margin-left: auto; }
+.panes { display: grid; gap: 1rem; grid-template-columns: minmax(18rem, 1fr) minmax(28rem, 2fr); }
+.run-list { display: grid; gap: .4rem; }
+.run { border: 1px solid #aaa; border-radius: .3rem; cursor: pointer; padding: .55rem; text-align: left; }
+.run[data-selected="true"] { outline: 2px solid #3478c5; }
+.meta { color: #666; display: block; font-size: .85rem; margin-top: .25rem; }
+.summary-grid { display: grid; gap: .6rem; grid-template-columns: repeat(2, minmax(10rem, 1fr)); margin: .75rem 0; }
+.summary-grid > div { border: 1px solid #aaa8; border-radius: .3rem; padding: .6rem; }
+.summary-label { color: #666; display: block; font-size: .8rem; margin-bottom: .2rem; }
+.step-progress, .result-files { display: grid; gap: .35rem; padding-inline-start: 1.4rem; }
+.step-progress li[data-state="RUNNING"] { color: #3478c5; }
+.step-progress li[data-state="COMPLETED"] { color: #28823b; }
+.step-progress li[data-state="FAILED"] { color: #b3261e; }
+.result-file { border-inline-start: 3px solid #28823b; padding-inline-start: .6rem; }
+.data { background: #1111; border-radius: .3rem; max-height: 19rem; overflow: auto; padding: .75rem; white-space: pre-wrap; word-break: break-word; }
+#approvals { display: grid; gap: .5rem; }
+.approval { border-inline-start: 3px solid #d68a00; padding-inline-start: .6rem; }
+form { display: grid; gap: .5rem; max-width: 44rem; }
+input, textarea, button { font: inherit; }
+textarea { min-width: min(100%, 32rem); }
+@media (max-width: 760px) { .panes, .summary-grid { grid-template-columns: 1fr; } .session { margin-left: 0; } }

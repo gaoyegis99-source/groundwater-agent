@@ -1,0 +1,71 @@
+{
+  "description": "Counts upstream cells including the current cell for a fixed-code D8 raster.",
+  "domain": "hydrology",
+  "errorCodes": [
+    "CRS_REQUIRED",
+    "PROJECTED_CRS_REQUIRED",
+    "FLOW_DIRECTION_INVALID",
+    "FLOW_CYCLE",
+    "RASTER_INVALID"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-hydrology-flow_accumulation",
+      "inputs": {
+        "flowDirection": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "hydrology.flow_accumulation",
+        "version": "1.0.0"
+      },
+      "parameters": {},
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "hydrology.flow_accumulation",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "flowDirection",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "accumulation"
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {},
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "hydrology",
+    "d8",
+    "accumulation"
+  ],
+  "timeoutSeconds": 3600,
+  "title": "D8 flow accumulation",
+  "version": "1.0.0"
+}

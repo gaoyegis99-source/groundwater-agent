@@ -1,0 +1,244 @@
+{
+  "description": "Convert data format operator.",
+  "domain": "data",
+  "errorCodes": [
+    "FORMAT_UNSUPPORTED",
+    "CONVERSION_NOT_ALLOWED",
+    "LAYER_REQUIRED"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-data-convert",
+      "inputs": {
+        "data": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "data.convert",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "outputFormat": "geopackage"
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "data.convert",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "arrow-ipc-file",
+        "cog",
+        "copc",
+        "csv",
+        "flatgeobuf",
+        "geojson",
+        "geopackage",
+        "geoparquet",
+        "geotiff",
+        "json",
+        "las",
+        "laz",
+        "parquet"
+      ],
+      "mediaTypes": [
+        "application/geopackage+sqlite3",
+        "application/geo+json",
+        "application/flatgeobuf",
+        "application/vnd.apache.parquet",
+        "image/tiff",
+        "application/vnd.las",
+        "application/vnd.laz",
+        "text/csv",
+        "application/json",
+        "application/vnd.apache.arrow.file"
+      ],
+      "name": "data",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "arrow-ipc-file",
+        "cog",
+        "copc",
+        "csv",
+        "flatgeobuf",
+        "geojson",
+        "geopackage",
+        "geoparquet",
+        "geotiff",
+        "json",
+        "las",
+        "laz",
+        "parquet"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/geopackage+sqlite3",
+        "application/geo+json",
+        "application/flatgeobuf",
+        "application/vnd.apache.parquet",
+        "image/tiff",
+        "application/vnd.las",
+        "application/vnd.laz",
+        "text/csv",
+        "application/json",
+        "application/vnd.apache.arrow.file"
+      ],
+      "name": "data",
+      "parameterFormatCases": [
+        {
+          "format": "geopackage",
+          "mediaType": "application/geopackage+sqlite3",
+          "parameter": "outputFormat",
+          "values": [
+            "geopackage"
+          ]
+        },
+        {
+          "format": "geojson",
+          "mediaType": "application/geo+json",
+          "parameter": "outputFormat",
+          "values": [
+            "geojson"
+          ]
+        },
+        {
+          "format": "flatgeobuf",
+          "mediaType": "application/flatgeobuf",
+          "parameter": "outputFormat",
+          "values": [
+            "flatgeobuf"
+          ]
+        },
+        {
+          "format": "geoparquet",
+          "mediaType": "application/vnd.apache.parquet",
+          "parameter": "outputFormat",
+          "values": [
+            "geoparquet"
+          ]
+        },
+        {
+          "format": "geotiff",
+          "mediaType": "image/tiff",
+          "parameter": "outputFormat",
+          "values": [
+            "geotiff"
+          ]
+        },
+        {
+          "format": "cog",
+          "mediaType": "image/tiff",
+          "parameter": "outputFormat",
+          "values": [
+            "cog"
+          ]
+        },
+        {
+          "format": "las",
+          "mediaType": "application/vnd.las",
+          "parameter": "outputFormat",
+          "values": [
+            "las"
+          ]
+        },
+        {
+          "format": "laz",
+          "mediaType": "application/vnd.laz",
+          "parameter": "outputFormat",
+          "values": [
+            "laz"
+          ]
+        },
+        {
+          "format": "copc",
+          "mediaType": "application/vnd.laz",
+          "parameter": "outputFormat",
+          "values": [
+            "copc"
+          ]
+        },
+        {
+          "format": "csv",
+          "mediaType": "text/csv",
+          "parameter": "outputFormat",
+          "values": [
+            "csv"
+          ]
+        },
+        {
+          "format": "json",
+          "mediaType": "application/json",
+          "parameter": "outputFormat",
+          "values": [
+            "json"
+          ]
+        },
+        {
+          "format": "parquet",
+          "mediaType": "application/vnd.apache.parquet",
+          "parameter": "outputFormat",
+          "values": [
+            "parquet"
+          ]
+        },
+        {
+          "format": "arrow-ipc-file",
+          "mediaType": "application/vnd.apache.arrow.file",
+          "parameter": "outputFormat",
+          "values": [
+            "arrow-ipc-file"
+          ]
+        }
+      ]
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "layer": {
+        "type": "string"
+      },
+      "outputFormat": {
+        "enum": [
+          "geopackage",
+          "geojson",
+          "flatgeobuf",
+          "geoparquet",
+          "geotiff",
+          "cog",
+          "las",
+          "laz",
+          "copc",
+          "csv",
+          "json",
+          "parquet",
+          "arrow-ipc-file"
+        ],
+        "type": "string"
+      },
+      "outputLayer": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "outputFormat"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "data",
+    "convert"
+  ],
+  "timeoutSeconds": 3600,
+  "title": "Convert data format",
+  "version": "1.0.0"
+}

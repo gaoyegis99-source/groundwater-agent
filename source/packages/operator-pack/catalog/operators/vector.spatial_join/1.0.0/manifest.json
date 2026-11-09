@@ -1,0 +1,140 @@
+{
+  "description": "Join vector attributes by location operator.",
+  "domain": "vector",
+  "errorCodes": [
+    "CRS_REQUIRED",
+    "CRS_MISMATCH",
+    "LAYER_REQUIRED",
+    "INVALID_GEOMETRY",
+    "BLOCKED_BY_ENVIRONMENT"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-vector-spatial_join",
+      "inputs": {
+        "join": {
+          "artifactId": "art_example_02"
+        },
+        "target": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "vector.spatial_join",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "mode": "oneToMany",
+        "predicate": "intersects"
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "vector.spatial_join",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "flatgeobuf",
+        "geojson",
+        "geopackage",
+        "geoparquet",
+        "parquet"
+      ],
+      "mediaTypes": [
+        "application/geopackage+sqlite3",
+        "application/geo+json",
+        "application/flatgeobuf",
+        "application/vnd.apache.parquet"
+      ],
+      "name": "target",
+      "required": true
+    },
+    {
+      "cardinality": "one",
+      "formats": [
+        "flatgeobuf",
+        "geojson",
+        "geopackage",
+        "geoparquet",
+        "parquet"
+      ],
+      "mediaTypes": [
+        "application/geopackage+sqlite3",
+        "application/geo+json",
+        "application/flatgeobuf",
+        "application/vnd.apache.parquet"
+      ],
+      "name": "join",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "geopackage"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/geopackage+sqlite3"
+      ],
+      "name": "vector"
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "discardNonMatching": {
+        "default": false,
+        "type": "boolean"
+      },
+      "joinLayer": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "mode": {
+        "enum": [
+          "oneToMany",
+          "first",
+          "largestOverlap"
+        ],
+        "type": "string"
+      },
+      "predicate": {
+        "enum": [
+          "intersects",
+          "contains",
+          "equals",
+          "touches",
+          "overlaps",
+          "within",
+          "crosses"
+        ],
+        "type": "string"
+      },
+      "prefix": {
+        "default": "",
+        "type": "string"
+      },
+      "targetLayer": {
+        "minLength": 1,
+        "type": "string"
+      }
+    },
+    "required": [
+      "predicate",
+      "mode"
+    ],
+    "type": "object"
+  },
+  "runtime": "qgis",
+  "tags": [
+    "vector",
+    "spatial-join"
+  ],
+  "timeoutSeconds": 3600,
+  "title": "Join vector attributes by location",
+  "version": "1.0.0"
+}

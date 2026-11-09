@@ -1,0 +1,129 @@
+{
+  "description": "Compare valid observations with an explicit calendar range and frequency, including duplicate and missing periods.",
+  "domain": "timeseries",
+  "errorCodes": [
+    "FIELD_REQUIRED",
+    "FREQUENCY_UNSUPPORTED",
+    "INPUT_METADATA_INVALID",
+    "NON_NUMERIC_VALUE",
+    "OUTPUT_VALIDATION_FAILED",
+    "TIMESTAMP_AMBIGUOUS",
+    "TIMESTAMP_INVALID",
+    "TIMEZONE_UNSUPPORTED",
+    "TIME_RANGE_INVALID"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-timeseries-completeness",
+      "inputs": {
+        "observations": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "timeseries.completeness",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "expectedEnd": "2024-02-29",
+        "expectedStart": "2024-01-01",
+        "frequency": "month",
+        "groupField": "station",
+        "timeField": "time",
+        "valueField": "value"
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "timeseries.completeness",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "csv",
+        "parquet",
+        "arrow-ipc-file"
+      ],
+      "mediaTypes": [
+        "text/csv",
+        "application/vnd.apache.parquet",
+        "application/vnd.apache.arrow.file"
+      ],
+      "name": "observations",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "parquet"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "profiles"
+    },
+    {
+      "kind": "value",
+      "name": "summary",
+      "schema": {
+        "type": "object"
+      }
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "expectedEnd": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "expectedStart": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "frequency": {
+        "enum": [
+          "day",
+          "month",
+          "quarter",
+          "year"
+        ],
+        "type": "string"
+      },
+      "groupField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "timeField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "valueField": {
+        "minLength": 1,
+        "type": "string"
+      }
+    },
+    "required": [
+      "groupField",
+      "timeField",
+      "valueField",
+      "frequency",
+      "expectedStart",
+      "expectedEnd"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "timeseries",
+    "timeseries",
+    "completeness"
+  ],
+  "timeoutSeconds": 1800,
+  "title": "Assess time-series completeness",
+  "version": "1.0.0"
+}

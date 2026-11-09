@@ -1,0 +1,27 @@
+{
+  "expectedOutputs": {
+    "raster": {
+      "format": "geotiff",
+      "kind": "artifact",
+      "mediaType": "image/tiff"
+    }
+  },
+  "inputs": {
+    "raster": {
+      "fixtureId": "raster"
+    },
+    "rules": {
+      "fixtureId": "rules"
+    }
+  },
+  "operator": {
+    "id": "raster.reclassify",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "band": 1,
+    "noData": 255,
+    "outputType": "uint8"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

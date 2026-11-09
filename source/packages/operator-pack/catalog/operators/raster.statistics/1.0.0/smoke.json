@@ -1,0 +1,18 @@
+{
+  "expectedOutputs": {
+    "statistics": {
+      "kind": "value"
+    }
+  },
+  "inputs": {
+    "raster": {
+      "fixtureId": "raster"
+    }
+  },
+  "operator": {
+    "id": "raster.statistics",
+    "version": "1.0.0"
+  },
+  "parameters": {},
+  "schemaVersion": "operator-smoke-test.v1"
+}

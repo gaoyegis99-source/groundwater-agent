@@ -1,0 +1,26 @@
+{
+  "expectedOutputs": {
+    "vector": {
+      "format": "geopackage",
+      "kind": "artifact",
+      "mediaType": "application/geopackage+sqlite3"
+    }
+  },
+  "inputs": {
+    "vector": {
+      "fixtureId": "dissolve"
+    }
+  },
+  "operator": {
+    "id": "vector.extract_by_extent",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "extentMaxX": 200,
+    "extentMaxY": 100,
+    "extentMinX": 0,
+    "extentMinY": 0,
+    "layer": "dissolve"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

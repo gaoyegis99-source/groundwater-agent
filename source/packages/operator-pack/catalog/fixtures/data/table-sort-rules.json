@@ -1,0 +1,10 @@
+{
+  "keys": [
+    {
+      "direction": "desc",
+      "field": "value",
+      "nulls": "last"
+    }
+  ],
+  "schemaVersion": "table-sort-rules.v1"
+}

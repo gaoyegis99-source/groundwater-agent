@@ -1,0 +1,22 @@
+{
+  "expectedOutputs": {
+    "data": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    }
+  },
+  "inputs": {
+    "data": {
+      "fixtureId": "table"
+    }
+  },
+  "operator": {
+    "id": "data.convert",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "outputFormat": "parquet"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

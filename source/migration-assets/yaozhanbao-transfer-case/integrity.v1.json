@@ -1,0 +1,30 @@
+{
+  "schema_version": "yaozhanbao-case-integrity.v1",
+  "source_manifest_sha256": "1c9efa8c837293f492ad35544f4e71050720b7be9710bbb7b93cb9fef4172415",
+  "source_package": {
+    "sentinel_relative_path": "payload/source-package/README.md",
+    "file_count": 39,
+    "inventory_sha256": "22d2c1e1650c8d78bed51544fe14e4104f73ca8bf658ed5f23f609d1d0c538f8"
+  },
+  "resources": {
+    "workbook": {"size_bytes": 72645, "sha256": "8bdb1876ae525fc909ab32b7ddc9cf305f98dfc0177611bf68157f639f265561"},
+    "imagery": {"size_bytes": 19564125, "sha256": "0a4b2ff8c34a7b9736ab307e28d91380260680cc10d8780e8c9847601ed9af05"},
+    "boundary": {"size_bytes": 98304, "sha256": "5d419235cf3e8ce9d34fed7f87208f66beb2896d40785eea2e0e407c543e2d39"},
+    "counties": {"size_bytes": 2568192, "sha256": "a91dd7b63a1f934fd0d26812abf4a6684c66b785923b601c9afa99846f0f2651"},
+    "townships": {"size_bytes": 5582848, "sha256": "a8c5f046d23de4798367ad697876360809e3c7ebd4576e51d35c0562d41c7cfd"},
+    "rivers": {"size_bytes": 282624, "sha256": "ce2d7687eb649c64c4bee5c7e30606df95cbe27f848706368829cc3def73934f"},
+    "groundwater_systems": {"size_bytes": 143360, "sha256": "d16063a3617ea4d0fe26ff39b95c699164f50db14278333be4a54828ac1195ed"},
+    "railways": {"size_bytes": 118784, "sha256": "ee5ad7540f07db4c1b6be44424c0ff51459d99f866ca72d852541170f4777ce4"},
+    "basin_boundary": {"size_bytes": 110592, "sha256": "3ccf46974ac7844525a7d1ae98048eaebb474656846534d36671644e7eecf714"},
+    "monthMapping": {"size_bytes": 14634, "sha256": "ab5eebfe9a54687faf3201dbd0157090a8e52935598de7cc29aadc3485ff0885"},
+    "sourceFilter": {"size_bytes": 127, "sha256": "b6438e3fc27fd2c31bc1529f9def264b63c667779609a421baeb7644915c466d"},
+    "targetFilter": {"size_bytes": 127, "sha256": "1e3d918fa64dbfafa3e9ad2eae0afbb457c9799238a594fd5ffe0f98d48d6ed1"},
+    "source-scaler-rules": {"size_bytes": 109, "sha256": "6ba1e887019675820872ff5335a9948b437840557b7aac32734a38c537412320"},
+    "target-scaler-rules": {"size_bytes": 109, "sha256": "6ba1e887019675820872ff5335a9948b437840557b7aac32734a38c537412320"},
+    "source-windows-rules": {"size_bytes": 163, "sha256": "27e05461cefc4fe6e666f52b22b8c9d76ef80cf53cf6bcc3e192c30d3ca21a1a"},
+    "target-windows-rules": {"size_bytes": 163, "sha256": "27e05461cefc4fe6e666f52b22b8c9d76ef80cf53cf6bcc3e192c30d3ca21a1a"},
+    "holdout-windows-rules": {"size_bytes": 163, "sha256": "27e05461cefc4fe6e666f52b22b8c9d76ef80cf53cf6bcc3e192c30d3ca21a1a"},
+    "inverse-rules": {"size_bytes": 119, "sha256": "2ea01586f6a72491a4289cbe279720847501c027f0e613b87627e6e79be2e4f4"},
+    "imagery-rules": {"size_bytes": 86, "sha256": "997fdab570849ca0b452733e1cf173526f18efdd9297614fd0a66ee995115357"}
+  }
+}

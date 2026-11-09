@@ -1,0 +1,20 @@
+[project]
+name = "{{ project_name }}"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.platform-agent-workflow]
+schema_version = "v6-agent-project-v1"
+kind = "workflow"
+workflow = "workflow.json"
+tools = "tools.json"
+dependency_lock = "pylock.toml"
+files = ["data/sample.json"]
+evaluation_cases = "eval/cases.json"
+tool_registries = ["runtime_tools:register"]
+
+[tool.platform-agent-workflow.agent_instructions]
+research = "instructions/research.md"
+
+[tool.platform-agent-workflow.subworkflows]

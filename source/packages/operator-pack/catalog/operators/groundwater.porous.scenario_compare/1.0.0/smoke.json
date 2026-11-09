@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "operator-smoke-test.v1",
+  "operator": {
+    "id": "groundwater.porous.scenario_compare",
+    "version": "1.0.0"
+  },
+  "inputs": {
+    "scenario_package": {
+      "fixtureId": "transfer.fields"
+    }
+  },
+  "parameters": {},
+  "expectedOutputs": {
+    "scenario_table": {
+      "kind": "artifact",
+      "mediaType": "application/json",
+      "format": "json"
+    },
+    "comparison_summary": {
+      "kind": "value"
+    },
+    "result_package": {
+      "kind": "artifact",
+      "mediaType": "application/zip",
+      "format": "zip"
+    },
+    "run_receipt": {
+      "kind": "artifact",
+      "mediaType": "application/json",
+      "format": "json"
+    }
+  }
+}

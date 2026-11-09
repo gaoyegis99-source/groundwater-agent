@@ -1,0 +1,92 @@
+{
+  "description": "Buffer vector features operator.",
+  "domain": "vector",
+  "errorCodes": [
+    "CRS_REQUIRED",
+    "PROJECTED_CRS_REQUIRED",
+    "LAYER_REQUIRED",
+    "UNSUPPORTED_DIMENSION",
+    "INVALID_GEOMETRY"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-vector-buffer",
+      "inputs": {
+        "vector": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "vector.buffer",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "distanceMeters": 1.0
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "vector.buffer",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "flatgeobuf",
+        "geojson",
+        "geopackage",
+        "geoparquet",
+        "parquet"
+      ],
+      "mediaTypes": [
+        "application/geopackage+sqlite3",
+        "application/geo+json",
+        "application/flatgeobuf",
+        "application/vnd.apache.parquet"
+      ],
+      "name": "vector",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "geopackage"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/geopackage+sqlite3"
+      ],
+      "name": "vector"
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "distanceMeters": {
+        "type": "number"
+      },
+      "layer": {
+        "type": "string"
+      },
+      "segments": {
+        "default": 8,
+        "minimum": 1,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "distanceMeters"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "vector",
+    "buffer"
+  ],
+  "timeoutSeconds": 1800,
+  "title": "Buffer vector features",
+  "version": "1.0.0"
+}

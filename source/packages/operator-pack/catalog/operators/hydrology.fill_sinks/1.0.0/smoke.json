@@ -1,0 +1,23 @@
+{
+  "expectedOutputs": {
+    "dem": {
+      "format": "geotiff",
+      "kind": "artifact",
+      "mediaType": "image/tiff"
+    }
+  },
+  "inputs": {
+    "dem": {
+      "fixtureId": "hydrology.dem"
+    }
+  },
+  "operator": {
+    "id": "hydrology.fill_sinks",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "band": 1,
+    "minimumSlopeDegrees": 0.1
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

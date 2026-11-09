@@ -1,0 +1,30 @@
+{
+  "expectedOutputs": {
+    "statistics": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    },
+    "summary": {
+      "kind": "value"
+    }
+  },
+  "inputs": {
+    "raster": {
+      "fixtureId": "raster"
+    },
+    "zones": {
+      "fixtureId": "zones"
+    }
+  },
+  "operator": {
+    "id": "raster.zonal_statistics",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "band": 1,
+    "outputKind": "table",
+    "zonesLayer": "zones"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

@@ -1,0 +1,7 @@
+{
+  "fields": [
+    "depth",
+    "rain"
+  ],
+  "schemaVersion": "standard-scaler-fields.v1"
+}

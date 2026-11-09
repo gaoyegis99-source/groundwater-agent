@@ -1,0 +1,21 @@
+{
+  "name": "groundwater-v6-web-workspace",
+  "version": "0.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/ui-boundary",
+    "packages/operator-ui",
+    "web",
+    "services/data/web",
+    "services/knowledge-next/ui"
+  ],
+  "engines": {
+    "node": "22.23.1",
+    "npm": "10.9.8"
+  },
+  "scripts": {
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present"
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "expectedOutputs": {
+    "correlations": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    },
+    "summary": {
+      "kind": "value"
+    }
+  },
+  "inputs": {
+    "left": {
+      "fixtureId": "monitoring.timeseries"
+    },
+    "right": {
+      "fixtureId": "monitoring.timeseries"
+    }
+  },
+  "operator": {
+    "id": "timeseries.cross_correlation",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "frequency": "month",
+    "leftGroupField": "station",
+    "leftTimeField": "time",
+    "leftValueField": "left_value",
+    "maximumLagPeriods": 0,
+    "minPairs": 3,
+    "minimumLagPeriods": 0,
+    "rightGroupField": "station",
+    "rightTimeField": "time",
+    "rightValueField": "right_value"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

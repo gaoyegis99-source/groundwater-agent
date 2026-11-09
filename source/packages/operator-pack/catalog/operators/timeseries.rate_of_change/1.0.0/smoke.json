@@ -1,0 +1,27 @@
+{
+  "expectedOutputs": {
+    "rates": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    },
+    "summary": {
+      "kind": "value"
+    }
+  },
+  "inputs": {
+    "observations": {
+      "fixtureId": "advanced.timeseries"
+    }
+  },
+  "operator": {
+    "id": "timeseries.rate_of_change",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "groupField": "station",
+    "timeField": "time",
+    "valueField": "value"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

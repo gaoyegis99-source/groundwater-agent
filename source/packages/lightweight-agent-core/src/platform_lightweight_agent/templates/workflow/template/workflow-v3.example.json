@@ -1,0 +1,60 @@
+{
+  "schema_version": "v6-light-workflow-v3",
+  "workflow_id": "portable-reviewed-request",
+  "version": "1.0.0",
+  "input_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {"request": {"type": "string"}},
+    "required": ["request"],
+    "additionalProperties": false
+  },
+  "output_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {"approved": {"type": "boolean"}},
+    "required": ["approved"],
+    "additionalProperties": false
+  },
+  "output_bindings": {
+    "/approved": {
+      "source": "step_output",
+      "step_id": "review",
+      "pointer": "/approved"
+    }
+  },
+  "execution_policy": {
+    "max_concurrency": 4,
+    "run_timeout_seconds": 3600,
+    "max_retained_state_bytes": 8388608
+  },
+  "steps": [
+    {
+      "id": "review",
+      "kind": "approval",
+      "config": {"prompt": "Approve this request?"},
+      "contract": {
+        "input_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {"request": {"type": "string"}},
+          "required": ["request"],
+          "additionalProperties": false
+        },
+        "output_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {"approved": {"type": "boolean"}},
+          "required": ["approved"],
+          "additionalProperties": false
+        },
+        "bindings": {
+          "/request": {"source": "workflow_input", "pointer": "/request"}
+        },
+        "timeout_seconds": null,
+        "max_input_bytes": 1048576,
+        "max_output_bytes": 1048576
+      }
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "expectedOutputs": {
+    "extent": {
+      "format": "geopackage",
+      "kind": "artifact",
+      "mediaType": "application/geopackage+sqlite3"
+    }
+  },
+  "inputs": {
+    "vector": {
+      "fixtureId": "transfer.boundary"
+    }
+  },
+  "operator": {
+    "id": "vector.envelope",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "aspectRatio": 1.6,
+    "layer": "boundary",
+    "paddingMeters": 10
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

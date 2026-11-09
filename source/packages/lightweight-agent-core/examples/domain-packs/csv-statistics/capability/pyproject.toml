@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools==80.9.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "v6-csv-statistics-capability"
+version = "1.0.0"
+description = "Controlled local CSV validation and statistics tools for the V6 example"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.entry-points."platform_lightweight_agent.tools"]
+"csv-statistics.validate" = "csv_statistics_capability:register_validate"
+"csv-statistics.calculate" = "csv_statistics_capability:register_calculate"
+"csv-statistics.blocked" = "csv_statistics_capability:register_blocked"
+
+[tool.setuptools.packages.find]
+where = ["src"]

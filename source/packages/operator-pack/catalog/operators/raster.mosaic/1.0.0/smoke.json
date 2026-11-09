@@ -1,0 +1,27 @@
+{
+  "expectedOutputs": {
+    "raster": {
+      "format": "geotiff",
+      "kind": "artifact",
+      "mediaType": "image/tiff"
+    }
+  },
+  "inputs": {
+    "rasters": [
+      {
+        "fixtureId": "raster"
+      },
+      {
+        "fixtureId": "raster.overlap"
+      }
+    ]
+  },
+  "operator": {
+    "id": "raster.mosaic",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "noData": -9999
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

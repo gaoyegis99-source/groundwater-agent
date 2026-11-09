@@ -1,0 +1,16 @@
+[
+  {
+    "tool_id": "example.lookup",
+    "version": "1.0.0",
+    "package_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "display_name": "Example lookup",
+    "permissions": [],
+    "capabilities": {
+      "external_side_effects": false,
+      "accepts_idempotency_key": false,
+      "supports_result_query": true,
+      "supports_cooperative_cancel": false,
+      "mutex_resource": null
+    }
+  }
+]

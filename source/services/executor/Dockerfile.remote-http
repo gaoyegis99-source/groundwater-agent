@@ -1,0 +1,29 @@
+FROM platform-base-python AS wheels
+WORKDIR /build
+COPY --from=platform-deps python/build /deps/build
+COPY environments/build/requirements.lock /locks/build.lock
+RUN --network=none python -m pip install --no-index --find-links=/deps/build \
+    --require-hashes -r /locks/build.lock
+COPY packages/protocol-contracts ./protocol-contracts
+COPY services/data/client ./data-client
+COPY packages/operator-pack ./operator-pack
+COPY services/executor/pyproject.toml ./executor/pyproject.toml
+COPY services/executor/src ./executor/src
+RUN --network=none python -m pip wheel --no-deps --no-index --no-build-isolation \
+    --wheel-dir /wheels ./protocol-contracts ./data-client ./operator-pack ./executor
+
+FROM platform-base-python AS runtime
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+WORKDIR /work
+COPY --from=wheels /wheels /wheels
+COPY --from=platform-deps python/common /wheels
+RUN --network=none python -m pip install --no-cache-dir --no-index \
+    --find-links=/wheels platform-executor-service==7.0.0 \
+    platform-operator-pack==2.0.0 \
+    && rm -rf /wheels \
+    && useradd --system --create-home --uid 10001 platform \
+    && mkdir -p /work /config \
+    && chown -R platform:platform /work /config
+USER 10001
+RUN --network=none python -m moperators.smoke --runtime remote_http
+CMD ["python", "-m", "platform_executor_service.worker", "--runtime", "remote_http", "--slots", "2", "--memory-bytes", "2147483648"]

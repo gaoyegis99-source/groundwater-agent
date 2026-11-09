@@ -1,0 +1,108 @@
+{
+  "description": "Snaps two-dimensional point features to maximum flow accumulation within a metric radius.",
+  "domain": "hydrology",
+  "errorCodes": [
+    "CRS_REQUIRED",
+    "CRS_MISMATCH",
+    "PROJECTED_CRS_REQUIRED",
+    "GEOMETRY_TYPE_MISMATCH",
+    "UNSUPPORTED_DIMENSION",
+    "SCHEMA_MISMATCH",
+    "ACCUMULATION_INVALID",
+    "POUR_POINT_NOT_FOUND",
+    "RASTER_INVALID"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-hydrology-snap_pour_points",
+      "inputs": {
+        "accumulation": {
+          "artifactId": "art_example_02"
+        },
+        "points": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "hydrology.snap_pour_points",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "maxDistanceMeters": 1.0
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "hydrology.snap_pour_points",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "flatgeobuf",
+        "geojson",
+        "geopackage",
+        "geoparquet",
+        "parquet"
+      ],
+      "mediaTypes": [
+        "application/geopackage+sqlite3",
+        "application/geo+json",
+        "application/flatgeobuf",
+        "application/vnd.apache.parquet"
+      ],
+      "name": "points",
+      "required": true
+    },
+    {
+      "cardinality": "one",
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "accumulation",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "geopackage"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/geopackage+sqlite3"
+      ],
+      "name": "points"
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "layer": {
+        "type": "string"
+      },
+      "maxDistanceMeters": {
+        "exclusiveMinimum": 0,
+        "type": "number"
+      }
+    },
+    "required": [
+      "maxDistanceMeters"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "hydrology",
+    "pour-point",
+    "accumulation"
+  ],
+  "timeoutSeconds": 3600,
+  "title": "Snap pour points",
+  "version": "1.0.0"
+}

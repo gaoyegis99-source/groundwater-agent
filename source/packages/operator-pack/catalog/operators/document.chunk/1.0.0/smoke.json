@@ -1,0 +1,27 @@
+{
+  "expectedOutputs": {
+    "chunks": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    },
+    "summary": {
+      "kind": "value"
+    }
+  },
+  "inputs": {
+    "blocks": {
+      "fixtureId": "table.document.blocks"
+    }
+  },
+  "operator": {
+    "id": "document.chunk",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "maxCharacters": 20,
+    "maxChunks": 100,
+    "overlapCharacters": 2
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

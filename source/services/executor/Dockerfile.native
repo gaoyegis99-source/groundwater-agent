@@ -1,0 +1,58 @@
+FROM platform-base-pdal
+ENV DEBIAN_FRONTEND=noninteractive PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PROJ_NETWORK=OFF GDAL_DRIVER_PATH=disable
+COPY --from=platform-deps system/native /debs
+RUN --network=none set -eu; \
+    printf '%s\n' 'deb [trusted=yes] file:/debs ./' > /tmp/locked-debs.list; \
+    : > /debs/Packages; \
+    for archive in /debs/*.deb; do \
+        [ -e "$archive" ] || continue; \
+        filename=${archive##*/}; \
+        dpkg-deb -f "$archive" >> /debs/Packages; \
+        printf 'Filename: ./%s\nSize: %s\nSHA256: %s\n\n' \
+            "$filename" "$(stat -c %s "$archive")" \
+            "$(sha256sum "$archive" | cut -d ' ' -f 1)" >> /debs/Packages; \
+    done; \
+    if [ -s /debs/Packages ]; then \
+        apt-get -qq -o Dir::Etc::sourcelist=/tmp/locked-debs.list \
+            -o Dir::Etc::sourceparts=- -o Acquire::Languages=none update; \
+        set --; \
+        for archive in /debs/*.deb; do \
+            package=$(dpkg-deb -f "$archive" Package); \
+            version=$(dpkg-deb -f "$archive" Version); \
+            set -- "$@" "$package=$version"; \
+        done; \
+        DEBIAN_FRONTEND=noninteractive apt-get -qq -y --no-install-recommends \
+            --allow-downgrades -o Dir::Etc::sourcelist=/tmp/locked-debs.list \
+            -o Dir::Etc::sourceparts=- install "$@"; \
+        test -z "$(dpkg --audit)"; \
+    fi; \
+    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*.deb \
+        /tmp/locked-debs.list /debs
+COPY --from=platform-deps python/build /deps/build
+COPY --from=platform-deps python/native /deps/runtime
+COPY environments/build/requirements.lock /locks/build.lock
+COPY environments/native/requirements.lock /locks/runtime.lock
+RUN --network=none /usr/bin/python3 -m pip install --break-system-packages \
+    --no-index --find-links=/deps/build --require-hashes -r /locks/build.lock \
+    && /usr/bin/python3 -m pip install --break-system-packages \
+    --no-index --find-links=/deps/runtime --require-hashes -r /locks/runtime.lock
+WORKDIR /build/operator-pack
+COPY packages/operator-pack/pyproject.toml packages/operator-pack/README.md ./
+COPY packages/operator-pack/src ./src
+COPY packages/operator-pack/catalog ./catalog
+RUN --network=none /usr/bin/python3 -m pip install --break-system-packages \
+    --no-index --no-deps --no-build-isolation .
+ENV OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
+WORKDIR /build/executor
+COPY packages/protocol-contracts /build/protocol-contracts
+COPY services/data/client /build/data-client
+COPY services/executor/pyproject.toml ./
+COPY services/executor/src ./src
+RUN --network=none /usr/bin/python3 -m pip install --break-system-packages \
+    --no-index --no-deps --no-build-isolation \
+    /build/protocol-contracts /build/data-client .
+RUN groupadd --system platform && useradd --system --create-home --uid 10001 --gid platform platform && mkdir -p /work /config && chown -R platform:platform /work /config
+USER 10001
+WORKDIR /work
+RUN --network=none GDAL_DRIVER_PATH=disable /usr/bin/python3 -m moperators.smoke --runtime native
+CMD ["/usr/bin/python3", "-m", "platform_executor_service.worker", "--runtime", "native", "--slots", "2", "--memory-bytes", "17179869184"]

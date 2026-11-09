@@ -1,0 +1,151 @@
+{
+  "description": "输入范围和栅格必须同 CRS；像素窗口向外 floor/ceil，允许越界并用 0 填充，输出完整请求窗口。 用第一选定波段的有效掩膜统计整个请求窗口覆盖率，低于阈值失败；保存选定波段、掩膜及来源信息。 原案例 bands=[1,2,3]、minimumCoverage=0.98；普通 raster.clip 不承诺这些完整窗口和覆盖率语义。",
+  "domain": "raster",
+  "errorCodes": [
+    "RULESET_INVALID",
+    "RULESET_TOO_LARGE",
+    "INPUT_CARDINALITY_INVALID",
+    "FIELD_REQUIRED",
+    "DUPLICATE_FIELD",
+    "NON_NUMERIC_VALUE",
+    "OUTPUT_FIELD_CONFLICT",
+    "EMPTY_RESULT",
+    "TIME_AXIS_MISMATCH",
+    "DUPLICATE_TIMESTAMP",
+    "DUPLICATE_SERIES",
+    "TIMEZONE_UNSUPPORTED",
+    "TRAINING_WINDOW_INSUFFICIENT",
+    "HOLDOUT_REQUIRED",
+    "TARGET_NOT_FOUND",
+    "TENSOR_SHAPE_INVALID",
+    "ATTENTION_DIMENSIONS_INVALID",
+    "MODEL_WEIGHTS_INVALID",
+    "TRAINING_NON_FINITE",
+    "PREDICTION_NON_FINITE",
+    "SAMPLE_INDEX_INVALID",
+    "CRS_REQUIRED",
+    "CRS_MISMATCH",
+    "EMPTY_GEOMETRY",
+    "INVALID_GEOMETRY",
+    "GEOMETRY_TYPE_INVALID",
+    "COORDINATE_INVALID",
+    "METRIC_CRS_REQUIRED",
+    "EXTENT_INVALID",
+    "ROTATED_GRID_UNSUPPORTED",
+    "BAND_INVALID",
+    "IMAGERY_COVERAGE_INSUFFICIENT"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-raster-window",
+      "inputs": {
+        "extent": {
+          "artifactId": "art_example_02"
+        },
+        "raster": {
+          "artifactId": "art_example_01"
+        },
+        "rules": {
+          "artifactId": "art_example_03"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "raster.window",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "extentLayer": "extent",
+        "minimumCoverage": 0.98
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "raster.window",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "geotiff"
+      ],
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "raster",
+      "required": true
+    },
+    {
+      "cardinality": "one",
+      "formats": [
+        "geopackage"
+      ],
+      "mediaTypes": [
+        "application/geopackage+sqlite3"
+      ],
+      "name": "extent",
+      "required": true
+    },
+    {
+      "cardinality": "one",
+      "formats": [
+        "json"
+      ],
+      "mediaTypes": [
+        "application/json"
+      ],
+      "name": "rules",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "raster"
+    },
+    {
+      "formats": [
+        "json"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/json"
+      ],
+      "name": "coverage"
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "extentLayer": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "minimumCoverage": {
+        "maximum": 1,
+        "minimum": 0,
+        "type": "number"
+      }
+    },
+    "required": [
+      "extentLayer",
+      "minimumCoverage"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "raster",
+    "structured"
+  ],
+  "timeoutSeconds": 1800,
+  "title": "按范围提取影像窗口并检查覆盖率",
+  "version": "1.0.0"
+}

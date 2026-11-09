@@ -1,0 +1,27 @@
+{
+  "expectedOutputs": {
+    "vector": {
+      "format": "geopackage",
+      "kind": "artifact",
+      "mediaType": "application/geopackage+sqlite3"
+    }
+  },
+  "inputs": {
+    "left": {
+      "fixtureId": "left"
+    },
+    "right": {
+      "fixtureId": "right"
+    }
+  },
+  "operator": {
+    "id": "vector.overlay",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "leftLayer": "left",
+    "operation": "intersection",
+    "rightLayer": "right"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

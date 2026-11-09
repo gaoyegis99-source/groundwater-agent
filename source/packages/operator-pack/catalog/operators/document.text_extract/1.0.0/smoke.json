@@ -1,0 +1,31 @@
+{
+  "expectedOutputs": {
+    "blocks": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    },
+    "summary": {
+      "kind": "value"
+    },
+    "text": {
+      "format": "markdown",
+      "kind": "artifact",
+      "mediaType": "text/markdown"
+    }
+  },
+  "inputs": {
+    "document": {
+      "fixtureId": "table.document.docx"
+    }
+  },
+  "operator": {
+    "id": "document.text_extract",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "maxOutputCharacters": 1000000,
+    "maxPages": 100
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

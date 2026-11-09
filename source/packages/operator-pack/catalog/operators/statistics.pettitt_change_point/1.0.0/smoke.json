@@ -1,0 +1,28 @@
+{
+  "expectedOutputs": {
+    "changePoints": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    },
+    "summary": {
+      "kind": "value"
+    }
+  },
+  "inputs": {
+    "observations": {
+      "fixtureId": "monitoring.timeseries"
+    }
+  },
+  "operator": {
+    "id": "statistics.pettitt_change_point",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "alpha": 0.05,
+    "groupField": "station",
+    "timeField": "time",
+    "valueField": "value"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

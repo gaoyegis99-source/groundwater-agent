@@ -1,0 +1,172 @@
+{
+  "schemaVersion": "domain-knowledge.v2",
+  "contentVersion": "1.0.0",
+  "language": "zh-CN",
+  "sources": [
+    {
+      "sourceId": "groundwater-model-catalog-4-0",
+      "kind": "DOMAIN_DEFINITION",
+      "title": "Groundwater 6.0.0 assembled model and workflow catalog",
+      "publisher": "Groundwater Platform",
+      "url": null,
+      "version": "6.0.0",
+      "publishedAt": "2026-10-09",
+      "accessedAt": null,
+      "reviewAfter": "2027-10-09",
+      "validThrough": null,
+      "lifecycleStatus": "ACTIVE"
+    }
+  ],
+  "documents": [
+    {
+      "knowledgeId": "gw-model-card-summary",
+      "title": "描述统计模型卡：数值概览与参数依据",
+      "summary": "summary 模型用于已知数值列或 NPY 数组的描述统计；说明输入、列与 axis 选择、JSON 结果及不能推断趋势的限制。",
+      "chunks": [
+        {
+          "content": "【模型与适用任务】groundwater.summary@3.0.0，工具 run_summary，Workflow groundwater.summary@3.0.0。描述统计模型适合回答一个数值列或数值数组的计数、范围、集中程度与离散程度概览，不需要建立时间趋势。若任务只要求数值概览，可推荐 summary；若要比较时段、单调变化或逐井趋势，应另选 monitoring-trend。模型卡描述已装配能力，不是选定文件的数据字典。",
+          "sourceRefs": [
+            "groundwater-model-catalog-4-0"
+          ]
+        },
+        {
+          "content": "【输入与待补信息】versionId 必须是经 Data 核实的确切资源，支持 csv、json、parquet、arrow-ipc-file 或 npy。表格输入先 inspect_data_table 核实实际字段，再用 column 指定数值列；NPY 的 axis 可选 columns 或 flatten，显式默认 columns，flatten 表示合并数组数值统计。必须区分用户指定列、物理字段观察、单位声明与模型默认，未知资源 ID、列含义或单位不能用示例代替。",
+          "sourceRefs": [
+            "groundwater-model-catalog-4-0"
+          ]
+        },
+        {
+          "content": "【输出、成本与边界】一个 statistics.describe Native 节点，最大并行度 1，工作流截止上限 60 秒；上限不是耗时保证。具名 RESULT summary 为 JSON 数值统计，不包含空间几何，不能直接送 render_map。summary 不计算时间趋势、因果关系、污染达标或地下水储量；即使数值统计完整，也不能证明样本代表全区域或单位正确。推荐后需复核证据并单独确认执行。",
+          "sourceRefs": [
+            "groundwater-model-catalog-4-0"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-model-card-monitoring-trend",
+      "title": "监测趋势模型卡：逐井时间序列与六分支分析",
+      "summary": "monitoring-trend 适用于逐井水位或埋深时间变化；列出分组时间数值字段、期间选择、十二项结果与无地图几何的限制。",
+      "chunks": [
+        {
+          "content": "【模型与适用任务】groundwater.monitoring-trend@3.0.0，工具 run_monitoring_trend，Workflow groundwater.monitoring-trend@1.0.0。监测趋势模型用于各井水位或埋深随时间如何变化、观测是否完整、是否存在单调趋势或异常点、两个时期有何差异。六个分支为聚合、完整性、线性趋势、Mann–Kendall、MAD 异常和期间变化；它不计算地下水空间流向。",
+          "sourceRefs": [
+            "groundwater-model-catalog-4-0"
+          ]
+        },
+        {
+          "content": "【输入与待补信息】versionId 支持 csv、parquet、arrow-ipc-file。需核实 groupField、timeField、valueField 的实际列与单位；frequency 选 day/month/quarter/year，aggregation 选 mean/median/min/max；明确 expectedStart/expectedEnd、baselineStart/baselineEnd、comparisonStart/comparisonEnd。时间范围与对比目的由用户或适用资料确定；alpha=0.05、threshold=3.5 是显式算法默认，不是现场事实。缺字段含义、单位、频率或业务时期时先澄清。",
+          "sourceRefs": [
+            "groundwater-model-catalog-4-0"
+          ]
+        },
+        {
+          "content": "【输出、成本与后续】六个 Native 节点，最大并行度 4，截止上限 3600 秒。十二项 RESULT 为 aggregated-series、aggregate-summary、completeness-profiles、completeness-summary、linear-trends、linear-summary、mann-kendall-trends、mann-kendall-summary、outlier-observations、outlier-summary、period-changes、period-change-summary，分别为 Parquet 表或 JSON 汇总。它们没有空间几何，不能直接接 render_map；统计显著不等于因果归责，埋深增加也不等于水位抬升。",
+          "sourceRefs": [
+            "groundwater-model-catalog-4-0"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-model-card-flow-field",
+      "title": "地下水流场模型卡：水头计算到速度栅格及制图",
+      "summary": "flow-field 将参考高程与埋深计算为水头，做快照、IDW、梯度与简化速度；说明 CRS、K、孔隙度证据和结果栅格接制图的条件。",
+      "chunks": [
+        {
+          "content": "【模型与适用任务】groundwater.flow-field@3.0.0，工具 run_flow_field，Workflow groundwater.flow-field@1.1.0。流场模型回答选定时点井群水头空间格局、简化流向、水力坡度、Darcy 通量和孔隙水速度。顺序为参考高程减埋深计算水头、时间快照、IDW 插值、梯度与方向、通量与速度。它不是 MODFLOW、污染羽预测、含水层参数反演或三维粒子追踪。",
+          "sourceRefs": [
+            "groundwater-model-catalog-4-0"
+          ]
+        },
+        {
+          "content": "【输入与待补信息】versionId 支持 csv、parquet、arrow-ipc-file，必需 wellField/timeField/xField/yField/referenceElevationField/depthToWaterField、targetTime、sourceCrs/targetCrs、pixelSize、hydraulicConductivityMetersPerDay 与 effectivePorosity。核实共同垂向基准、可比较层位、坐标和长度单位，K 与孔隙度必须有来源或明确作为用户情景假设。valueField 是新建水头列，默认 hydraulic_head_m，不能替换成已有埋深列。selection=latestAtOrBefore、maxAgeDays=30、power=2、neighborCount=12 是默认选择，不能替代项目证据。",
+          "sourceRefs": [
+            "groundwater-model-catalog-4-0"
+          ]
+        },
+        {
+          "content": "【输出、成本与后续】五个 Native 节点，最大并行度 1，截止上限 7200 秒。输出 snapshot、snapshot-diagnostics 表，head-raster、gradient、flow-direction、darcy-flux、seepage-velocity 栅格与 summary。可推荐流场分析后再静态制图：render_map 使用成功发布并重新核实的某一 GeoTIFF/COG RESULT，栅格 valueField 留空。推荐时未产生的 sourceDataId 必须留缺口并标记 requires_prior_results；不能提前编造 ID 或将图面平滑程度当作精度。",
+          "sourceRefs": [
+            "groundwater-model-catalog-4-0"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-model-card-monitoring-coverage",
+      "title": "监测井覆盖模型卡：整体凸包与几何范围制图",
+      "summary": "monitoring-coverage 对 GeoJSON 井点合并后计算整体凸包；说明三个不共线点前提、coverage 结果与含水层边界的区别。",
+      "chunks": [
+        {
+          "content": "【模型与适用任务】groundwater.monitoring-coverage@3.0.0，工具 run_monitoring_coverage，Workflow groundwater.monitoring-coverage@1.1.0。监测井覆盖模型用于查看井网点位的几何覆盖范围：先合并全部点，再计算整体凸包，最后转换 GeoJSON。至少三个不共线点才能形成有面积的覆盖多边形；仅两个点或全共线点不适合这项任务。",
+          "sourceRefs": [
+            "groundwater-model-catalog-4-0"
+          ]
+        },
+        {
+          "content": "【输入与待补信息】versionId 指向确切 GeoJSON 监测井点资源；先核实 Data 身份、格式、几何含义与坐标资料。outputFormat 显式默认为 geojson。井位不能从时间序列表格列名或未绑定知识模板猜出；用户若只有表格坐标，当前模型不提供自动造点步骤，需要先取得符合输入契约的点文件。文件展示样例不能证明全量点数、空间分布或数据质量。",
+          "sourceRefs": [
+            "groundwater-model-catalog-4-0"
+          ]
+        },
+        {
+          "content": "【输出、成本与后续】两个 QGIS 节点和一个 Native 转换节点，最大并行度 1，截止上限 300 秒。具名 RESULT coverage 是整体凸包 GeoJSON，可在成功后核实确切版本再以空 valueField 调用 render_map 生成静态图。覆盖凸包不代表含水层边界、地下水影响范围、污染羽范围或监测充分性；推荐连续步骤时，制图所需未生成 ID 留空并标记 requires_prior_results，待后续复核与确认。",
+          "sourceRefs": [
+            "groundwater-model-catalog-4-0"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-model-card-transfer-learning-analysis",
+      "title": "迁移学习模型卡：十九项输入与单步留出回测",
+      "summary": "transfer-learning-analysis 需要完整案例输入与规则，执行源域预训练和目标域微调；说明训练成本、二十五项结果、回测边界及预测点图。",
+      "chunks": [
+        {
+          "content": "【模型与适用任务】groundwater.transfer-learning-analysis@3.0.0，工具 run_transfer_learning_analysis，Workflow groundwater.transfer-learning-analysis@1.0.0。迁移学习模型适合已有源域和目标域监测序列、空间背景、影像及字段规则的跨域单步留出回测。源域预训练后在目标域微调，比较预测误差。默认 12 月滑窗、目标域前 80% 月份训练、80/100 轮 CPU 训练；标准化只用对应训练段。它不提供未来递归多年预测，不能用演示数据支持真实水文结论。",
+          "sourceRefs": [
+            "groundwater-model-catalog-4-0"
+          ]
+        },
+        {
+          "content": "【输入与待补信息】必须核实十九个确切 INPUT 身份：工作簿 workbook，monthMapping、sourceFilter、targetFilter，保护区 boundary 与 counties/townships/rivers/groundwater_systems/railways/basin_boundary 六类背景，imagery，以及 source-scaler-rules、target-scaler-rules、source-windows-rules、target-windows-rules、holdout-windows-rules、inverse-rules、imagery-rules。合计一份 XLSX、十份 JSON、七份 GPKG、一份 GeoTIFF。字段、图层、月份和规则绑定来自实际案例准备回执及对应字典；卡片不声明任何输入已存在，不填文件路径或虚构 Data ID。",
+          "sourceRefs": [
+            "groundwater-model-catalog-4-0"
+          ]
+        },
+        {
+          "content": "【输出、成本与后续】58 个节点（52 Native、6 QGIS），最大并行度 4，工作流截止上限 21600 秒，训练节点声明 16 GiB 内存及 7200 秒节点上限；不是预计完成时间。25 项 RESULT 包含 scaler、target-split、模型权重与规格、训练损失、predictions、metrics、per-well-metrics、prediction-points、map-points、边界、extent、imagery、imagery-coverage、map-month-diagnostics 和六类背景。先审查指标、划分、覆盖与月份诊断；null R² 必须保留原因。map-points 的 predicted 字段可单独接 render_map，标题注明月份和预测埋深（m）；点图不等于连续水位面，inside_protection 仅为 covers 标记。",
+          "sourceRefs": [
+            "groundwater-model-catalog-4-0"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-model-card-render-map",
+      "title": "静态制图模型卡：单文件 GeoJSON 或栅格转 PNG",
+      "summary": "render-map 只把现有 GeoJSON、GeoTIFF、COG 输入或具名分析结果画成一张 PNG；说明数值字段、标题、上游依赖与不支持的地图能力。",
+      "chunks": [
+        {
+          "content": "【模型与适用任务】groundwater.render-map@3.0.0，工具 render_map，Workflow groundwater.render-map@3.0.0。静态制图适合把已存在的一个空间文件画成 PNG，包括井点、几何覆盖多边形、流场栅格或迁移学习预测点。模型接受一个资源，不生成分析数据，不做多图层叠加、在线底图、交互地图、瓦片发布或 PDF。",
+          "sourceRefs": [
+            "groundwater-model-catalog-4-0"
+          ]
+        },
+        {
+          "content": "【输入与待补信息】sourceDataId 必须指向精确核实的 GeoJSON、GeoTIFF 或 COG INPUT 或具名 RESULT，保留 dataset_id/version_id/checksum。title 默认空，valueField 默认空；GeoJSON 分级着色须先核实真实数值属性，均匀矢量或栅格制图 valueField 留空。迁移学习 map-points 可使用 predicted 并注明对应月份与埋深 m；其他数据不得套用这一字段与单位。知识卡不能证明资源存在、字段单位或时间范围。",
+          "sourceRefs": [
+            "groundwater-model-catalog-4-0"
+          ]
+        },
+        {
+          "content": "【输出、成本与连续步骤】一个 Native 渲染节点，最大并行度 1，截止上限 300 秒，输出 map-image PNG 固定 1024×768。已有 GeoJSON 或栅格可独立制图；分析→render 依赖上游实际发布的具名 RESULT。推荐阶段将依赖步骤 requires_prior_results 标为 true，sourceDataId 留待查明；上游完成后通过 WorkflowRun 和只读 Data 查询重新核实，再制定并确认新计划。不得把尚未生成的资源 ID 放进参数，也不能从 summary JSON 或趋势 Parquet 直接制图。",
+          "sourceRefs": [
+            "groundwater-model-catalog-4-0"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+apiVersion: platform.module/v9
+kind: Service
+metadata:
+  name: data
+  version: 5.0.0
+  distribution:
+    name: platform-data-service
+    version: 3.0.0
+spec:
+  owner: data
+  process:
+    command: [uvicorn, platform_data_service.main:app, --host, 0.0.0.0, --port, "8000"]
+  provides: [data-http-v3, data-tools-v4]
+  requires: []
+  httpContracts:
+    data-http-v3:
+      basePath: /data/v3
+      openapi: contracts/openapi-v3.json
+  observationToolContracts:
+    data-tools-v4:
+      file: contracts/observation-tools.v4.json
+  executors: []
+  health: {live: /internal/health/live, ready: /internal/health/ready}
+  storage:
+    authority: data-catalog-version-object-publication
+    paths: [/data/objects, /data/work]
+  temporary:
+    paths: [/data/work]

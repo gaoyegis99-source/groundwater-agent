@@ -1,0 +1,32 @@
+{
+  "expectedOutputs": {
+    "raster": {
+      "format": "geotiff",
+      "kind": "artifact",
+      "mediaType": "image/tiff"
+    },
+    "summary": {
+      "kind": "value"
+    }
+  },
+  "inputs": {
+    "rasters": [
+      {
+        "fixtureId": "monitoring.raster.left"
+      },
+      {
+        "fixtureId": "monitoring.raster.right"
+      }
+    ]
+  },
+  "operator": {
+    "id": "raster.cell_statistics",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "band": 1,
+    "minimumValidInputs": 2,
+    "statistic": "mean"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

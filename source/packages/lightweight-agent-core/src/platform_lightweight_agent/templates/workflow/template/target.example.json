@@ -1,0 +1,48 @@
+{
+  "schema_version": "v6-portability-target-v1",
+  "target_kind": "v6",
+  "trusted_tools": [
+    {
+      "tool_id": "example.lookup",
+      "version": "1.0.0",
+      "package_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  ],
+  "tool_deliveries": [
+    {
+      "tool": {
+        "tool_id": "example.lookup",
+        "version": "1.0.0",
+        "package_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "mode": "development",
+      "distribution": null,
+      "entry_point": null,
+      "wheel_path": null,
+      "development_callable": "runtime_tools:lookup"
+    }
+  ],
+  "allowed_permissions": [],
+  "credential_bindings": [],
+  "driver_bindings": [
+    {
+      "step_id": "research",
+      "driver": "pydantic-ai",
+      "driver_version": "pydantic-ai-native-v3@1.107.9",
+      "distribution": "pydantic-ai-slim",
+      "model": "anthropic:claude-sonnet-4-5",
+      "runtime_dependencies": [
+        {
+          "distribution": "anthropic",
+          "import_name": "anthropic",
+          "install_hint": "platform-lightweight-agent-core[pydantic-ai-anthropic]",
+          "version": "0.125.0"
+        }
+      ],
+      "capabilities": ["host_managed_execution", "native_tools", "structured_output"]
+    }
+  ],
+  "subworkflow_bindings": {},
+  "python_executable": "python3",
+  "importer_features": []
+}

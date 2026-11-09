@@ -1,0 +1,135 @@
+{
+  "schemaVersion": "product-ui.v1",
+  "productId": "groundwater",
+  "locale": "zh-CN",
+  "brand": {
+    "productName": "地下水分析",
+    "workspaceName": "地下水工作区",
+    "assistantName": "地下水分析助手",
+    "welcome": "开始地下水分析",
+    "icon": {
+      "path": "product-icon.svg",
+      "checksum": "sha256:e484a9befc9ff8ccabff776babccdcb0f0c8cf6adebc6da25bb64fccf5a0dfab",
+      "mediaType": "image/svg+xml"
+    }
+  },
+  "examples": [
+    {"id": "summary", "title": "概览数据", "prompt": "我想了解监测数据中数值列的分布，请推荐描述统计方案。", "icon": "chart", "featured": true},
+    {"id": "trend", "title": "发现趋势", "prompt": "我想了解监测井水位随时间的变化，请推荐合适的分析方案。", "icon": "trend", "featured": true},
+    {"id": "flow", "title": "分析流场", "prompt": "我想根据现有井点资料了解地下水流动方向，需要哪些数据和假设？", "icon": "flow", "featured": true},
+    {"id": "coverage", "title": "查看覆盖", "prompt": "请帮我分析监测井的空间覆盖情况，并说明结果的适用范围。", "icon": "coverage", "featured": true},
+    {"id": "transfer", "title": "迁移学习", "prompt": "我想比较两个区域的地下水预测表现，请推荐迁移学习回测方案。", "icon": "compare", "featured": false},
+    {"id": "map", "title": "生成地图", "prompt": "我想把现有的空间分析结果制作成一张清晰的静态地图。", "icon": "map", "featured": false},
+    {"id": "flow-map", "title": "流场制图", "prompt": "我想先分析地下水流场，再把分析结果制作成地图，请推荐分步方案。", "icon": "layers", "featured": false},
+    {"id": "coverage-map", "title": "覆盖制图", "prompt": "我想先计算监测井的空间覆盖范围，再把覆盖结果制作成地图。", "icon": "branch", "featured": false},
+    {"id": "source-sustainability", "title": "水源地综合评价", "prompt": "请基于我上传的评价输入，运行水源地可持续利用综合评价并保留第三方运行凭据。", "icon": "coverage", "featured": true}
+  ],
+  "models": {
+    "groundwater.monitoring-trend": {
+      "displayName": "监测趋势", "description": "按监测对象和时间分析完整性、趋势、异常及期间变化。", "applicability": "适用于带分组、时间和数值字段的长期监测表。",
+      "inputs": {"versionId": {"label": "监测数据", "description": "一个精确且可查询的数据版本。", "formats": ["csv", "parquet", "arrow-ipc-file"]}},
+      "parameterOverrides": {}, "confirmationSummary": [{"label": "分析时段", "parameters": ["expectedStart", "expectedEnd"]}]
+    },
+    "groundwater.flow-field": {
+      "displayName": "地下水流场", "description": "计算水头、插值水头面并推导水力梯度与渗流速度。", "applicability": "适用于含井位、高程、埋深和观测时间的监测表。",
+      "inputs": {"versionId": {"label": "井点观测", "description": "一个精确且可查询的井点数据版本。", "formats": ["csv", "parquet", "arrow-ipc-file"]}},
+      "parameterOverrides": {"valueField": {"label": "新生成水头字段", "group": "基本参数"}},
+      "confirmationSummary": [{"label": "制图时点", "parameters": ["targetTime"]}]
+    },
+    "groundwater.transfer-learning-analysis": {
+      "displayName": "迁移学习回测", "description": "在源域预训练、目标域微调并生成评价和空间成果。", "applicability": "适用于资料完整、边界明确且已冻结输入版本的迁移学习回测。",
+      "inputs": {
+        "workbookVersionId": {"label": "数据工作簿", "description": "源域与目标域时间序列工作簿。", "formats": ["xlsx"]},
+        "monthMappingVersionId": {"label": "月份对应表", "description": "月份字段映射规则。", "formats": ["json"]},
+        "sourceFilterVersionId": {"label": "源域筛选规则", "description": "源域样本筛选规则。", "formats": ["json"]},
+        "targetFilterVersionId": {"label": "目标域筛选规则", "description": "目标域样本筛选规则。", "formats": ["json"]},
+        "boundaryVersionId": {"label": "水源地边界资料", "description": "分析区域边界矢量资料。", "formats": ["geopackage"]},
+        "imageryVersionId": {"label": "影像资料", "description": "分析区域背景影像。", "formats": ["geotiff"]},
+        "countiesVersionId": {"label": "县级区划资料", "description": "县级行政区划。", "formats": ["geopackage"]},
+        "townshipsVersionId": {"label": "乡镇区划资料", "description": "乡镇行政区划。", "formats": ["geopackage"]},
+        "riversVersionId": {"label": "河流资料", "description": "河流水系矢量。", "formats": ["geopackage"]},
+        "groundwater_systemsVersionId": {"label": "地下水系统资料", "description": "地下水系统分区。", "formats": ["geopackage"]},
+        "railwaysVersionId": {"label": "铁路资料", "description": "铁路线路矢量。", "formats": ["geopackage"]},
+        "basin_boundaryVersionId": {"label": "流域边界资料", "description": "流域边界矢量。", "formats": ["geopackage"]},
+        "source-scaler-rulesVersionId": {"label": "源域缩放规则", "description": "源域标准化规则。", "formats": ["json"]},
+        "target-scaler-rulesVersionId": {"label": "目标域缩放规则", "description": "目标域标准化规则。", "formats": ["json"]},
+        "source-windows-rulesVersionId": {"label": "源域时间窗口规则", "description": "源域窗口规则。", "formats": ["json"]},
+        "target-windows-rulesVersionId": {"label": "目标域时间窗口规则", "description": "目标域窗口规则。", "formats": ["json"]},
+        "holdout-windows-rulesVersionId": {"label": "留出集时间窗口规则", "description": "留出集窗口规则。", "formats": ["json"]},
+        "inverse-rulesVersionId": {"label": "逆变换规则", "description": "结果逆变换规则。", "formats": ["json"]},
+        "imagery-rulesVersionId": {"label": "影像处理规则", "description": "影像裁剪与重采样规则。", "formats": ["json"]}
+      },
+      "parameterOverrides": {},
+      "confirmationSummary": [{"label": "关键训练参数", "parameters": ["pretrain.epochs", "finetune.epochs", "pretrain.hiddenSize"]}, {"label": "制图目标日期", "parameters": ["map-month.targetTime"]}]
+    },
+    "groundwater.summary": {
+      "displayName": "数据概览", "description": "对精确数据版本执行描述统计。", "applicability": "适用于表格、JSON、Parquet、Arrow 或 NPY 数据。",
+      "inputs": {"versionId": {"label": "输入资料", "description": "需要统计的精确数据版本。", "formats": ["csv", "json", "parquet", "arrow-ipc-file", "npy"]}},
+      "parameterOverrides": {}, "confirmationSummary": []
+    },
+    "groundwater.monitoring-coverage": {
+      "displayName": "监测井覆盖", "description": "计算监测井点的几何凸包覆盖范围。", "applicability": "至少需要三个不共线的 GeoJSON 点。",
+      "inputs": {"versionId": {"label": "井点资料", "description": "监测井点 GeoJSON 版本。", "formats": ["geojson"]}},
+      "parameterOverrides": {}, "confirmationSummary": []
+    },
+    "groundwater.render-map": {
+      "displayName": "静态地图", "description": "把空间数据或栅格成果渲染为 PNG 地图。", "applicability": "适用于 GeoJSON、GeoTIFF 或 COG。",
+      "inputs": {"sourceVersionId": {"label": "制图资料", "description": "需要渲染的精确空间数据版本。", "formats": ["geojson", "geotiff", "cog"]}},
+      "parameterOverrides": {"valueField": {"label": "着色字段", "group": "基本参数"}},
+      "confirmationSummary": []
+    },
+    "groundwater.source-sustainability": {
+      "displayName": "水源地综合评价",
+      "description": "通过受管第三方 Linux 服务执行孔隙型、裂隙型或岩溶型水源地综合评价。",
+      "applicability": "适用于已经整理为服务输入契约 JSON 的非正式综合评价；结果不能替代行政审批。",
+      "inputs": {
+        "assessmentVersionId": {
+          "label": "综合评价输入",
+          "description": "一个精确的综合评价 JSON 数据版本。",
+          "formats": ["json"]
+        }
+      },
+      "parameterOverrides": {},
+      "confirmationSummary": []
+    }
+  },
+  "parameterNames": {
+    "versionId": {"label": "输入资料", "group": "输入资料"}, "sourceVersionId": {"label": "制图资料", "group": "输入资料"}, "assessmentVersionId": {"label": "综合评价输入", "group": "输入资料"},
+    "column": {"label": "统计字段", "group": "基本参数"}, "axis": {"label": "统计方式", "group": "基本参数", "values": {"columns": "按列统计", "flatten": "合并所有数值统计"}},
+    "groupField": {"label": "分组字段", "group": "基本参数"}, "wellField": {"label": "井号字段", "group": "基本参数"}, "timeField": {"label": "时间字段", "group": "基本参数"}, "valueField": {"label": "取值字段", "group": "基本参数"},
+    "frequency": {"label": "统计周期", "group": "基本参数", "values": {"day": "日", "month": "月", "quarter": "季度", "year": "年"}},
+    "expectedStart": {"label": "预期时间范围起点", "group": "基本参数"}, "expectedEnd": {"label": "预期时间范围终点", "group": "基本参数"},
+    "baselineStart": {"label": "基准期起点", "group": "基本参数"}, "baselineEnd": {"label": "基准期终点", "group": "基本参数"}, "comparisonStart": {"label": "对比期起点", "group": "基本参数"}, "comparisonEnd": {"label": "对比期终点", "group": "基本参数"},
+    "aggregation": {"label": "聚合方式", "group": "基本参数", "values": {"mean": "平均值", "median": "中位数", "min": "最小值", "max": "最大值"}},
+    "alpha": {"label": "显著性水平", "group": "基本参数"}, "threshold": {"label": "异常检测阈值", "group": "基本参数"},
+    "xField": {"label": "X 坐标字段", "group": "基本参数"}, "yField": {"label": "Y 坐标字段", "group": "基本参数"}, "referenceElevationField": {"label": "参考高程字段", "group": "基本参数"}, "depthToWaterField": {"label": "地下水埋深字段", "group": "基本参数"},
+    "referenceElevationUnit": {"label": "参考高程单位", "group": "基本参数", "values": {"m": "米", "cm": "厘米", "mm": "毫米"}}, "depthToWaterUnit": {"label": "地下水埋深单位", "group": "基本参数", "values": {"m": "米", "cm": "厘米", "mm": "毫米"}},
+    "targetTime": {"label": "目标时点", "group": "基本参数"}, "selection": {"label": "时点选择方式", "group": "基本参数", "values": {"exact": "精确时点", "latestAtOrBefore": "目标时点及之前的最近记录", "nearest": "距目标时点最近的记录"}},
+    "maxAgeDays": {"label": "最大时间间隔", "group": "基本参数", "unit": "天"}, "sourceCrs": {"label": "输入坐标参考系", "group": "基本参数"}, "targetCrs": {"label": "输出坐标参考系", "group": "基本参数"},
+    "pixelSize": {"label": "栅格像元大小", "group": "基本参数"}, "power": {"label": "距离权重幂次", "group": "基本参数"}, "neighborCount": {"label": "邻近点数量", "group": "基本参数"}, "hydraulicConductivityMetersPerDay": {"label": "渗透系数", "group": "基本参数", "unit": "米/天"}, "effectivePorosity": {"label": "有效孔隙度", "group": "基本参数"},
+    "outputFormat": {"label": "输出格式", "group": "基本参数", "values": {"arrow-ipc-file": "Arrow IPC", "cog": "COG", "copc": "COPC", "csv": "CSV", "flatgeobuf": "FlatGeobuf", "geojson": "GeoJSON", "geopackage": "GeoPackage", "geoparquet": "GeoParquet", "geotiff": "GeoTIFF", "json": "JSON", "las": "LAS", "laz": "LAZ", "parquet": "Parquet"}},
+    "title": {"label": "标题", "group": "基本参数"}, "sheetName": {"label": "工作表名称", "group": "数据准备"}, "headerRow": {"label": "表头行", "group": "数据准备"},
+    "formulaMode": {"label": "公式读取方式", "group": "数据准备", "values": {"formulaText": "公式文本", "cachedValue": "缓存值"}}, "maxOutputRows": {"label": "最大输出行数", "group": "数据准备"},
+    "trainRatio": {"label": "训练集比例", "group": "训练与评价"}, "inputWindow": {"label": "输入窗口长度", "group": "训练与评价"}, "targetField": {"label": "目标字段", "group": "训练与评价"}, "hiddenSize": {"label": "隐藏层大小", "group": "训练与评价"},
+    "numLayers": {"label": "网络层数", "group": "训练与评价"}, "numHeads": {"label": "注意力头数", "group": "训练与评价"}, "dropout": {"label": "随机丢弃比例", "group": "训练与评价"}, "epochs": {"label": "训练轮数", "group": "训练与评价"}, "batchSize": {"label": "批次大小", "group": "训练与评价"}, "learningRate": {"label": "学习率", "group": "训练与评价"}, "seed": {"label": "随机种子", "group": "训练与评价"}, "device": {"label": "计算设备", "group": "训练与评价", "values": {"cpu": "CPU"}},
+    "scalerField": {"label": "缩放器字段", "group": "训练与评价"}, "actualField": {"label": "实测值字段", "group": "训练与评价"}, "predictedField": {"label": "预测值字段", "group": "训练与评价"}, "baselineField": {"label": "基线值字段", "group": "训练与评价"}, "unit": {"label": "单位", "group": "训练与评价"},
+    "layer": {"label": "图层", "group": "空间处理"}, "paddingMeters": {"label": "外扩距离", "group": "空间处理", "unit": "米"}, "aspectRatio": {"label": "长宽比", "group": "空间处理"}, "extentLayer": {"label": "范围图层", "group": "空间处理"}, "minimumCoverage": {"label": "最低覆盖率", "group": "空间处理"}, "vectorLayer": {"label": "矢量图层", "group": "空间处理"}, "maskLayer": {"label": "裁剪范围图层", "group": "空间处理"}, "polygonLayer": {"label": "多边形图层", "group": "空间处理"}, "outputField": {"label": "输出字段", "group": "空间处理"},
+    "resampling": {"label": "重采样方式", "group": "空间处理", "values": {"nearest": "最近邻", "bilinear": "双线性", "cubic": "三次卷积"}},
+    "workbookVersionId": {"label": "数据工作簿", "group": "输入资料"}, "monthMappingVersionId": {"label": "月份对应表", "group": "输入资料"}, "sourceFilterVersionId": {"label": "源域筛选规则", "group": "输入资料"}, "targetFilterVersionId": {"label": "目标域筛选规则", "group": "输入资料"}, "boundaryVersionId": {"label": "水源地边界资料", "group": "输入资料"}, "imageryVersionId": {"label": "影像资料", "group": "输入资料"}, "countiesVersionId": {"label": "县级区划资料", "group": "输入资料"}, "townshipsVersionId": {"label": "乡镇区划资料", "group": "输入资料"}, "riversVersionId": {"label": "河流资料", "group": "输入资料"}, "groundwater_systemsVersionId": {"label": "地下水系统资料", "group": "输入资料"}, "railwaysVersionId": {"label": "铁路资料", "group": "输入资料"}, "basin_boundaryVersionId": {"label": "流域边界资料", "group": "输入资料"},
+    "source-scaler-rulesVersionId": {"label": "源域缩放规则", "group": "输入资料"}, "target-scaler-rulesVersionId": {"label": "目标域缩放规则", "group": "输入资料"}, "source-windows-rulesVersionId": {"label": "源域时间窗口规则", "group": "输入资料"}, "target-windows-rulesVersionId": {"label": "目标域时间窗口规则", "group": "输入资料"}, "holdout-windows-rulesVersionId": {"label": "留出集时间窗口规则", "group": "输入资料"}, "inverse-rulesVersionId": {"label": "逆变换规则", "group": "输入资料"}, "imagery-rulesVersionId": {"label": "影像处理规则", "group": "输入资料"}
+  },
+  "parameterStages": {
+    "extract": {"label": "工作簿读取", "group": "数据准备"}, "unpivot": {"label": "表格转换", "group": "数据准备"}, "source-split": {"label": "源域数据划分", "group": "数据准备"}, "target-split": {"label": "目标域数据划分", "group": "数据准备"}, "source-windows": {"label": "源域时间窗口", "group": "数据准备"}, "target-windows": {"label": "目标域时间窗口", "group": "数据准备"}, "holdout-windows": {"label": "留出集时间窗口", "group": "数据准备"},
+    "pretrain": {"label": "预训练", "group": "训练与评价"}, "finetune": {"label": "微调", "group": "训练与评价"}, "predict": {"label": "预测", "group": "训练与评价"}, "inverse": {"label": "逆变换", "group": "训练与评价"}, "evaluate": {"label": "效果评价", "group": "训练与评价"},
+    "extent": {"label": "分析范围", "group": "空间处理"}, "imagery": {"label": "影像处理", "group": "空间处理"}, "map-month": {"label": "制图时点", "group": "成果制图"}, "prediction-points": {"label": "预测点", "group": "成果制图"}, "map-points": {"label": "制图点", "group": "成果制图"}, "prediction-membership": {"label": "预测点空间归属", "group": "成果制图"}, "map-membership": {"label": "制图点空间归属", "group": "成果制图"},
+    "boundary-projected": {"label": "边界投影", "group": "空间处理"}, "boundary-wgs84": {"label": "边界坐标转换", "group": "空间处理"}, "boundary-geojson": {"label": "边界格式转换", "group": "空间处理"}, "counties-projected": {"label": "县级区划投影", "group": "空间处理"}, "counties-clipped": {"label": "县级区划裁剪", "group": "空间处理"}, "counties-wgs84": {"label": "县级区划坐标转换", "group": "空间处理"}, "counties-geojson": {"label": "县级区划格式转换", "group": "空间处理"}, "townships-projected": {"label": "乡镇区划投影", "group": "空间处理"}, "townships-clipped": {"label": "乡镇区划裁剪", "group": "空间处理"}, "townships-wgs84": {"label": "乡镇区划坐标转换", "group": "空间处理"}, "townships-geojson": {"label": "乡镇区划格式转换", "group": "空间处理"}, "rivers-projected": {"label": "河流投影", "group": "空间处理"}, "rivers-clipped": {"label": "河流裁剪", "group": "空间处理"}, "rivers-wgs84": {"label": "河流坐标转换", "group": "空间处理"}, "rivers-geojson": {"label": "河流格式转换", "group": "空间处理"}, "groundwater_systems-projected": {"label": "地下水系统投影", "group": "空间处理"}, "groundwater_systems-clipped": {"label": "地下水系统裁剪", "group": "空间处理"}, "groundwater_systems-wgs84": {"label": "地下水系统坐标转换", "group": "空间处理"}, "groundwater_systems-geojson": {"label": "地下水系统格式转换", "group": "空间处理"}, "railways-projected": {"label": "铁路投影", "group": "空间处理"}, "railways-clipped": {"label": "铁路裁剪", "group": "空间处理"}, "railways-wgs84": {"label": "铁路坐标转换", "group": "空间处理"}, "railways-geojson": {"label": "铁路格式转换", "group": "空间处理"}, "basin_boundary-projected": {"label": "流域边界投影", "group": "空间处理"}, "basin_boundary-clipped": {"label": "流域边界裁剪", "group": "空间处理"}, "basin_boundary-wgs84": {"label": "流域边界坐标转换", "group": "空间处理"}, "basin_boundary-geojson": {"label": "流域边界格式转换", "group": "空间处理"}, "prediction-points-wgs84": {"label": "预测点坐标转换", "group": "成果制图"}, "prediction-points-geojson": {"label": "预测点格式转换", "group": "成果制图"}, "map-points-wgs84": {"label": "制图点坐标转换", "group": "成果制图"}, "map-points-geojson": {"label": "制图点格式转换", "group": "成果制图"}, "imagery-cog": {"label": "影像格式转换", "group": "空间处理"}, "imagery-wgs84": {"label": "影像坐标转换", "group": "空间处理"}
+  },
+  "outputs": {
+    "summary": {"label": "汇总结果", "viewer": "json"}, "coverage": {"label": "井点几何覆盖范围", "viewer": "map"}, "map-image": {"label": "静态地图", "viewer": "image"},
+    "sustainability-result": {"label": "水源地综合评价", "viewer": "json"}, "sustainability-result-file": {"label": "综合评价 JSON 文件", "viewer": "json"}, "sustainability-run-receipt": {"label": "第三方运行凭据", "viewer": "metadata"},
+    "aggregated-series": {"label": "聚合后的监测序列", "viewer": "chart"}, "aggregate-summary": {"label": "聚合统计摘要", "viewer": "table"}, "completeness-profiles": {"label": "数据完整性明细", "viewer": "table"}, "completeness-summary": {"label": "数据完整性摘要", "viewer": "table"}, "linear-trends": {"label": "线性趋势结果", "viewer": "chart"}, "linear-summary": {"label": "线性趋势摘要", "viewer": "table"}, "mann-kendall-trends": {"label": "Mann–Kendall 趋势检验", "viewer": "chart"}, "mann-kendall-summary": {"label": "趋势检验摘要", "viewer": "table"}, "outlier-observations": {"label": "异常观测明细", "viewer": "table"}, "outlier-summary": {"label": "异常检测摘要", "viewer": "table"}, "period-changes": {"label": "期间变化明细", "viewer": "chart"}, "period-change-summary": {"label": "期间变化摘要", "viewer": "table"},
+    "snapshot": {"label": "目标时点观测", "viewer": "table"}, "snapshot-diagnostics": {"label": "时点选择诊断", "viewer": "table"}, "head-raster": {"label": "水头栅格", "viewer": "map"}, "gradient": {"label": "水力梯度", "viewer": "map"}, "flow-direction": {"label": "流向", "viewer": "map"}, "darcy-flux": {"label": "达西通量", "viewer": "map"}, "seepage-velocity": {"label": "渗流速度", "viewer": "map"},
+    "source-scaler": {"label": "源域缩放器", "viewer": "json"}, "target-scaler": {"label": "目标域缩放器", "viewer": "json"}, "target-split": {"label": "目标域数据划分", "viewer": "table"}, "pretrained-weights": {"label": "预训练权重", "viewer": "metadata"}, "pretrained-model-spec": {"label": "预训练模型规格", "viewer": "json"}, "pretrain-loss": {"label": "预训练损失", "viewer": "chart"}, "finetuned-weights": {"label": "微调权重", "viewer": "metadata"}, "finetuned-model-spec": {"label": "微调模型规格", "viewer": "json"}, "finetune-loss": {"label": "微调损失", "viewer": "chart"}, "predictions": {"label": "预测结果", "viewer": "chart"}, "metrics": {"label": "评价指标", "viewer": "table"}, "per-well-metrics": {"label": "逐井评价指标", "viewer": "table"}, "prediction-points": {"label": "预测点资料", "viewer": "map"}, "map-points": {"label": "制图点资料", "viewer": "map"}, "boundary": {"label": "区域边界", "viewer": "map"}, "extent": {"label": "分析范围", "viewer": "map"}, "imagery": {"label": "影像", "viewer": "map"}, "imagery-coverage": {"label": "影像覆盖情况", "viewer": "table"}, "map-month-diagnostics": {"label": "制图时点诊断", "viewer": "table"}, "counties": {"label": "县级区划", "viewer": "map"}, "townships": {"label": "乡镇区划", "viewer": "map"}, "rivers": {"label": "河流", "viewer": "map"}, "groundwater_systems": {"label": "地下水系统", "viewer": "map"}, "railways": {"label": "铁路", "viewer": "map"}, "basin_boundary": {"label": "流域边界", "viewer": "map"}
+  },
+  "cases": {"yaozhanbao-transfer-case": {"label": "腰站堡迁移学习", "profiles": {"standard": "标准训练档", "development_fast": "开发快速档"}}}
+}

@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools==75.8.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "platform-assembler"
+version = "7.0.0"
+requires-python = ">=3.12"
+dependencies = ["jsonschema>=4.25,<5", "PyYAML==6.0.3", "platform-workflow-compiler==1.0.0"]
+
+[project.scripts]
+platform-assemble = "assembler:main"
+platform-domain = "assembler:domain_main"
+
+[tool.setuptools]
+py-modules = [
+  "assembler",
+  "assembler_common",
+  "assembler_domain",
+  "assembler_gateway",
+  "assembler_manifests",
+  "assembler_publication",
+  "assembler_runtime",
+  "assembler_ui",
+  "base_images",
+  "deployment_topology",
+  "executor_profile",
+]
+
+[tool.setuptools.data-files]
+"share/platform-assembler" = ["product-ui.v1.schema.json"]

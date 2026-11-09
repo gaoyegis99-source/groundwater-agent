@@ -1,0 +1,23 @@
+{
+  "expectedOutputs": {
+    "vector": {
+      "format": "geopackage",
+      "kind": "artifact",
+      "mediaType": "application/geopackage+sqlite3"
+    }
+  },
+  "inputs": {
+    "vector": {
+      "fixtureId": "detailed"
+    }
+  },
+  "operator": {
+    "id": "vector.simplify",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "layer": "detailed",
+    "toleranceMeters": 10
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

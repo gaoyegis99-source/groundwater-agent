@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=75.8.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "{{ project_name }}"
+version = "1.0.0"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.entry-points."platform_lightweight_agent.tools"]
+"example.lookup" = "{{ project_name | replace('-', '_') | replace('.', '_') }}:register"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.platform-agent-workflow]
+schema_version = "v6-agent-project-v1"
+kind = "tool"
+tool_manifest = "tool-manifest.json"
+registry = "{{ project_name | replace('-', '_') | replace('.', '_') }}:register"
+dependency_lock = "pylock.toml"

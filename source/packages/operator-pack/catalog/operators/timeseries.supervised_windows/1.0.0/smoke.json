@@ -1,0 +1,41 @@
+{
+  "expectedOutputs": {
+    "features": {
+      "format": "npy",
+      "kind": "artifact",
+      "mediaType": "application/x-npy"
+    },
+    "sampleIndex": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    },
+    "targets": {
+      "format": "npy",
+      "kind": "artifact",
+      "mediaType": "application/x-npy"
+    }
+  },
+  "inputs": {
+    "data": {
+      "fixtureId": "transfer.scaled-data"
+    },
+    "rules": {
+      "fixtureId": "transfer.windows"
+    },
+    "targets": {
+      "fixtureId": "transfer.split-trainTargets"
+    }
+  },
+  "operator": {
+    "id": "timeseries.supervised_windows",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "groupField": "station",
+    "inputWindow": 3,
+    "targetField": "depth",
+    "timeField": "time"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

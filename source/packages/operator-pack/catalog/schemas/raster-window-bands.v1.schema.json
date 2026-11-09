@@ -1,0 +1,25 @@
+{
+  "$id": "raster-window-bands.v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "bands": {
+      "items": {
+        "minimum": 1,
+        "type": "integer"
+      },
+      "maxItems": 64,
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "schemaVersion": {
+      "const": "raster-window-bands.v1"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "bands"
+  ],
+  "type": "object"
+}

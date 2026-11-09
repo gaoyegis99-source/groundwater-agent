@@ -1,0 +1,34 @@
+{
+  "expectedOutputs": {
+    "coverage": {
+      "format": "json",
+      "kind": "artifact",
+      "mediaType": "application/json"
+    },
+    "raster": {
+      "format": "geotiff",
+      "kind": "artifact",
+      "mediaType": "image/tiff"
+    }
+  },
+  "inputs": {
+    "extent": {
+      "fixtureId": "transfer.envelope-extent"
+    },
+    "raster": {
+      "fixtureId": "transfer.rgb"
+    },
+    "rules": {
+      "fixtureId": "transfer.bands"
+    }
+  },
+  "operator": {
+    "id": "raster.window",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "extentLayer": "extent",
+    "minimumCoverage": 0.98
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

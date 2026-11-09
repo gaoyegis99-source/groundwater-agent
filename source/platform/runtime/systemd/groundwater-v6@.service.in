@@ -1,0 +1,16 @@
+[Unit]
+Description=Groundwater V6 instance %i
+Requires=groundwater-v6-docker.service
+After=groundwater-v6-docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=@ENV_FILE@
+ExecStart=@LAUNCHER@ instance-start %i
+ExecStop=@LAUNCHER@ instance-stop %i
+TimeoutStartSec=1800
+TimeoutStopSec=300
+
+[Install]
+WantedBy=default.target

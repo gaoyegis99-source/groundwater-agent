@@ -1,0 +1,29 @@
+apiVersion: platform.module/v9
+kind: Service
+metadata:
+  name: executor
+  version: 10.0.0
+  distribution:
+    name: platform-executor-service
+    version: 7.0.0
+spec:
+  owner: execution
+  process:
+    command: [uvicorn, platform_executor_service.main:app, --host, 0.0.0.0, --port, "8000"]
+  provides: [execution-http-v6, executor-worker-v3]
+  requires: [data-http-v3]
+  httpContracts:
+    execution-http-v6:
+      basePath: /internal/execution/v6
+      openapi: contracts/openapi-v6.json
+    executor-worker-v3:
+      basePath: /internal/workers/v3
+      openapi: contracts/openapi-v6.json
+  observationToolContracts: {}
+  executors: [workflow-dag]
+  health: {live: /internal/health/live, ready: /internal/health/ready}
+  storage:
+    authority: execution-job
+    paths: [/data/state/executor.sqlite3, /data/objects]
+  temporary:
+    paths: [/work]

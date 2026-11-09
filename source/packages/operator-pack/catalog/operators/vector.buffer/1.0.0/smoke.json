@@ -1,0 +1,23 @@
+{
+  "expectedOutputs": {
+    "vector": {
+      "format": "geopackage",
+      "kind": "artifact",
+      "mediaType": "application/geopackage+sqlite3"
+    }
+  },
+  "inputs": {
+    "vector": {
+      "fixtureId": "point"
+    }
+  },
+  "operator": {
+    "id": "vector.buffer",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "distanceMeters": 100,
+    "segments": 32
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

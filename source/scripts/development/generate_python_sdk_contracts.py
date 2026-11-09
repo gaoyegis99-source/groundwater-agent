@@ -1,0 +1,199 @@
+#!/usr/bin/env python3
+"""Generate checked-in Pydantic v2 DTOs and operation descriptors."""
+
+from __future__ import annotations
+
+import argparse
+from importlib.metadata import version
+import json
+from pathlib import Path
+import re
+import subprocess
+import sys
+from tempfile import TemporaryDirectory
+
+ROOT = Path(__file__).resolve().parents[2]
+GENERATOR_VERSION = "0.35.0"
+METHODS = {"get", "post", "put", "patch", "delete"}
+
+
+def _targets(root: Path) -> tuple[tuple[Path, Path, str], ...]:
+    assembler_path = str(root / "platform" / "assembler")
+    if assembler_path not in sys.path:
+        sys.path.insert(0, assembler_path)
+    from assembler_manifests import _load_manifest, available_products
+
+    targets = [
+        (
+            root / "services/data/contracts/openapi-v3.json",
+            root / "services/data/client/src/platform_data_client/generated",
+            "/data/v3",
+        ),
+        (
+            root / "services/knowledge-next/contracts/openapi-v3.json",
+            root / "services/knowledge-next/client/src/platform_knowledge_client/generated",
+            "/knowledge/v3",
+        ),
+        (
+            root / "services/executor/contracts/openapi-v6.json",
+            root / "services/executor/client/src/platform_executor_client/generated",
+            "/internal/execution/v6",
+        ),
+    ]
+    for product_id in available_products(root):
+        manifest_path, manifest = _load_manifest(
+            root, f"{product_id}/product-manifest.json"
+        )
+        public_version = manifest["publicApiVersion"]
+        client = root / "packages" / f"{product_id}-api-client"
+        if not client.is_dir():
+            continue
+        import_name = product_id.replace("-", "_") + "_api_client"
+        targets.append(
+            (
+                manifest_path.parent
+                / "contracts"
+                / f"public-api-{public_version}.json",
+                client / "src" / import_name / "generated",
+                f"/api/{public_version}",
+            )
+        )
+    return tuple(targets)
+
+
+def _model_name(schema: dict) -> str | None:
+    reference = schema.get("$ref")
+    if isinstance(reference, str):
+        return reference.rsplit("/", 1)[-1]
+    for key in ("allOf", "oneOf", "anyOf"):
+        for item in schema.get(key, []):
+            if isinstance(item, dict) and (name := _model_name(item)):
+                return name
+    return None
+
+
+def _constant(value: str) -> str:
+    return re.sub(r"[^A-Z0-9]+", "_", value.upper()).strip("_")
+
+
+def _python_model_name(value: str) -> str:
+    """Match datamodel-code-generator's class name for namespaced schemas."""
+    if "__" not in value:
+        return value
+    namespace, model = value.split("__", 1)
+    prefix = "".join(part.capitalize() for part in namespace.split("_") if part)
+    return prefix + model
+
+
+def _operations(document: dict, prefix: str) -> str:
+    rows: list[str] = []
+    exports: list[str] = []
+    for path, path_item in sorted(document["paths"].items()):
+        if path != prefix and not path.startswith(prefix + "/"):
+            continue
+        relative = path[len(prefix):] or "/"
+        for method, operation in sorted(path_item.items()):
+            if method not in METHODS or not isinstance(operation, dict):
+                continue
+            operation_id = operation["operationId"]
+            statuses: list[int] = []
+            response_model: str | None = None
+            media_type = "application/json"
+            for status, response in sorted(operation.get("responses", {}).items()):
+                if not str(status).startswith("2"):
+                    continue
+                statuses.append(int(status))
+                content = response.get("content", {})
+                if "application/json" in content:
+                    response_model = _model_name(content["application/json"].get("schema", {}))
+                elif "text/event-stream" in content:
+                    media_type = "text/event-stream"
+                elif "application/octet-stream" in content:
+                    media_type = "application/octet-stream"
+            name = _constant(operation_id)
+            exports.append(name)
+            model_expression = (
+                f"models.{_python_model_name(response_model)}"
+                if response_model
+                else "None"
+            )
+            rows.append(
+                f'{name} = Operation(\n'
+                f'    operation_id={operation_id!r}, method={method.upper()!r}, path={relative!r},\n'
+                f'    response_model={model_expression}, success_statuses=frozenset({statuses!r}),\n'
+                f'    media_type={media_type!r}, side_effecting={method not in {"get"}!r},\n'
+                f')\n'
+            )
+    mapping = "\n".join(f"    {name}.operation_id: {name}," for name in exports)
+    return (
+        "# Generated by scripts.development.generate_python_sdk_contracts; do not edit.\n"
+        "from __future__ import annotations\n\n"
+        "from platform_protocol_contracts import Operation\n"
+        "from . import models\n\n"
+        + "\n".join(rows)
+        + f"\nOPERATIONS = {{\n{mapping}\n}}\n"
+    )
+
+
+def _generate_target(contract: Path, output: Path, prefix: str) -> dict[str, bytes]:
+    document = json.loads(contract.read_text())
+    output.mkdir(parents=True, exist_ok=True)
+    with TemporaryDirectory(prefix="python-sdk-contracts-") as directory:
+        models = Path(directory) / "models.py"
+        subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "datamodel_code_generator",
+                "--input",
+                str(contract),
+                "--input-file-type",
+                "openapi",
+                "--output",
+                str(models),
+                "--output-model-type",
+                "pydantic_v2.BaseModel",
+                "--target-python-version",
+                "3.12",
+                "--use-standard-collections",
+                "--use-union-operator",
+                "--field-constraints",
+                "--snake-case-field",
+                "--extra-fields",
+                "forbid",
+                "--strict-nullable",
+                "--disable-timestamp",
+            ],
+            check=True,
+        )
+        generated_models = models.read_bytes()
+    return {
+        "__init__.py": b'"""Generated contract DTOs and operations."""\n\nfrom . import models, operations\n\n__all__ = ["models", "operations"]\n',
+        "models.py": generated_models,
+        "operations.py": _operations(document, prefix).encode(),
+    }
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--check", action="store_true")
+    args = parser.parse_args()
+    if version("datamodel-code-generator") != GENERATOR_VERSION:
+        raise SystemExit("PYTHON_SDK_GENERATOR_VERSION_INVALID")
+    stale: list[str] = []
+    for contract, output, prefix in _targets(ROOT):
+        generated = _generate_target(contract, output, prefix)
+        for name, content in generated.items():
+            path = output / name
+            if args.check:
+                if not path.is_file() or path.read_bytes() != content:
+                    stale.append(str(path.relative_to(ROOT)))
+            else:
+                path.write_bytes(content)
+    if stale:
+        raise SystemExit("PYTHON_SDK_GENERATED_STALE: " + ", ".join(stale))
+    print("Python SDK contracts PASS" if args.check else "Generated Python SDK contracts")
+
+
+if __name__ == "__main__":
+    main()

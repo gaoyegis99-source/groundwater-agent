@@ -1,0 +1,121 @@
+{
+  "description": "Deduplicate rows by explicit compound keys while treating null key values as equal.",
+  "domain": "table",
+  "errorCodes": [
+    "DUPLICATE_KEY",
+    "FIELD_REQUIRED",
+    "FORMAT_UNSUPPORTED",
+    "HEADER_INVALID",
+    "OUTPUT_FIELD_CONFLICT",
+    "OUTPUT_ROW_LIMIT_EXCEEDED",
+    "OUTPUT_VALIDATION_FAILED",
+    "PARAMETER_INVALID",
+    "RULESET_INVALID"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-table-deduplicate",
+      "inputs": {
+        "data": {
+          "artifactId": "art_example_01"
+        },
+        "rules": {
+          "artifactId": "art_example_99"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "table.deduplicate",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "keep": "first"
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "table.deduplicate",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "csv",
+        "parquet",
+        "arrow-ipc-file"
+      ],
+      "mediaTypes": [
+        "text/csv",
+        "application/vnd.apache.parquet",
+        "application/vnd.apache.arrow.file"
+      ],
+      "name": "data",
+      "required": true
+    },
+    {
+      "cardinality": "one",
+      "formats": [
+        "json"
+      ],
+      "mediaTypes": [
+        "application/json"
+      ],
+      "name": "rules",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "parquet"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "unique"
+    },
+    {
+      "formats": [
+        "parquet"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "duplicates"
+    },
+    {
+      "kind": "value",
+      "name": "summary",
+      "schema": {
+        "type": "object"
+      }
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "keep": {
+        "enum": [
+          "first",
+          "last",
+          "error"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "keep"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "table",
+    "deduplicate"
+  ],
+  "timeoutSeconds": 1200,
+  "title": "Deduplicate table rows",
+  "version": "1.0.0"
+}

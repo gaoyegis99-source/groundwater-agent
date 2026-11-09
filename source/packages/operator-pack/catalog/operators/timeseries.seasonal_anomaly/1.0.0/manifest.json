@@ -1,0 +1,132 @@
+{
+  "description": "Compare observations with an explicit monthly or quarterly baseline mean and population standard deviation.",
+  "domain": "timeseries",
+  "errorCodes": [
+    "DUPLICATE_TIMESTAMP",
+    "FIELD_REQUIRED",
+    "FREQUENCY_UNSUPPORTED",
+    "INSUFFICIENT_OBSERVATIONS",
+    "NON_NUMERIC_VALUE",
+    "OUTPUT_VALIDATION_FAILED",
+    "TIMESTAMP_INVALID",
+    "TIMEZONE_UNSUPPORTED",
+    "TIME_RANGE_INVALID"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-timeseries-seasonal_anomaly",
+      "inputs": {
+        "observations": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "timeseries.seasonal_anomaly",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "baselineEnd": "2021-12-31",
+        "baselineStart": "2020-01-01",
+        "groupField": "station",
+        "minBaselineObservations": 2,
+        "seasonFrequency": "month",
+        "timeField": "time",
+        "valueField": "value"
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "timeseries.seasonal_anomaly",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "csv",
+        "parquet",
+        "arrow-ipc-file"
+      ],
+      "mediaTypes": [
+        "text/csv",
+        "application/vnd.apache.parquet",
+        "application/vnd.apache.arrow.file"
+      ],
+      "name": "observations",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "parquet"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "anomalies"
+    },
+    {
+      "kind": "value",
+      "name": "summary",
+      "schema": {
+        "type": "object"
+      }
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "baselineEnd": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "baselineStart": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "groupField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "minBaselineObservations": {
+        "minimum": 1,
+        "type": "integer"
+      },
+      "seasonFrequency": {
+        "enum": [
+          "month",
+          "quarter"
+        ],
+        "type": "string"
+      },
+      "timeField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "valueField": {
+        "minLength": 1,
+        "type": "string"
+      }
+    },
+    "required": [
+      "groupField",
+      "timeField",
+      "valueField",
+      "seasonFrequency",
+      "baselineStart",
+      "baselineEnd",
+      "minBaselineObservations"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "timeseries",
+    "seasonal_anomaly"
+  ],
+  "timeoutSeconds": 1800,
+  "title": "Calculate seasonal baseline anomalies",
+  "version": "1.0.0"
+}

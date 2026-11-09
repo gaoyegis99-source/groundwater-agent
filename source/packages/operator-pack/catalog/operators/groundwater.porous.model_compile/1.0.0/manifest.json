@@ -1,0 +1,97 @@
+{
+  "id": "groundwater.porous.model_compile",
+  "version": "1.0.0",
+  "title": "Model Compile",
+  "description": "Execute fixed third-party operation model.compile through deployment service binding porous-groundwater.",
+  "domain": "groundwater",
+  "tags": [
+    "groundwater",
+    "third-party",
+    "remote-http",
+    "model.compile"
+  ],
+  "runtime": "remote_http",
+  "remoteBinding": {
+    "serviceId": "porous-groundwater",
+    "operationType": "model.compile"
+  },
+  "timeoutSeconds": 7200,
+  "memoryLimitBytes": 1073741824,
+  "inputs": [
+    {
+      "name": "project_package",
+      "cardinality": "one",
+      "required": true,
+      "mediaTypes": [
+        "application/zip"
+      ],
+      "formats": [
+        "zip"
+      ]
+    }
+  ],
+  "parametersSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {},
+    "required": []
+  },
+  "outputs": [
+    {
+      "name": "model_package",
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/zip"
+      ],
+      "formats": [
+        "zip"
+      ]
+    },
+    {
+      "name": "validation_report",
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/json"
+      ],
+      "formats": [
+        "json"
+      ]
+    },
+    {
+      "name": "run_receipt",
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/json"
+      ],
+      "formats": [
+        "json"
+      ]
+    }
+  ],
+  "errorCodes": [
+    "REMOTE_AUTHENTICATION_FAILED",
+    "REMOTE_BINDING_INVALID",
+    "REMOTE_INTEGRITY_FAILED",
+    "REMOTE_OPERATION_FAILED",
+    "REMOTE_PROTOCOL_INVALID",
+    "REMOTE_SUBMISSION_UNCERTAIN",
+    "REMOTE_VERSION_MISMATCH"
+  ],
+  "examples": [
+    {
+      "schemaVersion": "operator-execution-request.v1",
+      "clientRequestId": "example-groundwater-porous-model_compile",
+      "operator": {
+        "id": "groundwater.porous.model_compile",
+        "version": "1.0.0"
+      },
+      "mode": "ASYNC",
+      "inputs": {
+        "project_package": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "parameters": {}
+    }
+  ]
+}

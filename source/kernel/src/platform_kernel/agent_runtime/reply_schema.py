@@ -1,0 +1,16 @@
+from __future__ import annotations
+
+from .models import SubmittedReplyV6
+
+
+def reply_schema(*, drafting: bool = False) -> dict:
+    schema = SubmittedReplyV6.model_json_schema()
+    if not drafting:
+        schema["properties"]["workflow_draft"] = {"type": "null"}
+        used = {"InteractionOptionV1", "ReplyCitationV2", "ReplySegmentV1"}
+        schema["$defs"] = {
+            name: definition
+            for name, definition in schema["$defs"].items()
+            if name in used
+        }
+    return schema

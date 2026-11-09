@@ -1,0 +1,50 @@
+{
+  "crs": {
+    "properties": {
+      "name": "EPSG:3857"
+    },
+    "type": "name"
+  },
+  "features": [
+    {
+      "geometry": {
+        "coordinates": [
+          0.5,
+          2.5
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "id": "inside"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          1.5,
+          1.5
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "id": "nodata"
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          9.0,
+          9.0
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "id": "outside"
+      },
+      "type": "Feature"
+    }
+  ],
+  "type": "FeatureCollection"
+}

@@ -1,0 +1,23 @@
+{
+  "expectedOutputs": {
+    "raster": {
+      "format": "geotiff",
+      "kind": "artifact",
+      "mediaType": "image/tiff"
+    }
+  },
+  "inputs": {
+    "raster": {
+      "fixtureId": "raster"
+    }
+  },
+  "operator": {
+    "id": "raster.reproject",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "resampling": "nearest",
+    "targetCrs": "EPSG:4326"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

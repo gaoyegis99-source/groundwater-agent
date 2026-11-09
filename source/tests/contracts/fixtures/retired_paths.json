@@ -1,0 +1,31 @@
+{
+  "gateway": [
+    "/api/v8/health",
+    "/api/v9/health",
+    "/api/v10/health"
+  ],
+  "kernel": [
+    "/api/v8/health",
+    "/api/v9/health",
+    "/api/v10/health"
+  ],
+  "data": [
+    "/data/v1/capabilities",
+    "/data/v2/capabilities",
+    "/internal/tools/v1/unknown",
+    "/internal/tools/v2/unknown"
+  ],
+  "knowledge": [
+    "/knowledge/v1/capabilities",
+    "/knowledge/v2/capabilities",
+    "/internal/tools/v1/unknown",
+    "/internal/tools/v2/unknown",
+    "/internal/tools/v3/unknown"
+  ],
+  "executor": [
+    "/internal/execution/v4/health",
+    "/internal/execution/v5/health",
+    "/internal/workers/v1/health",
+    "/internal/workers/v2/health"
+  ]
+}

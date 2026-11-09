@@ -1,0 +1,26 @@
+{
+  "expectedOutputs": {
+    "vector": {
+      "format": "geopackage",
+      "kind": "artifact",
+      "mediaType": "application/geopackage+sqlite3"
+    }
+  },
+  "inputs": {
+    "mask": {
+      "fixtureId": "right"
+    },
+    "vector": {
+      "fixtureId": "left"
+    }
+  },
+  "operator": {
+    "id": "vector.clip",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "maskLayer": "right",
+    "vectorLayer": "left"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

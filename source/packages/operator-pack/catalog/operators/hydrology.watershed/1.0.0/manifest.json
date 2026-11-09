@@ -1,0 +1,107 @@
+{
+  "description": "Labels upstream cells for supplied pour points using fixed-code D8 directions.",
+  "domain": "hydrology",
+  "errorCodes": [
+    "CRS_REQUIRED",
+    "CRS_MISMATCH",
+    "PROJECTED_CRS_REQUIRED",
+    "GEOMETRY_TYPE_MISMATCH",
+    "UNSUPPORTED_DIMENSION",
+    "FIELD_REQUIRED",
+    "POUR_POINT_NOT_FOUND",
+    "POUR_POINT_ID_INVALID",
+    "POUR_POINT_CONFLICT",
+    "FLOW_DIRECTION_INVALID",
+    "FLOW_CYCLE",
+    "RASTER_INVALID"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-hydrology-watershed",
+      "inputs": {
+        "flowDirection": {
+          "artifactId": "art_example_01"
+        },
+        "pourPoints": {
+          "artifactId": "art_example_02"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "hydrology.watershed",
+        "version": "1.0.0"
+      },
+      "parameters": {},
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "hydrology.watershed",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "flowDirection",
+      "required": true
+    },
+    {
+      "cardinality": "one",
+      "formats": [
+        "flatgeobuf",
+        "geojson",
+        "geopackage",
+        "geoparquet",
+        "parquet"
+      ],
+      "mediaTypes": [
+        "application/geopackage+sqlite3",
+        "application/geo+json",
+        "application/flatgeobuf",
+        "application/vnd.apache.parquet"
+      ],
+      "name": "pourPoints",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "watershed"
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "idField": {
+        "default": "hydro_id",
+        "type": "string"
+      },
+      "layer": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "hydrology",
+    "watershed",
+    "d8"
+  ],
+  "timeoutSeconds": 3600,
+  "title": "Delineate watersheds",
+  "version": "1.0.0"
+}

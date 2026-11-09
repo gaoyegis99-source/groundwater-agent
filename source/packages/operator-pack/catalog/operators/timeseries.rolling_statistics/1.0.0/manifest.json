@@ -1,0 +1,115 @@
+{
+  "description": "Calculate fixed descriptive statistics in an inclusive trailing day window.",
+  "domain": "timeseries",
+  "errorCodes": [
+    "DUPLICATE_TIMESTAMP",
+    "FIELD_REQUIRED",
+    "NON_NUMERIC_VALUE",
+    "OUTPUT_VALIDATION_FAILED",
+    "TIMESTAMP_INVALID",
+    "TIMEZONE_UNSUPPORTED",
+    "WINDOW_INVALID"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-timeseries-rolling_statistics",
+      "inputs": {
+        "observations": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "timeseries.rolling_statistics",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "groupField": "station",
+        "minObservations": 2,
+        "timeField": "time",
+        "valueField": "value",
+        "windowDays": 370
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "timeseries.rolling_statistics",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "csv",
+        "parquet",
+        "arrow-ipc-file"
+      ],
+      "mediaTypes": [
+        "text/csv",
+        "application/vnd.apache.parquet",
+        "application/vnd.apache.arrow.file"
+      ],
+      "name": "observations",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "parquet"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "statistics"
+    },
+    {
+      "kind": "value",
+      "name": "summary",
+      "schema": {
+        "type": "object"
+      }
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "groupField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "minObservations": {
+        "default": 1,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "timeField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "valueField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "windowDays": {
+        "minimum": 1,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "groupField",
+      "timeField",
+      "valueField",
+      "windowDays"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "timeseries",
+    "rolling_statistics"
+  ],
+  "timeoutSeconds": 1800,
+  "title": "Calculate rolling statistics",
+  "version": "1.0.0"
+}

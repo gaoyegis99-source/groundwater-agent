@@ -1,0 +1,21 @@
+[
+  {
+    "id": "three-finite-values",
+    "csv": "level\n1\n2\n3\n",
+    "column": "level",
+    "expected_business_status": "APPROVED",
+    "expected_summary": {
+      "count": 3,
+      "minimum": 1.0,
+      "maximum": 3.0,
+      "mean": 2.0
+    }
+  },
+  {
+    "id": "non-numeric-value",
+    "csv": "level\n1\nnot-a-number\n",
+    "column": "level",
+    "expected_business_status": "BLOCKED",
+    "expected_reason_code": "CSV_VALUE_NOT_NUMBER"
+  }
+]

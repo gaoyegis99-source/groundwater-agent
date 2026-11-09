@@ -1,0 +1,144 @@
+{
+  "description": "Calculate scalar Darcy flux, seepage velocity, and east/north components from aligned gradient rasters.",
+  "domain": "groundwater",
+  "errorCodes": [
+    "CRS_REQUIRED",
+    "GRID_MISMATCH",
+    "OUTPUT_VALIDATION_FAILED",
+    "PARAMETER_INVALID",
+    "ROTATED_GRID_UNSUPPORTED",
+    "UNIT_UNSUPPORTED"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-groundwater-darcy_velocity",
+      "inputs": {
+        "flowDirection": {
+          "artifactId": "art_example_02"
+        },
+        "gradientMagnitude": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "groundwater.darcy_velocity",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "effectivePorosity": 0.25,
+        "hydraulicConductivityMetersPerDay": 10
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "groundwater.darcy_velocity",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "geotiff",
+        "cog"
+      ],
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "gradientMagnitude",
+      "required": true
+    },
+    {
+      "cardinality": "one",
+      "formats": [
+        "geotiff",
+        "cog"
+      ],
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "flowDirection",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "darcyFlux"
+    },
+    {
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "seepageVelocity"
+    },
+    {
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "velocityEast"
+    },
+    {
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "velocityNorth"
+    },
+    {
+      "kind": "value",
+      "name": "summary",
+      "schema": {
+        "type": "object"
+      }
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "effectivePorosity": {
+        "exclusiveMinimum": 0,
+        "maximum": 1,
+        "type": "number"
+      },
+      "hydraulicConductivityMetersPerDay": {
+        "minimum": 0,
+        "type": "number"
+      }
+    },
+    "required": [
+      "hydraulicConductivityMetersPerDay",
+      "effectivePorosity"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "groundwater",
+    "groundwater",
+    "darcy_velocity"
+  ],
+  "timeoutSeconds": 1800,
+  "title": "Calculate Darcy and seepage velocity",
+  "version": "1.0.0"
+}

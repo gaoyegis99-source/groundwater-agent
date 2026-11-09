@@ -1,0 +1,193 @@
+{
+  "description": "结构来自 modelSpec；加载上游 state_dict，重新创建 Adam，微调全部参数，与原实现一致。 调用参数显式给出原种子+1；不在运行时读取预训练节点目录或修改上游权重文件。",
+  "domain": "ml",
+  "errorCodes": [
+    "RULESET_INVALID",
+    "RULESET_TOO_LARGE",
+    "INPUT_CARDINALITY_INVALID",
+    "FIELD_REQUIRED",
+    "DUPLICATE_FIELD",
+    "NON_NUMERIC_VALUE",
+    "OUTPUT_FIELD_CONFLICT",
+    "EMPTY_RESULT",
+    "TIME_AXIS_MISMATCH",
+    "DUPLICATE_TIMESTAMP",
+    "DUPLICATE_SERIES",
+    "TIMEZONE_UNSUPPORTED",
+    "TRAINING_WINDOW_INSUFFICIENT",
+    "HOLDOUT_REQUIRED",
+    "TARGET_NOT_FOUND",
+    "TENSOR_SHAPE_INVALID",
+    "ATTENTION_DIMENSIONS_INVALID",
+    "MODEL_WEIGHTS_INVALID",
+    "TRAINING_NON_FINITE",
+    "PREDICTION_NON_FINITE",
+    "SAMPLE_INDEX_INVALID",
+    "CRS_REQUIRED",
+    "CRS_MISMATCH",
+    "EMPTY_GEOMETRY",
+    "INVALID_GEOMETRY",
+    "GEOMETRY_TYPE_INVALID",
+    "COORDINATE_INVALID",
+    "METRIC_CRS_REQUIRED",
+    "EXTENT_INVALID",
+    "ROTATED_GRID_UNSUPPORTED",
+    "BAND_INVALID",
+    "IMAGERY_COVERAGE_INSUFFICIENT"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-ml-gru_attention_finetune",
+      "inputs": {
+        "features": {
+          "artifactId": "art_example_01"
+        },
+        "modelSpec": {
+          "artifactId": "art_example_04"
+        },
+        "targets": {
+          "artifactId": "art_example_02"
+        },
+        "weights": {
+          "artifactId": "art_example_03"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "ml.gru_attention_finetune",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "batchSize": 8,
+        "device": "cpu",
+        "epochs": 1,
+        "learningRate": 0.001,
+        "seed": 43
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "ml.gru_attention_finetune",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "npy"
+      ],
+      "mediaTypes": [
+        "application/x-npy"
+      ],
+      "name": "features",
+      "required": true
+    },
+    {
+      "cardinality": "one",
+      "formats": [
+        "npy"
+      ],
+      "mediaTypes": [
+        "application/x-npy"
+      ],
+      "name": "targets",
+      "required": true
+    },
+    {
+      "cardinality": "one",
+      "formats": [
+        "pytorch-state-dict"
+      ],
+      "mediaTypes": [
+        "application/vnd.pytorch"
+      ],
+      "name": "weights",
+      "required": true
+    },
+    {
+      "cardinality": "one",
+      "formats": [
+        "json"
+      ],
+      "mediaTypes": [
+        "application/json"
+      ],
+      "name": "modelSpec",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 17179869184,
+  "outputs": [
+    {
+      "formats": [
+        "pytorch-state-dict"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.pytorch"
+      ],
+      "name": "weights"
+    },
+    {
+      "formats": [
+        "json"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/json"
+      ],
+      "name": "modelSpec"
+    },
+    {
+      "formats": [
+        "parquet"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "loss"
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "batchSize": {
+        "minimum": 1,
+        "type": "integer"
+      },
+      "device": {
+        "enum": [
+          "cpu"
+        ],
+        "type": "string"
+      },
+      "epochs": {
+        "minimum": 1,
+        "type": "integer"
+      },
+      "learningRate": {
+        "exclusiveMinimum": 0,
+        "type": "number"
+      },
+      "seed": {
+        "minimum": 0,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "epochs",
+      "batchSize",
+      "learningRate",
+      "seed",
+      "device"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "ml",
+    "structured"
+  ],
+  "timeoutSeconds": 7200,
+  "title": "从显式权重微调 GRU 注意力模型",
+  "version": "1.0.0"
+}

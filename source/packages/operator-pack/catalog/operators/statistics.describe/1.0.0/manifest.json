@@ -1,0 +1,88 @@
+{
+  "description": "Descriptive statistics operator.",
+  "domain": "statistics",
+  "errorCodes": [
+    "COLUMN_REQUIRED",
+    "NON_NUMERIC_VALUE",
+    "OUTPUT_VALIDATION_FAILED"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-statistics-describe",
+      "inputs": {
+        "data": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "statistics.describe",
+        "version": "1.0.0"
+      },
+      "parameters": {},
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "statistics.describe",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "arrow-ipc-file",
+        "csv",
+        "geoparquet",
+        "json",
+        "npy",
+        "parquet"
+      ],
+      "mediaTypes": [
+        "text/csv",
+        "application/json",
+        "application/vnd.apache.parquet",
+        "application/vnd.apache.arrow.file",
+        "application/x-npy"
+      ],
+      "name": "data",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "kind": "value",
+      "name": "summary",
+      "schema": {
+        "type": "object"
+      }
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "axis": {
+        "default": "columns",
+        "enum": [
+          "columns",
+          "flatten"
+        ],
+        "type": "string"
+      },
+      "column": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "statistics",
+    "describe",
+    "capability:descriptive-statistics",
+    "descriptive statistics",
+    "描述统计",
+    "统计摘要"
+  ],
+  "timeoutSeconds": 1800,
+  "title": "Descriptive statistics",
+  "version": "1.0.0"
+}

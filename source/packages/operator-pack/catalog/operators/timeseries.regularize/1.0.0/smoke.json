@@ -1,0 +1,33 @@
+{
+  "expectedOutputs": {
+    "series": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    },
+    "summary": {
+      "kind": "value"
+    }
+  },
+  "inputs": {
+    "observations": {
+      "fixtureId": "advanced.timeseries"
+    }
+  },
+  "operator": {
+    "id": "timeseries.regularize",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "expectedEnd": "2020-03-31",
+    "expectedStart": "2020-01-01",
+    "frequency": "month",
+    "groupField": "station",
+    "interpolationMethod": "linear",
+    "maxGapPeriods": 1,
+    "maxOutputRows": 100,
+    "timeField": "time",
+    "valueField": "value"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

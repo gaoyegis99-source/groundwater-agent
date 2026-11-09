@@ -1,0 +1,215 @@
+{
+  "schemaVersion": "curated-local-knowledge.v3",
+  "documents": [
+    {
+      "knowledgeId": "curated.methods.v3.identity-grain",
+      "contentVersion": "3.0.0",
+      "language": "zh-CN",
+      "title": "资料方法：井号关联、来源与粒度",
+      "summary": "精确键关联、证据身份与项目数据粒度。",
+      "sources": [
+        {
+          "sourceId": "curated-local-v3",
+          "kind": "PROJECT_TEMPLATE",
+          "title": "腰站堡精选资料v3的整理声明与可复查来源",
+          "publisher": "本地资料整理；不是原始测量或标准发布机构",
+          "url": null,
+          "version": "3.0.0",
+          "publishedAt": "2026-10-09",
+          "accessedAt": null,
+          "reviewAfter": "2027-10-09",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "chunks": [
+        {
+          "content": "跨表关联必须有显式同义键及其来源证据。井号按字符串保存，前导零、同名站、别名和换井不能凭相似名称或最近坐标自动合并。CNU井号和监测station_id只有精确相等时才形成候选关联；GIS0040的NAME不是已经确认的同一井身份。",
+          "sourceRefs": [
+            "curated-local-v3"
+          ]
+        },
+        {
+          "content": "文件版本、资源family/version/checksum和原始文件校验和是不同层次的身份。字典只能解释它绑定的实际Resource版本；读取新资源后必须重新观察对应字典。来源日期、整理日期和观测日期不能互相替代。历史归档不证明当前有效。",
+          "sourceRefs": [
+            "curated-local-v3"
+          ]
+        },
+        {
+          "content": "一行的业务粒度必须先确认：井日、井月、冲突来源变体、区域年量、行政边界各不相同。钻孔分层不能当成多个独立井；同键冲突不能当重复导出直接去重；区域开采量不能无证据分摊成井月抽水量。",
+          "sourceRefs": [
+            "curated-local-v3"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "curated.methods.v3.time-quality",
+      "contentVersion": "3.0.0",
+      "language": "zh-CN",
+      "title": "资料方法：缺测、低覆盖与冲突",
+      "summary": "区分有月值、日覆盖充分、缺测和冲突来源。",
+      "sources": [
+        {
+          "sourceId": "curated-local-v3",
+          "kind": "PROJECT_TEMPLATE",
+          "title": "腰站堡精选资料v3的整理声明与可复查来源",
+          "publisher": "本地资料整理；不是原始测量或标准发布机构",
+          "url": null,
+          "version": "3.0.0",
+          "publishedAt": "2026-10-09",
+          "accessedAt": null,
+          "reviewAfter": "2027-10-09",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "chunks": [
+        {
+          "content": "月初日期可只是自然月标签，不表示月初当天测量。日水位的月均值按当月实际有效观测取算术平均，同时保留observation_count、expected_days及coverage_ratio。每个井月都有月值，不等于每天都有观测。低日覆盖必须作为限制报告，不能从五行预览推断完整性。",
+          "sourceRefs": [
+            "curated-local-v3"
+          ]
+        },
+        {
+          "content": "缺测值保持缺测，不补零、不默默插值或删异常。观测期及自然月网格必须来自用户目标和资料字典。水位高程、埋深、月均值、日均值不能混作同一指标；高程基准没有证据时不得跨井拼接为水头面。",
+          "sourceRefs": [
+            "curated-local-v3"
+          ]
+        },
+        {
+          "content": "冲突组保留每条来源、原始行和组身份，不能取均值或擅选较新文件作为真值。对齐表中的空月和冲突审计是两个证据集合；没有逐月来源证明，不得把所有空月归因于冲突。趋势、相关或描述性统计不证明因果、预测或工程安全。",
+          "sourceRefs": [
+            "curated-local-v3"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "curated.methods.v3.rain-pumping",
+      "contentVersion": "3.0.0",
+      "language": "zh-CN",
+      "title": "资料方法：时间、降水和抽水单位",
+      "summary": "降水单位变换、抽水粒度及无法证明的关联。",
+      "sources": [
+        {
+          "sourceId": "curated-local-v3",
+          "kind": "PROJECT_TEMPLATE",
+          "title": "腰站堡精选资料v3的整理声明与可复查来源",
+          "publisher": "本地资料整理；不是原始测量或标准发布机构",
+          "url": null,
+          "version": "3.0.0",
+          "publishedAt": "2026-10-09",
+          "accessedAt": null,
+          "reviewAfter": "2027-10-09",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "chunks": [
+        {
+          "content": "降雨表Month1的单位声明为0.1mm，转换到mm应显式乘0.1并保留原值和列出处。月累计量、日降雨、月平均和Average列不是天然同义；不能从名称相似就采用未解释的平均列。原始X/Y若没有CRS声明，不能据数值大小猜投影。",
+          "sourceRefs": [
+            "curated-local-v3"
+          ]
+        },
+        {
+          "content": "降水NAME与监测井号需要独立映射证据；没有精确交集时不能按区域名称、相邻位置或列表顺序关联。即使按月对齐，降雨对地下水的滞后、补给条件和含水层位置仍需说明，相关性不能直接变成补给量或因果结论。",
+          "sourceRefs": [
+            "curated-local-v3"
+          ]
+        },
+        {
+          "content": "区域年开采量和日均开采量按原表单位保留。当年量除天数与来源日均值不一致时，记录口径冲突并要求澄清，不自行修正来源值。区域年度量不能当作某井某月抽水量；抽水试验或井级响应分析还需井号、起止时间、流量过程、观测井和层位。",
+          "sourceRefs": [
+            "curated-local-v3"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "curated.methods.v3.spatial-boundaries",
+      "contentVersion": "3.0.0",
+      "language": "zh-CN",
+      "title": "资料方法：坐标声明、边界类型与覆盖",
+      "summary": "保护区、行政区、地下水系统及声明坐标的可用边界。",
+      "sources": [
+        {
+          "sourceId": "curated-local-v3",
+          "kind": "PROJECT_TEMPLATE",
+          "title": "腰站堡精选资料v3的整理声明与可复查来源",
+          "publisher": "本地资料整理；不是原始测量或标准发布机构",
+          "url": null,
+          "version": "3.0.0",
+          "publishedAt": "2026-10-09",
+          "accessedAt": null,
+          "reviewAfter": "2027-10-09",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "chunks": [
+        {
+          "content": "CRS必须区分文件原生声明、既有算法假设和独立测量认证。CNU Lon/Lat的EPSG4490来自既有算法输入声明，工作簿没有CRS列；转换为4326仅记录了采用该声明的运算，不会把声明升级为已认证事实。未知垂直基准不能由水平CRS推得。",
+          "sourceRefs": [
+            "curated-local-v3"
+          ]
+        },
+        {
+          "content": "井点几何覆盖、保护区、乡镇、县界、盆地地下水系统和含水层边界不是同一业务对象。资料标题或空间相交不能证明归属、法律有效性或水力联系。计算覆盖须使用同一CRS并保留外部点与边界点；covers包含边界，不能以contains静默丢点。",
+          "sourceRefs": [
+            "curated-local-v3"
+          ]
+        },
+        {
+          "content": "投影转换、裁剪和修复产生派生资料，应保留原CRS、校验和与处理动作。RGB是颜色、DEM是地形，均不是水位面；DEM波段单位与垂直基准未声明时不能当水头使用。栅格外包范围包含点不等于有效覆盖，须核验全部所需波段的NoData与掩膜；边界外点和空像元不能补造数值。",
+          "sourceRefs": [
+            "curated-local-v3"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "curated.methods.v3.rule-artifacts",
+      "contentVersion": "3.0.0",
+      "language": "zh-CN",
+      "title": "资料方法：v1文件规则与未装配的内联规则",
+      "summary": "区分当前目录的规则文件端口和未安装的内联规则设计。",
+      "sources": [
+        {
+          "sourceId": "curated-local-v3",
+          "kind": "PROJECT_TEMPLATE",
+          "title": "腰站堡精选资料v3的整理声明与可复查来源",
+          "publisher": "本地资料整理；不是原始测量或标准发布机构",
+          "url": null,
+          "version": "3.0.0",
+          "publishedAt": "2026-10-09",
+          "accessedAt": null,
+          "reviewAfter": "2027-10-09",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "chunks": [
+        {
+          "content": "当前冻结95算子目录中的table.project、table.filter、table.sort、table.join、table.deduplicate和table.validate均为1.0.0版本。规则由单独JSON artifact输入，参数通道不替代文件端口。规则文档必须遵守对应table-*-rules.v1 Schema，字段名、类型、键和条件须与实际数据证据一致。",
+          "sourceRefs": [
+            "curated-local-v3"
+          ]
+        },
+        {
+          "content": "规则JSON是受约束数据，不是SQL、Python、表达式代码或可执行模板。参数默认值也不是业务事实；生成草稿不能凭常见做法补造字段、单位、连接关系或去重策略。缺少规则资源时应显式保留未绑定输入，不能把临时内联对象伪装成Resource。",
+          "sourceRefs": [
+            "curated-local-v3"
+          ]
+        },
+        {
+          "content": "当前安装目录没有表格内联规则v2能力。内联v2仅属于未装配设计，不能在草稿中引用不存在的版本，也不能将v2参数塞入v1节点。只有经过独立契约、实现和发布的目录版本才可使用；导出草稿不会安装算子或工作流，也不会发起执行。",
+          "sourceRefs": [
+            "curated-local-v3"
+          ]
+        }
+      ]
+    }
+  ]
+}

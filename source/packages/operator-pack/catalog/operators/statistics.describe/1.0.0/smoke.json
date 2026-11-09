@@ -1,0 +1,20 @@
+{
+  "expectedOutputs": {
+    "summary": {
+      "kind": "value"
+    }
+  },
+  "inputs": {
+    "data": {
+      "fixtureId": "table"
+    }
+  },
+  "operator": {
+    "id": "statistics.describe",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "column": "value"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

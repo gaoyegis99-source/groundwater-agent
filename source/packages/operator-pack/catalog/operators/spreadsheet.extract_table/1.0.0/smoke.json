@@ -1,0 +1,28 @@
+{
+  "expectedOutputs": {
+    "data": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    },
+    "summary": {
+      "kind": "value"
+    }
+  },
+  "inputs": {
+    "workbook": {
+      "fixtureId": "table.document.workbook"
+    }
+  },
+  "operator": {
+    "id": "spreadsheet.extract_table",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "formulaMode": "formulaText",
+    "headerRow": 1,
+    "maxOutputRows": 1000,
+    "sheetName": "Data"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

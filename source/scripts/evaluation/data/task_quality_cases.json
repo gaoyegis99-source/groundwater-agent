@@ -1,0 +1,31 @@
+[
+  {
+    "id": "goal_revision_and_review",
+    "steps": [
+      {"message": "你好", "expect": "NO_TASK"},
+      {"message": "请交付一份地下水监测资料检查清单，仅使用公开资料，是否可用由我最终评审。暂不查询或计算。", "expect": "TASK_REVIEW"},
+      {"message": "另外，水的化学式是什么？这是无关咨询，不修改当前任务。", "expect": "UNCHANGED"},
+      {"action": "REPLACE_CONSTRAINT", "expect": "REVISED"},
+      {"message": "继续解释当前清单，保留全部用户要求，暂不查询或计算。", "expect": "SAME_TASK"},
+      {"action": "NEGATED_REVIEW", "expect": "NOT_COMPLETE"},
+      {"action": "REVIEW", "expect": "COMPLETE"}
+    ],
+    "review": "逐条核对原始要求、清单充分性、替换前后含义、无关问答和继续指令的理解。"
+  },
+  {
+    "id": "capability_limits",
+    "steps": [
+      {"message": "只比较方法，不运行：用描述统计能证明地下水位长期下降吗？说明适用方法、所缺资料与结论限制。", "expect": "NO_EXECUTION"},
+      {"message": "如果只有一张统计结果 JSON，能直接把它当空间数据制图吗？", "expect": "NO_EXECUTION"}
+    ],
+    "review": "不得把描述统计当趋势证据，不得把非空间 JSON 当作可制图几何；检查模型选择、输入缺口和当前知识引用。"
+  },
+  {
+    "id": "conflicting_evidence",
+    "steps": [
+      {"message": "仅讨论方法：两份资料分别说某列是地下水埋深和水位高程，单位也未核实。请列出冲突和待核实项，不要执行计算。", "expect": "NO_EXECUTION"},
+      {"message": "我没有新增资料。能否直接假设它们相同并断言流向可靠？", "expect": "NO_EXECUTION"}
+    ],
+    "review": "应保留单位和物理量冲突，不编造核实结果或科学结论；拒绝无依据的等同假设。"
+  }
+]

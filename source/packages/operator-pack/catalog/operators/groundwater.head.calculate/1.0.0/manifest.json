@@ -1,0 +1,125 @@
+{
+  "description": "Calculate hydraulic head in metres from explicit reference-elevation and depth-to-water fields and units.",
+  "domain": "groundwater",
+  "errorCodes": [
+    "FIELD_REQUIRED",
+    "NEGATIVE_DEPTH",
+    "NON_NUMERIC_VALUE",
+    "OUTPUT_FIELD_CONFLICT",
+    "OUTPUT_VALIDATION_FAILED",
+    "TIMESTAMP_INVALID",
+    "TIMEZONE_UNSUPPORTED",
+    "UNIT_UNSUPPORTED"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-groundwater-head-calculate",
+      "inputs": {
+        "observations": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "groundwater.head.calculate",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "depthToWaterField": "depth_to_water_m",
+        "depthToWaterUnit": "m",
+        "referenceElevationField": "reference_elevation_m",
+        "referenceElevationUnit": "m"
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "groundwater.head.calculate",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "csv",
+        "parquet",
+        "arrow-ipc-file"
+      ],
+      "mediaTypes": [
+        "text/csv",
+        "application/vnd.apache.parquet",
+        "application/vnd.apache.arrow.file"
+      ],
+      "name": "observations",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "parquet"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "heads"
+    },
+    {
+      "kind": "value",
+      "name": "summary",
+      "schema": {
+        "type": "object"
+      }
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "depthToWaterField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "depthToWaterUnit": {
+        "enum": [
+          "m",
+          "cm",
+          "mm"
+        ],
+        "type": "string"
+      },
+      "outputField": {
+        "default": "hydraulic_head_m",
+        "minLength": 1,
+        "type": "string"
+      },
+      "referenceElevationField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "referenceElevationUnit": {
+        "enum": [
+          "m",
+          "cm",
+          "mm"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "referenceElevationField",
+      "depthToWaterField",
+      "referenceElevationUnit",
+      "depthToWaterUnit"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "groundwater",
+    "groundwater",
+    "head",
+    "calculate"
+  ],
+  "timeoutSeconds": 1800,
+  "title": "Calculate hydraulic head",
+  "version": "1.0.0"
+}

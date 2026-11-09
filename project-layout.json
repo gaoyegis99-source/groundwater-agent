@@ -1,0 +1,28 @@
+{
+  "schema_version": 4,
+  "project": "groundwater-v6",
+  "source": "source",
+  "worktrees": {},
+  "lifecycle": {
+    "config": "xdg-config",
+    "data": "xdg-data",
+    "state": "xdg-state",
+    "cache": "xdg-cache",
+    "runtime": "xdg-runtime"
+  },
+  "docker": {
+    "data_root": "xdg-cache/docker",
+    "socket": "docker.sock",
+    "default_address_pool": "10.206.0.0/16",
+    "network_size": 24,
+    "authoritative_volumes": false
+  },
+  "ports": {
+    "research": {"gateway": 28186}
+  },
+  "accounts": {
+    "research": "mtd"
+  },
+  "shared_runtime_paths": [],
+  "shared_docker_resources": []
+}

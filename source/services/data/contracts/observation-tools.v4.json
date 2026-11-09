@@ -1,0 +1,368 @@
+{
+  "contract": "data-tools-v4",
+  "schemaVersion": "observation-tools.v4",
+  "tools": [
+    {
+      "description": "Read a compact current-project Data catalog inventory before choosing discovery terms. This is a catalog overview, not proof that any dataset is suitable for a task.",
+      "progress": {
+        "capability": "data.inventory",
+        "semanticRole": "DATA_DISCOVERY",
+        "templateKey": "data.inventory",
+        "title": "读取项目数据概览",
+        "runningSummaryTemplate": "正在{objective}。",
+        "processingTitle": "确定数据检索范围",
+        "processingSummaryTemplate": "Agent 正在根据“{objective}”的数据概览确定检索条件。",
+        "outcomes": {
+          "inventory.loaded": {
+            "summary": "已读取项目数据概览：共 {datasetCount} 个数据集，其中 {describedDatasetCount} 个包含语义说明。",
+            "factsSchema": {
+              "additionalProperties": false,
+              "properties": {
+                "datasetCount": {"minimum": 0, "type": "integer"},
+                "describedDatasetCount": {"minimum": 0, "type": "integer"}
+              },
+              "required": ["datasetCount", "describedDatasetCount"],
+              "type": "object"
+            }
+          }
+        }
+      },
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object"
+      },
+      "name": "get_data_inventory",
+      "outputSchema": {
+        "additionalProperties": true,
+        "properties": {
+          "datasetCount": {
+            "type": "integer"
+          },
+          "describedDatasetCount": {
+            "type": "integer"
+          },
+          "formats": {
+            "type": "array"
+          },
+          "projectionBasis": {
+            "type": "string"
+          },
+          "taggedDatasetCount": {
+            "type": "integer"
+          },
+          "tags": {
+            "type": "array"
+          }
+        },
+        "required": [
+          "datasetCount",
+          "formats",
+          "tags",
+          "projectionBasis"
+        ],
+        "type": "object"
+      },
+      "path": "/internal/tools/v4/get_data_inventory",
+      "timeoutSeconds": 30
+    },
+    {
+      "description": "Discover current Data versions with explainable structured filters. A candidate is not executable evidence until its exact version is inspected.",
+      "progress": {
+        "capability": "data.discovery",
+        "semanticRole": "DATA_DISCOVERY",
+        "templateKey": "data.discovery",
+        "title": "检索候选数据集",
+        "runningSummaryTemplate": "正在{objective}。",
+        "processingTitle": "筛选候选数据",
+        "processingSummaryTemplate": "Agent 正在根据“{objective}”的候选结果选择需要核验的数据版本。",
+        "outcomes": {
+          "candidates.found": {
+            "summary": "找到 {candidateCount} 个候选数据集，本次查询共匹配 {totalMatches} 项。",
+            "factsSchema": {
+              "additionalProperties": false,
+              "properties": {
+                "candidateCount": {"minimum": 1, "type": "integer"},
+                "totalMatches": {"minimum": 1, "type": "integer"}
+              },
+              "required": ["candidateCount", "totalMatches"],
+              "type": "object"
+            }
+          },
+          "candidates.empty": {
+            "summary": "当前条件未找到候选数据集。",
+            "factsSchema": {
+              "additionalProperties": false,
+              "properties": {},
+              "required": [],
+              "type": "object"
+            }
+          }
+        }
+      },
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "after": {
+            "pattern": "^[0-9]+$",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "field_terms": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 20,
+            "type": "array"
+          },
+          "formats": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 20,
+            "type": "array"
+          },
+          "limit": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "query": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 20,
+            "type": "array"
+          },
+          "units": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 20,
+            "type": "array"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      },
+      "name": "discover_datasets",
+      "outputSchema": {
+        "additionalProperties": true,
+        "properties": {
+          "items": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "matchBasis": {
+            "type": "string"
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "totalMatches": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor",
+          "totalMatches",
+          "matchBasis"
+        ],
+        "type": "object"
+      },
+      "path": "/internal/tools/v4/discover_datasets",
+      "timeoutSeconds": 30
+    },
+    {
+      "description": "Inspect one exact immutable Data version and its object, semantics and lineage.",
+      "progress": {
+        "capability": "data.version.inspect",
+        "semanticRole": "DATA_INSPECTION",
+        "templateKey": "data.version.inspect",
+        "title": "核验数据版本",
+        "runningSummaryTemplate": "正在{objective}。",
+        "processingTitle": "核对数据适用性",
+        "processingSummaryTemplate": "Agent 正在根据“{objective}”的版本事实核对对象、语义和 lineage。",
+        "outcomes": {
+          "version.inspected": {
+            "summary": "已核验数据版本及其 {objectCount} 个数据对象。",
+            "factsSchema": {
+              "additionalProperties": false,
+              "properties": {"objectCount": {"minimum": 0, "type": "integer"}},
+              "required": ["objectCount"],
+              "type": "object"
+            }
+          }
+        }
+      },
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "version_id": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "version_id"
+        ],
+        "type": "object"
+      },
+      "name": "inspect_data_version",
+      "outputSchema": {
+        "additionalProperties": true,
+        "properties": {
+          "datasetId": {
+            "type": "string"
+          },
+          "versionId": {
+            "type": "string"
+          },
+          "objects": {
+            "items": {
+              "additionalProperties": true,
+              "required": [
+                "objectId",
+                "size",
+                "checksum",
+                "role",
+                "format",
+                "mediaType"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "semanticId": {
+            "type": "string"
+          },
+          "status": {
+            "const": "OK"
+          }
+        },
+        "required": [
+          "status",
+          "versionId",
+          "datasetId",
+          "semanticId",
+          "objects"
+        ],
+        "type": "object"
+      },
+      "path": "/internal/tools/v4/inspect_data_version",
+      "timeoutSeconds": 30
+    },
+    {
+      "description": "Inspect one exact queryable CSV or Parquet Data version, including a sandboxed sample of at most five rows.",
+      "progress": {
+        "capability": "data.table.inspect",
+        "semanticRole": "DATA_INSPECTION",
+        "templateKey": "data.table.inspect",
+        "title": "读取数据表结构",
+        "runningSummaryTemplate": "正在{objective}。",
+        "processingTitle": "核对数据字段",
+        "processingSummaryTemplate": "Agent 正在根据“{objective}”的表结构核对字段、类型和样例。",
+        "outcomes": {
+          "table.inspected": {
+            "summary": "已读取数据表结构：{fieldCount} 个字段，预览 {sampleRowCount} 行。",
+            "factsSchema": {
+              "additionalProperties": false,
+              "properties": {
+                "fieldCount": {"minimum": 0, "type": "integer"},
+                "sampleRowCount": {"minimum": 0, "type": "integer"}
+              },
+              "required": ["fieldCount", "sampleRowCount"],
+              "type": "object"
+            }
+          },
+          "table.not_queryable": {
+            "summary": "该数据版本不支持表格查询，未读取字段样例。",
+            "factsSchema": {
+              "additionalProperties": false,
+              "properties": {},
+              "required": [],
+              "type": "object"
+            }
+          }
+        }
+      },
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "version_id": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "version_id"
+        ],
+        "type": "object"
+      },
+      "name": "inspect_data_table",
+      "outputSchema": {
+        "additionalProperties": true,
+        "properties": {
+          "datasetId": {
+            "type": "string"
+          },
+          "fields": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "sampleLimit": {
+            "type": "integer"
+          },
+          "sampleRows": {
+            "items": {
+              "type": "array"
+            },
+            "type": "array"
+          },
+          "sampleTruncated": {
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "OK",
+              "NOT_QUERYABLE"
+            ]
+          },
+          "versionId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "versionId",
+          "datasetId"
+        ],
+        "type": "object"
+      },
+      "path": "/internal/tools/v4/inspect_data_table",
+      "timeoutSeconds": 30
+    }
+  ]
+}

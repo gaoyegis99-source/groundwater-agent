@@ -1,0 +1,15 @@
+{
+  "schema_version": "knowledge-package.v1",
+  "project_id": "local-data",
+  "idempotency_key": "example-001",
+  "documents": [{
+    "knowledge_id": "example-method",
+    "kind": "method",
+    "title": "演示资料解释方法",
+    "summary": "说明示例知识的适用范围。",
+    "content_version": "1.0.0",
+    "aliases": ["示例方法"],
+    "sources": [{"source_id": "example-source", "kind": "DEMO_ASSUMPTION", "title": "示例声明", "publisher": "示例作者", "review_after": "2027-10-11"}],
+    "units": [{"unit_id": "scope", "content": "本知识仅用于演示导入、版本管理与证据检索，不代表真实监测结果或已验证的科学结论。", "source_refs": ["example-source"], "locator": {"section": "适用范围"}}]
+  }]
+}

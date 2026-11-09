@@ -1,0 +1,26 @@
+{
+  "expectedOutputs": {
+    "points": {
+      "format": "geopackage",
+      "kind": "artifact",
+      "mediaType": "application/geopackage+sqlite3"
+    }
+  },
+  "inputs": {
+    "accumulation": {
+      "fixtureId": "accumulation"
+    },
+    "points": {
+      "fixtureId": "snap.points"
+    }
+  },
+  "operator": {
+    "id": "hydrology.snap_pour_points",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "layer": "points",
+    "maxDistanceMeters": 30
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

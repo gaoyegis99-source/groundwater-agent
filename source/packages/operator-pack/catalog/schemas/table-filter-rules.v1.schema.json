@@ -1,0 +1,179 @@
+{
+  "$defs": {
+    "condition": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "conditions": {
+              "items": {
+                "$ref": "#/$defs/condition"
+              },
+              "maxItems": 256,
+              "minItems": 1,
+              "type": "array"
+            },
+            "op": {
+              "enum": [
+                "and",
+                "or"
+              ]
+            }
+          },
+          "required": [
+            "op",
+            "conditions"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "condition": {
+              "$ref": "#/$defs/condition"
+            },
+            "op": {
+              "const": "not"
+            }
+          },
+          "required": [
+            "op",
+            "condition"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "field": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "op": {
+              "enum": [
+                "eq",
+                "ne",
+                "lt",
+                "lte",
+                "gt",
+                "gte"
+              ]
+            },
+            "value": {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            }
+          },
+          "required": [
+            "op",
+            "field",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "field": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "op": {
+              "const": "in"
+            },
+            "value": {
+              "items": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              },
+              "maxItems": 256,
+              "minItems": 1,
+              "type": "array"
+            }
+          },
+          "required": [
+            "op",
+            "field",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "field": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "maximum": {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            "minimum": {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            "op": {
+              "const": "between"
+            }
+          },
+          "required": [
+            "op",
+            "field",
+            "minimum",
+            "maximum"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "field": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "op": {
+              "enum": [
+                "isNull",
+                "isNotNull"
+              ]
+            }
+          },
+          "required": [
+            "op",
+            "field"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "$id": "table-filter-rules.v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "condition": {
+      "$ref": "#/$defs/condition"
+    },
+    "schemaVersion": {
+      "const": "table-filter-rules.v1"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "condition"
+  ],
+  "type": "object"
+}

@@ -1,0 +1,22 @@
+{
+  "expectedOutputs": {
+    "vector": {
+      "format": "geopackage",
+      "kind": "artifact",
+      "mediaType": "application/geopackage+sqlite3"
+    }
+  },
+  "inputs": {
+    "vector": {
+      "fixtureId": "detailed"
+    }
+  },
+  "operator": {
+    "id": "vector.convex_hull",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "layer": "detailed"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

@@ -1,0 +1,24 @@
+{
+  "expectedOutputs": {
+    "vector": {
+      "format": "geopackage",
+      "kind": "artifact",
+      "mediaType": "application/geopackage+sqlite3"
+    }
+  },
+  "inputs": {
+    "raster": {
+      "fixtureId": "terrain"
+    }
+  },
+  "operator": {
+    "id": "raster.contour",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "band": 1,
+    "intervalMeters": 10,
+    "offsetMeters": 0
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

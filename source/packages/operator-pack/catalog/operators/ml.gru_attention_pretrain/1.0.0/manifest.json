@@ -1,0 +1,190 @@
+{
+  "description": "GRU → 残差 MultiheadAttention → LayerNorm → 末时刻 → Dropout → Linear，MSE + Adam。hiddenSize 必须整除 numHeads。 仅输入数组和明确参数；输出 state_dict 与模型结构 JSON，禁止序列化 nn.Module 或引用服务会话。 固定 CPU、种子及依赖版本后再验证可复现性；验证前不得宣称 deterministic/cacheable。 单层 GRU 内部 dropout=0，多层使用声明值；optimizer、样本次序、shuffle generator 和 loss 加权方式必须与旧实现对齐。",
+  "domain": "ml",
+  "errorCodes": [
+    "RULESET_INVALID",
+    "RULESET_TOO_LARGE",
+    "INPUT_CARDINALITY_INVALID",
+    "FIELD_REQUIRED",
+    "DUPLICATE_FIELD",
+    "NON_NUMERIC_VALUE",
+    "OUTPUT_FIELD_CONFLICT",
+    "EMPTY_RESULT",
+    "TIME_AXIS_MISMATCH",
+    "DUPLICATE_TIMESTAMP",
+    "DUPLICATE_SERIES",
+    "TIMEZONE_UNSUPPORTED",
+    "TRAINING_WINDOW_INSUFFICIENT",
+    "HOLDOUT_REQUIRED",
+    "TARGET_NOT_FOUND",
+    "TENSOR_SHAPE_INVALID",
+    "ATTENTION_DIMENSIONS_INVALID",
+    "MODEL_WEIGHTS_INVALID",
+    "TRAINING_NON_FINITE",
+    "PREDICTION_NON_FINITE",
+    "SAMPLE_INDEX_INVALID",
+    "CRS_REQUIRED",
+    "CRS_MISMATCH",
+    "EMPTY_GEOMETRY",
+    "INVALID_GEOMETRY",
+    "GEOMETRY_TYPE_INVALID",
+    "COORDINATE_INVALID",
+    "METRIC_CRS_REQUIRED",
+    "EXTENT_INVALID",
+    "ROTATED_GRID_UNSUPPORTED",
+    "BAND_INVALID",
+    "IMAGERY_COVERAGE_INSUFFICIENT"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-ml-gru_attention_pretrain",
+      "inputs": {
+        "features": {
+          "artifactId": "art_example_01"
+        },
+        "targets": {
+          "artifactId": "art_example_02"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "ml.gru_attention_pretrain",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "batchSize": 8,
+        "device": "cpu",
+        "dropout": 0.0,
+        "epochs": 1,
+        "hiddenSize": 8,
+        "learningRate": 0.001,
+        "numHeads": 2,
+        "numLayers": 1,
+        "seed": 42
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "ml.gru_attention_pretrain",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "npy"
+      ],
+      "mediaTypes": [
+        "application/x-npy"
+      ],
+      "name": "features",
+      "required": true
+    },
+    {
+      "cardinality": "one",
+      "formats": [
+        "npy"
+      ],
+      "mediaTypes": [
+        "application/x-npy"
+      ],
+      "name": "targets",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 17179869184,
+  "outputs": [
+    {
+      "formats": [
+        "pytorch-state-dict"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.pytorch"
+      ],
+      "name": "weights"
+    },
+    {
+      "formats": [
+        "json"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/json"
+      ],
+      "name": "modelSpec"
+    },
+    {
+      "formats": [
+        "parquet"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "loss"
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "batchSize": {
+        "minimum": 1,
+        "type": "integer"
+      },
+      "device": {
+        "enum": [
+          "cpu"
+        ],
+        "type": "string"
+      },
+      "dropout": {
+        "exclusiveMaximum": 1,
+        "minimum": 0,
+        "type": "number"
+      },
+      "epochs": {
+        "minimum": 1,
+        "type": "integer"
+      },
+      "hiddenSize": {
+        "minimum": 1,
+        "type": "integer"
+      },
+      "learningRate": {
+        "exclusiveMinimum": 0,
+        "type": "number"
+      },
+      "numHeads": {
+        "minimum": 1,
+        "type": "integer"
+      },
+      "numLayers": {
+        "minimum": 1,
+        "type": "integer"
+      },
+      "seed": {
+        "minimum": 0,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "hiddenSize",
+      "numLayers",
+      "numHeads",
+      "dropout",
+      "epochs",
+      "batchSize",
+      "learningRate",
+      "seed",
+      "device"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "ml",
+    "structured"
+  ],
+  "timeoutSeconds": 7200,
+  "title": "GRU 残差注意力预训练",
+  "version": "1.0.0"
+}

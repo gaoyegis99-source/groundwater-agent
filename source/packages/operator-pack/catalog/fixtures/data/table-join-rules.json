@@ -1,0 +1,9 @@
+{
+  "keys": [
+    {
+      "left": "id",
+      "right": "id"
+    }
+  ],
+  "schemaVersion": "table-join-rules.v1"
+}

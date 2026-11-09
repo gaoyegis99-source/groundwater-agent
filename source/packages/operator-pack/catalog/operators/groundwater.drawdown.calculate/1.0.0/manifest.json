@@ -1,0 +1,156 @@
+{
+  "description": "Calculate metre drawdown from an explicit group baseline or reference-head field.",
+  "domain": "groundwater",
+  "errorCodes": [
+    "DUPLICATE_TIMESTAMP",
+    "FIELD_REQUIRED",
+    "NON_NUMERIC_VALUE",
+    "OUTPUT_VALIDATION_FAILED",
+    "REFERENCE_INVALID",
+    "TIMESTAMP_INVALID",
+    "TIMEZONE_UNSUPPORTED",
+    "TIME_RANGE_INVALID",
+    "UNIT_UNSUPPORTED"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-groundwater-drawdown-calculate",
+      "inputs": {
+        "observations": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "groundwater.drawdown.calculate",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "baselineEnd": "2021-12-31",
+        "baselineStart": "2020-01-01",
+        "baselineStatistic": "max",
+        "groupField": "station",
+        "headField": "value",
+        "headUnit": "m",
+        "referenceMode": "baselinePeriod",
+        "timeField": "time"
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "groundwater.drawdown.calculate",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "csv",
+        "parquet",
+        "arrow-ipc-file"
+      ],
+      "mediaTypes": [
+        "text/csv",
+        "application/vnd.apache.parquet",
+        "application/vnd.apache.arrow.file"
+      ],
+      "name": "observations",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "parquet"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "drawdowns"
+    },
+    {
+      "kind": "value",
+      "name": "summary",
+      "schema": {
+        "type": "object"
+      }
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "baselineEnd": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "baselineStart": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "baselineStatistic": {
+        "enum": [
+          "mean",
+          "median",
+          "max"
+        ],
+        "type": "string"
+      },
+      "groupField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "headField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "headUnit": {
+        "enum": [
+          "m",
+          "cm",
+          "mm"
+        ],
+        "type": "string"
+      },
+      "referenceHeadField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "referenceHeadUnit": {
+        "enum": [
+          "m",
+          "cm",
+          "mm"
+        ],
+        "type": "string"
+      },
+      "referenceMode": {
+        "enum": [
+          "baselinePeriod",
+          "referenceField"
+        ],
+        "type": "string"
+      },
+      "timeField": {
+        "minLength": 1,
+        "type": "string"
+      }
+    },
+    "required": [
+      "groupField",
+      "timeField",
+      "headField",
+      "headUnit",
+      "referenceMode"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "groundwater",
+    "drawdown",
+    "calculate"
+  ],
+  "timeoutSeconds": 1800,
+  "title": "Calculate groundwater drawdown",
+  "version": "1.0.0"
+}

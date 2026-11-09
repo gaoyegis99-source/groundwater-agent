@@ -1,0 +1,94 @@
+{
+  "id": "groundwater.porous.map_prepare",
+  "version": "1.0.0",
+  "title": "Map Prepare",
+  "description": "Execute fixed third-party operation map.prepare through deployment service binding porous-groundwater.",
+  "domain": "groundwater",
+  "tags": [
+    "groundwater",
+    "third-party",
+    "remote-http",
+    "map.prepare"
+  ],
+  "runtime": "remote_http",
+  "remoteBinding": {
+    "serviceId": "porous-groundwater",
+    "operationType": "map.prepare"
+  },
+  "timeoutSeconds": 7200,
+  "memoryLimitBytes": 1073741824,
+  "inputs": [
+    {
+      "name": "map_input",
+      "cardinality": "one",
+      "required": true,
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "formats": [
+        "geotiff"
+      ]
+    }
+  ],
+  "parametersSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {},
+    "required": []
+  },
+  "outputs": [
+    {
+      "name": "geospatial_output",
+      "kind": "artifact",
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "formats": [
+        "geotiff"
+      ]
+    },
+    {
+      "name": "crs_attribution_metadata",
+      "kind": "value",
+      "schema": {
+        "type": "object"
+      }
+    },
+    {
+      "name": "run_receipt",
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/json"
+      ],
+      "formats": [
+        "json"
+      ]
+    }
+  ],
+  "errorCodes": [
+    "REMOTE_AUTHENTICATION_FAILED",
+    "REMOTE_BINDING_INVALID",
+    "REMOTE_INTEGRITY_FAILED",
+    "REMOTE_OPERATION_FAILED",
+    "REMOTE_PROTOCOL_INVALID",
+    "REMOTE_SUBMISSION_UNCERTAIN",
+    "REMOTE_VERSION_MISMATCH"
+  ],
+  "examples": [
+    {
+      "schemaVersion": "operator-execution-request.v1",
+      "clientRequestId": "example-groundwater-porous-map_prepare",
+      "operator": {
+        "id": "groundwater.porous.map_prepare",
+        "version": "1.0.0"
+      },
+      "mode": "ASYNC",
+      "inputs": {
+        "map_input": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "parameters": {}
+    }
+  ]
+}

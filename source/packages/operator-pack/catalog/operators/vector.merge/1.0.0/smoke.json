@@ -1,0 +1,25 @@
+{
+  "expectedOutputs": {
+    "vector": {
+      "format": "geopackage",
+      "kind": "artifact",
+      "mediaType": "application/geopackage+sqlite3"
+    }
+  },
+  "inputs": {
+    "vectors": [
+      {
+        "fixtureId": "left"
+      },
+      {
+        "fixtureId": "right"
+      }
+    ]
+  },
+  "operator": {
+    "id": "vector.merge",
+    "version": "1.0.0"
+  },
+  "parameters": {},
+  "schemaVersion": "operator-smoke-test.v1"
+}

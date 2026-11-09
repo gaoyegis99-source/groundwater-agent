@@ -1,0 +1,171 @@
+{
+  "description": "features 为 float32 的 N×窗口长度×特征数，targets 为 float32 的 N×1；NPY 只存数值数组。 按目标月份再按输入表保留的 series_order 排序，与旧实现的区域原始井行顺序一致；每个目标只取此前 inputWindow 行，禁止把当前标签放入窗口。 sampleIndex 保留样本序号、井号、月份、坐标、标准化 actual 和前一期实测 persistence；carryFields 不进入模型特征。 留出窗口仍使用此前已经观测到的实测值，保持原实现的单步回测语义；不是递归多步预测。",
+  "domain": "timeseries",
+  "errorCodes": [
+    "RULESET_INVALID",
+    "RULESET_TOO_LARGE",
+    "INPUT_CARDINALITY_INVALID",
+    "FIELD_REQUIRED",
+    "DUPLICATE_FIELD",
+    "NON_NUMERIC_VALUE",
+    "OUTPUT_FIELD_CONFLICT",
+    "EMPTY_RESULT",
+    "TIME_AXIS_MISMATCH",
+    "DUPLICATE_TIMESTAMP",
+    "DUPLICATE_SERIES",
+    "TIMEZONE_UNSUPPORTED",
+    "TRAINING_WINDOW_INSUFFICIENT",
+    "HOLDOUT_REQUIRED",
+    "TARGET_NOT_FOUND",
+    "TENSOR_SHAPE_INVALID",
+    "ATTENTION_DIMENSIONS_INVALID",
+    "MODEL_WEIGHTS_INVALID",
+    "TRAINING_NON_FINITE",
+    "PREDICTION_NON_FINITE",
+    "SAMPLE_INDEX_INVALID",
+    "CRS_REQUIRED",
+    "CRS_MISMATCH",
+    "EMPTY_GEOMETRY",
+    "INVALID_GEOMETRY",
+    "GEOMETRY_TYPE_INVALID",
+    "COORDINATE_INVALID",
+    "METRIC_CRS_REQUIRED",
+    "EXTENT_INVALID",
+    "ROTATED_GRID_UNSUPPORTED",
+    "BAND_INVALID",
+    "IMAGERY_COVERAGE_INSUFFICIENT"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-timeseries-supervised_windows",
+      "inputs": {
+        "data": {
+          "artifactId": "art_example_01"
+        },
+        "rules": {
+          "artifactId": "art_example_03"
+        },
+        "targets": {
+          "artifactId": "art_example_02"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "timeseries.supervised_windows",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "groupField": "station",
+        "inputWindow": 3,
+        "targetField": "depth",
+        "timeField": "time"
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "timeseries.supervised_windows",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "parquet"
+      ],
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "data",
+      "required": true
+    },
+    {
+      "cardinality": "one",
+      "formats": [
+        "parquet"
+      ],
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "targets",
+      "required": true
+    },
+    {
+      "cardinality": "one",
+      "formats": [
+        "json"
+      ],
+      "mediaTypes": [
+        "application/json"
+      ],
+      "name": "rules",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "npy"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/x-npy"
+      ],
+      "name": "features"
+    },
+    {
+      "formats": [
+        "npy"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/x-npy"
+      ],
+      "name": "targets"
+    },
+    {
+      "formats": [
+        "parquet"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/vnd.apache.parquet"
+      ],
+      "name": "sampleIndex"
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "groupField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "inputWindow": {
+        "minimum": 1,
+        "type": "integer"
+      },
+      "targetField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "timeField": {
+        "minLength": 1,
+        "type": "string"
+      }
+    },
+    "required": [
+      "groupField",
+      "timeField",
+      "targetField",
+      "inputWindow"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "timeseries",
+    "structured"
+  ],
+  "timeoutSeconds": 1800,
+  "title": "构造有监督时序滑窗",
+  "version": "1.0.0"
+}

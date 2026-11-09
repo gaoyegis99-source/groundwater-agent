@@ -1,0 +1,125 @@
+{
+  "description": "Join vector attributes by nearest feature operator.",
+  "domain": "vector",
+  "errorCodes": [
+    "CRS_REQUIRED",
+    "CRS_MISMATCH",
+    "PROJECTED_CRS_REQUIRED",
+    "LAYER_REQUIRED",
+    "SCHEMA_MISMATCH",
+    "INVALID_GEOMETRY",
+    "BLOCKED_BY_ENVIRONMENT"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-vector-nearest_join",
+      "inputs": {
+        "join": {
+          "artifactId": "art_example_02"
+        },
+        "target": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "vector.nearest_join",
+        "version": "1.0.0"
+      },
+      "parameters": {},
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "vector.nearest_join",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "flatgeobuf",
+        "geojson",
+        "geopackage",
+        "geoparquet",
+        "parquet"
+      ],
+      "mediaTypes": [
+        "application/geopackage+sqlite3",
+        "application/geo+json",
+        "application/flatgeobuf",
+        "application/vnd.apache.parquet"
+      ],
+      "name": "target",
+      "required": true
+    },
+    {
+      "cardinality": "one",
+      "formats": [
+        "flatgeobuf",
+        "geojson",
+        "geopackage",
+        "geoparquet",
+        "parquet"
+      ],
+      "mediaTypes": [
+        "application/geopackage+sqlite3",
+        "application/geo+json",
+        "application/flatgeobuf",
+        "application/vnd.apache.parquet"
+      ],
+      "name": "join",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "geopackage"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "application/geopackage+sqlite3"
+      ],
+      "name": "vector"
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "discardNonMatching": {
+        "default": false,
+        "type": "boolean"
+      },
+      "joinLayer": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxDistanceMeters": {
+        "exclusiveMinimum": 0,
+        "type": "number"
+      },
+      "neighbors": {
+        "default": 1,
+        "maximum": 100,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "prefix": {
+        "default": "join_",
+        "type": "string"
+      },
+      "targetLayer": {
+        "minLength": 1,
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "runtime": "qgis",
+  "tags": [
+    "vector",
+    "nearest-join"
+  ],
+  "timeoutSeconds": 3600,
+  "title": "Join vector attributes by nearest feature",
+  "version": "1.0.0"
+}

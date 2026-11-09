@@ -1,0 +1,26 @@
+{
+  "expectedOutputs": {
+    "watershed": {
+      "format": "geotiff",
+      "kind": "artifact",
+      "mediaType": "image/tiff"
+    }
+  },
+  "inputs": {
+    "flowDirection": {
+      "fixtureId": "flow.direction"
+    },
+    "pourPoints": {
+      "fixtureId": "pour.points"
+    }
+  },
+  "operator": {
+    "id": "hydrology.watershed",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "idField": "hydro_id",
+    "layer": "pour_points"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

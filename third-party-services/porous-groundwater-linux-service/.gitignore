@@ -1,0 +1,6 @@
+authorization.json
+authorized-src/
+build/
+dist/
+*.log
+__pycache__/

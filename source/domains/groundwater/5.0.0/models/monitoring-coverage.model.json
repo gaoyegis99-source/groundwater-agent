@@ -1,0 +1,68 @@
+{
+  "schemaVersion": "executable-model.v4",
+  "modelId": "groundwater.monitoring-coverage",
+  "version": "3.0.0",
+  "workflowRef": {
+    "workflowId": "groundwater.monitoring-coverage",
+    "version": "1.1.0",
+    "checksum": "sha256:3564ac228931bd32e7006beef3d8a1ce8928338395d0e1d38c48a4f14c9b5741"
+  },
+  "tool": {
+    "name": "run_monitoring_coverage",
+    "description": "Dissolve all monitoring well points, compute one QGIS convex hull, then convert to GeoJSON. Geometrical monitoring-well coverage only; this is not aquifer extent or influence area. Requires at least three non-collinear points.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "versionId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "outputFormat": {
+          "type": "string",
+          "enum": [
+            "geojson"
+          ]
+        }
+      },
+      "required": [
+        "versionId"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "inputBindings": {
+    "wells": "versionId"
+  },
+  "defaultParameters": {
+    "outputFormat": "geojson"
+  },
+  "parameterBindings": {
+    "outputFormat": "outputFormat"
+  },
+  "deadlineSeconds": 300,
+  "maxParallelNodes": 1,
+  "finalOutputs": [
+    "coverage"
+  ],
+  "executionService": "executor",
+  "executorId": "workflow-dag",
+  "outputPublications": {
+    "coverage": {
+      "title": "Coverage",
+      "mediaType": "application/geo+json",
+      "format": "geojson",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "groundwater.monitoring-coverage output coverage.",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [],
+        "source": "workflow-declared"
+      }
+    }
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "expectedOutputs": {
+    "fitRows": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    },
+    "holdoutTargets": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    },
+    "split": {
+      "format": "json",
+      "kind": "artifact",
+      "mediaType": "application/json"
+    },
+    "trainTargets": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    }
+  },
+  "inputs": {
+    "data": {
+      "fixtureId": "transfer.unpivot-data"
+    }
+  },
+  "operator": {
+    "id": "timeseries.chronological_split",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "groupField": "station",
+    "inputWindow": 3,
+    "timeField": "time",
+    "trainRatio": 0.75
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

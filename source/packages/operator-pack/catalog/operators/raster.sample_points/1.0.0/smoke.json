@@ -1,0 +1,31 @@
+{
+  "expectedOutputs": {
+    "samples": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    },
+    "summary": {
+      "kind": "value"
+    }
+  },
+  "inputs": {
+    "points": {
+      "fixtureId": "monitoring.points"
+    },
+    "raster": {
+      "fixtureId": "monitoring.raster.left"
+    }
+  },
+  "operator": {
+    "id": "raster.sample_points",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "band": 1,
+    "idField": "id",
+    "method": "nearest",
+    "outputKind": "table"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

@@ -1,0 +1,86 @@
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Protocol
+
+from ..contracts import DataVersionRefV2
+
+
+@dataclass(frozen=True)
+class ConfirmedAction:
+    tool_call_id: str
+    position: int
+    tool: str
+    model_id: str
+    model_version: str
+    model_checksum: str
+    workflow_id: str
+    workflow_version: str
+    workflow_checksum: str
+    input_schema_checksum: str
+    arguments: dict[str, object]
+    input_references: dict[str, DataVersionRefV2] = field(default_factory=dict)
+
+
+class AgentActionView(Protocol):
+    @property
+    def tool_call_id(self) -> str: ...
+    @property
+    def status(self) -> str: ...
+    @property
+    def workflow_run_id(self) -> str | None: ...
+    @property
+    def remote_outputs(self) -> tuple[DataVersionRefV2, ...]: ...
+
+
+class AgentRunView(Protocol):
+    @property
+    def agent_run_id(self) -> str: ...
+    @property
+    def session_id(self) -> str: ...
+    @property
+    def project_id(self) -> str: ...
+    @property
+    def goal_revision(self) -> int: ...
+    @property
+    def status(self) -> str: ...
+    @property
+    def steps(self) -> tuple[str, ...]: ...
+    @property
+    def actions(self) -> tuple[AgentActionView, ...]: ...
+    @property
+    def output(self) -> object | None: ...
+
+
+class DispatchAuthorizationRun(Protocol):
+    @property
+    def confirmation_id(self) -> str | None: ...
+    @property
+    def session_id(self) -> str: ...
+    @property
+    def project_id(self) -> str: ...
+    @property
+    def agent_run_id(self) -> str: ...
+    @property
+    def tool_call_id(self) -> str: ...
+    @property
+    def model_id(self) -> str: ...
+    @property
+    def model_version(self) -> str: ...
+    @property
+    def model_checksum(self) -> str: ...
+    @property
+    def workflow_id(self) -> str: ...
+    @property
+    def workflow_version(self) -> str: ...
+    @property
+    def workflow_checksum(self) -> str: ...
+    @property
+    def arguments(self) -> dict[str, object]: ...
+    @property
+    def input_references(self) -> dict[str, DataVersionRefV2]: ...
+
+
+class MemoryView(Protocol):
+    @property
+    def through_goal_revision(self) -> int: ...

@@ -1,0 +1,24 @@
+{
+  "expectedOutputs": {
+    "raster": {
+      "format": "geotiff",
+      "kind": "artifact",
+      "mediaType": "image/tiff"
+    }
+  },
+  "inputs": {
+    "raster": {
+      "fixtureId": "raster"
+    }
+  },
+  "operator": {
+    "id": "raster.resample",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "pixelSizeX": 200,
+    "pixelSizeY": 200,
+    "resampling": "average"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}
