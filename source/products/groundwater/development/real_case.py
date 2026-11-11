@@ -157,7 +157,14 @@ def _safe_extract(archive: Path, destination: Path) -> None:
 
 
 def _worker(python: Path, repository_root: Path, *arguments: str | Path) -> None:
-    script = repository_root / "scripts/development/real_case_worker.py"
+    script = Path(__file__).with_name("real_case_worker.py")
+    product_root = (repository_root / "products").resolve()
+    if (
+        not script.resolve().is_relative_to(product_root)
+        or not script.is_file()
+        or script.is_symlink()
+    ):
+        raise RealCaseRefusal("REAL_CASE_PREPARATION_WORKER_INVALID")
     try:
         subprocess.run(
             [str(python), str(script), *(str(item) for item in arguments)],

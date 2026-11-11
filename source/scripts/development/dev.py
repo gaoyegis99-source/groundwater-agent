@@ -4,6 +4,7 @@ import argparse
 from collections.abc import Iterator
 from contextlib import contextmanager
 import hashlib
+import importlib.util
 import json
 import os
 import re
@@ -31,10 +32,6 @@ from moperators.smoke import SmokeRunRefusal, run_operator_smoke  # noqa: E402
 from scripts.development.capability_inventory import (  # noqa: E402
     CapabilityInventoryRefusal,
     generate_capability_inventory,
-)
-from scripts.development.real_case import (  # noqa: E402
-    RealCaseRefusal,
-    run_real_cases,
 )
 from scripts.development.workflow_golden import (  # noqa: E402
     WorkflowGoldenRefusal,
@@ -302,6 +299,49 @@ def _select_product(root: Path, requested: str | None) -> str:
         choices = ",".join(products) or "none"
         raise ValueError(f"PRODUCT_SELECTION_REQUIRED:{choices}")
     return products[0]
+
+
+class RealCaseRefusal(ValueError):  # noqa: N818 - stable development CLI family
+    def __init__(self, code: str) -> None:
+        self.code = code
+        super().__init__(code)
+
+
+def run_real_cases(*, product_id: str, **arguments: object) -> dict[str, object]:
+    """Load a product-owned real-case runner without product knowledge here."""
+
+    products_root = (ROOT / "products").resolve()
+    implementation = (
+        products_root / product_id / "development" / "real_case.py"
+    ).resolve()
+    if (
+        not implementation.is_relative_to(products_root)
+        or not implementation.is_file()
+        or implementation.is_symlink()
+    ):
+        raise RealCaseRefusal("REAL_CASE_PRODUCT_RUNNER_NOT_FOUND")
+    module_name = (
+        "_product_real_case_"
+        + hashlib.sha256(product_id.encode("utf-8")).hexdigest()[:12]
+    )
+    specification = importlib.util.spec_from_file_location(module_name, implementation)
+    if specification is None or specification.loader is None:
+        raise RealCaseRefusal("REAL_CASE_PRODUCT_RUNNER_INVALID")
+    module = importlib.util.module_from_spec(specification)
+    specification.loader.exec_module(module)
+    runner = getattr(module, "run_real_cases", None)
+    if not callable(runner):
+        raise RealCaseRefusal("REAL_CASE_PRODUCT_RUNNER_INVALID")
+    try:
+        result = runner(**arguments)
+    except Exception as error:
+        code = getattr(error, "code", None)
+        if isinstance(code, str):
+            raise RealCaseRefusal(code) from error
+        raise
+    if not isinstance(result, dict):
+        raise RealCaseRefusal("REAL_CASE_PRODUCT_RUNNER_INVALID")
+    return result
 
 
 def _compose_project(root: Path, product_id: str) -> str:
@@ -1402,6 +1442,7 @@ def _run_real_case(args: argparse.Namespace, product_id: str) -> dict[str, objec
             "systemRuntime": system_evidence,
         }
         return run_real_cases(
+            product_id=product_id,
             repository_root=ROOT,
             catalog_directory=ROOT / "packages/operator-pack/catalog/operators",
             manifest_path=(

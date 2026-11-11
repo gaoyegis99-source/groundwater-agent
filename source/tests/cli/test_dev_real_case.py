@@ -74,6 +74,7 @@ def test_dev_real_case_uses_isolated_cache_and_verified_runtime(
 
     assert len(calls) == 1
     call = calls[0]
+    assert call["product_id"] == "groundwater"
     assert call["source_root"] == source_root
     assert call["source_cache"] == cache / "real-cases/sources"
     assert Path(str(call["run_directory"])).parent == cache / "real-cases/runs"

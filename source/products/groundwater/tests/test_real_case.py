@@ -6,12 +6,12 @@ from pathlib import Path
 
 import pytest
 
-from scripts.development.real_case import _load_manifest, _select_cases
-from scripts.development.real_case_worker import prepare_mrva
+from products.groundwater.development.real_case import _load_manifest, _select_cases
+from products.groundwater.development.real_case_worker import prepare_mrva
 
 
 def test_real_case_manifest_selects_all_declared_cases() -> None:
-    repository = Path(__file__).resolve().parents[2]
+    repository = Path(__file__).resolve().parents[3]
     manifest = _load_manifest(
         repository / "products/groundwater/development/real-data-cases.v1.json"
     )
