@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import { DatabaseWorkbench } from './DatabaseWorkbench';
 import { KnowledgeDrawer, ResourcePreview } from './Drawers';
@@ -91,6 +91,117 @@ it('lists Knowledge Next documents and looks up the selected identity', async ()
   render(<KnowledgeDrawer project="project" onClose={vi.fn()} />);
   fireEvent.click(await screen.findByRole('button', { name: /监测方法/ }));
   expect(await screen.findByText('完整方法。')).toBeVisible();
+});
+
+it('does not substitute evidence with a different checksum for the requested citation', async () => {
+  vi.spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(json(evidenceBundle([{ status: 'OK', versionId: 'kv-1', unitId: 'u-1', checksum: `sha256:${'b'.repeat(64)}`, content: '内容不同的片段。' }])))
+    .mockResolvedValueOnce(json(evidenceBundle([{ status: 'OK', versionId: 'kv-1', unitId: 'u-1', checksum, content: '所引用的精确片段。' }])));
+  render(<KnowledgeDrawer project="project" reference={{ versionId: 'kv-1', unitId: 'u-1', checksum }} onClose={vi.fn()} />);
+  expect(await screen.findByRole('alert')).toHaveTextContent('知识读取未完成');
+  expect(screen.queryByText('内容不同的片段。')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: '重新读取证据' }));
+  expect(await screen.findByText('所引用的精确片段。')).toBeVisible();
+});
+
+it('returns from a cited unit to a searchable directory and preserves its position after reading', async () => {
+  const requests: string[] = [];
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async input => {
+    const url = String(input);
+    requests.push(url);
+    if (url.includes('/knowledge/documents')) return json({ items: [{ documentId: 'method', currentVersion: 'kv-1', title: '监测方法', createdAt: '2026-10-01T00:00:00Z' }], nextCursor: null });
+    return json(evidenceBundle([{ status: 'OK', versionId: 'kv-1', unitId: 'u-1', checksum, content: '完整方法。' }]));
+  });
+  render(<KnowledgeDrawer project="project" reference={{ versionId: 'kv-1', unitId: 'u-1', checksum }} onClose={vi.fn()} />);
+  expect(await screen.findByText('完整方法。')).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: '返回知识目录' }));
+  const search = await screen.findByRole('searchbox', { name: '搜索知识目录' });
+  fireEvent.change(search, { target: { value: '监测' } });
+  fireEvent.submit(screen.getByRole('search', { name: '知识目录搜索' }));
+  const selected = await screen.findByRole('button', { name: /监测方法/ });
+  const directory = screen.getByRole('region', { name: '知识目录结果' });
+  directory.scrollTop = 230;
+  fireEvent.click(selected);
+  expect(await screen.findByText('完整方法。')).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: '返回知识目录' }));
+  expect(search).toHaveValue('监测');
+  expect(directory.scrollTop).toBe(230);
+  await waitFor(() => expect(selected).toHaveFocus());
+  expect(requests.some(url => new URL(url, 'http://localhost').searchParams.get('query') === '监测')).toBe(true);
+});
+
+it('distinguishes directory loading and failure from an empty result and retries the same search', async () => {
+  let finish: (value: Response) => void = () => {};
+  vi.spyOn(globalThis, 'fetch')
+    .mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }))
+    .mockResolvedValueOnce(json({ items: [], nextCursor: null }));
+  render(<KnowledgeDrawer project="project" onClose={vi.fn()} />);
+  expect(await screen.findByText('正在读取知识目录…')).toBeVisible();
+  expect(screen.queryByText('知识目录还没有内容。')).not.toBeInTheDocument();
+  await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledOnce());
+  await act(async () => finish(json({ error: { code: 'KNOWLEDGE_UNAVAILABLE' } }, 503)));
+  expect(await screen.findByRole('alert')).toHaveTextContent('知识目录读取未完成');
+  expect(screen.queryByText('知识目录还没有内容。')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: '重试读取目录' }));
+  expect(await screen.findByText('知识目录还没有内容。')).toBeVisible();
+});
+
+it('loads the next directory page and retries a failed document lookup without losing the directory', async () => {
+  let lookups = 0;
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async input => {
+    const url = String(input);
+    if (url.includes('/knowledge/documents')) return json(url.includes('cursor=next')
+      ? { items: [{ documentId: 'second', currentVersion: 'kv-2', title: '第二份方法', createdAt: '2026-10-01T00:00:00Z' }], nextCursor: null }
+      : { items: [{ documentId: 'first', currentVersion: 'kv-1', title: '第一份方法', createdAt: '2026-10-01T00:00:00Z' }], nextCursor: 'next' });
+    lookups += 1;
+    return lookups === 1 ? json({ error: { code: 'KNOWLEDGE_UNAVAILABLE' } }, 503)
+      : json(evidenceBundle([{ status: 'OK', versionId: 'kv-2', unitId: 'u-2', checksum, content: '第二份完整方法。' }]));
+  });
+  render(<KnowledgeDrawer project="project" onClose={vi.fn()} />);
+  fireEvent.click(await screen.findByRole('button', { name: '加载更多知识' }));
+  fireEvent.click(await screen.findByRole('button', { name: /第二份方法/ }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('知识读取未完成');
+  fireEvent.click(screen.getByRole('button', { name: '重新读取证据' }));
+  expect(await screen.findByText('第二份完整方法。')).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: '返回知识目录' }));
+  expect(screen.getByRole('button', { name: /第一份方法/ })).toBeVisible();
+  expect(screen.getByRole('button', { name: /第二份方法/ })).toBeVisible();
+});
+
+it('aborts a previous citation read and ignores its late response when the requested identity changes', async () => {
+  let finishOld: (value: Response) => void = () => {};
+  let oldSignal: AbortSignal | null | undefined;
+  const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementationOnce((_input, options) => {
+    oldSignal = options?.signal;
+    return new Promise(resolve => { finishOld = resolve; });
+  }).mockResolvedValueOnce(json(evidenceBundle([{ status: 'OK', versionId: 'kv-2', unitId: 'u-2', checksum, content: '新的精确引用。' }])));
+  const view = render(<KnowledgeDrawer project="project" reference={{ versionId: 'kv-1', unitId: 'u-1', checksum }} onClose={vi.fn()} />);
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+  view.rerender(<KnowledgeDrawer project="project" reference={{ versionId: 'kv-2', unitId: 'u-2', checksum }} onClose={vi.fn()} />);
+  expect(await screen.findByText('新的精确引用。')).toBeVisible();
+  expect(oldSignal?.aborted).toBe(true);
+  await act(async () => finishOld(json(evidenceBundle([{ status: 'OK', versionId: 'kv-1', unitId: 'u-1', checksum, content: '过时引用。' }]))));
+  expect(screen.queryByText('过时引用。')).not.toBeInTheDocument();
+  expect(screen.getByRole('article', { name: '引用片段原文：知识文档' })).toHaveFocus();
+});
+
+it('keeps keyboard focus inside the knowledge drawer and restores the opener on close', async () => {
+  vi.spyOn(globalThis, 'fetch').mockResolvedValue(json({ items: [], nextCursor: null }));
+  const opener = document.createElement('button');
+  document.body.append(opener);
+  opener.focus();
+  const view = render(<KnowledgeDrawer project="project" onClose={vi.fn()} />);
+  await screen.findByText('知识目录还没有内容。');
+  const close = screen.getByRole('button', { name: '关闭知识库' });
+  const last = await screen.findByRole('button', { name: '搜索' });
+  last.focus();
+  fireEvent.keyDown(last, { key: 'Tab' });
+  expect(close).toHaveFocus();
+  fireEvent.keyDown(close, { key: 'Tab', shiftKey: true });
+  expect(last).toHaveFocus();
+  view.unmount();
+  expect(opener).toHaveFocus();
+  opener.remove();
 });
 
 it('lists datasets and opens one immutable Data version', async () => {

@@ -96,7 +96,7 @@ class WorkflowExecutionOwner:
         return recovery_source(self.database, project_id, session_id, run_id)
 
     async def tick(self) -> AsyncIterator[WorkflowTickResult]:
-        work = claim_dispatch_batch(self.database, DISPATCH_BATCH_SIZE)
+        work = claim_dispatch_batch(self.database, DISPATCH_BATCH_SIZE, wait=False)
         semaphore = asyncio.Semaphore(self.dispatch_concurrency)
 
         async def drive(item: DispatchWork) -> WorkflowTickResult:

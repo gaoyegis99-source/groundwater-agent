@@ -1,0 +1,126 @@
+{
+  "schemaVersion": "domain-knowledge.v2",
+  "contentVersion": "1.0.0",
+  "language": "zh-CN",
+  "sources": [
+    {
+      "sourceId": "groundwater-porous-linux-v2-6-2",
+      "kind": "DOMAIN_DEFINITION",
+      "title": "Groundwater 孔隙型 Linux 模型",
+      "publisher": "Groundwater Platform",
+      "url": null,
+      "version": "6.1.0",
+      "publishedAt": "2026-11-11",
+      "accessedAt": null,
+      "reviewAfter": "2027-11-11",
+      "validThrough": null,
+      "lifecycleStatus": "ACTIVE"
+    }
+  ],
+  "documents": [
+    {
+      "knowledgeId": "gw-model-card-porous-simulation",
+      "title": "孔隙型流与运移仿真",
+      "summary": "计算水头、浓度并发布分析与图件。",
+      "chunks": [
+        {
+          "content": "groundwater.porous-simulation@1.0.0，工具 run_porous_simulation。计算水头、浓度并发布分析与图件。选择已发布的 Data 输入版本，经用户确认执行。运行凭据记录服务版本、任务标识及成果校验值。现场科学等价待验证。",
+          "sourceRefs": [
+            "groundwater-porous-linux-v2-6-2"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-model-card-porous-calibration",
+      "title": "孔隙型 PEST 水头率定",
+      "summary": "用原生 PEST 拟合给定水头观测和全局参数倍率，随后用率定模型重新执行仿真。",
+      "chunks": [
+        {
+          "content": "groundwater.porous-calibration@1.0.0，工具 run_porous_pest_calibration。用原生 PEST 拟合给定水头观测和全局参数倍率，随后用率定模型重新执行仿真。选择已发布的 Data 输入版本，经用户确认执行。运行凭据记录服务版本、任务标识及成果校验值。现场科学等价待验证。",
+          "sourceRefs": [
+            "groundwater-porous-linux-v2-6-2"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-model-card-porous-scenario-comparison",
+      "title": "孔隙型情景对比",
+      "summary": "以固定模型为基准，计算声明的各个参数情景并汇总差异。",
+      "chunks": [
+        {
+          "content": "groundwater.porous-scenario-comparison@1.0.0，工具 run_porous_scenario_compare。以固定模型为基准，计算声明的各个参数情景并汇总差异。选择已发布的 Data 输入版本，经用户确认执行。运行凭据记录服务版本、任务标识及成果校验值。现场科学等价待验证。",
+          "sourceRefs": [
+            "groundwater-porous-linux-v2-6-2"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-model-card-porous-map",
+      "title": "孔隙型栅格地图准备",
+      "summary": "校验并整理本地 GeoTIFF，发布栅格与坐标参考系信息。",
+      "chunks": [
+        {
+          "content": "groundwater.porous-map@1.0.0，工具 run_porous_map_prepare。校验并整理本地 GeoTIFF，发布栅格与坐标参考系信息。选择已发布的 Data 输入版本，经用户确认执行。运行凭据记录服务版本、任务标识及成果校验值。现场科学等价待验证。",
+          "sourceRefs": [
+            "groundwater-porous-linux-v2-6-2"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-model-card-porous-inversion-training",
+      "title": "孔隙型反演训练",
+      "summary": "用同批水头、地表形变与参数场训练条件扩散反演模型。",
+      "chunks": [
+        {
+          "content": "groundwater.porous-inversion-training@1.0.0，工具 run_porous_inversion_train。用同批水头、地表形变与参数场训练条件扩散反演模型。选择已发布的 Data 输入版本，经用户确认执行。运行凭据记录服务版本、任务标识及成果校验值。现场科学等价待验证。",
+          "sourceRefs": [
+            "groundwater-porous-linux-v2-6-2"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-model-card-porous-inversion-sampling",
+      "title": "孔隙型反演采样",
+      "summary": "用已训练权重和明确观测条件采样参数场后验。",
+      "chunks": [
+        {
+          "content": "groundwater.porous-inversion-sampling@1.0.0，工具 run_porous_inversion_sample。用已训练权重和明确观测条件采样参数场后验。选择已发布的 Data 输入版本，经用户确认执行。运行凭据记录服务版本、任务标识及成果校验值。现场科学等价待验证。",
+          "sourceRefs": [
+            "groundwater-porous-linux-v2-6-2"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-model-card-porous-agricultural-inversion",
+      "title": "孔隙型农业抽水反演",
+      "summary": "以明确的农业抽水记录和监测水头计算响应矩阵，分期率定并独立验证。",
+      "chunks": [
+        {
+          "content": "groundwater.porous-agricultural-inversion@1.0.0，工具 run_porous_agri_inversion。以明确的农业抽水记录和监测水头计算响应矩阵，分期率定并独立验证。选择已发布的 Data 输入版本，经用户确认执行。运行凭据记录服务版本、任务标识及成果校验值。现场科学等价待验证。",
+          "sourceRefs": [
+            "groundwater-porous-linux-v2-6-2"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-model-card-sustainability-input-preparation",
+      "title": "水源地评价输入准备",
+      "summary": "汇总模拟、监测及管理资料，核对同一区域、时段和指标口径，生成候选评价输入与字段来源报告。",
+      "chunks": [
+        {
+          "content": "groundwater.sustainability-input-preparation@1.0.0，工具 prepare_source_sustainability。汇总模拟、监测及管理资料，核对同一区域、时段和指标口径，生成候选评价输入与字段来源报告。选择已发布的 Data 输入版本，经用户确认执行。运行凭据记录服务版本、任务标识及成果校验值。现场科学等价待验证。",
+          "sourceRefs": [
+            "groundwater-porous-linux-v2-6-2"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -2,6 +2,8 @@
 /worktrees/
 /.pytest_cache/
 /source/migration-assets/yaozhanbao-transfer-case/payload/
+/source/data/logs/
+/source/data/tasks.sqlite3*
 **/.venv/
 **/node_modules/
 **/.pytest_cache/

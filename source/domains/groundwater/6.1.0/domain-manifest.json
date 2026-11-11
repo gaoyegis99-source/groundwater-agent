@@ -1,0 +1,96 @@
+{
+  "schemaVersion": "domain-manifest.v3",
+  "domainId": "groundwater",
+  "version": "6.1.0",
+  "instructions": "instructions.md",
+  "observationTools": [
+    {
+      "service": "data",
+      "contract": "data-tools-v4",
+      "tool": "get_data_inventory"
+    },
+    {
+      "service": "data",
+      "contract": "data-tools-v4",
+      "tool": "discover_datasets"
+    },
+    {
+      "service": "data",
+      "contract": "data-tools-v4",
+      "tool": "inspect_data_version"
+    },
+    {
+      "service": "data",
+      "contract": "data-tools-v4",
+      "tool": "inspect_data_table"
+    },
+    {
+      "service": "knowledge-next",
+      "contract": "knowledge-tools-v5",
+      "tool": "retrieve_evidence"
+    },
+    {
+      "service": "knowledge-next",
+      "contract": "knowledge-tools-v5",
+      "tool": "read_evidence"
+    },
+    {
+      "service": "knowledge-next",
+      "contract": "knowledge-tools-v5",
+      "tool": "lookup_knowledge"
+    }
+  ],
+  "workflowDefinitions": [
+    "workflows/monitoring-trend.workflow.json",
+    "workflows/flow-field.workflow.json",
+    "workflows/kriging.workflow.json",
+    "workflows/rule-classification.workflow.json",
+    "workflows/drastic.workflow.json",
+    "workflows/transfer-learning-analysis.workflow.json",
+    "workflows/summary.workflow.json",
+    "workflows/monitoring-coverage.workflow.json",
+    "workflows/render-map.workflow.json",
+    "workflows/source-sustainability.workflow.json",
+    "workflows/porous-simulation.workflow.json",
+    "workflows/porous-calibration.workflow.json",
+    "workflows/porous-scenario-comparison.workflow.json",
+    "workflows/porous-map.workflow.json",
+    "workflows/porous-inversion-training.workflow.json",
+    "workflows/porous-inversion-sampling.workflow.json",
+    "workflows/porous-agricultural-inversion.workflow.json",
+    "workflows/sustainability-input-preparation.workflow.json"
+  ],
+  "executableModels": [
+    "models/monitoring-trend.model.json",
+    "models/flow-field.model.json",
+    "models/kriging.model.json",
+    "models/rule-classification.model.json",
+    "models/drastic.model.json",
+    "models/transfer-learning-analysis.model.json",
+    "models/summary.model.json",
+    "models/monitoring-coverage.model.json",
+    "models/render-map.model.json",
+    "models/source-sustainability.model.json",
+    "models/porous-simulation.model.json",
+    "models/porous-calibration.model.json",
+    "models/porous-scenario-comparison.model.json",
+    "models/porous-map.model.json",
+    "models/porous-inversion-training.model.json",
+    "models/porous-inversion-sampling.model.json",
+    "models/porous-agricultural-inversion.model.json",
+    "models/sustainability-input-preparation.model.json"
+  ],
+  "knowledgeDocuments": [
+    "knowledge/agent-discovery-templates.v1.json",
+    "knowledge/demo-knowledge-interpretation.v1.json",
+    "knowledge/demo-knowledge-methods.v1.json",
+    "knowledge/demo-knowledge-quality.v1.json",
+    "knowledge/demo-knowledge-scenarios.v1.json",
+    "knowledge/demo-knowledge.v1.json",
+    "knowledge/model-cards.v1.json",
+    "knowledge/porous-model-cards.v1.json"
+  ],
+  "executionCases": [
+    "cases/yaozhanbao-transfer-case.json"
+  ]
+}

@@ -180,9 +180,10 @@ def assembly_root(tmp_path):
     ui["outputs"] = {name: ui["outputs"][name] for name in model["finalOutputs"]}
     ui["cases"] = {}
     _write(ui_path, ui)
-    product["uiProfile"]["checksum"] = (
-        "sha256:" + hashlib.sha256(ui_path.read_bytes()).hexdigest()
-    )
+    product["uiProfile"] = {
+        "path": ui_path.relative_to(air_product).as_posix(),
+        "checksum": "sha256:" + hashlib.sha256(ui_path.read_bytes()).hexdigest(),
+    }
     _write(air_product / "product-manifest.json", product)
     _pin_domain(root, "air-quality")
     return root
@@ -408,7 +409,7 @@ def test_domain_packages_change_agent_surface_but_not_kernel_schema(
 ):
     schemas = []
     for product, observations, models in (
-        ("groundwater", 7, 10),
+        ("groundwater", 7, 18),
         ("air-quality", 4, 1),
     ):
         settings = _settings(assembly_root, product)
@@ -721,7 +722,7 @@ def test_all_groundwater_models_accept_matching_field_contracts_without_false_bl
             failures.append((model.model_id, result["blocking_reasons"]))
 
     assert failures == []
-    assert len(settings.models) == 10
+    assert len(settings.models) == 18
 
 
 @pytest.mark.parametrize("product", PACKAGES)

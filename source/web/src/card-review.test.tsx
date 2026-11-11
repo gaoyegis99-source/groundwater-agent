@@ -142,7 +142,8 @@ it('presents released result names in Chinese while retaining the real download 
   expect(screen.getByText('地下水流场')).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: /水头栅格/ }));
   expect(onResource).toHaveBeenCalledExactlyOnceWith('released-head');
-  expect(screen.getByText('geotiff · head-semantics')).toBeVisible();
+  expect(screen.getByText('geotiff · 版本 released-head')).toBeVisible();
+  expect(screen.getByText('head-semantics')).not.toBeVisible();
   expect(screen.getByRole('link', { name: '下载' })).toHaveAttribute('href', '/api/v12/data/versions/released-head/objects/object-head/content');
   expect(screen.getByRole('link', { name: '下载' })).toHaveAttribute('download', 'head-raster');
   expect(screen.queryByText(text => text.includes('"checksum": "sha256:exact-output"'))).not.toBeInTheDocument();
@@ -161,6 +162,20 @@ it('dispatches each result reuse action with the exact immutable reference', () 
   expect(onAttach).toHaveBeenCalledExactlyOnceWith(output);
   expect(onContinue).toHaveBeenCalledExactlyOnceWith(output);
   expect(onCompare).toHaveBeenCalledExactlyOnceWith(output);
+});
+
+it('keeps long result identities inspectable behind the business name and short version', () => {
+  const output = dataRef({ versionId: 'cfd5fab9-652d-4a39-a8f9-b11c630a0623', semanticId: 'semantics-2026-11-11-long-identity', outputName: 'summary' });
+  const task = taskFixture({ modelId: 'groundwater.summary', status: 'SUCCEEDED', stage: null, outputCount: 1 });
+  const result: Result = { goalRevision: 1, agentRunId: 'agent-1', toolCallId: 'tool-1', modelId: task.modelId, status: 'SUCCEEDED', workflowRunId: task.workflowRunId, remoteOutputs: [output] };
+  render(<ResultCard task={task} result={result} project="demo" onResource={vi.fn()} />);
+  expect(screen.getByTestId('result-card')).toHaveAttribute('data-status', 'SUCCEEDED');
+  expect(screen.getByText(/版本 cfd5fab9…/)).toBeVisible();
+  expect(screen.getByText(output.versionId, { exact: true })).not.toBeVisible();
+  fireEvent.click(screen.getByText('数据身份'));
+  expect(screen.getByText(output.versionId, { exact: true })).toBeVisible();
+  expect(screen.getByText(output.semanticId, { exact: true })).toBeVisible();
+  expect(screen.getByText(output.checksum, { exact: true })).toBeVisible();
 });
 
 it('keeps a large result group compact with every published file reachable on expansion', () => {

@@ -56,6 +56,8 @@ export function useMessageActions({
   const [attachments, setAttachments] = useState<ResourceItem[]>(() => storageScope ? savedAttachments(storageScope, activeId) : []);
   const [submission, setSubmission] = useState(() => storageScope ? savedSubmission(storageScope, activeId) : null);
   const [pendingOperation, setPendingOperation] = useState<{ id: number; sessionId: string; generation: number; label: string } | null>(null);
+  const [continuationVersionId, setContinuationVersionId] = useState<string | null>(null);
+  const sessionCreationPending = useRef(false);
   const [actionError, setActionError] = useState<ApiError | null>(null);
   const draftRef = useRef(draft);
   const previousStorageScope = useRef(storageScope);
@@ -148,14 +150,16 @@ export function useMessageActions({
   }
   async function stopRun(correct = false) {
     if (!lastTurn || stopping) return;
+    const generation = viewGeneration.current;
+    const current = () => activeRef.current === activeId && viewGeneration.current === generation;
     if (correct) enqueue(lastTurn.agentRunId);
     setStopping(true); setActionError(null);
     const key = scopedStorageKey(storageScope, 'stop-request', `${activeId}:${lastTurn.agentRunId}`);
     const requestId = localStorage.getItem(key) ?? newRequestId();
     localStorage.setItem(key, requestId);
     try { await callApi('kernel_stop_run', `/sessions/${activeId}/stop`, { requestId, agentRunId: lastTurn.agentRunId }); }
-    catch (caught) { setStopping(false); showError(caught); }
-    await refresh(activeId);
+    catch (caught) { if (current()) { setStopping(false); showError(caught); } }
+    if (current()) await refresh(activeId);
   }
   const awaitingConfirmation = lastTurn?.confirmations.some(item => item.status === 'PENDING') ?? false;
   useEffect(() => {
@@ -190,19 +194,24 @@ export function useMessageActions({
     navigate(created.sessionId); await loadSessions(); return created.sessionId;
   }
   async function newChat() {
+    if (pending || sessionCreationPending.current || !project) return;
+    sessionCreationPending.current = true;
     const operation = ++mutationSerial.current;
     const generation = viewGeneration.current;
     setPendingOperation({ id: operation, sessionId: activeId, generation: viewGeneration.current, label: '正在创建对话' }); setActionError(null);
     try { await createSession(operation); } catch (caught) { if (operation === mutationSerial.current && generation === viewGeneration.current && activeRef.current === activeId) showError(caught); }
-    finally { setPendingOperation(previous => previous?.id === operation ? null : previous); }
+    finally { sessionCreationPending.current = false; setPendingOperation(previous => previous?.id === operation ? null : previous); }
   }
   async function newChatWithAttachments(nextAttachments: ResourceItem[], text = '') {
+    if (pending || sessionCreationPending.current || !project) return;
+    sessionCreationPending.current = true;
+    setContinuationVersionId(nextAttachments[0]?.versionId ?? null);
     const operation = ++mutationSerial.current;
     const generation = viewGeneration.current;
     setPendingOperation({ id: operation, sessionId: activeId, generation: viewGeneration.current, label: '正在创建对话' }); setActionError(null);
     try { await createSession(operation, { text, attachments: nextAttachments }); }
     catch (caught) { if (operation === mutationSerial.current && generation === viewGeneration.current && activeRef.current === activeId) showError(caught); }
-    finally { setPendingOperation(previous => previous?.id === operation ? null : previous); }
+    finally { sessionCreationPending.current = false; setContinuationVersionId(null); setPendingOperation(previous => previous?.id === operation ? null : previous); }
   }
   async function send(retry?: SavedSubmission, suggestedMessage?: string) {
     if (suggestedMessage && optionSubmission.current) return;
@@ -270,9 +279,13 @@ export function useMessageActions({
   async function reviseConfirmation(confirmation: Confirmation, actions: { toolCallId: string; arguments: Record<string, unknown> }[]) {
     if (!history) return;
     const generation = viewGeneration.current; const operation = ++mutationSerial.current;
+    const current = () => activeRef.current === activeId && viewGeneration.current === generation;
     setPendingOperation({ id: operation, sessionId: activeId, generation, label: '正在保存确认修订' }); setActionError(null);
-    try { await callApi('kernel_revise_confirmation', `/sessions/${activeId}/confirmations/${confirmation.confirmationId}/revisions`, { requestId: newRequestId(), expectedGoalRevision: history.goalRevision, actions }); closeConfirmationEditor(); await refresh(activeId); }
-    catch (caught) { if (viewGeneration.current === generation) showError(caught); }
+    try {
+      await callApi('kernel_revise_confirmation', `/sessions/${activeId}/confirmations/${confirmation.confirmationId}/revisions`, { requestId: newRequestId(), expectedGoalRevision: history.goalRevision, actions });
+      if (current()) { closeConfirmationEditor(); await refresh(activeId); }
+    }
+    catch (caught) { if (current()) showError(caught); }
     finally { setPendingOperation(previous => previous?.id === operation ? null : previous); }
   }
   async function recoverWorkflow(workflowRunId: string) {
@@ -289,7 +302,7 @@ export function useMessageActions({
     clearExternalError();
   }
 
-  const canSend = (!busy || (isNaturalControl(draft, attachments.length > 0) && (!pendingControl || isStatusQuery(draft, attachments.length > 0))))
+  const canSend = !pending && (!busy || (isNaturalControl(draft, attachments.length > 0) && (!pendingControl || isStatusQuery(draft, attachments.length > 0))))
     && !submission && !!project && (!!draft.trim() || !!attachments.length);
 
   return {
@@ -303,6 +316,7 @@ export function useMessageActions({
     submission,
     pending,
     pendingLabel,
+    continuationVersionId,
     runtimeBusy,
     pendingControl,
     busy,

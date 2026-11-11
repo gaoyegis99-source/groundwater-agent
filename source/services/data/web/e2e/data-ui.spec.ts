@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { createHash } from "node:crypto";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, type TestInfo } from "@playwright/test";
 
 const createdAt = "2026-10-17T10:00:00Z";
 const checksum = `sha256:${"a".repeat(64)}`;
@@ -53,6 +53,10 @@ async function assertNoSeriousAxe(page: Page) {
   expect(result.violations.filter(item => ["critical", "serious"].includes(item.impact ?? ""))).toEqual([]);
 }
 
+async function capture(page: Page, testInfo: TestInfo, name: string) {
+  await expect(async () => { await page.screenshot({ path: testInfo.outputPath(name), fullPage: true }); }).toPass({ timeout: 5000, intervals: [100, 250, 500] });
+}
+
 test.beforeEach(async ({ page }) => {
   await page.route("**/knowledge/v3/activity**", route => route.fulfill({ json: emptyActivity }));
 });
@@ -80,6 +84,8 @@ test("catalog, semantic CAS, query pagination, version selection and scoped refr
     else if (path === "versions/v1/semantics" && request.method() === "POST") {
       semanticBodies.push(request.postDataJSON()); currentSemantic = "s2";
       response = { semanticId: "s2", versionId: "v1" };
+    } else if (path === "queries" && request.method() === "POST" && !("filters" in request.postDataJSON()) && request.postDataJSON().kind === "table") {
+      response = { operationId: "op-content", queryId: "q-content" };
     } else if (path === "queries" && request.method() === "POST") {
       queryBodies.push(request.postDataJSON()); response = { operationId: `op-${queryBodies.length}`, queryId: `q${queryBodies.length}` };
     } else if (path.startsWith("queries/q")) response = queryResponse(path.split("/")[1]!, Number(url.searchParams.get("offset") ?? 0));
@@ -87,9 +93,11 @@ test("catalog, semantic CAS, query pagination, version selection and scoped refr
     await route.fulfill({ json: response });
   });
   await page.goto("/data/");
-  await page.getByText("查看身份与环境").click();
+  await page.getByText("系统信息", { exact: true }).click();
   await expect(page.getByText(/operator-1/)).toBeVisible();
   await page.locator(".catalog").getByRole("button", { name: /监测数据/ }).click();
+  await expect(page.getByRole("cell", { name: "001", exact: true })).toBeVisible();
+  await page.getByText("版本与来源", { exact: true }).click();
   await expect(page.getByText("所有者：operator-1")).toBeVisible();
   await expect(page.getByText("上游水位台账")).toBeVisible();
   await page.getByText("治理字段含义").click();
@@ -132,6 +140,7 @@ test("previews an XLSX object through the bounded Preview service", async ({ pag
   const xlsxItem = { ...discoveryItem, formats: ["xlsx"], title: "水位台账" };
   const xlsxVersion = {
     ...version(), title: "水位台账",
+    descriptor: { ...version().descriptor, policy: "FILE_ONLY" },
     objects: [{ objectId: "xlsx-1", size: 2048, checksum, role: "raw", format: "xlsx", mediaType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }],
   };
   await page.route("**/data/v3/**", async route => {
@@ -186,11 +195,13 @@ test("combines Data and Knowledge work in the cross-service operation center", a
     generatedAt: createdAt,
   } }));
   await page.goto("/data/");
+  await expect(page.getByText("1 项进行中", { exact: true })).toBeVisible();
+  await page.getByText("操作记录", { exact: true }).click();
   await page.getByText("查看全部活动（2）").click();
   await expect(page.getByRole("link", { name: "数据查询 · 水位" })).toHaveAttribute("href", "/data/?view=query&query=query-1");
   await expect(page.getByRole("link", { name: "地下水规范导入" })).toHaveAttribute("href", "/knowledge/?view=import&import=import-1");
   await expect(page.getByLabel("操作状态摘要").getByText("进行中")).toBeVisible();
-  await expect(page.getByText("暂无阻断项")).toBeVisible();
+  await expect(page.getByText("1 项进行中", { exact: true })).toBeVisible();
 });
 
 test("upload hashes bytes, prepares, confirms and restores publication without mutation replay", async ({ page }) => {
@@ -327,8 +338,51 @@ test("restored failed publications always provide a clean new-publication path",
   await expect.poll(() => new URL(page.url()).searchParams.get("publication")).toBeNull();
 });
 
-for (const viewport of [{ width: 1440, height: 900 }, { width: 1366, height: 768 }, { width: 390, height: 844 }]) {
-  test(`has no serious accessibility findings at ${viewport.width}x${viewport.height} and 200%`, async ({ page }) => {
+test("desktop content view shows CSV fixture rows and keeps governance on demand", async ({ page }, testInfo) => {
+  const title = "UI 测试夹具 · 监测水位（非现场实测）";
+  const fixtureFields = [
+    { fieldId: "f0", name: "监测井", type: "string", nullCount: 0 },
+    { fieldId: "f1", name: "观测日期", type: "date", nullCount: 0 },
+    { fieldId: "f2", name: "水位（m）", type: "float64", nullCount: 0 },
+  ];
+  const rows = [["W-001", "2026-10-01", 18.42], ["W-001", "2026-10-02", 18.38], ["W-002", "2026-10-01", 21.07], ["W-002", "2026-10-02", 20.94], ["W-003", "2026-10-01", 16.72]];
+  const bodies: unknown[] = [];
+  await page.route("**/data/v3/**", async route => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname.replace("/data/v3/", "");
+    let response: unknown;
+    if (path === "capabilities") response = capabilities;
+    else if (path === "activity") response = emptyActivity;
+    else if (path === "inventory") response = inventory;
+    else if (path === "discovery") response = { items: [{ ...discoveryItem, title, description: "仅用于界面验收的合成数据" }], nextCursor: null, totalMatches: 1, matchBasis: "semantic_projection" };
+    else if (path === "versions/v1") response = { ...version(), title, descriptor: { ...version().descriptor, fields: fixtureFields, rowCount: rows.length } };
+    else if (path === "datasets/d1/versions") response = { items: [{ versionId: "v1", semanticId: "s1", createdAt }], nextCursor: null };
+    else if (path === "datasets/d1/governance") response = { ...governance, title, qualityTrend: [{ versionId: "v1", createdAt, rowCount: rows.length, quality: {} }], lineage: [] };
+    else if (path === "versions/v1/semantics") response = { items: [], nextCursor: null };
+    else if (path === "queries" && request.method() === "POST") { bodies.push(request.postDataJSON()); response = { operationId: "op-fixture", queryId: "q-fixture" }; }
+    else if (path === "queries/q-fixture") response = { ...queryResponse("q-fixture", 0), result: { fields: fixtureFields.map(({ fieldId, name, type }) => ({ fieldId, name, type })), rows, nextOffset: null, truncated: false, coverage: {}, engine: {} } };
+    else throw new Error(`Unexpected fixture request: ${path}`);
+    await route.fulfill({ json: response });
+  });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/data/");
+  await page.locator(".catalog").getByRole("button", { name: /UI 测试夹具/ }).click();
+  await expect(page.getByRole("cell", { name: "18.42", exact: true })).toBeInViewport();
+  await expect(page.getByLabel("描述", { exact: true })).not.toBeVisible();
+  expect(bodies).toEqual([expect.objectContaining({ versionIds: ["v1"], semanticIds: { v1: "s1" } })]);
+  await capture(page, testInfo, "data-fixture-content-1440.png");
+  await assertNoSeriousAxe(page);
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.getByText("高级筛选", { exact: true }).click();
+  await page.getByText("版本与来源", { exact: true }).click();
+  await expect(page.getByLabel("单位筛选")).toBeVisible();
+  await expect(page.getByText("所有者：operator-1")).toBeVisible();
+  await capture(page, testInfo, "data-fixture-governance-1366.png");
+  await assertNoSeriousAxe(page);
+});
+
+for (const viewport of [{ width: 1440, height: 900 }, { width: 1366, height: 768 }]) {
+  test(`has no serious accessibility findings at ${viewport.width}x${viewport.height} and 200%`, async ({ page }, testInfo) => {
     await page.setViewportSize(viewport);
     await page.route("**/data/v3/**", route => {
       const path = new URL(route.request().url()).pathname;
@@ -337,7 +391,11 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1366, height: 768
       return route.fulfill({ json: { items: [], nextCursor: null, totalMatches: 0, matchBasis: "semantic_projection" } });
     });
     await page.goto("/data/");
-    await expect(page.getByRole("heading", { name: "数据管理工作台" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "数据管理", exact: true })).toBeVisible();
+    await expect(page.getByText("没有找到匹配的数据")).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "搜索数据" })).toBeInViewport();
+    expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe("rgb(250, 249, 246)");
+    await capture(page, testInfo, `data-catalog-${viewport.width}.png`);
     await assertNoSeriousAxe(page);
     await page.evaluate(() => { document.documentElement.style.zoom = "2"; });
     await assertNoSeriousAxe(page);

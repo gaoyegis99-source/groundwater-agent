@@ -2,10 +2,16 @@
 
 ## 当前基线
 - Repo: gaoyegis99-source/groundwater-agent
-- Inspected commit: 3354fc2d959219f399ed667b993dcbdf3d0db89e
-- 当前阶段：总目标实施卡均已完成；默认环境已按授权物化，开发专用交互式增量控制面与系统运行时代码保持分离。2026-11-11 全量工程验收 14/14 阶段 PASS、2508 passed / 4 个独立 spike 条件 skip，默认 `source-groundwater` 栈保持健康且隔离验收未修改现有部署。科学状态与真实 Agent 体验仍按报告边界为 `NOT_ASSESSED`，不得由工程 PASS 外推。
+- Inspected commit: 26f66732ffbb9609a155bf585448a5f4d7b21cd2（本轮未提交实现按下方日志单独记录）
+- 当前阶段：原总目标实施卡、DEV-01/GATE-04、真实数据案例 REAL-01 和本轮桌面界面精修 UI-REFINE-01 已完成。当前前端 281 单测 / 35 生产浏览器场景全部 PASS；冻结基线加三文件 Kernel 修复的完整报告为 14/14 阶段 PASS、2,515 passed / 4 个独立 spike 条件 skip，原卡住的迁移学习链路已通过。开发专用代码与系统运行时代码继续分离；科学、真实 Provider 及同时进行的产品/第三方服务变更按各报告范围解释。详细记录见 `UI_POLISH_VALIDATION_2026-11-11.md`。
 - 本次静态审查：完成；详见 `SOURCE_RECHECK.md`
 - 本次运行测试：NEW-03 focused operator 6 passed、领域合同 4 passed；完整宿主 Operator Pack 在 M0-03 后为 158 passed、Workflow Compiler 61 passed、Assembler 118 passed、Contracts 178 passed。ADV-01 默认环境 5 passed / 2 optional skips，锁定独立环境 7 passed / 5 upstream warnings。ADV-02 默认环境 4 passed / 2 optional skips，锁定环境连同官方 release 与真实 Docker 数值运行 6 passed。M0-01 CLI/架构相关 42 passed。M0-02 focused 为 8 passed / 1 明确 Native-domain skip，另有锁定 CPython 3.12.8 离线真实 smoke PASS 与非法参数稳定拒绝。M0-03 focused 为 12 passed / 1 同一 Native-domain skip，三个 workflow 在锁定 CPython 3.12.8 与只读本地系统工具 image 中重复 PASS、差异为零。M0-04 core/CLI 为 6 passed，相邻 quick-run CLI 合并回归为 13 passed；六个 Agent case 各三轮离线回放全部 PASS 且 identity 稳定。M0-05 focused 为 5 passed，M0-02 至 M0-05 相邻快速反馈 CLI 合并回归为 18 passed，功能参考表重算验证 PASS。DOC-01 文档检查器 15 passed。GATE-01 将历史 4 个 owner 失败从 4 failed / 45 passed 收口为 50 passed，Usage/E2E 相邻回归 148 passed，完整 `platform_product` slice 为 522 passed / 17 个显式环境 skip；全局 Ruff、import boundary、internal layout、文档和 diff 检查均 PASS。GATE-02 将 Executor owner 从 68 failed / 86 passed 收口为 154 passed，并使 Embedding/Protocols/Workflow Compiler/Data/Executor/Contracts 宿主 owner 集合达到 559 passed / 2 个 `service_image` deselected。GATE-03 完整 Kernel 为 849 passed，主 Web 为 28 files / 200 tests、typecheck/build PASS，生产构建 Playwright 为 9 passed，产品中立边界、Ruff、mypy、文档、worktree hygiene、internal layout、能力清单和 lock 幂等性均 PASS。默认锁定 root 工具链和 python/npm/system dependency scopes 仍未物化，公共 `dev` fail closed，完整 Native/QGIS、Compose 内 live-browser、真实 Provider/远程服务与发布门禁明确 NOT_RUN。详见各卡日志（非发布门禁通过）。
+
+## 当前追加任务
+
+2026-11-11 TASK-WF-TEST-01：用户要求重点测试工作流和任务，并明确多智能体并行。当前源码为权威，按 Web、Kernel、Compiler/Executor、系统验收分工。前端聚焦 SSE 事件、确认防重、停止归属、草稿局部失败；Kernel 聚焦短暂争锁和过期租约；Executor 聚焦恢复过程中旧 worker 误取消远端任务及 BUSY 响应处理。先复现，再最小修复；保护此前全部未提交改动，不操作默认部署。
+
+详细矩阵及实际结果见 `WORKFLOW_TASK_VALIDATION_2026-11-11.md`，原始证据位于 `/home/mtd/.local/state/groundwater-v6/validation/workflow-task-20261111/`。专项验收 PASS，此前 UI 与冻结基线 PASS 不替代当前专项验收。
 
 ## 任务表
 
@@ -23,6 +29,12 @@
 | GATE-03 | Kernel/Web、产品中立边界与生产构建浏览器 gate 收口 | DONE |
 | DEV-01 | 热重载、增量协调与可观测性交互开发模式 | DONE |
 | GATE-04 | 默认环境物化与全项目隔离验收报告 | DONE |
+| REAL-01 | 本地与官方公开数据的四个真实案例 | DONE |
+| UI-REFINE-01 | 现有交互、桌面数据/知识视图及增量回归 | DONE |
+| TASK-WF-TEST-01 | 当前工作流与任务专项并行测试、缺陷修复和链路验收 | DONE |
+| MODEL-E2E-01 | 6.1 剩余模型、真实远程模型和真实数据端到端 | DONE |
+| YAOZHANBAO-EVIDENCE-01 | 腰站堡原 15 项缺项逐项取证与输入复核 | DONE |
+| YAOZHANBAO-SYNTHETIC-01 | 腰站堡模拟数据与综合评价端到端 | DONE |
 | UI-01 | Confirmation resource loading | DONE |
 | UI-02 | JSON editor errors | DONE |
 | UI-03 | result merge | DONE |
@@ -438,3 +450,42 @@
 - isolation and runtime audit: 全量报告记录 `RANDOM_PROJECT_DYNAMIC_PORTS_PRIVATE_NETWORK_FRESH_VOLUMES`、`existingDeploymentMutation=false`；最终没有 `platform-groundwater-e2e-*` 容器残留。`interactive-status` 为 `phase=STOPPED`、supervisor inactive，默认栈各核心 readiness 为 PASS，Gateway `http://127.0.0.1:28186/api/v12/health` 返回 `UP`。
 - explicit boundary: 4 个 skip 均属于未激活的独立 MF6 6.8.1 release input、FloPy spike 或 Pastas spike 环境，不是默认 runtime 失败。工程状态为 PASS；科学状态与真实 Agent 体验均为 `NOT_ASSESSED`，真实 Provider、第三方远程服务和具体场地科学有效性不在本报告结论内。
 - follow-up: 当前目标无剩余实施卡；后续若要把独立 Pastas/FloPy/MF6 spike 纳入默认产品，必须另立发布与科学验证目标，不能由本次工程验收自动推导。
+
+### 2026-11-11 REAL-01 / UI-REFINE-01（真实案例与现有界面精修；DONE）
+- inspected HEAD: `26f66732ffbb9609a155bf585448a5f4d7b21cd2`；当前主工作区包含独立的产品/远程服务未提交改动，本轮保护其内容，只承担明确分配的前端文件和已复现的 Kernel 缺陷。
+- real cases: `REAL_DATA_VALIDATION_2026-11-11.md` 记录 4 项生产算子案例全部 PASS：本地 114 井/9,943 行趋势，USGS MRVA 流场与克里金，ODNR Franklin DRASTIC。准备工具属于 `products/groundwater/development/`，原始数据、下载和输出位于 XDG；默认运行时没有为案例复制或替换。完整回归与案例科学结论分别记录。
+- parallel ownership: 按用户明确授权分为会话/上传、数据库/工作台、知识/管理页三组；主流程负责共享样式、跨模块浏览器验收及文档。最新用户反馈将管理页改为暖白、深灰、淡蓝点缀并减少重复文字；可用抽屉、弹框和卡片组织交互，数据与知识必须有实际内容视图。用户随后明确废弃移动端开发，本轮新增验收以桌面 1440/1366 为准；已经完成的响应式修复不作为后续扩展方向。保留 API、精确数据身份和至少 12px 字号。
+- verified repairs: 陈旧目录/版本/预览/成果响应隔离；知识搜索、分页、返回位置和精确引用；会话搜索、重命名/归档与上传取消/跨会话归属；1050px 以下任务覆盖面板、键盘页签、显式导航焦点和全屏折叠；管理页失败恢复、语义保存防重、历史版本保留。首页模板可撤销，正文标题/表格可阅读，成果短版本和完整身份分层。
+- current tests: 最终主 Web 为 31 files / 238 tests、typecheck/build/Ruff/diff PASS，生产构建浏览器 15/15 PASS；新版 Data 为 25 单测 / 9 浏览器，Knowledge 为 18 单测 / 11 浏览器，类型与生产构建全部 PASS。三个前端合计 281 单测、35 浏览器场景通过，并归档 327 文件 SHA-256 快照及桌面截图。已解决可访问名称、过渡颜色、异步加载等待、重复覆盖层及图表隐藏再显示后的尺寸问题；无会话首页假加载、Knowledge 嵌套弹框/URL 切换残留与焦点返回均先红后绿。文档 gate 此前 PASS；Air Quality 通用夹具的 profile 路径/checksum 错配已先红后绿修复。详细结果见 `UI_POLISH_VALIDATION_2026-11-11.md`。
+- full-project finding: exact-HEAD 隔离回归的前 13 阶段 PASS，final Compose 在 transfer-learning 节点均成功后不再推进。数据库备份和关停栈确认 `claim_controls -> BEGIN IMMEDIATE -> sqlite3.OperationalError: database is locked`；关停后的 auth readonly/HTTP 500 是次生现象，不能混作原始原因。空队列仍获取写锁的回归先 3 红后绿，双 claimant 仍只领取一次；6 轮并发探针没有复现历史持锁来源，因此不宣称已证明异步事务死锁。
+- final acceptance: 三文件候选的 `python_kernel` 为 853 PASS，`wheels` 与 `final_compose` 全部 PASS。Run ID `ddec33fe6cc6` 于 2026-11-11 17:45:09（上海时间）完成，14/14 阶段、2,515 passed / 4 条件 skip；六模型生命周期 6/6、实时浏览器 16/16，迁移学习和制图都已成功，Kernel readiness 200。admission 保留 8 个同时占用者、第 9 个排队/重启恢复与原 2 秒等待上限，仅逐个建立准备；同一 CPU 竞争条件由 2 FAIL 变为 2 PASS。随机 Compose 项目及临时目录均已清理，历史遗留测试 DB 精确删除，现有部署未修改。桌面 Data 内容主区及 Knowledge 正文阅读抽屉已完成，源码快照、截图和报告均位于 XDG；本卡 DONE。
+
+### 2026-11-11 TASK-WF-TEST-01（工作流与任务专项；DONE）
+- 当前 6.1 源码：Kernel 867、Executor 173、Compiler 62、Native 160、Web 270、合同 183 项通过；不同套件可能重叠。
+- 隔离 integration owner 通过：桌面生产构建 15 项、实时浏览器 16 项、六个模型生命周期及任务协作与重启通过。1592 个启动快照文件与验收后 SHA 一致。
+- 修复 SSE 和草稿刷新、跨会话迟到响应、恢复范围、SQLite 争锁、停止租约及 admission fencing、远端 Worker 租约失效和 BUSY 响应；并修复当前双远程测试绑定及产品合同夹具。
+- 证据和边界见 `WORKFLOW_TASK_VALIDATION_2026-11-11.md`。真实 Provider、真实远程模型、其余模型端到端及科学有效性未评估；历史锁持有者来源未知。
+
+### 2026-11-11 MODEL-E2E-01（模型端到端验收，DONE）
+
+补齐余下十二个模型。加上上一轮的六条生命周期，当前 6.1.0 清单 18 个模型均有 PASS 证据。四个真实数据案例的生产算子和公开 API 两层验收均通过。实际孔隙和评价 HTTPS 服务通过，另验证 USGS 官方栅格在远程地图链的像元、掩膜和元数据保持。修复只读占位凭据与中文路径、字段语义绑定以及栅格数值比较。结果和范围见 `MODEL_E2E_VALIDATION_2026-11-11.md`。
+
+### 2026-11-11 YAOZHANBAO-EVIDENCE-01（取证完成）
+
+逐项核对本地档案、许可原件及可直接下载的省级水质月报。更正 41 行中的两行元数据，确认 39 个候选井号，当前评价分母仍待证。复核后的输入准备返回 BLOCKED、退出码 2，共 16 项缺证，未生成候选或提交实地评分。历史水量、抽水恢复、当期许可和官方监测证据见 `YAOZHANBAO_EVIDENCE_VALIDATION_2026-11-11.md`。
+
+### 2026-11-11 YAOZHANBAO-SYNTHETIC-01（模拟案例完成）
+
+构建可复现的全年模拟台账、40 点水质记录、单井 24 小时恢复及管理假设。三源准备、独立确认、实际 HTTPS 评价、发布下载及凭据校验通过，结果 88.37075 分、Ⅱ级。40 项相关回归通过。模拟数据及成果归档见 `YAOZHANBAO_SYNTHETIC_VALIDATION_2026-11-11.md`。
+
+### 2026-11-11 YAOZHANBAO-DESKTOP-01（本地桌面验收完成）
+
+当前研究工作区经桌面导入 8 份模拟数据，CSV 和 JSON 视图、两次冻结确认、实时进度、候选复用、评价成果下载及刷新恢复均通过。实际评价为 88.37075 分、Ⅱ级。多智能体独立验证数据目录、确认与进度、结果与下载。修复目录搜索和分页参数，先复现再通过回归及真实桌面测试。仅更新 Gateway 容器。 [桌面测试报告](YAOZHANBAO_SYNTHETIC_VALIDATION_2026-11-11.md#本地桌面验收)
+
+### 2026-11-11 DESKTOP-CASES-02（案例专项桌面验收完成）
+
+并行验证孔隙流与溶质运移、USGS MRVA 流场、USGS MRVA 普通克里金和腰站堡迁移学习。修复地图视口高度、两套开发配置的 QGIS 路径和 Web 恢复确认。实际恢复保留首次失败，重跑发布 25 项成果。114 井的本地资料仅验证导入和表格预览。 [桌面案例报告](DESKTOP_CASE_VALIDATION_2026-11-11.md)
+
+### 2026-11-11 INTERACTION-INTERFACES-01（三端交互验收完成）
+
+WebUI、TLI 和 Python SDK 统一使用 Gateway Public API v12。终端和 SDK 通过离线 wheel 安装到独立环境，实际验证同一会话的终端创建、桌面发起、SDK 冻结确认与事件续接、终端下载及浏览器刷新恢复。WebUI 288 项、公共合同 186 项、客户端与边界 80 项通过。 [三端验收报告](INTERACTION_INTERFACES_VALIDATION_2026-11-11.md)

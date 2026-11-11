@@ -254,6 +254,35 @@ def test_compose_json_rows_accepts_array_and_json_lines() -> None:
     assert _compose_json_rows("\n".join(json.dumps(row) for row in expected)) == expected
 
 
+def test_research_qgis_source_mount_keeps_image_python_paths(
+    tmp_path: Path, monkeypatch
+) -> None:
+    state = tmp_path / "state"
+    data = tmp_path / "data"
+    config = tmp_path / "config"
+    assembly = tmp_path / "assembly"
+    assembly.mkdir()
+    (assembly / "compose.json").write_text(json.dumps({
+        "services": {"executor-native-worker": {}, "executor-qgis-worker": {}},
+    }))
+    (config / "profiles").mkdir(parents=True)
+    (config / "profiles/research.env").write_text("TEST_RESEARCH_VALUE=enabled\n")
+    (config / "secrets/research").mkdir(parents=True)
+    monkeypatch.setattr(dev, "lifecycle", lambda: SimpleNamespace(
+        state=state, data=data, config=config,
+    ))
+    monkeypatch.setattr(dev, "current_bundle", lambda *_args: assembly)
+    monkeypatch.setattr(dev, "_research_dependency_root", lambda root: root)
+    monkeypatch.setenv("PLATFORM_DEPENDENCY_ROOT", str(tmp_path / "dependencies"))
+
+    _, override, _, _, _ = dev._research_runtime("groundwater")
+
+    services = json.loads(override.read_text())["services"]
+    native = services["executor-native-worker"]["environment"]["PYTHONPATH"].split(":")
+    qgis = services["executor-qgis-worker"]["environment"]["PYTHONPATH"].split(":")
+    assert qgis == [*native, "/usr/share/qgis/python", "/usr/share/qgis/python/plugins"]
+
+
 def test_worktree_identity_covers_untracked_source_but_excludes_ignored_files(
     tmp_path: Path,
 ) -> None:

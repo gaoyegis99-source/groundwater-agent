@@ -15,9 +15,11 @@ from assembler import compile_product
 from scripts.evaluation.evaluate_agent import FIXED_SCENARIOS, run_suite
 from scripts.maintenance.project_environment import (
     docker_executable,
+    lifecycle,
     validation_cache_root,
 )
 from scripts.lib.e2e_http import TOKEN_ENVIRONMENT
+from tests.e2e.groundwater import porous_live
 from .assertions import (
     _audit_case,
     _check_retired_contracts,
@@ -111,6 +113,29 @@ def _available_loopback_ports(count: int) -> tuple[int, ...]:
             selected.close()
 
 
+def _configure_local_sustainability(environment_file: Path) -> None:
+    state = lifecycle().state / "third-party" / "groundwater-sustainability"
+    names = {
+        "groundwater-sustainability-api-key": "api-key",
+        "groundwater-sustainability-ca-bundle": "tls.crt",
+    }
+    for name, source in names.items():
+        target = environment_file.parent / "secrets" / name
+        target.chmod(0o600)
+        target.write_bytes((state / source).read_bytes())
+        target.chmod(0o444)
+    updates = {
+        "GROUNDWATER_SUSTAINABILITY_BASE_URL": "https://groundwater-sustainability.local:8443",
+        "GROUNDWATER_SUSTAINABILITY_ALLOWED_HOST": "groundwater-sustainability.local",
+    }
+    lines = [
+        line for line in environment_file.read_text().splitlines()
+        if line.split("=", 1)[0] not in updates
+    ]
+    lines.extend(f"{key}={value}" for key, value in updates.items())
+    environment_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def _reclaim_rootless_instance_data(instance_data: Path, compose: dict) -> None:
     """Map container-owned acceptance files back to the invoking host user."""
 
@@ -154,6 +179,10 @@ def _run_groundwater_knowledge(
     webui_report=None,
     tasks_only=False,
     six_model_only=False,
+    native_real_cases: Path | None = None,
+    sustainability_only=False,
+    sustainability_case: Path | None = None,
+    porous: porous_live.PorousAcceptance | None = None,
     embedding_base_url=None,
     embedding_report=None,
     network_subnet=None,
@@ -166,6 +195,9 @@ def _run_groundwater_knowledge(
         or webui_only
         or tasks_only
         or six_model_only
+        or native_real_cases is not None
+        or sustainability_only
+        or porous is not None
         or reply_quality
     ):
         raise ValueError("PRODUCT_SPECIFIC_GATE_UNAVAILABLE")
@@ -173,6 +205,10 @@ def _run_groundwater_knowledge(
         prefix=f"platform-{product_id}-e2e-source-"
     ) as directory:
         source_root = _copy_compose_source(Path(directory))
+        if porous is not None:
+            from products.groundwater.scripts.porous_candidate import stage_candidate
+
+            stage_candidate(source_root, full=porous.fixtures is not None)
         generated = compile_product(
             source_root,
             source_root / "products" / product_id / "product-manifest.json",
@@ -188,6 +224,10 @@ def _run_groundwater_knowledge(
             webui_report=webui_report,
             tasks_only=tasks_only,
             six_model_only=six_model_only,
+            native_real_cases=native_real_cases,
+            sustainability_only=sustainability_only,
+            sustainability_case=sustainability_case,
+            porous=porous,
             embedding_base_url=embedding_base_url,
             embedding_report=embedding_report,
             network_subnet=network_subnet,
@@ -206,6 +246,10 @@ def _run_groundwater_product(
     webui_report=None,
     tasks_only=False,
     six_model_only=False,
+    native_real_cases: Path | None = None,
+    sustainability_only=False,
+    sustainability_case: Path | None = None,
+    porous: porous_live.PorousAcceptance | None = None,
     embedding_base_url=None,
     embedding_report=None,
     network_subnet=None,
@@ -213,6 +257,13 @@ def _run_groundwater_product(
     product_id="groundwater",
 ) -> None:
     compose = json.loads((generated / "compose.json").read_text(encoding="utf-8"))
+    with_assessment = sustainability_only or porous is not None and porous.assessment_fixture is not None
+    if with_assessment:
+        compose["networks"]["sustainability-link"] = {
+            "external": True,
+            "name": "source-groundwater_v6-egress",
+        }
+        compose["services"]["executor-remote_http-worker"]["networks"]["sustainability-link"] = {}
     for service, selected in (
         ("executor-native-worker", native_image),
         ("executor-qgis-worker", qgis_image),
@@ -220,6 +271,7 @@ def _run_groundwater_product(
         if selected:
             compose["services"][service].pop("build")
             compose["services"][service]["image"] = selected
+            compose["services"][service]["pull_policy"] = "never"
     python_context = [
         value
         for value in compose["services"]["kernel-service"]["build"]["additional_contexts"]
@@ -308,10 +360,17 @@ def _run_groundwater_product(
         environment_file = _compose_secrets(
             Path(directory),
             compose,
+            remote_services=json.loads(
+                (generated / "executor-config.json").read_text()
+            )["remoteServices"],
             provider_key=(
                 None if reply_quality is None else reply_quality.provider_key()
             ),
         )
+        if with_assessment:
+            _configure_local_sustainability(environment_file)
+        if porous is not None:
+            porous_live.configure_deployment(compose, environment_file, porous.image)
         instance_data = Path(directory) / "instance-data"
         config = Path(directory) / "config"
         shutil.copytree(generated, config)
@@ -339,7 +398,8 @@ def _run_groundwater_product(
         try:
             try:
                 if (
-                    not six_model_only
+                    not (six_model_only or sustainability_only or native_real_cases is not None)
+                    and porous is None
                     and reply_quality is None
                     and "knowledge-bootstrap" in compose["services"]
                 ):
@@ -369,6 +429,27 @@ def _run_groundwater_product(
                 _check_gateway_request_ids(base_url, project_id, selected_services)
                 if product_id != "groundwater":
                     return
+                if porous is not None:
+                    print(json.dumps(porous_live.gateway_probe(base_url, porous, command), ensure_ascii=False))
+                    return
+                if sustainability_only:
+                    from tests.e2e.groundwater.sustainability_live import gateway_probe
+
+                    token_file = Path(directory) / "sustainability-acceptance-token"
+                    token_file.write_text(os.environ[TOKEN_ENVIRONMENT], encoding="ascii")
+                    token_file.chmod(0o600)
+                    fixture = sustainability_case or ROOT.parent / (
+                        "third-party-services/groundwater-sustainability-service"
+                        "/examples/sustainability_task_request.json"
+                    )
+                    evidence = transfer_evidence / "sustainability" if sustainability_case and transfer_evidence else None
+                    result = gateway_probe(base_url, token_file, fixture, evidence)
+                    if evidence is not None:
+                        (evidence / "result.json").write_text(
+                            json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8",
+                        )
+                    print(json.dumps(result, ensure_ascii=False))
+                    return
                 if reply_quality is not None:
                     run_reply_quality(
                         base_url=base_url,
@@ -387,6 +468,16 @@ def _run_groundwater_product(
                     return
                 if webui_only:
                     run_browser(base_url, ROOT, browser_report)
+                    return
+                if native_real_cases is not None:
+                    from tests.e2e.groundwater.native_real import run_suite as run_native_cases
+
+                    reports = run_native_cases(
+                        base_url, ROOT, native_real_cases,
+                        transfer_evidence or validation_cache_root(ROOT) / "native-real-evidence",
+                        command,
+                    )
+                    assert all(report["status"] == "PASS" for report in reports), "NATIVE_REAL_CASES_FAILED"
                     return
                 # The transfer fixture has optional scientific dependencies and
                 # is not needed to compile the product or validate bootstrap
@@ -476,6 +567,8 @@ def _run_groundwater_product(
                         "executor-control",
                         "executor-native-worker",
                         "executor-qgis-worker",
+                        "executor-remote_http-worker",
+                        *(["porous-backend", "porous-tls"] if porous is not None else []),
                     ],
                     check=False,
                 )

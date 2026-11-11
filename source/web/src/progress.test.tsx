@@ -1,8 +1,10 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import App from './App';
-import { activityFixture, capabilitiesFixture, dataRef, historyFixture, messageReceiptFixture, sessionResponseFixture, sessionResultsFixture, taskFixture, type HistoryFixture } from './test-fixtures';
+import { activityFixture, capabilitiesFixture, dataRef, historyFixture, messageReceiptFixture, replyFixture, sessionResponseFixture, sessionResultsFixture, taskFixture, type HistoryFixture } from './test-fixtures';
 import { identityStorageScope, scopedStorageKey } from './browser-scope';
+import type { Confirmation } from './types';
+import kernelSessionEvents from './fixtures/kernel-session-events.json';
 
 const storageScope = identityStorageScope('groundwater', 'demo', 'test-user');
 
@@ -33,6 +35,163 @@ function basics(url: string) {
   if (url.includes('/results')) return json(sessionResultsFixture());
   throw new Error(`unexpected endpoint ${url}`);
 }
+
+// Kernel streams persisted event_type verbatim (session_streams.py), including
+// underscores; JSON field camel-casing does not rename an SSE event.
+it('subscribes to the complete persisted Kernel session event inventory', async () => {
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => url.endsWith('/messages') ? json(snapshot()) : basics(url)));
+  render(<App />);
+  await screen.findByText('分析这些资料');
+  expect([...Events.instances[0].listeners.keys()]).toEqual(expect.arrayContaining(kernelSessionEvents.events));
+});
+
+it.each([
+  'agent.plan_recorded', 'workflow.stage_changed', 'workflow.communication_changed',
+  'workflow.retry_queued', 'confirmation.recovery_created',
+  'workflow.recovery_completed', 'workflow.recovery_failed',
+  'task.preparation_revised', 'session.metadata_updated',
+])('refreshes the visible task after the Kernel wire event %s', async type => {
+  let cursor = 10;
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => url.endsWith('/messages')
+    ? json(snapshot({ eventCursor: cursor, turns: [{ reply: replyFixture(cursor === 10 ? '等待状态更新' : '已读取新的任务状态') }] }))
+    : basics(url)));
+  render(<App />);
+  await screen.findByText('等待状态更新');
+  cursor = 11;
+  act(() => Events.instances[0].emit(type, cursor));
+  await screen.findByText('已读取新的任务状态');
+});
+
+it.each(['workflow.timed_out', 'job.timed_out', 'workflow.retry_queued', 'workflow.recovery_completed', 'workflow.recovery_failed'])(
+  'reconciles authoritative attempt results after %s', async type => {
+    let cursor = 10, resultReads = 0;
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url.endsWith('/messages')) return json(snapshot({ eventCursor: cursor }));
+      if (url.includes('/results')) { resultReads++; return json(sessionResultsFixture()); }
+      return basics(url);
+    }));
+    render(<App />);
+    await waitFor(() => expect(resultReads).toBe(1));
+    cursor = 11;
+    act(() => Events.instances[0].emit(type, cursor));
+    await waitFor(() => expect(resultReads).toBe(2));
+  },
+);
+
+it('ignores a late stop failure after another session has its own stop in flight', async () => {
+  const firstStop = delayed(), secondStop = delayed();
+  vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+    if (init?.method === 'POST' && url.endsWith('/stop')) return url.includes('/session-1/') ? firstStop.promise : secondStop.promise;
+    if (url.endsWith('/messages')) return json(snapshot({ sessionId: url.includes('/session-1/') ? 'session-1' : 'session-2', turns: [{ status: 'RUNNING' }] }));
+    return basics(url);
+  }));
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: '停止当前处理' }));
+  await navigate('session-2');
+  fireEvent.click(await screen.findByRole('button', { name: '停止当前处理' }));
+  expect(screen.getByRole('button', { name: '正在请求停止…' })).toBeDisabled();
+  await act(async () => firstStop.finish(new Response(JSON.stringify({ code: 'STOP_OLD_SESSION_FAILED' }), { status: 503 })));
+  expect(screen.getByRole('button', { name: '正在请求停止…' })).toBeDisabled();
+  expect(screen.queryByText('STOP_OLD_SESSION_FAILED')).not.toBeInTheDocument();
+  await act(async () => secondStop.finish(json({ sessionId: 'session-2', agentRunId: 'agent-1', requestId: 'stop-2', status: 'REQUESTED' })));
+});
+
+const editableConfirmation = (id: string): Confirmation => ({
+  confirmationId: id, goalRevision: 1, status: 'PENDING', agentRunId: 'agent-1',
+  reason: '', decision: null, decisionState: null,
+  actions: [{ toolCallId: 'summary', tool: 'run_summary', modelId: 'groundwater.summary', modelVersion: '1.0.0',
+    workflowId: 'summary', workflowVersion: '1.0.0', arguments: { axis: 'columns' } }],
+});
+
+it('does not close another session parameter editor when a previous revision finishes', async () => {
+  const revision = delayed();
+  let posts = 0;
+  const capabilities = capabilitiesFixture();
+  capabilities.models.find(item => item.modelId === 'groundwater.summary')!.inputSchema = { type: 'object', properties: { axis: { type: 'string' } } };
+  vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+    if (init?.method === 'POST' && url.endsWith('/revisions')) { posts++; return revision.promise; }
+    if (url.endsWith('/capabilities')) return json(capabilities);
+    if (url.endsWith('/messages')) return json(snapshot({ sessionId: url.includes('/session-1/') ? 'session-1' : 'session-2', turns: [{ status: 'WAITING_CONFIRMATION', confirmations: [editableConfirmation(url.includes('/session-1/') ? 'first' : 'second')] }] }));
+    return basics(url);
+  }));
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: '编辑参数' }));
+  fireEvent.change(await screen.findByDisplayValue('columns'), { target: { value: 'rows' } });
+  fireEvent.click(screen.getByRole('button', { name: '保存为新修订' }));
+  await waitFor(() => expect(posts).toBe(1));
+  await navigate('session-2');
+  fireEvent.click(await screen.findByRole('button', { name: '编辑参数' }));
+  fireEvent.change(await screen.findByDisplayValue('columns'), { target: { value: '第二个会话的未保存修改' } });
+  await act(async () => { revision.finish(json(sessionResponseFixture())); await vi.dynamicImportSettled(); });
+  expect(screen.getByTestId('confirmation-editor')).toBeInTheDocument();
+  expect(screen.getByDisplayValue('第二个会话的未保存修改')).toBeVisible();
+});
+
+it('keeps stop disabled while the server is processing the durable control request', async () => {
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => url.endsWith('/messages')
+    ? json(snapshot({ turns: [{ status: 'RUNNING' }], controlRequests: [{ requestId: 'stop-1', agentRunId: 'agent-1', status: 'PROCESSING' }] }))
+    : basics(url)));
+  render(<App />);
+  expect(await screen.findByRole('button', { name: '正在请求停止…' })).toBeDisabled();
+});
+
+it('retains a correction after stop failure and sends it once only after the stop is acknowledged', async () => {
+  const stopIds: string[] = [];
+  const messages: Record<string, unknown>[] = [];
+  let stopped = false;
+  vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+    if (init?.method === 'POST') {
+      const body = JSON.parse(String(init.body));
+      if (url.endsWith('/stop')) {
+        stopIds.push(body.requestId);
+        if (stopIds.length === 1) return new Response(JSON.stringify({ code: 'SERVICE_UNAVAILABLE' }), { status: 503 });
+        stopped = true;
+        return json({ sessionId: 'session-1', agentRunId: 'agent-1', requestId: body.requestId, status: 'REQUESTED' });
+      }
+      if (url.endsWith('/messages')) { messages.push(body); return json(messageReceiptFixture({ requestId: body.requestId })); }
+    }
+    if (url.endsWith('/messages')) return json(snapshot({ turns: [{ status: stopped ? 'CANCELLED' : 'RUNNING' }],
+      controlRequests: stopped ? [{ agentRunId: 'agent-1', requestId: stopIds[0], status: 'COMPLETE' }] : [] }));
+    return basics(url);
+  }));
+  render(<App />);
+  await screen.findByText('分析这些资料');
+  act(() => Events.instances[0].onopen?.());
+  fireEvent.change(screen.getByRole('textbox', { name: '消息输入框' }), { target: { value: '调整为最近一年的资料' } });
+  fireEvent.click(screen.getByRole('button', { name: '停止后按输入内容纠正' }));
+  await screen.findByRole('alert');
+  expect(messages).toHaveLength(0);
+  expect(screen.getByRole('textbox', { name: '排队消息 1' })).toHaveValue('调整为最近一年的资料');
+  fireEvent.click(await screen.findByRole('button', { name: '停止当前处理' }));
+  await waitFor(() => expect(messages).toHaveLength(1));
+  expect(stopIds).toHaveLength(2);
+  expect(stopIds[1]).toBe(stopIds[0]);
+  expect(messages[0]).toMatchObject({ message: '调整为最近一年的资料', correctsAgentRunId: 'agent-1', requestedMode: 'AUTO' });
+  await waitFor(() => expect(screen.queryByRole('textbox', { name: '排队消息 1' })).not.toBeInTheDocument());
+});
+
+it('submits a confirmation once during repeated activation and permits an explicit retry after failure', async () => {
+  const pending = delayed();
+  let posts = 0, confirmed = false;
+  vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+    if (init?.method === 'POST' && url.endsWith('/confirm')) {
+      posts++;
+      if (posts === 1) return pending.promise;
+      confirmed = true; return json(sessionResponseFixture());
+    }
+    if (url.endsWith('/messages')) return json(snapshot({ turns: [{ status: confirmed ? 'WAITING_EXECUTION' : 'WAITING_CONFIRMATION',
+      confirmations: [{ ...editableConfirmation('pending'), status: confirmed ? 'CONFIRMED' : 'PENDING' }] }] }));
+    return basics(url);
+  }));
+  render(<App />);
+  const confirm = await screen.findByRole('button', { name: '确认执行' });
+  fireEvent.click(confirm); fireEvent.click(confirm);
+  await waitFor(() => expect(posts).toBe(1));
+  await act(async () => pending.finish(new Response(JSON.stringify({ code: 'SERVICE_UNAVAILABLE' }), { status: 503 })));
+  fireEvent.click(await screen.findByRole('button', { name: '确认执行' }));
+  await waitFor(() => expect(posts).toBe(2));
+  await waitFor(() => expect(screen.queryByRole('button', { name: '确认执行' })).not.toBeInTheDocument());
+});
 
 it('installs history before SSE and slow details, and coalesces covered metadata events without extra GETs', async () => {
   const first = delayed(), next = delayed();
@@ -211,7 +370,7 @@ it('an older page cannot advance the stream cursor or current revision, even whe
   fireEvent.click(screen.getByRole('button', { name: '更早消息' }));
   await screen.findByText('旧问题');
   fireEvent.change(screen.getByRole('textbox'), { target: { value: '尚未发送' } });
-  expect(screen.getByRole('button', { name: '发送消息' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: /发送消息/ })).toBeDisabled();
   expect(Events.instances).toHaveLength(1);
   act(() => Events.instances[0].emit('agent.activity', 11));
   await waitFor(() => expect(reads).toBe(2));
@@ -245,7 +404,7 @@ it('scopes submission blocking to its view and cannot clear another view’s new
   expect(screen.getByRole('button', { name: '发送消息' })).toBeEnabled();
   fireEvent.click(screen.getByRole('button', { name: '发送消息' }));
   await act(async () => firstPost.finish(json(messageReceiptFixture())));
-  expect(screen.getByRole('button', { name: '发送消息' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: /发送消息/ })).toBeDisabled();
   expect(screen.getByRole('textbox')).toHaveValue('会话B的问题');
   await act(async () => secondPost.finish(json(messageReceiptFixture({ sessionId: 'second' }))));
   await waitFor(() => expect(screen.getByRole('textbox')).toHaveValue(''));
@@ -270,7 +429,7 @@ it('keeps submission blocking through first-session creation and exposes creatio
   fireEvent.click(screen.getByRole('button', { name: '发送消息' }));
   await waitFor(() => expect(Events.instances).toHaveLength(1));
   expect(Events.instances[0].url).toContain('/sessions/created/events');
-  expect(screen.getByRole('button', { name: '发送消息' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: /发送消息/ })).toBeDisabled();
   expect(screen.getByText('正在提交消息 · 草稿会保留')).toBeVisible();
   await act(async () => post.finish(json(messageReceiptFixture({ sessionId: 'created' }))));
   await waitFor(() => expect(screen.getByRole('textbox')).toHaveValue(''));

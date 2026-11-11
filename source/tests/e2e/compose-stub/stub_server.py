@@ -414,7 +414,8 @@ def next_action(items: list[dict], tool_names: set[str]) -> tuple[str | None, di
             "unresolved_items": unresolved,
         }
 
-    if {"retrieve_evidence", "read_evidence"} & (tool_names | set(results)) and (
+    execution = re.search(r"\[Model execution\]\s*(\{.*\})", plain_text, re.DOTALL)
+    if execution is None and {"retrieve_evidence", "read_evidence"} & (tool_names | set(results)) and (
         "知识" in plain_text or "evidence" in plain_text.lower()
     ):
         with EVIDENCE_LOCK:
@@ -485,13 +486,13 @@ def next_action(items: list[dict], tool_names: set[str]) -> tuple[str | None, di
         return finish("已根据本轮完整读取的证据说明。", [])
 
     if (
-        "腰站堡" in plain_text
+        execution is None
+        and "腰站堡" in plain_text
         and any(word in plain_text for word in ("迁移学习", "工作流", "案例"))
         and "run_transfer_learning_analysis" in (tool_names | set(results))
     ):
         return _yaozhanbao_transfer_action(results, result_events, finish)
 
-    execution = re.search(r"\[Model execution\]\s*(\{.*\})", plain_text, re.DOTALL)
     if execution:
         requested = json.loads(execution[1])
         tool = requested["tool"]

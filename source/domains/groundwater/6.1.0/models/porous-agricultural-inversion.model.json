@@ -1,0 +1,122 @@
+{
+  "schemaVersion": "executable-model.v6",
+  "modelId": "groundwater.porous-agricultural-inversion",
+  "version": "1.0.0",
+  "workflowRef": {
+    "workflowId": "groundwater.porous-agricultural-inversion",
+    "version": "1.0.0",
+    "checksum": "sha256:cae8e3363a0e2ca1a48b41d504726ec3db72cc0280e2a7c8b8b106357c2f2b79"
+  },
+  "tool": {
+    "name": "run_porous_agri_inversion",
+    "description": "以明确的农业抽水记录和监测水头计算响应矩阵，分期率定并独立验证。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "agriculturalDataVersionId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "agriculturalDataVersionId"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "inputBindings": {
+    "agricultural_data": "agriculturalDataVersionId"
+  },
+  "fieldRequirements": [],
+  "semanticRequirements": [],
+  "defaultParameters": {},
+  "parameterBindings": {},
+  "deadlineSeconds": 7200,
+  "maxParallelNodes": 1,
+  "finalOutputs": [
+    "porous-agricultural-arrays",
+    "porous-agricultural-metrics",
+    "porous-agricultural-report",
+    "porous-agricultural-inversion-receipt"
+  ],
+  "executionService": "executor",
+  "executorId": "workflow-dag",
+  "outputPublications": {
+    "porous-agricultural-arrays": {
+      "title": "基准、线性估计和重算水头",
+      "format": "npy",
+      "mediaType": "application/x-npy",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "基准、线性估计和重算水头",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    },
+    "porous-agricultural-metrics": {
+      "title": "农业抽水反演指标",
+      "format": "json",
+      "mediaType": "application/json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "农业抽水反演指标",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    },
+    "porous-agricultural-report": {
+      "title": "农业反演分组及报告",
+      "format": "zip",
+      "mediaType": "application/zip",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "农业反演分组及报告",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    },
+    "porous-agricultural-inversion-receipt": {
+      "title": "运行凭据",
+      "format": "json",
+      "mediaType": "application/json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "运行凭据",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    }
+  }
+}

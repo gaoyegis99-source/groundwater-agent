@@ -7,8 +7,8 @@ from pathlib import Path
 import sqlite3
 from uuid import uuid4
 
-from ...database import append_event, connect_database, utc_now
-from ...errors import ResourceNotFoundError, WorkflowDefinitionUnavailableError
+from ...database import append_event, begin_immediate, connect_database, utc_now
+from ...errors import ResourceNotFoundError, WorkflowDefinitionUnavailableError, WriteLockUnavailableError
 from ...settings import ExecutableModelDefinition, ServiceBinding
 from ...application.query_dtos import ConfirmedAction
 from ..models import DispatchWork, WorkflowRun
@@ -247,10 +247,13 @@ def recover_dispatches(database: Path) -> None:
         )
 
 
-def claim_dispatch_batch(database: Path, limit: int) -> tuple[DispatchWork, ...]:
+def claim_dispatch_batch(
+    database: Path, limit: int, *, wait: bool = True
+) -> tuple[DispatchWork, ...]:
     now = utc_now()
     with connect_database(database) as connection:
-        connection.execute("BEGIN IMMEDIATE")
+        if not begin_immediate(connection, wait=wait):
+            raise WriteLockUnavailableError("KERNEL_WRITE_BUSY")
         rows = connection.execute(
             """SELECT d.*, w.project_id FROM workflow_dispatches d
                JOIN workflow_runs w ON w.run_id = d.workflow_run_id

@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib
 import json
 
+import pytest
+
 from fastapi.testclient import TestClient
 
 from app.config import Settings
@@ -137,3 +139,31 @@ def test_running_cancel_does_not_claim_remote_termination(client):
     assert response.status_code == 200
     assert response.json()["cancellation_accepted"] is False
     assert response.json()["remote_termination_confirmed"] is False
+
+
+@pytest.mark.parametrize("value,error_type", [(None, "missing"), (0, "greater_than"), (-1, "greater_than"), ("invalid", "float_parsing")])
+def test_uploaded_demand_returns_field_error_without_creating_task(client, value, error_type):
+    document = sustainability_payload()
+    if value is None:
+        document.pop("demand_qg")
+    else:
+        document["demand_qg"] = value
+    artifact = upload_json(client, document)
+    response = client.post("/api/v1/operations", json={
+        "operationType": "sustainability.evaluate",
+        "clientRequestId": "invalid-demand",
+        "inputs": {"assessment_input": {name: artifact[name] for name in
+                   ("artifactId", "mediaType", "format", "sizeBytes", "sha256")}},
+        "parameters": {},
+    })
+    assert response.status_code == 422
+    error = response.json()["error"]
+    assert error["code"] == "REQUEST_VALIDATION_ERROR"
+    assert error["details"] == [{
+        "location": ["body", "assessment_input", "demand_qg"],
+        "message": {"missing": "Field required", "greater_than": "Input should be greater than 0",
+                    "float_parsing": "Input should be a valid number, unable to parse string as a number"}[error_type],
+        "type": error_type,
+    }]
+    assert error["request_id"] == response.headers["X-Request-ID"]
+    assert client.get("/api/v1/operations/by-client-request/invalid-demand").status_code == 404

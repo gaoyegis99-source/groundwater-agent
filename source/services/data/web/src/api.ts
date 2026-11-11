@@ -60,6 +60,7 @@ export type DatasetProfile = {
 };
 export type Version = Omit<Schema["VersionResponse"], "descriptor"> & {
   descriptor: {
+    policy?: "FILE_ONLY" | "FILE_QUERYABLE" | "FILE_AND_METRICS";
     fields: FieldDescriptor[];
     rowCount: number | null;
     quality: unknown;

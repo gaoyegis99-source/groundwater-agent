@@ -12,6 +12,7 @@ import random
 import signal
 import sys
 import time
+from urllib.parse import quote
 
 import httpx
 from platform_protocol_contracts import (
@@ -31,6 +32,10 @@ from .remote_http import RemoteOperationError, execute_remote_operation
 
 LOG_TAIL_BYTES = 64 * 1024
 LOGGER = logging.getLogger(__name__)
+
+
+class _RemoteLeaseStale(asyncio.CancelledError):
+    """Control fenced this attempt; the Worker itself remains usable."""
 
 
 async def _stream_tail(stream: asyncio.StreamReader) -> bytes:
@@ -76,6 +81,8 @@ class LeaseAttempt:
                 for task in (self.execution, self.heartbeat):
                     with suppress(asyncio.CancelledError):
                         await task
+        except _RemoteLeaseStale:
+            return
         except FileNotFoundError as error:
             await self._accept_only_if_stale(error)
 
@@ -231,6 +238,8 @@ class Worker:
                     self.config,
                     lease,
                     lambda state: self._persist_remote_state(lease, state),
+                    worker_stopping=self.stop.is_set,
+                    cancellation_required=lambda: self._remote_cancellation_required(lease),
                 )
             except RemoteOperationError as error:
                 await self._fail(
@@ -385,8 +394,27 @@ class Worker:
             {"leaseToken": lease["leaseToken"], "remoteState": state},
         )
         if response.status_code == 409 and response.json().get("code") == "LEASE_STALE":
-            raise asyncio.CancelledError
+            raise _RemoteLeaseStale
         response.raise_for_status()
+
+    async def _remote_cancellation_required(self, lease: dict) -> bool:
+        # An expired lease may already belong to a recovered attempt. Only the
+        # durable Job state can authorize cancelling their shared remote task.
+        try:
+            response = await self.client.get(
+                f"{self.control_url}/internal/execution/v6/jobs/{quote(lease['jobId'], safe='')}",
+                timeout=httpx.Timeout(5.0),
+                headers=inject_trace_headers(),
+            )
+            response.raise_for_status()
+            state = response.json()
+        except (httpx.HTTPError, ValueError):
+            return False
+        return (
+            isinstance(state, dict)
+            and state.get("jobId") == lease["jobId"]
+            and state.get("status") in {"CANCELLED", "TIMED_OUT", "FAILED"}
+        )
 
     async def _fail(
         self,
@@ -422,17 +450,29 @@ class Worker:
                     if path.endswith(("nodes:claim", ":complete"))
                     else httpx.Timeout(30.0)
                 )
-                return await self.client.post(
+                response = await self.client.post(
                     f"{self.control_url}{path}",
                     json=payload,
                     timeout=timeout,
                     headers=inject_trace_headers(),
                 )
-            except httpx.TransportError:
+                if (
+                    response.status_code != 503
+                    or "json" not in response.headers.get("content-type", "")
+                ):
+                    return response
                 try:
-                    await asyncio.wait_for(self.stop.wait(), timeout=1)
-                except TimeoutError:
-                    pass
+                    problem = response.json()
+                except ValueError:
+                    return response
+                if not isinstance(problem, dict) or problem.get("code") != "EXECUTOR_DATABASE_BUSY":
+                    return response
+            except httpx.TransportError:
+                pass
+            try:
+                await asyncio.wait_for(self.stop.wait(), timeout=1)
+            except TimeoutError:
+                pass
         raise asyncio.CancelledError
 
 

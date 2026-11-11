@@ -16,7 +16,7 @@ from platform_kernel.agent_runtime.sdk_execution.usage_ports import CallbackActi
 def test_capacity_wait_survives_restart_with_original_request_and_mode(kernel_settings, mode):
     async def exercise():
         settings = kernel_settings()
-        saturated, queued = asyncio.Event(), asyncio.Event()
+        entered, queued = asyncio.Event(), asyncio.Event()
         active = 0
         peak = 0
 
@@ -24,8 +24,7 @@ def test_capacity_wait_survives_restart_with_original_request_and_mode(kernel_se
             nonlocal active, peak
             active += 1
             peak = max(peak, active)
-            if active == 8:
-                saturated.set()
+            entered.set()
             try:
                 await asyncio.Event().wait()
             finally:
@@ -47,11 +46,18 @@ def test_capacity_wait_survives_restart_with_original_request_and_mode(kernel_se
             activity_log=CallbackActivityLog(record),
         )
         policy = "EXECUTION_PROPOSAL" if mode == "DIALOGUE" else "READ_ONLY"
-        tasks = [asyncio.create_task(first.interaction.turn(
-            item, "hold", dialogue_policy=policy,
-        )) for item in sessions[:-1]]
+        tasks = []
         try:
-            await asyncio.wait_for(saturated.wait(), 2)
+            # Establish eight live holders before exercising capacity recovery;
+            # This synchronizes fixture startup, not a latency assertion. Allow
+            # headroom when the complete suite shares a busy development host.
+            for item in sessions[:-1]:
+                entered.clear()
+                tasks.append(asyncio.create_task(first.interaction.turn(
+                    item, "hold", dialogue_policy=policy,
+                )))
+                await asyncio.wait_for(entered.wait(), 10)
+            assert active == peak == 8
             if mode == "DIALOGUE":
                 task = asyncio.create_task(first.interaction.turn(
                     session_id, "pending question", dialogue_policy=policy,
@@ -60,7 +66,7 @@ def test_capacity_wait_survives_restart_with_original_request_and_mode(kernel_se
                 first.interaction.draft_workflow(session_id, "durable-request", "pending question")
                 task = asyncio.create_task(first.interaction.resume_pending_start(session_id))
             tasks.append(task)
-            await asyncio.wait_for(queued.wait(), 2)
+            await asyncio.wait_for(queued.wait(), 10)
             assert len(first_model.calls) == peak == 8
             with connect_database(first.database) as connection:
                 row = connection.execute("SELECT * FROM sessions WHERE session_id=?", (session_id,)).fetchone()

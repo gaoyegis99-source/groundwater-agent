@@ -403,3 +403,72 @@ def test_cancel_records_unconfirmed_remote_termination(
 
     assert runner.state["remoteTerminationConfirmed"] is False
     assert states[-1]["remoteTerminationConfirmed"] is False
+
+
+def test_worker_shutdown_leaves_submitted_operation_for_recovery(tmp_path, monkeypatch):
+    def handler(request):
+        raise AssertionError(f"shutdown sent an unexpected remote request {request.url.path}")
+
+    runner, states = _runner(tmp_path, monkeypatch, handler)
+    runner.state["remoteTaskId"] = "operation-1"
+
+    async def interrupted(_client):
+        raise asyncio.CancelledError
+
+    monkeypatch.setattr(runner, "_run", interrupted)
+    with pytest.raises(asyncio.CancelledError):
+        asyncio.run(runner.run(worker_stopping=lambda: True))
+    assert runner.state["remoteTaskId"] == "operation-1"
+    assert not states
+
+
+def test_accepted_cancellation_reconciles_terminal_state(tmp_path, monkeypatch):
+    def handler(request):
+        if request.method == "POST":
+            assert request.url.path.endswith("/operation-1/cancel")
+            return httpx.Response(200, json={
+                "status": "running", "cancellationAccepted": True,
+                "remoteTerminationConfirmed": False,
+            })
+        assert request.url.path.endswith("/operation-1")
+        return httpx.Response(200, json={"status": "cancelled"})
+
+    runner, states = _runner(tmp_path, monkeypatch, handler)
+    runner.state["remoteTaskId"] = "operation-1"
+
+    async def cancel():
+        async with runner._client() as client:
+            await runner._cancel_safely(client)
+
+    asyncio.run(cancel())
+    assert states[-1]["remoteStatus"] == "cancelled"
+    assert states[-1]["remoteTerminationConfirmed"] is True
+
+
+def test_invalid_uploaded_field_is_reported_without_reconciliation(tmp_path, monkeypatch):
+    normal, requests = _successful_handler(b"{}")
+    def handler(request):
+        if request.method == "POST" and request.url.path == "/api/v1/operations":
+            requests.append(request)
+            return httpx.Response(422, json={"error": {
+                "code": "REQUEST_VALIDATION_ERROR", "message": "private-value",
+                "details": [{"location": ["body", "assessment_input", "demand_qg"],
+                             "type": "missing", "message": "private-value", "input": "private-value"}],
+            }})
+        return normal(request)
+    runner, _ = _runner(tmp_path, monkeypatch, handler)
+    with pytest.raises(RemoteOperationError) as raised:
+        asyncio.run(runner.run())
+    assert raised.value.code == "REMOTE_INPUT_VALIDATION_FAILED"
+    assert str(raised.value) == "REMOTE_INPUT_VALIDATION_FAILED: body.assessment_input.demand_qg (missing)"
+    assert sum("by-client-request" in r.url.path for r in requests) == 1
+    assert not list((tmp_path / "workspace/outputs").iterdir())
+
+
+@pytest.mark.parametrize("body", ["not json", "[]", '{"error":null}',
+    '{"error":{"code":"REQUEST_VALIDATION_ERROR","details":[{"location":["secret\\nvalue"],"type":"missing"}]}}'])
+def test_invalid_remote_field_error_is_not_forwarded(tmp_path, monkeypatch, body):
+    runner, _ = _runner(tmp_path, monkeypatch, lambda request: httpx.Response(200))
+    with pytest.raises(RemoteOperationError) as raised:
+        runner._check_response(httpx.Response(422, content=body), {202})
+    assert str(raised.value) == "REMOTE_OPERATION_FAILED"

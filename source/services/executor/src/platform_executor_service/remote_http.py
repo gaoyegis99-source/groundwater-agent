@@ -24,8 +24,8 @@ _TERMINAL = {"succeeded", "failed", "cancelled", "interrupted"}
 
 
 class RemoteOperationError(Exception):
-    def __init__(self, code: str, state: dict | None = None) -> None:
-        super().__init__(code)
+    def __init__(self, code: str, state: dict | None = None, *, message: str | None = None) -> None:
+        super().__init__(message or code)
         self.code = code
         self.state = state
 
@@ -132,7 +132,10 @@ class RemoteOperationRunner:
             trust_env=False,
         )
 
-    async def run(self) -> RemoteExecutionResult:
+    async def run(
+        self, *, worker_stopping: Callable[[], bool] | None = None,
+        cancellation_required: Callable[[], Awaitable[bool]] | None = None,
+    ) -> RemoteExecutionResult:
         client = self._client()
         try:
             try:
@@ -142,7 +145,10 @@ class RemoteOperationRunner:
                 await self._cancel_safely(client)
                 raise RemoteOperationError("OPERATOR_TIMEOUT", self.state) from error
             except asyncio.CancelledError:
-                await asyncio.shield(self._cancel_safely(client))
+                if (worker_stopping is None or not worker_stopping()) and (
+                    cancellation_required is None or await cancellation_required()
+                ):
+                    await asyncio.shield(self._cancel_safely(client))
                 raise
         finally:
             await client.aclose()
@@ -551,6 +557,15 @@ class RemoteOperationRunner:
                 expected={200, 202},
             )
             confirmed = bool(result.get("remoteTerminationConfirmed", False))
+            if result.get("cancellationAccepted") is True and not confirmed:
+                for _ in range(3):
+                    await asyncio.sleep(0.25)
+                    result = await self._get_json(
+                        client, f"/api/v1/operations/{quote(operation_id, safe='')}"
+                    )
+                    if result.get("status") in _TERMINAL:
+                        confirmed = True
+                        break
             self.state.update(
                 remoteStatus=result.get("status", "cancellation-requested"),
                 lastPolledAt=_now(),
@@ -599,6 +614,30 @@ class RemoteOperationRunner:
             raise RemoteOperationError("REMOTE_PROTOCOL_INVALID", self.state)
         if response.status_code in {401, 403}:
             raise RemoteOperationError("REMOTE_AUTHENTICATION_FAILED", self.state)
+        if response.status_code == 422:
+            # Surface field names and validation types, never arbitrary remote
+            # messages or rejected input values in persisted worker logs.
+            try:
+                error = response.json().get("error", {})
+                details = error.get("details", [])
+                if error.get("code") == "REQUEST_VALIDATION_ERROR" and isinstance(details, list):
+                    fields = []
+                    for item in details[:20]:
+                        if not isinstance(item, dict):
+                            continue
+                        location, kind = item.get("location"), item.get("type")
+                        if (isinstance(location, list) and 1 <= len(location) <= 10
+                            and all(isinstance(part, str) and re.fullmatch(r"[a-zA-Z0-9_]{1,64}", part)
+                                    for part in location)
+                            and isinstance(kind, str) and re.fullmatch(r"[a-z_]{1,64}", kind)):
+                            fields.append(f"{'.'.join(location)} ({kind})")
+                    if fields:
+                        raise RemoteOperationError(
+                            "REMOTE_INPUT_VALIDATION_FAILED", self.state,
+                            message="REMOTE_INPUT_VALIDATION_FAILED: " + "; ".join(fields),
+                        )
+            except (ValueError, AttributeError):
+                pass
         if response.status_code not in expected:
             raise RemoteOperationError("REMOTE_OPERATION_FAILED", self.state)
 
@@ -613,6 +652,11 @@ class RemoteOperationRunner:
 
 
 async def execute_remote_operation(
-    config: dict, lease: dict, persist_state: PersistState
+    config: dict, lease: dict, persist_state: PersistState,
+    *, worker_stopping: Callable[[], bool] | None = None,
+    cancellation_required: Callable[[], Awaitable[bool]] | None = None,
 ) -> RemoteExecutionResult:
-    return await RemoteOperationRunner(config, lease, persist_state).run()
+    return await RemoteOperationRunner(config, lease, persist_state).run(
+        worker_stopping=worker_stopping,
+        cancellation_required=cancellation_required,
+    )

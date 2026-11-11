@@ -30,7 +30,8 @@ if rg -n 'AGENT_MODE\b|agent_mode\b|workflowExecution|WORKFLOW_STORAGE_MODE|MIRR
   exit 1
 fi
 
-if rg -n '\bshadow\b' "${current_roots[@]}" --glob '!**/docs/**' \
+# CSS box-shadow/text-shadow are presentation, not shadow runtime/state logic.
+if rg -n '\bshadow\b' "${current_roots[@]}" --glob '!**/docs/**' --glob '!**/*.css' \
   --glob '!services/data/deploy/seccomp.json'; then
   echo 'forbidden compatibility logic found' >&2
   exit 1

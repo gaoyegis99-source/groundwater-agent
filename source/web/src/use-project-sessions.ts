@@ -14,6 +14,8 @@ export function useProjectSessions(log: (entry: DebugEntry) => void) {
   const [sessionError, setSessionError] = useState<ApiError | null>(null);
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [sessionCursor, setSessionCursor] = useState<number | null>(null);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [updatingSessionId, setUpdatingSessionId] = useState<string | null>(null);
   const [sessionQuery, setSessionQueryState] = useState('');
   const [showArchived, setShowArchivedState] = useState(false);
   const queryRef = useRef('');
@@ -21,10 +23,17 @@ export function useProjectSessions(log: (entry: DebugEntry) => void) {
   const filtersMounted = useRef(false);
   const identityRef = useRef('');
   const requestedFilterRef = useRef('');
+  const requestSerial = useRef(0);
+  const updatePending = useRef(false);
 
   const loadSessions = useCallback(async (before: number | null = null) => {
     const filterKey = `${queryRef.current.trim()}\0${archivedRef.current}`;
+    const serial = ++requestSerial.current;
+    const identity = identityRef.current;
+    const isCurrent = () => serial === requestSerial.current && identity === identityRef.current
+      && filterKey === `${queryRef.current.trim()}\0${archivedRef.current}`;
     if (before === null) requestedFilterRef.current = filterKey;
+    setSessionsLoading(true);
     try {
       const query = new URLSearchParams();
       if (before !== null) query.set('cursor', String(before));
@@ -34,41 +43,60 @@ export function useProjectSessions(log: (entry: DebugEntry) => void) {
       const page = await callApi('kernel_list_sessions',
         `/sessions${suffix}`,
       );
-      setSessions(previous => before === null ? page.items : [...previous, ...page.items]);
+      if (!isCurrent()) return;
+      setSessions(previous => before === null ? page.items : [...previous, ...page.items.filter(item => !previous.some(existing => existing.sessionId === item.sessionId))]);
       setSessionCursor(page.nextCursor);
       setSessionError(null);
     } catch (caught) {
       if (!(caught instanceof ApiError)) throw caught;
+      if (!isCurrent()) return;
       if (before === null && requestedFilterRef.current === filterKey) {
         requestedFilterRef.current = '';
       }
       setSessionError(caught);
+    } finally {
+      if (isCurrent()) setSessionsLoading(false);
     }
   }, []);
 
   const setSessionQuery = useCallback((value: string) => {
+    if (value === queryRef.current) return;
+    requestSerial.current += 1;
     queryRef.current = value;
+    requestedFilterRef.current = '';
+    setSessionsLoading(!!identityRef.current);
     setSessionQueryState(value);
   }, []);
   const setShowArchived = useCallback((value: boolean) => {
+    if (value === archivedRef.current) return;
+    requestSerial.current += 1;
     archivedRef.current = value;
+    requestedFilterRef.current = '';
+    setSessionsLoading(!!identityRef.current);
     setShowArchivedState(value);
   }, []);
 
   const updateSession = useCallback(async (
     sessionId: string, update: { title?: string; archived?: boolean },
   ) => {
+    if (updatePending.current) throw new ApiError(409, 'SESSION_UPDATE_IN_PROGRESS');
+    updatePending.current = true;
+    setUpdatingSessionId(sessionId);
+    const identity = identityRef.current;
     try {
       await callApi(
         'kernel_update_session', `/sessions/${encodeURIComponent(sessionId)}`,
         update, undefined, undefined, 'patch',
       );
+      if (identity !== identityRef.current) return;
       await loadSessions();
-      setSessionError(null);
     } catch (caught) {
       if (!(caught instanceof ApiError)) throw caught;
-      setSessionError(caught);
+      if (identity === identityRef.current) setSessionError(caught);
       throw caught;
+    } finally {
+      updatePending.current = false;
+      setUpdatingSessionId(null);
     }
   }, [loadSessions]);
 
@@ -100,6 +128,7 @@ export function useProjectSessions(log: (entry: DebugEntry) => void) {
     window.addEventListener('hashchange', onHash);
     return () => {
       stop();
+      requestSerial.current += 1;
       window.removeEventListener('hashchange', onHash);
     };
   }, [connectProject, log]);
@@ -123,6 +152,8 @@ export function useProjectSessions(log: (entry: DebugEntry) => void) {
     clearSessionError: () => setSessionError(null),
     sessions,
     sessionCursor,
+    sessionsLoading,
+    updatingSessionId,
     sessionQuery,
     setSessionQuery,
     showArchived,

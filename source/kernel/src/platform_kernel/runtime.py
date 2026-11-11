@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections import deque
 from contextlib import aclosing
 from datetime import datetime, timezone
 
@@ -11,7 +12,7 @@ from .agent_runtime.case_resolver import (
 from .agent_runtime.owner import AgentRuntimeOwner
 from .agent_runtime.persistence.context import load_route_context_sources
 from .change_signal import CommitSignal
-from .errors import AgentRunError, UpstreamServiceError
+from .errors import AgentRunError, UpstreamServiceError, WriteLockUnavailableError
 from .interaction.control_intents import rule_intent
 from .interaction.owner import InteractionOwner
 from .intent_routing import (
@@ -53,6 +54,7 @@ class KernelRuntime:
         self._next_admission = "database"
         self._shutdown_grace_seconds = shutdown_grace_seconds
         self._next_trace_prune_at = 0.0
+        self._claimed_controls: deque[dict] = deque()
 
     async def start(self) -> None:
         await self.recover()
@@ -96,27 +98,32 @@ class KernelRuntime:
     async def _dispatch(self) -> None:
         while not self._stop.is_set():
             generation = self.commit_signal.generation
-            await self._process_controls()
-            self._tasks.reap()
-            if asyncio.get_running_loop().time() >= self._next_trace_prune_at:
-                self._prune_traces()
-            self._schedule_fair_work()
             processed_count = 0
-            async with aclosing(self.workflow_execution.tick()) as results:
-                async for result in results:
-                    processed_count += result.processed_count
-                    for agent_run_id in result.ready_agent_run_ids:
-                        if (
-                            not self._tasks.contains("resume", agent_run_id)
-                            and self.agent_runtime.reconcile_execution(agent_run_id)
-                        ):
-                            self._schedule_resume(agent_run_id)
-                        elif not self._tasks.contains("resume", agent_run_id):
-                            recovered = self.agent_runtime.finalize_recovery(
-                                agent_run_id
-                            )
-                            if recovered is not None:
-                                self.interaction.project(recovered)
+            try:
+                await self._process_controls()
+                self._tasks.reap()
+                if asyncio.get_running_loop().time() >= self._next_trace_prune_at:
+                    self._prune_traces()
+                self._schedule_fair_work()
+                async with aclosing(self.workflow_execution.tick()) as results:
+                    async for result in results:
+                        processed_count += result.processed_count
+                        for agent_run_id in result.ready_agent_run_ids:
+                            if (
+                                not self._tasks.contains("resume", agent_run_id)
+                                and self.agent_runtime.reconcile_execution(agent_run_id)
+                            ):
+                                self._schedule_resume(agent_run_id)
+                            elif not self._tasks.contains("resume", agent_run_id):
+                                recovered = self.agent_runtime.finalize_recovery(
+                                    agent_run_id
+                                )
+                                if recovered is not None:
+                                    self.interaction.project(recovered)
+            except WriteLockUnavailableError:
+                # Only a refused BEGIN reaches here. Leave durable queue state
+                # intact and yield before another poll; never replay a write.
+                pass
             if processed_count:
                 continue
             stop = asyncio.create_task(self._stop.wait())
@@ -135,10 +142,16 @@ class KernelRuntime:
     async def _process_controls(self) -> None:
         if self.controls is None:
             return
-        for control in self.controls.claim(limit=32):
+        if not self._claimed_controls:
+            self._claimed_controls.extend(self.controls.claim(limit=32))
+        while self._claimed_controls:
+            control = self._claimed_controls[0]
             target = control["agent_run_id"]
             deciding = self.controls.deciding(target)
-            self.controls.finalize(control)
+            finalized = self.controls.finalize(control)
+            self._claimed_controls.popleft()
+            if finalized is None:
+                continue
             if deciding:
                 await self._tasks.cancel("decision", "singleton")
             await self._tasks.cancel("route", target)

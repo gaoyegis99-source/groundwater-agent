@@ -1,8 +1,0 @@
-{
-  "authorizationId": "REPLACE-WITH-WRITTEN-AUTHORIZATION-ID",
-  "approvedBy": "REPLACE-WITH-NAME",
-  "approvedAt": "2026-01-01T00:00:00Z",
-  "scope": ["modify", "deploy"],
-  "sourceArchiveSha256": "037c93c8d057d75090f1587bec14e4254c41b854b5bdb33b1dc79f20227eb719",
-  "sourceTreeSha256": "REPLACE-WITH-64-LOWERCASE-HEX"
-}

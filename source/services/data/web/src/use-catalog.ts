@@ -183,6 +183,16 @@ export function useCatalog(_run: RunAction, active = true, governanceEnabled = t
     setUnit: setUnitDraft,
     sort,
     setSort: (value: DiscoverySort) => setUrlSort(value),
+    appliedFilterCount: [tag, format, fieldTerm, unit].filter(Boolean).length + (sort === "relevance" ? 0 : 1),
+    clearAdvancedFilters: () => {
+      setFieldTermDraft("");
+      setUnitDraft("");
+      setUrlTag("", "replace");
+      setUrlFormat("", "replace");
+      setUrlFieldTerm("", "replace");
+      setUrlUnit("", "replace");
+      setUrlSort("relevance", "replace");
+    },
     clearFilters: () => {
       setSearchDraft("");
       setFieldTermDraft("");
@@ -207,7 +217,25 @@ export function useCatalog(_run: RunAction, active = true, governanceEnabled = t
     historicalSemantic: historicalSemantic.data ?? null,
     loading: discovery.isLoading,
     loadingMore: discovery.isFetchingNextPage,
-    error: discovery.error ?? inventory.error ?? selectedQuery.error ?? governance.error ?? versions.error ?? semanticHistory.error ?? historicalSemantic.error ?? semanticMutation.error,
+    refreshing: discovery.isFetching && !discovery.isFetchingNextPage,
+    catalogError: discovery.error,
+    filterError: inventory.error,
+    selectedVersionId,
+    detailLoading: selectedQuery.isLoading,
+    detailRefreshing: selectedQuery.isFetching || governance.isFetching || versions.isFetching || semanticHistory.isFetching || historicalSemantic.isFetching,
+    detailError: selectedQuery.error ?? governance.error ?? versions.error ?? semanticHistory.error ?? historicalSemantic.error,
+    saveError: semanticMutation.error,
+    retryCatalog: async () => { await discovery.refetch(); },
+    retryFilters: async () => { await inventory.refetch(); },
+    retryDetail: async () => {
+      const retries: Promise<unknown>[] = [];
+      if (selectedQuery.error && selectedVersionId) retries.push(selectedQuery.refetch());
+      if (governance.error && selected) retries.push(governance.refetch());
+      if (versions.error && selected) retries.push(versions.refetch());
+      if (semanticHistory.error && selected) retries.push(semanticHistory.refetch());
+      if (historicalSemantic.error && selected && historicalSemanticId) retries.push(historicalSemantic.refetch());
+      await Promise.all(retries);
+    },
     load,
     inspect,
     loadHistory: async () => { await versions.fetchNextPage(); },

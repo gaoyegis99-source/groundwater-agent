@@ -238,7 +238,7 @@ export interface WorkflowValidationDiagnostics {
 }
 export interface WorkflowDraft {
   schemaVersion: 'workflow-draft-resource.v1'; draftId: string; sessionId: string;
-  goalRevision: number; agentRunId: string; status: 'GENERATING' | 'COMPLETE' | 'FAILED';
+  goalRevision: number; agentRunId: string; status: 'GENERATING' | 'COMPLETE' | 'FAILED' | 'CANCELLED' | 'SUPERSEDED';
   errorCode: string | null; payload: WorkflowDraftPayload | null;
   diagnostics: WorkflowValidationDiagnostics | null;
 }

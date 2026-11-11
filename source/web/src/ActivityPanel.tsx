@@ -48,7 +48,7 @@ export function ActivityPanel({ turn, snapshotAt, connected }: { turn: Turn; sna
   const recent = new Set(publicActivities.filter(item => !['QUEUED', 'RUNNING'].includes(item.status))
     .sort((a, b) => Date.parse(a.finishedAt!) - Date.parse(b.finishedAt!)).slice(-5).map(item => item.activityId));
   const activities = showAll ? publicActivities : publicActivities.filter(item => ['QUEUED', 'RUNNING'].includes(item.status) || recent.has(item.activityId));
-  const summary = needsAttention ? '处理未完成' : active ? '正在处理' : '已完成';
+  const summary = needsAttention ? '处理未完成' : active ? '正在处理' : statusLabel[turn.status] ?? turn.status;
   return <section className={`activity-panel ${active ? 'is-active' : 'is-terminal'}`} data-testid="activity-panel" data-agent-run-id={turn.agentRunId}>
     <button className="activity-toggle" aria-expanded={expanded} aria-controls={contentId} onClick={() => setDisclosure({ key: disclosureKey, expanded: !expanded })}>
       <span aria-hidden="true">{expanded ? '⌄' : '›'}</span><strong>{summary}</strong>

@@ -2182,7 +2182,8 @@
               "png",
               "pytorch-state-dict",
               "text",
-              "xlsx"
+              "xlsx",
+              "zip"
             ],
             "title": "Format",
             "type": "string"

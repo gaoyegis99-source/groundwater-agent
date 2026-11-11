@@ -93,7 +93,7 @@ def validate_catalog(operators: object, digest: str) -> dict[tuple[str, str], di
     """
     require_json(operators)
     validate(digest, DIGEST, "OPERATOR_CATALOG_DIGEST_INVALID")
-    if not isinstance(operators, list) or len(operators) != 109:
+    if not isinstance(operators, list) or len(operators) != 111:
         raise WorkflowValidationError("OPERATOR_CATALOG_SIZE_INVALID")
     result = {}
     for index, operator in enumerate(operators):

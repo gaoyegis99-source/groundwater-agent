@@ -190,8 +190,7 @@ export function OperationCenter({ enabled = true }: { enabled?: boolean }) {
         if (!response.ok) throw new Error(`HTTP_${response.status}`);
         return { service, items: decodeActivityPage(service, await response.json()), error: null };
       } catch (caught) {
-        // Closing the center aborts both requests. Treat that as lifecycle cleanup,
-        // not as an unhandled failed operation; the aborted result is discarded below.
+        // Unmounting aborts both requests; collapsing the details keeps polling active.
         if (caught instanceof DOMException && caught.name === "AbortError") {
           return { service, items: [], error: null };
         }
@@ -229,24 +228,30 @@ export function OperationCenter({ enabled = true }: { enabled?: boolean }) {
   const nextGuidance = next ? operatorActivityGuidance(next) : null;
   const unavailable = sources.filter(source => source.error).map(source => source.service);
   return (
-    <section className="operation-center" aria-labelledby="operation-center-title">
-      <header>
-        <span><strong id="operation-center-title">现在需要处理什么</strong><small>Data 与 Knowledge 的统一工作队列</small></span>
-        <span className={attention.length > 0 ? "operation-count active" : "operation-count"}>
-          {attention.length > 0 ? `${attention.length} 项待处理` : "暂无阻断项"}
+    <details className="operation-center">
+      <summary>
+        <strong>操作记录</strong>
+        <span className="operation-summary" aria-live="polite">
+          {loading && !updatedAt ? <span>正在读取…</span> : <>
+            {attention.length > 0 && <span className="status-warning">{attention.length} 项需处理</span>}
+            {inProgress.length > 0 && <span>{inProgress.length} 项进行中</span>}
+            {!attention.length && !inProgress.length && !unavailable.length && <span>暂无待处理</span>}
+            {unavailable.length > 0 && <span className="status-warning">{unavailable.map(value => value === "data" ? "Data" : "Knowledge").join("、")} 状态暂不可用</span>}
+          </>}
         </span>
-      </header>
+      </summary>
+      <div className="operation-body">
       <div className="operation-overview" aria-label="操作状态摘要">
-        <div className={attention.length > 0 ? "attention" : undefined}><strong>{attention.length}</strong><span>待处理</span><small>失败、警告或待确认</small></div>
-        <div><strong>{inProgress.length}</strong><span>进行中</span><small>运行、校验或重试</small></div>
-        <div><strong>{completed}</strong><span>近期完成</span><small>已发布或已记录</small></div>
+        <div className={attention.length > 0 ? "attention" : undefined}><strong>{attention.length}</strong><span>待处理</span></div>
+        <div><strong>{inProgress.length}</strong><span>进行中</span></div>
+        <div><strong>{completed}</strong><span>近期完成</span></div>
       </div>
       {next && nextGuidance && (
         <div className={`operation-next ${nextGuidance.category}`}>
           <span className={`operation-service ${next.service}`}>{next.service === "data" ? "Data" : "Knowledge"}</span>
           <div>
             <strong>下一步：{nextGuidance.summary}</strong>
-            <p>{nextGuidance.impact} {nextGuidance.action}</p>
+            <p>{nextGuidance.action}</p>
           </div>
           <a href={next.href}>打开处理</a>
         </div>
@@ -270,7 +275,7 @@ export function OperationCenter({ enabled = true }: { enabled?: boolean }) {
                   <span className={`operation-service ${item.service}`}>{item.service === "data" ? "Data" : "Knowledge"}</span>
                   <div>
                     <a href={item.href}>{guidance.summary}</a>
-                    <small>{guidance.impact} {guidance.action}</small>
+                    <small>{guidance.impact}</small>
                     <details className="operation-technical">
                       <summary>技术详情</summary>
                       <code>操作 ID {item.operationId}{errorCode ? ` · 错误码 ${errorCode}` : ""} · {item.subject} · {new Date(item.updatedAt).toLocaleString()}</code>
@@ -283,7 +288,8 @@ export function OperationCenter({ enabled = true }: { enabled?: boolean }) {
           </ol>
         </details>
       )}
-    </section>
+      </div>
+    </details>
   );
 }
 
@@ -291,21 +297,46 @@ export function WorkspaceHeader({ current }: { current: OperatorService }) {
   return (
     <header className="workspace-header">
       <a className="operator-brand" href={current === "data" ? "/data/" : "/knowledge/"}>
-        <span className="brand-mark" aria-hidden="true">GW</span>
-        <span><strong>Groundwater Operator</strong><small>运营与治理工作台</small></span>
+        管理工作台
       </a>
       <nav className="service-nav" aria-label="管理服务">
-        <a aria-current={current === "data" ? "page" : undefined} href="/data/"><span>数据管理</span><small>Data</small></a>
-        <a aria-current={current === "knowledge" ? "page" : undefined} href="/knowledge/"><span>知识管理</span><small>Knowledge</small></a>
+        <a aria-current={current === "data" ? "page" : undefined} href="/data/">数据</a>
+        <a aria-current={current === "knowledge" ? "page" : undefined} href="/knowledge/">知识</a>
       </nav>
     </header>
   );
 }
 
+export function SystemInformation({ service, currentUser, project, productId, writeEnabled, note }: {
+  service: OperatorService;
+  currentUser: { displayName: string; subject: string; roles: readonly string[] };
+  project: string;
+  productId: string;
+  writeEnabled: boolean;
+  note?: string;
+}) {
+  return <details className="system-information">
+    <summary>
+      <span>系统信息</span>
+      <span className="system-context">{currentUser.displayName} · {project}</span>
+      <span className="system-connection"><span className="status-dot" aria-hidden="true" />已连接{!writeEnabled && " · 只读"}</span>
+    </summary>
+    <dl className="environment-grid">
+      <div><dt>当前用户</dt><dd>{currentUser.displayName}</dd></div>
+      <div><dt>身份标识</dt><dd><code>{currentUser.subject}</code></dd></div>
+      <div><dt>角色</dt><dd>{currentUser.roles.join("、")}</dd></div>
+      <div><dt>项目 / 产品</dt><dd>{project} / {productId}</dd></div>
+      <div><dt>服务</dt><dd>{service === "data" ? "Data" : "Knowledge"} 服务已连接</dd></div>
+      <div><dt>写入状态</dt><dd>{writeEnabled ? "管理员写入已启用" : "只读部署"}</dd></div>
+    </dl>
+    {note && <p className="muted system-note">{note}</p>}
+  </details>;
+}
+
 export type TaskTab<Value extends string> = {
   id: Value;
   label: string;
-  description: string;
+  description?: string;
 };
 
 export function tabIds(prefix: string, value: string) {
@@ -359,7 +390,6 @@ export function TaskTabs<Value extends string>({
             onKeyDown={event => selectFromKeyboard(event, index)}
           >
             <span>{tab.label}</span>
-            <small>{tab.description}</small>
           </button>
         );
       })}

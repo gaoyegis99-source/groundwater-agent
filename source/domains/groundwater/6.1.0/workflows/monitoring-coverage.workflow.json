@@ -1,0 +1,86 @@
+{
+  "schemaVersion": "workflow.v6",
+  "workflowId": "groundwater.monitoring-coverage",
+  "version": "1.2.0",
+  "inputs": [
+    {
+      "name": "wells",
+      "cardinality": "one",
+      "mediaTypes": [
+        "application/geo+json"
+      ],
+      "formats": [
+        "geojson"
+      ]
+    }
+  ],
+  "parameters": [
+    "outputFormat",
+    "pointCoverageMode"
+  ],
+  "nodes": [
+    {
+      "nodeId": "dissolve",
+      "operatorId": "vector.dissolve",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "vector": {
+          "workflowInput": "wells"
+        }
+      },
+      "parameters": {
+        "pointCoverageMode": {
+          "workflowParameter": "pointCoverageMode"
+        }
+      }
+    },
+    {
+      "nodeId": "hull",
+      "operatorId": "vector.convex_hull",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "vector": {
+          "nodeOutput": {
+            "nodeId": "dissolve",
+            "port": "vector"
+          }
+        }
+      },
+      "parameters": {}
+    },
+    {
+      "nodeId": "geojson",
+      "operatorId": "data.convert",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "data": {
+          "nodeOutput": {
+            "nodeId": "hull",
+            "port": "vector"
+          }
+        }
+      },
+      "parameters": {
+        "outputFormat": {
+          "workflowParameter": "outputFormat"
+        }
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "name": "coverage",
+      "nodeOutput": {
+        "nodeId": "geojson",
+        "port": "data"
+      }
+    },
+    {
+      "name": "coverage-summary",
+      "nodeOutput": {
+        "nodeId": "dissolve",
+        "port": "summary"
+      }
+    }
+  ]
+}

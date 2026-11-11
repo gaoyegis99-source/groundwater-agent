@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "operator-smoke-test.v1",
+  "operator": {"id": "groundwater.source_sustainability.prepare", "version": "1.0.0"},
+  "inputs": {
+    "simulation": {"fixtureId": "transfer.fields"},
+    "monitoring": {"fixtureId": "transfer.fields"},
+    "management": {"fixtureId": "transfer.fields"}
+  },
+  "parameters": {},
+  "expectedOutputs": {
+    "assessment_input": {"kind": "artifact", "mediaType": "application/json", "format": "json"},
+    "field_sources": {"kind": "artifact", "mediaType": "application/json", "format": "json"}
+  }
+}

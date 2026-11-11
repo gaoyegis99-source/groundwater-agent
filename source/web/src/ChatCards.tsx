@@ -7,6 +7,7 @@ import { ResourceLink } from './ResourceLink';
 import { Icon } from './Icon';
 import type { Confirmation, ExecutionTask, History, ResourceReference, Result } from './types';
 import { productUi } from './product-ui';
+import { shortVersion } from './format';
 
 function confirmationProfile(confirmation: Confirmation, history: History | null) {
   const recorded = history?.turns.find(turn => turn.goalRevision === confirmation.goalRevision)
@@ -87,18 +88,25 @@ export function ConfirmationCard({ confirmation, history, busy, onDecision, onEd
   </section>;
 }
 
-export function ResultCard({ task, result, project, onResource, onAttach, onContinue, onCompare }: { task: ExecutionTask; result?: Result; project: string; onResource: (id: string) => void; onAttach?: (item: ResourceReference) => void; onContinue?: (item: ResourceReference) => void; onCompare?: (item: ResourceReference) => void }) {
+export function ResultCard({ task, result, project, onResource, onAttach, onContinue, onCompare, continueDisabled = false, continuationVersionId = null }: { task: ExecutionTask; result?: Result; project: string; onResource: (id: string) => void; onAttach?: (item: ResourceReference) => void; onContinue?: (item: ResourceReference) => void; onCompare?: (item: ResourceReference) => void; continueDisabled?: boolean; continuationVersionId?: string | null }) {
   const [expanded, setExpanded] = useState(false);
   const outputs = task.status === 'SUCCEEDED' && result?.remoteOutputs.length === task.outputCount ? result.remoteOutputs : [];
-  return <section className="result-card" data-testid="result-card" data-workflow-run-id={task.workflowRunId}>
+  return <section className="result-card" data-testid="result-card" data-status={task.status} data-workflow-run-id={task.workflowRunId} aria-label={`分析结果 · ${taskLabel(task)}`}>
     <p className="result-review-note">结果须结合输入、参数和验收状态复核。</p>
     <div className="card-eyebrow"><Icon name="chart" />分析结果 <span>{taskLabel(task)}</span></div>
     <strong>{modelName(task.modelId)}</strong>
     {task.status === 'SUCCEEDED' && (task.attempt ?? 1) > 1 && <p className="recovery-success">已通过第 {task.attempt} 次执行恢复</p>}
     {(expanded ? outputs : outputs.slice(0, 3)).map((output: ResourceReference) => <div className="output-item" key={output.versionId} data-resource-id={output.versionId}>
-      <div className="output-heading"><button className="text-button" onClick={() => onResource(output.versionId)}>{output.outputName ? outputName(output.outputName) : '结果文件'}<Icon name="arrow-up-right" /></button><small className="output-format">{output.format} · {output.semanticId}</small><a href={contentUrl(project, output.versionId, output.objectId)} download={output.outputName}><Icon name="download" />下载</a></div>
+      <div className="output-heading"><button className="text-button" onClick={() => onResource(output.versionId)}>{output.outputName ? outputName(output.outputName) : '结果文件'}<Icon name="arrow-up-right" /></button><small className="output-format" title={`数据版本 ${output.versionId}`}>{output.format} · 版本 {shortVersion(output.versionId)}</small><a href={contentUrl(project, output.versionId, output.objectId)} download={output.outputName}><Icon name="download" />下载</a></div>
+      <details className="technical-details output-identity"><summary>数据身份</summary><dl className="argument-list">
+        <div><dt>数据集</dt><dd>{output.datasetId}</dd></div>
+        <div><dt>数据版本</dt><dd>{output.versionId}</dd></div>
+        <div><dt>语义版本</dt><dd>{output.semanticId}</dd></div>
+        <div><dt>数据对象</dt><dd>{output.objectId}</dd></div>
+        <div><dt>校验和</dt><dd>{output.checksum}</dd></div>
+      </dl></details>
       {output.mediaType === 'image/png' && <img className="result-image" src={contentUrl(project, output.versionId, output.objectId)} alt={output.outputName ?? '分析结果地图'} />}
-      <div className="output-reuse-actions">{onAttach && <button onClick={() => onAttach(output)}>作为下一步输入</button>}{onContinue && <button onClick={() => onContinue(output)}>在新对话中继续</button>}{onCompare && <button onClick={() => onCompare(output)}>与另一版本比较</button>}</div>
+      <div className="output-reuse-actions">{onAttach && <button onClick={() => onAttach(output)}>作为下一步输入</button>}{onContinue && <button disabled={continueDisabled || !!continuationVersionId} onClick={() => onContinue(output)}>{continuationVersionId === output.versionId ? '正在创建对话…' : '在新对话中继续'}</button>}{onCompare && <button onClick={() => onCompare(output)}>与另一版本比较</button>}</div>
     </div>)}
     {outputs.length > 3 && <button className="text-button" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? '收起结果列表' : `查看全部 ${outputs.length} 个结果`}</button>}
     {outputs.length === 0 && <p className="muted">{task.status === 'SUCCEEDED' && task.outputCount > 0 ? '正在同步结果文件…' : ['FAILED', 'TIMED_OUT', 'CANCELLED', 'REJECTED', 'SKIPPED'].includes(task.status) ? '本次没有发布结果文件。' : '结果将在发布后显示。'}</p>}

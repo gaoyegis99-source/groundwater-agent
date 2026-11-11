@@ -1,5 +1,5 @@
 {
-  "catalogDigest": "sha256:c1a1e52cdf6d4f50e866585766746b8f4429377254ae9c2baa21e1e95187272f",
+  "catalogDigest": "sha256:5a9d8c409454a44af27544a8a3d010953b8acd15543000dbfb5c7dddd473fcb8",
   "operators": [
     {
       "domain": "cartography",
@@ -163,6 +163,14 @@
     },
     {
       "domain": "groundwater",
+      "id": "groundwater.porous.pest_calibrate",
+      "manifestDigest": "sha256:34f1225760b11a1ae4a661f3bb798270e644cca335b520c87b91603510dca029",
+      "runtime": "remote_http",
+      "smokeDigest": "sha256:d7607cdf54a2c14a1871533add03cd65f81402e0497380f14b3e97b971d366dd",
+      "version": "1.1.0"
+    },
+    {
+      "domain": "groundwater",
       "id": "groundwater.porous.result_analyze",
       "manifestDigest": "sha256:570d0c9d871ebfd9a1b93fd05e86907fa4e6dda5a38dc9dc0834297834baeb0a",
       "runtime": "remote_http",
@@ -191,6 +199,14 @@
       "manifestDigest": "sha256:da0860a45248500a6f73fa93f1611f00a26d2f376e1ce9a881b3899e716103fb",
       "runtime": "remote_http",
       "smokeDigest": "sha256:a860c183f45a307ba396de8e03d42015e9d77dd8842af4521e4606f116d7e760",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "groundwater",
+      "id": "groundwater.source_sustainability.prepare",
+      "manifestDigest": "sha256:6e3a880a78b1c4359723d74f0b2321ba7e5e04f3645aa568305c27836a934dd5",
+      "runtime": "native",
+      "smokeDigest": "sha256:9014c3fd906ff4424bd00e82ce60bc8d2feefc1030b40973a3b6256e132c6442",
       "version": "1.0.0"
     },
     {

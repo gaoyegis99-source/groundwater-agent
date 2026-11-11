@@ -1,0 +1,74 @@
+{
+  "schemaVersion": "workflow.v6",
+  "workflowId": "groundwater.porous-inversion-sampling",
+  "version": "1.0.0",
+  "inputs": [
+    {
+      "name": "weights",
+      "cardinality": "one",
+      "mediaTypes": [
+        "application/octet-stream"
+      ],
+      "formats": [
+        "binary"
+      ]
+    },
+    {
+      "name": "sample_config",
+      "cardinality": "one",
+      "mediaTypes": [
+        "application/json"
+      ],
+      "formats": [
+        "json"
+      ]
+    }
+  ],
+  "parameters": [],
+  "nodes": [
+    {
+      "nodeId": "execute",
+      "operatorId": "groundwater.porous.inversion_sample",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "weights": {
+          "workflowInput": "weights"
+        },
+        "sample_config": {
+          "workflowInput": "sample_config"
+        }
+      },
+      "parameters": {}
+    }
+  ],
+  "outputs": [
+    {
+      "name": "porous-posterior-samples",
+      "nodeOutput": {
+        "nodeId": "execute",
+        "port": "posterior_samples"
+      }
+    },
+    {
+      "name": "porous-sampling-metrics",
+      "nodeOutput": {
+        "nodeId": "execute",
+        "port": "metrics"
+      }
+    },
+    {
+      "name": "porous-sampling-report",
+      "nodeOutput": {
+        "nodeId": "execute",
+        "port": "report_package"
+      }
+    },
+    {
+      "name": "porous-inversion-sampling-receipt",
+      "nodeOutput": {
+        "nodeId": "execute",
+        "port": "run_receipt"
+      }
+    }
+  ]
+}

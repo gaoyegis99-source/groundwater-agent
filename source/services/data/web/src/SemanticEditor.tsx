@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
-import { PlatformUiError, validateSemanticDraft } from "./api";
+import { errorText, PlatformUiError, validateSemanticDraft } from "./api";
 import type { Schema, Version } from "./api";
 
 type FieldDraft = { meaning: string; unit: string };
@@ -91,6 +91,7 @@ export function SemanticEditor({
   const form = useForm<FormValues>({ defaultValues: defaults(version) });
   const [pending, setPending] = useState<Schema["Semantics"] | null>(null);
   const [validation, setValidation] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   useEffect(() => {
     form.reset(defaults(version));
     setPending(null);
@@ -112,6 +113,19 @@ export function SemanticEditor({
         : "API_REQUEST_INVALID");
     }
   });
+  const save = async () => {
+    if (!pending || saving) return;
+    setSaving(true);
+    setValidation(null);
+    try {
+      await onSave(pending);
+      // A handled failure may resolve onSave; only a refreshed semanticId clears the draft.
+    } catch (error) {
+      setValidation(errorText(error));
+    } finally {
+      setSaving(false);
+    }
+  };
   return (
     <div className="semantic-editor">
       <p>空值表示尚未确认；保存会以当前语义 ID 作为 CAS 前置条件创建新修订。</p>
@@ -134,24 +148,24 @@ export function SemanticEditor({
             </div>
           ))}
         </fieldset>
-        <button type="submit" disabled={!allowed}>预览修订</button>
+        <button type="submit" disabled={!allowed || saving || form.formState.isSubmitting}>{form.formState.isSubmitting ? "正在校验…" : "预览修订"}</button>
       </form>
       {!allowed && <p className="muted">当前身份没有语义修订权限。</p>}
       {validation && <p role="alert" className="inline-error">{validation}</p>}
       {pending && (
-        <div className="diff" aria-label="语义修订差异">
+        <div className="diff" aria-label="语义修订差异" aria-busy={saving}>
           <h4>差异预览</h4>
           {changed.length === 0
             ? <p>草稿与当前修订没有差异。</p>
             : <ul>{changed.map(item => <li key={item}><code>{item}</code> 已修改</li>)}</ul>}
           <button
             type="button"
-            disabled={changed.length === 0 || !allowed}
-            onClick={() => void onSave(pending).then(() => setPending(null))}
+            disabled={changed.length === 0 || !allowed || saving}
+            onClick={() => void save()}
           >
-            创建语义修订
+            {saving ? "正在保存…" : "创建语义修订"}
           </button>
-          <button type="button" className="secondary" onClick={() => setPending(null)}>返回编辑</button>
+          <button type="button" className="secondary" disabled={saving} onClick={() => setPending(null)}>返回编辑</button>
         </div>
       )}
     </div>

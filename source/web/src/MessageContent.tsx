@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import Markdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Icon } from './Icon';
+import { shortVersion } from './format';
 import type { KnowledgeReference, ReplyPresentation, ReplySection } from './types';
 
 export function MessageContent({ content, onResource }: { content: string; onResource: (id: string) => void }) {
@@ -12,8 +13,8 @@ export function MessageContent({ content, onResource }: { content: string; onRes
   return <>
     {content.slice(0, block.index) && <p>{content.slice(0, block.index)}</p>}
     <div className="message-attachments">{attachments.map(match => <div key={match![3]}>
-      <button className="attachment-reference" data-resource-id={match![3]} onClick={() => onResource(match![3])} aria-label={`查看附件 ${match![1]}`}>
-        <Icon name="file" />{match![1]} <small>{match![3]}</small>
+      <button className="attachment-reference" data-resource-id={match![3]} title={`数据版本 ${match![3]}`} onClick={() => onResource(match![3])} aria-label={`查看附件 ${match![1]} ${shortVersion(match![3])}`}>
+        <Icon name="file" />{match![1]} <small>{shortVersion(match![3])}</small>
       </button>
     </div>)}</div>
   </>;
@@ -28,7 +29,7 @@ function ReplyMarkdown({ section, onResource }: { section: ReplySection; onResou
       },
       img: ({ alt }) => <span>{alt}</span>,
       pre: ({ children }) => <details className="technical-details"><summary>查看代码或结构化内容</summary><pre>{children}</pre></details>,
-      table: ({ children }) => <div className="table-scroll"><table>{children}</table></div>,
+      table: ({ children }) => <div className="table-scroll" role="region" aria-label="分析表格，可横向滚动" tabIndex={0}><table>{children}</table></div>,
   }), [onResource]);
   return <div className="markdown-content"><Markdown remarkPlugins={[remarkGfm]} components={components}>{section.markdown}</Markdown></div>;
 }

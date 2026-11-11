@@ -274,35 +274,91 @@ def test_compose_secret_set_accepts_ephemeral_live_provider_key(
     )
 
 
+@pytest.mark.parametrize("service_ids", [
+    ["groundwater-sustainability"],
+    ["groundwater-sustainability", "porous-groundwater"],
+])
 def test_compose_secret_set_supplies_inert_remote_worker_bindings(
-    tmp_path: Path,
+    tmp_path: Path, service_ids: list[str],
 ) -> None:
+    bindings = {
+        service_id: {
+            "serviceId": service_id,
+            "baseUrlEnvironment": service_id.upper().replace("-", "_") + "_BASE_URL",
+            "allowedHostEnvironment": service_id.upper().replace("-", "_") + "_ALLOWED_HOST",
+            "credentialSecret": service_id + "-api-key",
+            "caBundleSecret": service_id + "-ca-bundle",
+        }
+        for service_id in service_ids
+    }
     compose = {
         "services": {
             "executor-remote_http-worker": {
                 "secrets": [
-                    "groundwater-sustainability-api-key",
-                    "groundwater-sustainability-ca-bundle",
+                    binding[key]
+                    for binding in bindings.values()
+                    for key in ("credentialSecret", "caBundleSecret")
                 ],
             },
         },
     }
 
-    environment_file = environment._compose_secrets(tmp_path, compose)
+    environment_file = environment._compose_secrets(
+        tmp_path, compose, remote_services=bindings
+    )
 
     values = dict(
         line.split("=", 1)
         for line in environment_file.read_text(encoding="utf-8").splitlines()
     )
-    assert values["GROUNDWATER_SUSTAINABILITY_BASE_URL"] == (
-        "https://groundwater-sustainability.invalid"
-    )
-    assert values["GROUNDWATER_SUSTAINABILITY_ALLOWED_HOST"] == (
-        "groundwater-sustainability.invalid"
-    )
+    for service_id, binding in bindings.items():
+        assert values[binding["baseUrlEnvironment"]] == f"https://{service_id}.invalid"
+        assert values[binding["allowedHostEnvironment"]] == f"{service_id}.invalid"
     for name in compose["services"]["executor-remote_http-worker"]["secrets"]:
         path = tmp_path / "secrets" / name
         assert path.is_file() and path.stat().st_mode & 0o777 == 0o444
+
+
+def test_porous_deployment_replaces_inert_worker_bindings(tmp_path: Path) -> None:
+    from tests.e2e.groundwater.porous_live import HOST, SERVICE, configure_deployment
+
+    directory = tmp_path / "孔隙验收"
+    directory.mkdir()
+    binding = {
+        "baseUrlEnvironment": "POROUS_GROUNDWATER_BASE_URL",
+        "allowedHostEnvironment": "POROUS_GROUNDWATER_ALLOWED_HOST",
+        "credentialSecret": f"{SERVICE}-api-key",
+        "caBundleSecret": f"{SERVICE}-ca-bundle",
+    }
+    compose = {
+        "services": {
+            "executor-remote_http-worker": {
+                "secrets": [binding["credentialSecret"], binding["caBundleSecret"]],
+            },
+        },
+        "networks": {"v6-egress": {}},
+    }
+    environment_file = environment._compose_secrets(
+        directory, compose, remote_services={SERVICE: binding}
+    )
+    credential = directory / "secrets" / binding["credentialSecret"]
+    certificate = directory / "secrets" / binding["caBundleSecret"]
+    inert_credential = credential.read_bytes()
+
+    configure_deployment(compose, environment_file, "porous-fixture:local")
+
+    assert credential.read_bytes() != inert_credential
+    assert certificate.read_bytes().startswith(b"-----BEGIN CERTIFICATE-----")
+    assert credential.stat().st_mode & 0o777 == certificate.stat().st_mode & 0o777 == 0o444
+    endpoint_lines = [
+        line for line in environment_file.read_text().splitlines()
+        if line.startswith(("POROUS_GROUNDWATER_BASE_URL=", "POROUS_GROUNDWATER_ALLOWED_HOST="))
+    ]
+    assert set(endpoint_lines) == {
+        f"POROUS_GROUNDWATER_BASE_URL=https://{HOST}:8443",
+        f"POROUS_GROUNDWATER_ALLOWED_HOST={HOST}",
+    }
+    assert len(endpoint_lines) == 2
 
 
 def test_live_reply_quality_configures_agent_and_router_without_key_leak(

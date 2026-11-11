@@ -20,6 +20,10 @@ def requested_intent_routes(
             """SELECT r.*,s.project_id FROM message_requests AS r
                JOIN sessions AS s ON s.session_id=r.session_id
                WHERE r.requested_mode='AUTO' AND r.routing_status='ROUTING_REQUESTED'
+                 AND NOT EXISTS (
+                     SELECT 1 FROM run_controls AS stop
+                     WHERE stop.agent_run_id=r.agent_run_id
+                 )
                ORDER BY r.rowid""" + limit_clause,
             parameters,
         ).fetchall()
@@ -36,7 +40,11 @@ def claim_intent_route(database: Path, agent_run_id: str) -> IntentRouteRequest 
                    route_finished_at=NULL,route_duration_ms=NULL,
                    route_attempts=route_attempts+1
                WHERE agent_run_id=? AND requested_mode='AUTO'
-                 AND routing_status='ROUTING_REQUESTED'""",
+                 AND routing_status='ROUTING_REQUESTED'
+                 AND NOT EXISTS (
+                     SELECT 1 FROM run_controls AS stop
+                     WHERE stop.agent_run_id=message_requests.agent_run_id
+                 )""",
             (started_at, agent_run_id),
         ).rowcount
         if claimed == 0:

@@ -2380,7 +2380,7 @@ export interface components {
              * Format
              * @enum {string}
              */
-            format: "arrow-ipc-file" | "binary" | "cog" | "copc" | "csv" | "docx" | "flatgeobuf" | "geojson" | "geopackage" | "geoparquet" | "geotiff" | "json" | "las" | "laz" | "markdown" | "npy" | "parquet" | "pdf" | "png" | "pytorch-state-dict" | "text" | "xlsx";
+            format: "arrow-ipc-file" | "binary" | "cog" | "copc" | "csv" | "docx" | "flatgeobuf" | "geojson" | "geopackage" | "geoparquet" | "geotiff" | "json" | "las" | "laz" | "markdown" | "npy" | "parquet" | "pdf" | "png" | "pytorch-state-dict" | "text" | "xlsx" | "zip";
             /** Mediatype */
             mediaType?: string | null;
             /** Name */

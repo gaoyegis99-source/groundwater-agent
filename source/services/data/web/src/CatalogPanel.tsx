@@ -10,7 +10,10 @@ type Props = {
   run: RunAction;
   canWriteSemantics: boolean;
   canPreview: boolean;
+  canQueryContent?: boolean;
   previewDeadlineSeconds: number;
+  queryDeadlineSeconds?: number;
+  onQuery?: () => void;
 };
 
 function actorLabel(actor: Record<string, unknown>): string {
@@ -29,7 +32,7 @@ const reasonLabels: Record<string, string> = {
   unit: "单位匹配",
 };
 
-export function CatalogPanel({ controller, run, canWriteSemantics, canPreview, previewDeadlineSeconds }: Props) {
+export function CatalogPanel({ controller, run, canWriteSemantics, canPreview, canQueryContent = false, previewDeadlineSeconds, queryDeadlineSeconds, onQuery }: Props) {
   const {
     datasets,
     search,
@@ -44,7 +47,8 @@ export function CatalogPanel({ controller, run, canWriteSemantics, canPreview, p
     setUnit,
     sort,
     setSort,
-    clearFilters,
+    appliedFilterCount,
+    clearAdvancedFilters,
     inventory,
     totalMatches,
     cursor,
@@ -57,7 +61,17 @@ export function CatalogPanel({ controller, run, canWriteSemantics, canPreview, p
     historicalSemantic,
     loading,
     loadingMore,
-    error,
+    refreshing,
+    catalogError,
+    filterError,
+    selectedVersionId,
+    detailLoading,
+    detailRefreshing,
+    detailError,
+    saveError,
+    retryCatalog,
+    retryFilters,
+    retryDetail,
     load,
     inspect,
     loadHistory,
@@ -66,20 +80,19 @@ export function CatalogPanel({ controller, run, canWriteSemantics, canPreview, p
     saveSemantics,
   } = controller;
   return (
-    <div className="catalog-workspace">
-      <section className="panel catalog-browser">
-        <div className="panel-heading compact">
-          <div>
-            <p className="step-kicker">任务 1</p>
-            <h2>选择数据</h2>
-            <p>按名称、描述或字段含义查找，选择后再核对不可变版本。</p>
-          </div>
-          {!loading && <span className="count-badge">匹配 {totalMatches} · 已加载 {datasets.length}</span>}
-        </div>
+    <div className="catalog-workspace" data-selected={Boolean(selectedVersionId)}>
+      <section className="panel catalog-browser" aria-label="数据目录">
         <form className="catalog-search" onSubmit={event => { event.preventDefault(); void run(() => load()); }}>
-          <label className="catalog-keyword">关键词
+          <div className="catalog-search-row">
+          <label className="catalog-keyword"><span className="sr-only">搜索数据</span>
             <input aria-label="搜索数据" placeholder="名称、描述或业务术语" value={search} onChange={event => setSearch(event.target.value)} />
           </label>
+          <button disabled={refreshing}>{refreshing ? "搜索中…" : "搜索"}</button>
+          </div>
+          <div className="filter-toolbar">
+          <details className="advanced-filters">
+          <summary><span>高级筛选</span>{appliedFilterCount > 0 && <span className="filter-count">已应用 {appliedFilterCount} 项</span>}</summary>
+          <div className="advanced-filter-fields">
           <label>标签
             <select aria-label="标签筛选" value={tag} onChange={event => setTag(event.target.value)}>
               <option value="">全部标签</option>
@@ -103,22 +116,26 @@ export function CatalogPanel({ controller, run, canWriteSemantics, canPreview, p
               <option value="relevance">相关度</option><option value="title-asc">标题 A–Z</option><option value="title-desc">标题 Z–A</option>
             </select>
           </label>
-          <div className="catalog-search-actions"><button>应用筛选</button><button type="button" className="secondary" onClick={clearFilters}>清空</button></div>
+          <div className="catalog-search-actions"><button disabled={refreshing}>应用筛选</button></div>
+          </div>
+          </details>
+          {appliedFilterCount > 0 && <button type="button" className="link-button" onClick={clearAdvancedFilters}>清除筛选</button>}
+          </div>
         </form>
-        <p className="catalog-status" role="status">{loading ? "正在发现可用数据…" : `共匹配 ${totalMatches} 份数据，当前已加载 ${datasets.length} 份。`}</p>
-        {error && <p role="alert" className="inline-error">{errorText(error)}</p>}
-        {!loading && datasets.length === 0 && (
+        <p className="catalog-status" role="status">{refreshing ? "正在发现可用数据…" : catalogError ? "数据目录读取未完成。" : totalMatches > 0 ? `${totalMatches} 份数据${cursor ? ` · 已加载 ${datasets.length} 份` : ""}` : ""}</p>
+        {catalogError && <div className="read-feedback"><p role="alert" className="inline-error">{errorText(catalogError)}</p><button className="secondary" disabled={refreshing} onClick={() => void run(retryCatalog)}>重试读取数据目录</button></div>}
+        {filterError && <div className="read-feedback"><p role="alert" className="inline-error">筛选选项读取未完成。{errorText(filterError)}</p><button className="secondary" onClick={() => void run(retryFilters)}>重试读取筛选选项</button></div>}
+        {!loading && !catalogError && datasets.length === 0 && (
           <div className="empty-state compact">
             <strong>没有找到匹配的数据</strong>
-            <p>{search ? "换一个关键词，或清空搜索查看当前项目中的全部数据。" : "当前项目还没有可浏览的数据，可前往“发布数据”上传第一份资料。"}</p>
+            <p>{search || appliedFilterCount ? "调整关键词或筛选条件。" : "可从“发布数据”添加资料。"}</p>
           </div>
         )}
-        <ul className="catalog">
+        <ul className="catalog" aria-label="数据目录结果" aria-busy={refreshing || loadingMore}>
           {datasets.map(dataset => (
             <li key={dataset.datasetId} className={selected?.datasetId === dataset.datasetId ? "selected" : undefined}>
-              <button onClick={() => void run(() => inspect(dataset.currentVersion))}>
+              <button title={dataset.title} aria-pressed={selected?.datasetId === dataset.datasetId || selectedVersionId === dataset.currentVersion} onClick={() => void run(() => inspect(dataset.currentVersion))}>
                 <span>{dataset.title}</span>
-                <small>{dataset.description || "尚未填写业务说明"}</small>
                 <span className="catalog-meta">{dataset.formats.map(value => value.toUpperCase()).join(" · ") || "格式未知"}{dataset.tags.length > 0 ? ` · ${dataset.tags.join(" · ")}` : ""}</span>
                 {dataset.matchReasons.length > 0 && <span className="match-reasons">{dataset.matchReasons.map((reason, index) => <em key={`${reason.kind}-${index}`}>{reasonLabels[reason.kind] ?? reason.kind}</em>)}</span>}
               </button>
@@ -128,19 +145,30 @@ export function CatalogPanel({ controller, run, canWriteSemantics, canPreview, p
         </ul>
         {cursor && <button disabled={loadingMore} onClick={() => void run(() => load(true))}>{loadingMore ? "正在加载…" : "加载更多数据"}</button>}
       </section>
-      <section className="panel catalog-detail">
-        <div className="panel-heading compact">
-          <div><p className="step-kicker">核对</p><h2>版本与字段含义</h2><p>确认行数、字段质量和业务语义，再把数据用于查询或分析。</p></div>
-        </div>
-        {!selected ? (
-          <div className="empty-state detail-empty">
-            <span className="empty-icon" aria-hidden="true">✓</span>
-            <div><strong>从目录选择一份数据。</strong><p>这里会展示当前版本、字段检查、语义说明和可下载文件。</p></div>
-          </div>
-        ) : (
+      <section className={`panel catalog-detail${selectedVersionId ? "" : " is-empty"}`}>
+        {selectedVersionId && !selected && <h2 className="pending-title">数据内容</h2>}
+        {detailLoading && <p className="catalog-status" role="status">正在读取不可变数据版本…</p>}
+        {Boolean(detailError) && <div className="read-feedback"><p role="alert" className="inline-error">{errorText(detailError)}</p><button className="secondary" disabled={detailRefreshing} onClick={() => void run(retryDetail)}>{detailRefreshing ? "正在重试…" : "重试读取版本详情"}</button></div>}
+        {!selected && !selectedVersionId && datasets.length > 0 ? (
+          <p className="detail-placeholder">选择一份数据，查看内容。</p>
+        ) : selected ? (
           <>
             <div className="resource-heading">
-              <div><span className="status-chip">不可变版本</span><h3>{selected.title}</h3><p>{selected.semantics.description || "尚未填写业务说明"}</p></div>
+              <div><h2>{selected.title}</h2><p>{selected.descriptor.rowCount == null ? "行数未检查" : `${selected.descriptor.rowCount} 行`} · {selected.descriptor.fields.length} 个字段</p></div>
+              {onQuery && <button className="secondary" onClick={onQuery}>查询这份数据</button>}
+            </div>
+            <PreviewPanel
+              key={selected.versionId}
+              version={selected}
+              allowed={canPreview}
+              queryAllowed={canQueryContent}
+              deadlineSeconds={previewDeadlineSeconds}
+              queryDeadlineSeconds={queryDeadlineSeconds}
+              run={run}
+            />
+            <details className="catalog-properties">
+              <summary>版本与来源</summary>
+              <div className="version-selector">
               <label>
                 查看版本
                 <select value={selected.versionId} onChange={event => void run(() => inspect(event.target.value))}>
@@ -152,7 +180,7 @@ export function CatalogPanel({ controller, run, canWriteSemantics, canPreview, p
                   ))}
                 </select>
               </label>
-            </div>
+              </div>
             {historyCursor && <button onClick={() => void run(loadHistory)}>更多版本</button>}
             <dl className="summary-grid">
               <div><dt>数据行数</dt><dd>{selected.descriptor.rowCount ?? "未检查"}</dd></div>
@@ -163,7 +191,7 @@ export function CatalogPanel({ controller, run, canWriteSemantics, canPreview, p
             {governance && (
               <section className="governance-overview" aria-labelledby="governance-title">
                 <div className="section-heading compact">
-                  <div><h4 id="governance-title">治理概览</h4><p>所有者、质量变化、来源关系和近期变更来自服务端可追溯记录。</p></div>
+                  <div><h4 id="governance-title">治理记录</h4></div>
                   <span className="owner-chip">所有者：{governance.ownerSubject}</span>
                 </div>
                 <div className="governance-grid">
@@ -213,21 +241,16 @@ export function CatalogPanel({ controller, run, canWriteSemantics, canPreview, p
                 </details>
               </section>
             )}
-            <PreviewPanel
-              key={selected.versionId}
-              version={selected}
-              allowed={canPreview}
-              deadlineSeconds={previewDeadlineSeconds}
-              run={run}
-            />
-            <FieldProfile version={selected} />
+            </details>
+            <details className="catalog-properties"><summary>字段概览</summary><FieldProfile version={selected} /></details>
             <details className="governance-details">
-              <summary><span>治理字段含义</span><small>补充描述、单位、限制和字段语义</small></summary>
+              <summary>治理字段含义</summary>
               <SemanticEditor
                 version={selected}
                 allowed={canWriteSemantics}
                 onSave={draft => run(() => saveSemantics(draft))}
               />
+              {saveError && <p role="alert" className="inline-error">{errorText(saveError)}</p>}
             </details>
             <details>
               <summary>查看语义修订历史</summary>
@@ -263,7 +286,7 @@ export function CatalogPanel({ controller, run, canWriteSemantics, canPreview, p
               ))}
             </div>
           </>
-        )}
+        ) : null}
       </section>
     </div>
   );

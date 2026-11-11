@@ -1,0 +1,128 @@
+{
+  "schemaVersion": "executable-model.v6",
+  "modelId": "groundwater.porous-inversion-sampling",
+  "version": "1.0.0",
+  "workflowRef": {
+    "workflowId": "groundwater.porous-inversion-sampling",
+    "version": "1.0.0",
+    "checksum": "sha256:beaf2d3606102533aea732991e0942f4c9a7dbcd5eb1a1149486c057eafdb6d2"
+  },
+  "tool": {
+    "name": "run_porous_inversion_sample",
+    "description": "用已训练权重和明确观测条件采样参数场后验。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "inversionWeightsVersionId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "inversionSamplingVersionId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "inversionWeightsVersionId",
+        "inversionSamplingVersionId"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "inputBindings": {
+    "weights": "inversionWeightsVersionId",
+    "sample_config": "inversionSamplingVersionId"
+  },
+  "fieldRequirements": [],
+  "semanticRequirements": [],
+  "defaultParameters": {},
+  "parameterBindings": {},
+  "deadlineSeconds": 7200,
+  "maxParallelNodes": 1,
+  "finalOutputs": [
+    "porous-posterior-samples",
+    "porous-sampling-metrics",
+    "porous-sampling-report",
+    "porous-inversion-sampling-receipt"
+  ],
+  "executionService": "executor",
+  "executorId": "workflow-dag",
+  "outputPublications": {
+    "porous-posterior-samples": {
+      "title": "后验样本数组",
+      "format": "npy",
+      "mediaType": "application/x-npy",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "后验样本数组",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    },
+    "porous-sampling-metrics": {
+      "title": "采样指标",
+      "format": "json",
+      "mediaType": "application/json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "采样指标",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    },
+    "porous-sampling-report": {
+      "title": "后验均值与标准差",
+      "format": "zip",
+      "mediaType": "application/zip",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "后验均值与标准差",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    },
+    "porous-inversion-sampling-receipt": {
+      "title": "运行凭据",
+      "format": "json",
+      "mediaType": "application/json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "运行凭据",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    }
+  }
+}

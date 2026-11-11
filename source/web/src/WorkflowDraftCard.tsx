@@ -10,12 +10,16 @@ export function WorkflowDraftCard({ draft, onKnowledge, onResource }: {
   draft: WorkflowDraft; onKnowledge: (reference: KnowledgeReference) => void; onResource: (id: string) => void;
 }) {
   const payload = draft.payload;
+  const state = { GENERATING: '正在编排', COMPLETE: payload ? '已生成' : '未生成', FAILED: '未完成', CANCELLED: '已停止', SUPERSEDED: '已替代' }[draft.status];
   const nodeName = (id: string) => `第 ${payload!.workflow.nodes.findIndex(node => node.nodeId === id) + 1} 步 · ${payload!.operators.find(operator => operator.nodeId === id)!.title}`;
   return <section className="workflow-draft-card" data-testid="workflow-draft-card" data-draft-id={draft.draftId} aria-label="工作流编排草稿">
-    <div className="card-eyebrow"><Icon name="branch" />编排草稿 <span>{draft.status === 'GENERATING' ? '正在编排' : draft.status === 'FAILED' ? '未完成' : payload ? '已生成' : '未生成'}</span></div>
+    <div className="card-eyebrow"><Icon name="branch" />编排草稿 <span>{state}</span></div>
     <p className="draft-notice">仅草稿，不可执行。</p>
     {!payload ? draft.status === 'FAILED' ? <ErrorNotice code={draft.errorCode!} diagnostics={draft.diagnostics} title="编排未完成" /> : <p className="muted" role="status">
-      {draft.status === 'GENERATING' ? '正在查阅可用方法与当前资料，整理分析步骤。' : '未生成可用草稿，请查看本轮回复中的说明。'}
+      {draft.status === 'GENERATING' ? '正在查阅可用方法与当前资料，整理分析步骤。'
+        : draft.status === 'CANCELLED' ? '编排已停止。'
+        : draft.status === 'SUPERSEDED' ? '本次编排已由新的要求替代。'
+        : '未生成可用草稿，请查看本轮回复中的说明。'}
     </p> : <>
       <h3>{payload.title}</h3><p className="prose">{payload.summary}</p>
       <div className="draft-overview"><span>{payload.workflow.nodes.length} 个分析步骤</span><span>{payload.workflow.inputs.length} 份所需资料</span><span>{payload.workflow.outputs.length} 项预期输出</span></div>

@@ -11,6 +11,7 @@ from uuid import uuid4
 from fastapi import BackgroundTasks, Depends, FastAPI, Header, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
+from pydantic import ValidationError
 
 from . import __version__
 from .auth import bearer_dependency
@@ -413,9 +414,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if not isinstance(document, dict):
             raise AppError("OPERATION_INPUT_INVALID", "综合评价输入必须是JSON对象。", 422)
         document["client_request_id"] = payload.client_request_id
-        accepted = accept_task(
-            SustainabilityTaskInput.model_validate(document), background_tasks
-        )
+        try:
+            task_input = SustainabilityTaskInput.model_validate(document)
+        except ValidationError as error:
+            # Uploaded JSON needs the same field errors as a direct request body.
+            # Do not include input values in the response (they may be private).
+            raise RequestValidationError([
+                {"loc": ("body", "assessment_input", *item["loc"]),
+                 "msg": item["msg"], "type": item["type"]}
+                for item in error.errors(include_input=False, include_url=False)
+            ]) from error
+        accepted = accept_task(task_input, background_tasks)
         return {
             "operationId": accepted.task_id,
             "status": accepted.status.value,

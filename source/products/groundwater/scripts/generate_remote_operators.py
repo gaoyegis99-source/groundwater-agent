@@ -68,13 +68,21 @@ SPECS = [
 ]
 
 
-def write(operator_id: str, service_id: str, operation: str, inputs: list, outputs: list) -> None:
+def write(
+    operator_id: str, service_id: str, operation: str, inputs: list, outputs: list,
+    *, version: str = VERSION,
+) -> None:
     timeout = 21600 if operation == "inversion.train" else 7200
+    parameters = {"includeCalibratedModel": True} if operation == "pest.calibrate" and version == "1.1.0" else {}
     manifest = {
         "id": operator_id,
-        "version": VERSION,
+        "version": version,
         "title": operation.replace("_", " ").replace(".", " ").title(),
-        "description": f"Execute fixed third-party operation {operation} through deployment service binding {service_id}.",
+        "description": (
+            "Delegate the fixed sustainability.evaluate operation to the external deployment binding groundwater-sustainability. The executor enforces service/API/model/operation allowlists, verifies input and result integrity, and writes a secret-free provenance receipt; the platform does not reproduce the external scoring algorithm."
+            if operation == "sustainability.evaluate"
+            else f"Execute fixed third-party operation {operation} through deployment service binding {service_id}."
+        ),
         "domain": "groundwater",
         "tags": ["groundwater", "third-party", "remote-http", operation],
         "runtime": "remote_http",
@@ -88,10 +96,12 @@ def write(operator_id: str, service_id: str, operation: str, inputs: list, outpu
         ],
         "parametersSchema": {
             "type": "object", "additionalProperties": False,
-            "properties": {}, "required": [],
+            "properties": {key: {"type": "boolean", "const": value} for key, value in parameters.items()},
+            "required": list(parameters),
         },
         "outputs": outputs,
         "errorCodes": [
+            *(["OPERATOR_TIMEOUT"] if operation == "sustainability.evaluate" else []),
             "REMOTE_AUTHENTICATION_FAILED", "REMOTE_BINDING_INVALID",
             "REMOTE_INTEGRITY_FAILED", "REMOTE_OPERATION_FAILED",
             "REMOTE_PROTOCOL_INVALID", "REMOTE_SUBMISSION_UNCERTAIN",
@@ -100,23 +110,23 @@ def write(operator_id: str, service_id: str, operation: str, inputs: list, outpu
         "examples": [{
             "schemaVersion": "operator-execution-request.v1",
             "clientRequestId": f"example-{operator_id.replace('.', '-')}",
-            "operator": {"id": operator_id, "version": VERSION},
+            "operator": {"id": operator_id, "version": version},
             "mode": "ASYNC",
             "inputs": {
                 name: {"artifactId": f"art_example_{index:02d}"}
                 for index, (name, _) in enumerate(inputs, start=1)
             },
-            "parameters": {},
+            "parameters": parameters,
         }],
     }
     smoke = {
         "schemaVersion": "operator-smoke-test.v1",
-        "operator": {"id": operator_id, "version": VERSION},
+        "operator": {"id": operator_id, "version": version},
         "inputs": {
             name: {"fixtureId": "transfer.fields"}
             for name, _ in inputs
         },
-        "parameters": {},
+        "parameters": parameters,
         "expectedOutputs": {
             item["name"]: (
                 {"kind": "value"}
@@ -129,7 +139,7 @@ def write(operator_id: str, service_id: str, operation: str, inputs: list, outpu
             for item in outputs
         },
     }
-    directory = CATALOG / operator_id / VERSION
+    directory = CATALOG / operator_id / version
     directory.mkdir(parents=True, exist_ok=True)
     for name, document in (("manifest.json", manifest), ("smoke.json", smoke)):
         (directory / name).write_text(
@@ -141,7 +151,9 @@ def write(operator_id: str, service_id: str, operation: str, inputs: list, outpu
 def main() -> None:
     for spec in SPECS:
         write(*spec)
-    print(f"Generated {len(SPECS)} remote groundwater operators")
+    pest = next(spec for spec in SPECS if spec[2] == "pest.calibrate")
+    write(*pest[:-1], [*pest[-1], artifact("calibrated_model_package", ZIP)], version="1.1.0")
+    print(f"Generated {len(SPECS) + 1} remote groundwater operator versions")
 
 
 if __name__ == "__main__":

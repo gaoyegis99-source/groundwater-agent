@@ -8,7 +8,7 @@ test("upload, atomic publication, search, inspect, query, refresh and download",
   const content = Buffer.from("well,value\n001,2\n002,4\n");
   await page.goto("/data/");
   await expect(
-    page.getByRole("heading", { name: "数据管理工作台", exact: true }),
+    page.getByRole("heading", { name: "数据管理", exact: true }),
   ).toBeVisible();
   await page.getByRole("tab", { name: /发布数据/ }).click();
   await page
@@ -21,7 +21,7 @@ test("upload, atomic publication, search, inspect, query, refresh and download",
   ).toBeVisible();
   await page.getByRole("tab", { name: /^数据目录/ }).click();
   await page.getByLabel("搜索数据").fill(title);
-  await page.getByRole("button", { name: "应用筛选", exact: true }).click();
+  await page.getByRole("button", { name: "搜索", exact: true }).click();
   await expect(
     page.locator(".catalog button").filter({ hasText: title }),
   ).toHaveCount(0);

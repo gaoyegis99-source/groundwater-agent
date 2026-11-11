@@ -5,16 +5,16 @@ import { allDetails, applySnapshot, beginSnapshotRead, connectStream, detailsAft
 import type { DebugEntry, History, Result, WorkflowDraft } from './types';
 
 const eventTypes = [
-  'session.created', 'turn.accepted', 'task.created', 'task.revised', 'task.completed', 'task.reopened', 'control.requested', 'control.complete',
+  'session.created', 'session.metadata_updated', 'turn.accepted', 'task.created', 'task.revised', 'task.completed', 'task.reopened', 'task.preparation_revised', 'control.requested', 'control.complete',
   'control.proposed', 'control.confirmed', 'control.dismissed', 'control.stale', 'control.failed',
   'workflow_draft.requested', 'workflow_draft.published',
   ...['requested', 'resolved', 'failed', 'corrected'].map(status => `intent_routing.${status}`),
   ...['running', 'waiting_confirmation', 'waiting_execution', 'complete', 'failed', 'superseded', 'cancelled'].map(status => `agent.${status}`),
   ...['pending', 'processing', 'confirmed', 'rejected', 'superseded'].map(status => `confirmation.${status}`),
-  'confirmation.revised', 'confirmation.recoveryCreated', 'workflow.retryQueued', 'workflow.recoveryCompleted', 'workflow.recoveryFailed',
+  'confirmation.revised', 'confirmation.recovery_created', 'workflow.retry_queued', 'workflow.recovery_completed', 'workflow.recovery_failed',
   ...['queued', 'running', 'succeeded', 'failed', 'cancelled', 'timed_out'].map(status => `workflow.${status}`),
   ...['queued', 'running', 'succeeded', 'failed', 'cancelled', 'timed_out'].map(status => `job.${status}`),
-  'agent.activity', 'agent.planRecorded', 'workflow.stageChanged', 'workflow.communicationChanged',
+  'agent.activity', 'agent.plan_recorded', 'workflow.stage_changed', 'workflow.communication_changed',
 ];
 
 export type InteractionTiming = {
@@ -33,11 +33,14 @@ export type SessionStreamRefs = {
   interactionTiming: MutableRefObject<InteractionTiming | null>;
 };
 
+type DraftRead = { status: 'loading' | 'ready' } | { status: 'error'; error: ApiError };
+
 export function useSessionStream(activeId: string, project: string, log: (entry: DebugEntry) => void) {
   const [preview, setPreview] = useState<{ agentRunId: string; text: string | null } | null>(null);
   const [stopping, setStopping] = useState(false);
   const [history, setHistory] = useState<History | null>(null);
   const [workflowDrafts, setWorkflowDrafts] = useState<Record<string, WorkflowDraft>>({});
+  const [workflowDraftReads, setWorkflowDraftReads] = useState<Record<string, DraftRead>>({});
   const [results, setResults] = useState<Result[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -50,6 +53,7 @@ export function useSessionStream(activeId: string, project: string, log: (entry:
   const viewAbort = useRef<AbortController | null>(null);
   const refreshRequest = useRef<(() => Promise<void>) | null>(null);
   const olderRequest = useRef<((before: number) => Promise<void>) | null>(null);
+  const draftRequest = useRef<((id: string) => void) | null>(null);
   const interactionTiming = useRef<InteractionTiming | null>(null);
   const connected = connection === 'connected';
   const lastTurn = history?.turns.find(turn => turn.goalRevision === history.goalRevision);
@@ -67,7 +71,7 @@ export function useSessionStream(activeId: string, project: string, log: (entry:
     const controller = new AbortController();
     viewAbort.current = controller;
     setPreview(null); setStopping(false);
-    setHistory(null); setResults([]); setWorkflowDrafts({}); setTrace(null); setError(null); setConnection('connecting'); setLoadingOlder(false);
+    setHistory(null); setResults([]); setWorkflowDrafts({}); setWorkflowDraftReads({}); setTrace(null); setError(null); setConnection('connecting'); setLoadingOlder(false);
     if (!activeId) { setLoading(false); return; }
     setLoading(true);
     let cancelled = false;
@@ -106,6 +110,25 @@ export function useSessionStream(activeId: string, project: string, log: (entry:
       if (caught instanceof DOMException && caught.name === 'AbortError') return;
       if (current()) showError(caught);
     };
+    const readDraft = (id: string) => {
+      const epoch = draftRefreshEpoch;
+      const sequence = (draftReadSequences.get(id) ?? 0) + 1;
+      draftReadSequences.set(id, sequence);
+      setWorkflowDraftReads(previous => ({ ...previous, [id]: { status: 'loading' } }));
+      void (callApi('kernel_get_workflow_draft', `/sessions/${activeId}/workflow-drafts/${id}`, undefined, controller.signal) as Promise<WorkflowDraft>).then(item => {
+        if (!current() || draftReadSequences.get(id) !== sequence) return;
+        const cached = draftCache.get(id);
+        const next = cached && cached.status !== 'GENERATING' && item.status === 'GENERATING' ? cached : item as WorkflowDraft;
+        draftCache.set(id, next);
+        draftValidatedEpochs.set(id, Math.max(draftValidatedEpochs.get(id) ?? -1, epoch));
+        setWorkflowDrafts(previous => ({ ...previous, [id]: next }));
+        setWorkflowDraftReads(previous => ({ ...previous, [id]: { status: 'ready' } }));
+      }).catch(caught => {
+        if (!current() || draftReadSequences.get(id) !== sequence || (caught instanceof DOMException && caught.name === 'AbortError')) return;
+        if (!(caught instanceof ApiError)) throw caught;
+        setWorkflowDraftReads(previous => ({ ...previous, [id]: { status: 'error', error: caught } }));
+      });
+    };
     const loadDetails = (messages: History, scope: DetailScope) => {
       const draftIds = [...new Set(messages.turns.map(turn => turn.workflowDraftId).filter((id): id is string => !!id))]
         .filter(id => {
@@ -114,28 +137,7 @@ export function useSessionStream(activeId: string, project: string, log: (entry:
             || (draftValidatedEpochs.get(id) ?? -1) < draftRefreshEpoch;
         });
       if (scope.drafts && draftIds.length) {
-        const epoch = draftRefreshEpoch;
-        const reads = draftIds.map(id => {
-          const sequence = (draftReadSequences.get(id) ?? 0) + 1;
-          draftReadSequences.set(id, sequence);
-          return { id, sequence };
-        });
-        void Promise.all(reads.map(({ id }) => callApi('kernel_get_workflow_draft', `/sessions/${activeId}/workflow-drafts/${id}`, undefined, controller.signal) as Promise<WorkflowDraft>)).then(items => {
-          if (!current()) return;
-          const loaded: [string, WorkflowDraft][] = [];
-          items.forEach((item, index) => {
-            const read = reads[index];
-            if (draftReadSequences.get(read.id) !== read.sequence) return;
-            const cached = draftCache.get(read.id);
-            const next = cached && cached.status !== 'GENERATING' && item.status === 'GENERATING'
-              ? cached
-              : item;
-            draftCache.set(read.id, next);
-            draftValidatedEpochs.set(read.id, Math.max(draftValidatedEpochs.get(read.id) ?? -1, epoch));
-            loaded.push([read.id, next]);
-          });
-          if (loaded.length) setWorkflowDrafts(previous => ({ ...previous, ...Object.fromEntries(loaded) }));
-        }).catch(reportError);
+        draftIds.forEach(readDraft);
       }
       if (scope.results) {
         const sequence = ++resultReadSequence;
@@ -219,7 +221,7 @@ export function useSessionStream(activeId: string, project: string, log: (entry:
                 latestMessages = messages;
                 setHistory(previous => previous ? refreshHistory(previous, messages) : messages);
                 setLoading(false);
-                setStopping(messages.controlRequests?.some(item => item.status === 'REQUESTED') ?? false);
+                setStopping(messages.controlRequests?.some(item => ['REQUESTED', 'PROCESSING'].includes(item.status)) ?? false);
                 log({ kind: 'STATE', time: new Date().toLocaleTimeString(), name: 'snapshot.applied' });
                 // Subscribe before optional detail reads; events after this snapshot are durable.
                 if (source === undefined) connect(messages.eventCursor);
@@ -250,10 +252,11 @@ export function useSessionStream(activeId: string, project: string, log: (entry:
       return readMessages();
     };
     olderRequest.current = before => { olderBefore = before; setLoadingOlder(true); return readMessages(); };
+    draftRequest.current = id => { if (current() && draftReadSequences.has(id)) readDraft(id); };
     void readMessages();
     return () => {
       cancelled = true; controller.abort(); source?.close(); previewSource.close();
-      refreshRequest.current = null; olderRequest.current = null;
+      refreshRequest.current = null; olderRequest.current = null; draftRequest.current = null;
       if (timer !== undefined) clearTimeout(timer);
       finishDelay?.();
     };
@@ -281,6 +284,8 @@ export function useSessionStream(activeId: string, project: string, log: (entry:
     setStopping,
     history,
     workflowDrafts,
+    workflowDraftReads,
+    retryWorkflowDraft: (id: string) => draftRequest.current?.(id),
     results,
     loading,
     loadingOlder,

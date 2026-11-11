@@ -1,0 +1,128 @@
+{
+  "schemaVersion": "executable-model.v6",
+  "modelId": "groundwater.drastic",
+  "version": "1.0.0",
+  "workflowRef": {
+    "workflowId": "groundwater.drastic",
+    "version": "1.0.0",
+    "checksum": "sha256:be5c6ddceb58abbb0b58cd669e7172ba31f267c5c44db3ad7413bc1b01e92328"
+  },
+  "tool": {
+    "name": "run_drastic",
+    "description": "使用七个精确 Data version 的 D、R、A、S、T、I、C 栅格和一个独立的 groundwater-drastic-config.v1 配置，按有来源且已核验的 rating rules 与 weights 计算 DRASTIC 相对脆弱性指数、等级栅格和审计摘要。七层必须已严格对齐；本工具不隐式重投影或重采样，结果不是污染概率。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "depthVersionId": {"type": "string", "minLength": 1},
+        "rechargeVersionId": {"type": "string", "minLength": 1},
+        "aquiferMediaVersionId": {"type": "string", "minLength": 1},
+        "soilMediaVersionId": {"type": "string", "minLength": 1},
+        "topographyVersionId": {"type": "string", "minLength": 1},
+        "vadoseImpactVersionId": {"type": "string", "minLength": 1},
+        "hydraulicConductivityVersionId": {"type": "string", "minLength": 1},
+        "configVersionId": {"type": "string", "minLength": 1}
+      },
+      "required": [
+        "depthVersionId",
+        "rechargeVersionId",
+        "aquiferMediaVersionId",
+        "soilMediaVersionId",
+        "topographyVersionId",
+        "vadoseImpactVersionId",
+        "hydraulicConductivityVersionId",
+        "configVersionId"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "inputBindings": {
+    "D": "depthVersionId",
+    "R": "rechargeVersionId",
+    "A": "aquiferMediaVersionId",
+    "S": "soilMediaVersionId",
+    "T": "topographyVersionId",
+    "I": "vadoseImpactVersionId",
+    "C": "hydraulicConductivityVersionId",
+    "config": "configVersionId"
+  },
+  "fieldRequirements": [],
+  "semanticRequirements": [
+    {"kind": "crs", "inputParameter": "depthVersionId"},
+    {"kind": "crs", "inputParameter": "rechargeVersionId"},
+    {"kind": "crs", "inputParameter": "aquiferMediaVersionId"},
+    {"kind": "crs", "inputParameter": "soilMediaVersionId"},
+    {"kind": "crs", "inputParameter": "topographyVersionId"},
+    {"kind": "crs", "inputParameter": "vadoseImpactVersionId"},
+    {"kind": "crs", "inputParameter": "hydraulicConductivityVersionId"}
+  ],
+  "defaultParameters": {},
+  "parameterBindings": {},
+  "deadlineSeconds": 3600,
+  "maxParallelNodes": 1,
+  "finalOutputs": ["drastic-index", "drastic-classification", "drastic-summary"],
+  "executionService": "executor",
+  "executorId": "workflow-dag",
+  "outputPublications": {
+    "drastic-index": {
+      "title": "DRASTIC 相对脆弱性指数",
+      "mediaType": "image/tiff",
+      "format": "geotiff",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "Weighted-sum DRASTIC raster computed cell by cell from independently configured ratings and weights for D, R, A, S, T, I and C; NoData propagates when any factor is missing or has no matching rating.",
+        "fields": {},
+        "grain": "one weighted index value per valid aligned raster cell",
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "All seven rasters must be exactly aligned in CRS, shape, transform and resolution; there is no implicit resampling or reprojection.",
+          "A weighted index is conditional on the supplied factor definitions, rating rules, units, bases and weights and is not independently scientifically validated by the platform.",
+          "NoData and uncovered ratings remain NoData rather than being imputed or assigned to the nearest rating."
+        ],
+        "source": "seven exact Data versions plus the exact DRASTIC config version"
+      }
+    },
+    "drastic-classification": {
+      "title": "DRASTIC 相对脆弱性等级",
+      "mediaType": "image/tiff",
+      "format": "geotiff",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "Integer class codes obtained by applying the config's explicit open/closed index class intervals to valid DRASTIC index cells.",
+        "fields": {},
+        "grain": "one class code per index cell covered by a declared class",
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "The class expresses relative vulnerability under the supplied DRASTIC configuration; it is not a pollution probability.",
+          "An index value not covered by a declared class remains NoData and is reported as classification-uncovered."
+        ],
+        "source": "drastic-index plus the exact config classification source"
+      }
+    },
+    "drastic-summary": {
+      "title": "DRASTIC 运行审计摘要",
+      "mediaType": "application/json",
+      "format": "json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "Audit summary of the exact grid, config and rule version, factor weights, rating and classification source identities, per-factor uncovered cells, NoData propagation, class counts and index statistics.",
+        "fields": {},
+        "grain": "one summary per DRASTIC execution",
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "Verified source status records the supplied provenance state; it is not independent validation of factor suitability, rating thresholds or factor weight choices.",
+          "The summary reports grid and uncovered ratios but does not establish contaminant release likelihood, concentration, travel time, exposure or consequence."
+        ],
+        "source": "groundwater.drastic.evaluate runtime audit summary"
+      }
+    }
+  }
+}

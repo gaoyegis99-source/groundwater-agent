@@ -162,7 +162,7 @@ def _load_operator_catalog(root: Path) -> tuple[dict[tuple[str, str], dict], str
             **raw,
             "implementationRevision": locked["implementationRevision"],
         }
-    if len(operators) != 109:
+    if len(operators) != 111:
         raise ValueError("OPERATOR_CATALOG_SIZE_INVALID")
     mapping_path = pack_root / "src" / "moperators" / "static_implementations.py"
     tree = ast.parse(

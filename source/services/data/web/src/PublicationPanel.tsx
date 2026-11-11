@@ -77,11 +77,8 @@ export function PublicationPanel({ controller, run, formats }: Props) {
     <section className="panel task-panel">
       <div className="panel-heading">
         <div>
-          <p className="step-kicker">任务 3</p>
           <h2>发布新数据</h2>
-          <p>上传文件、补充业务含义并完成核对；只有整批校验成功后才会生成不可变版本。</p>
         </div>
-        <span className="safety-badge">原子发布</span>
       </div>
       <ol className="steps" aria-label="发布步骤">
         {["选择文件", "补充信息", "核对内容", "确认发布", "查看回执"].map((label, index) => (

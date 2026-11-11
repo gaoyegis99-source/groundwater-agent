@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { HttpResponse, http } from "msw";
 import { describe, expect, it } from "vitest";
 import userEvent from "@testing-library/user-event";
@@ -171,22 +171,47 @@ describe("Knowledge UI trust boundary", () => {
     const user = userEvent.setup();
     handlers();
     renderApp();
-    await screen.findByRole("heading", { name: "知识管理工作台" });
-    await user.click(screen.getByText("查看身份与环境"));
+    await screen.findByRole("heading", { name: "知识管理" });
+    await user.click(screen.getByText("系统信息"));
     expect(await screen.findByText(/operator-1/)).toBeVisible();
     await user.click(screen.getByRole("tab", { name: /导入更新/ }));
     expect(screen.queryByLabelText("知识包文件")).not.toBeInTheDocument();
     expect(screen.getByText("当前身份没有导入权限。")).toBeVisible();
   });
 
+  it("closes the reader when URL navigation changes task and retains the explicit historical version", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState({}, "", "/knowledge/?view=retrieval&document=d1&version=historical-v1");
+    handlers();
+    server.use(
+      http.get("*/knowledge/v3/documents/d1/versions", () => HttpResponse.json({ items: [], nextCursor: null })),
+      http.get("*/knowledge/v3/versions/historical-v1/lifecycle", () => HttpResponse.json({ items: [], nextCursor: null })),
+      http.get("*/knowledge/v3/versions/historical-v1", () => HttpResponse.json({ type: "urn:problem:FORBIDDEN", title: "Forbidden", status: 403, code: "FORBIDDEN", detail: "Access denied", errors: [] }, { status: 403 })),
+    );
+    renderApp();
+    await screen.findByRole("heading", { name: "知识管理" }, { timeout: 5000 });
+    await user.click(await screen.findByRole("tab", { name: "知识目录" }));
+    await screen.findByRole("dialog", { name: "知识阅读" });
+    act(() => {
+      window.history.replaceState({}, "", "/knowledge/?view=retrieval&document=d1&version=historical-v1");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "知识阅读" })).not.toBeInTheDocument());
+    expect(screen.getByRole("tab", { name: "证据检索" })).toHaveAttribute("aria-selected", "true");
+    expect(new URLSearchParams(window.location.search).get("version")).toBe("historical-v1");
+    await user.click(screen.getByRole("tab", { name: "知识目录" }));
+    await screen.findByRole("dialog", { name: "知识阅读" });
+    expect(screen.getByRole("combobox", { name: "查看版本" })).toHaveValue("historical-v1");
+  });
+
   it("fails closed for cross-service product identity mismatch", async () => {
     handlers({ ...knowledgeCapabilities, dataConfigured: true });
     server.use(http.get("*/data/v3/capabilities", () => HttpResponse.json(dataCapabilities)));
     renderApp();
-    expect(await screen.findByText(/CONFIGURATION_IDENTITY_MISMATCH/)).toBeVisible();
+    expect(await screen.findByText(/CONFIGURATION_IDENTITY_MISMATCH/, {}, { timeout: 5000 })).toBeVisible();
     const user = userEvent.setup();
     await user.click(screen.getByRole("tab", { name: /证据检索/ }));
-    await user.click(screen.getByText("需要限定到某份数据？选择不可变版本和语义修订"));
+    await user.click(screen.getByText("数据范围（可选）"));
     await waitFor(() => expect(screen.getByText(/精确绑定已禁用/)).toBeVisible());
   });
 
@@ -197,8 +222,8 @@ describe("Knowledge UI trust boundary", () => {
       detail: "down", code: "DATA_UNAVAILABLE", requestId: "data-request", traceId: "trace", errors: [],
     }, { status: 503 })));
     renderApp();
-    expect(await screen.findByRole("heading", { name: "知识管理工作台" })).toBeVisible();
-    expect(await screen.findByText(/知识目录、通用检索和生命周期管理仍可继续/)).toBeVisible();
+    expect(await screen.findByRole("heading", { name: "知识管理" }, { timeout: 5000 })).toBeVisible();
+    expect(await screen.findByText(/目录与通用检索仍可用/)).toBeVisible();
     expect(screen.getByRole("tab", { name: /知识目录/ })).toBeEnabled();
     expect(screen.getByRole("tab", { name: /证据检索/ })).toBeEnabled();
     expect(screen.getAllByText(/精确绑定已禁用/).length).toBeGreaterThan(0);

@@ -23,6 +23,7 @@ FORMAT_MEDIA_TYPES: dict[str, str] = {
     "pytorch-state-dict": "application/vnd.pytorch",
     "text": "text/plain",
     "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "zip": "application/zip",
 }
 
 FORMATS = tuple(FORMAT_MEDIA_TYPES)

@@ -1,0 +1,86 @@
+{
+  "schemaVersion": "executable-model.v6",
+  "modelId": "groundwater.source-sustainability",
+  "version": "1.1.0",
+  "workflowRef": {
+    "workflowId": "groundwater.source-sustainability",
+    "version": "1.0.0",
+    "checksum": "sha256:e750627daac6deb708df78c04e8561567110aed3ce7e03c8225cea40f28c9b98"
+  },
+  "tool": {
+    "name": "run_source_sustainability",
+    "description": "把已核实的评价 JSON 委托给部署绑定的外部服务执行水源地可持续利用综合评价；算法不在平台内复现。Executor 仅连接固定 HTTPS 主机，校验服务、API、模型与操作版本白名单，并对输入、结构化结果和下载文件执行可审计的 SHA256 完整性绑定。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "assessmentVersionId": {"type": "string", "minLength": 1}
+      },
+      "required": ["assessmentVersionId"],
+      "additionalProperties": false
+    }
+  },
+  "inputBindings": {"assessment_input": "assessmentVersionId"},
+  "fieldRequirements": [],
+  "semanticRequirements": [],
+  "defaultParameters": {},
+  "parameterBindings": {},
+  "deadlineSeconds": 300,
+  "maxParallelNodes": 1,
+  "finalOutputs": [
+    "sustainability-result",
+    "sustainability-result-file",
+    "sustainability-run-receipt"
+  ],
+  "executionService": "executor",
+  "executorId": "workflow-dag",
+  "outputPublications": {
+    "sustainability-result": {
+      "title": "水源地综合评价结构化结果",
+      "mediaType": "application/json",
+      "format": "json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "External groundwater-sustainability service structured value returned for the allowlisted sustainability.evaluate operation; valuesSha256 in the run receipt binds its canonical JSON bytes.",
+        "fields": {}, "grain": null, "time_range": null, "timezone": null,
+        "crs": null, "vertical_datum": null,
+        "limitations": [
+          "The scoring algorithm is not locally reproduced or independently validated by the platform.",
+          "This non-regulatory result cannot replace scientific review, administrative approval or a formal regulatory decision."
+        ],
+        "source": "external groundwater-sustainability service; exact service/model versions are recorded in sustainability-run-receipt"
+      }
+    },
+    "sustainability-result-file": {
+      "title": "水源地综合评价 JSON 文件",
+      "mediaType": "application/json",
+      "format": "json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "Remote result download whose declared media type, format, size and SHA256 are verified before the bytes are published; the matching identity is recorded in the run receipt.",
+        "fields": {}, "grain": null, "time_range": null, "timezone": null,
+        "crs": null, "vertical_datum": null,
+        "limitations": [
+          "Byte integrity and transport verification do not establish scientific validity, completeness of the submitted assessment or reproducibility of the external algorithm.",
+          "Remote result content may contain service-generated timestamps or other variable metadata."
+        ],
+        "source": "external groundwater-sustainability service; downloaded and verified by executor-remote-http"
+      }
+    },
+    "sustainability-run-receipt": {
+      "title": "第三方运行凭据",
+      "mediaType": "application/json",
+      "format": "json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "Platform-generated secret-free success receipt recording operationType, serviceId, apiVersion, serviceVersion, modelVersion, remoteTaskId, requestSha256, idempotencyKey, inputs with size/SHA256, valuesSha256, artifacts with media type/format/size/SHA256, status, remote termination confirmation and remoteReceiptSha256.",
+        "fields": {}, "grain": null, "time_range": null, "timezone": null,
+        "crs": null, "vertical_datum": null,
+        "limitations": [
+          "Integrity is not scientific validation: the receipt proves the platform-observed request, versions and returned bytes, not the correctness or reproducibility of the external scoring method.",
+          "The receipt is produced only after confirmed success and contains no API key, credential value, CA secret or service base URL."
+        ],
+        "source": "executor-remote-http"
+      }
+    }
+  }
+}

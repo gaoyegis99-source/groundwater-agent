@@ -616,6 +616,7 @@ class Format(Enum):
     pytorch_state_dict = 'pytorch-state-dict'
     text = 'text'
     xlsx = 'xlsx'
+    zip = 'zip'
 
 
 class MediaType(RootModel[str]):

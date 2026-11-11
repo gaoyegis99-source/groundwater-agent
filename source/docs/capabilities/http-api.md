@@ -2,6 +2,44 @@
 
 `/api/v11/*` 已退场，统一返回 `410 Gone` 与 v12 升级说明。
 
+## WebUI、终端和 API
+
+三个入口使用同一 Gateway 和 Public API v12。同一实例、同一项目和身份下，会话 ID 可跨入口复用，消息、确认、任务进度和成果均来自同一份服务端记录。Kernel 管理确认与执行状态，Data 管理版本和对象。WebUI 使用由 OpenAPI 生成的 TypeScript 类型和验证器，终端（TLI）使用 Python SDK。客户端可以从独立机器安装和运行，只需要能连接 Gateway。
+
+| 入口 | 使用方式 |
+| --- | --- |
+| WebUI | 打开研究实例首页，从浏览器会话 URL 的 `#/sessions/<会话ID>` 取得会话 ID |
+| 终端 | 安装 `groundwater-api-client` wheel 后运行 `groundwater-tli`，输入 `/help` 查看命令。支持账号交互登录或 `GROUNDWATER_API_TOKEN` |
+| API | 使用 `GroundwaterClient` 或直接调用本页 HTTP 接口。SDK 与 WebUI 从同一份公开 OpenAPI 生成 |
+
+安装时使用当前发布中的 `groundwater-api-client` 和 `platform-protocol-contracts` wheel。终端复用浏览器会话的示例：
+
+```bash
+groundwater-tli --origin http://127.0.0.1:28186 --username researcher --session "$GROUNDWATER_SESSION_ID"
+```
+
+交互模式支持 `/sessions`、`/new`、`/use`、`/datasets`、`/attach`、`/history`、`/status`、`/events` 和 `/results`。普通文本直接发送到当前会话。查看 `/status` 中冻结的参数及输入版本后，使用 `/confirm <确认ID>` 或 `/reject <确认ID> <原因>`。`/events --cursor <事件ID>` 从已读事件续接。`/download <版本ID> <对象ID> <目标路径>` 校验大小和 SHA-256 后保存文件。单次命令省略斜杠，例如 `groundwater-tli --session <会话ID> results`，使用 `GROUNDWATER_API_TOKEN` 可供脚本调用。
+
+Python SDK 示例从同一个 Gateway 读取会话和成果：
+
+```python
+import os
+
+from groundwater_api_client import GroundwaterClient
+
+with GroundwaterClient(
+    "http://127.0.0.1:28186",
+    api_token=os.environ["GROUNDWATER_API_TOKEN"],
+) as client:
+    session_id = os.environ["GROUNDWATER_SESSION_ID"]
+    session = client.session(session_id)
+    print(session.agent_steps)
+    for result in client.results(session_id).items:
+        print(result["workflowRunId"])
+```
+
+SDK 提供 `send_message`、`input_reference`、`confirm`、`reject`、`events`、`results` 和 `download_object`。公开 JSON 接口和内容流也可通过 `call` 或 `stream` 传入生成的 `operations` 常量访问。消息重试保留原 `requestId` 和相同正文及引用，事件续接使用 `afterEventId`。
+
 ## 健康与能力
 
 | Method | Path | 含义 |

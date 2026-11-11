@@ -157,6 +157,8 @@ class HttpClient:
                 params=query,
                 headers=request_headers,
             ) as response:
+                if response.status_code >= 400:
+                    response.read()
                 self._raise_for_problem(response)
                 if response.status_code not in operation.success_statuses:
                     raise ProtocolError("SUCCESS_STATUS_UNDECLARED")

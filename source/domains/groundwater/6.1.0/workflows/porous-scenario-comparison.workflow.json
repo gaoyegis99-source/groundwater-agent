@@ -1,0 +1,61 @@
+{
+  "schemaVersion": "workflow.v6",
+  "workflowId": "groundwater.porous-scenario-comparison",
+  "version": "1.0.0",
+  "inputs": [
+    {
+      "name": "scenario_package",
+      "cardinality": "one",
+      "mediaTypes": [
+        "application/zip"
+      ],
+      "formats": [
+        "zip"
+      ]
+    }
+  ],
+  "parameters": [],
+  "nodes": [
+    {
+      "nodeId": "execute",
+      "operatorId": "groundwater.porous.scenario_compare",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "scenario_package": {
+          "workflowInput": "scenario_package"
+        }
+      },
+      "parameters": {}
+    }
+  ],
+  "outputs": [
+    {
+      "name": "porous-scenario-table",
+      "nodeOutput": {
+        "nodeId": "execute",
+        "port": "scenario_table"
+      }
+    },
+    {
+      "name": "porous-scenario-summary",
+      "nodeOutput": {
+        "nodeId": "execute",
+        "port": "comparison_summary"
+      }
+    },
+    {
+      "name": "porous-scenario-results",
+      "nodeOutput": {
+        "nodeId": "execute",
+        "port": "result_package"
+      }
+    },
+    {
+      "name": "porous-scenario-comparison-receipt",
+      "nodeOutput": {
+        "nodeId": "execute",
+        "port": "run_receipt"
+      }
+    }
+  ]
+}

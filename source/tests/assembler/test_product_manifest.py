@@ -169,6 +169,11 @@ def test_isolated_assembly_inputs_exclude_local_generated_and_dependency_trees(
     assert (tmp_path / "system-deps.lock.json").is_file()
 
 
+def _selected_groundwater_domain(target: Path) -> Path:
+    manifest = json.loads((target / "products/groundwater/product-manifest.json").read_bytes())
+    return target / "domains" / "groundwater" / manifest["domainPackage"]["version"]
+
+
 def _pin_domain(target: Path, product_name: str, domain: Path) -> Path:
     manifest_path = target / "products" / product_name / "product-manifest.json"
     manifest = json.loads(manifest_path.read_text())
@@ -207,23 +212,21 @@ def test_groundwater_compiles_v12_research_outputs() -> None:
     assert kernel["schemaVersion"] == "kernel-config.v8"
     authoring = kernel["workflowAuthoring"]
     assert authoring["operatorCatalogDigest"] == executor["operatorCatalogDigest"]
-    assert len(authoring["operators"]) == 109
+    assert len(authoring["operators"]) == 111
     assert all("implementationRevision" in item for item in authoring["operators"])
-    assert len(authoring["enabledOperators"]) == 99
-    assert [
-        item["remoteBinding"]
+    bindings = {
+        row["serviceId"]: row["allowedOperations"]
+        for row in json.loads(_manifest("groundwater").read_bytes())["remoteServices"]
+    }
+    assert set(authoring["enabledOperators"]) == {
+        f"{item['id']}@{item['version']}"
         for item in authoring["operators"]
         if (
-            item["runtime"] == "remote_http"
-            and f"{item['id']}@{item['version']}" in authoring["enabledOperators"]
+            item["runtime"] != "remote_http"
+            or item["remoteBinding"]["operationType"] in bindings.get(item["remoteBinding"]["serviceId"], ())
         )
-    ] == [
-        {
-            "serviceId": "groundwater-sustainability",
-            "operationType": "sustainability.evaluate",
-        }
-    ]
-    assert len(kernel["models"]) == 10
+    }
+    assert len(kernel["models"]) == (18 if "porous-groundwater" in bindings else 10)
     assert {"retrieve_evidence", "read_evidence", "lookup_knowledge"} <= {
         item["name"] for item in kernel["observationTools"]
     }
@@ -247,7 +250,7 @@ def test_groundwater_compiles_v12_research_outputs() -> None:
         "knowledge-bootstrap",
     }
     assert set(executor["workerRuntimes"]) == {"native", "qgis", "remote_http"}
-    assert set(executor["remoteServices"]) == {"groundwater-sustainability"}
+    assert set(executor["remoteServices"]) == set(bindings)
     assert executor["remoteServices"]["groundwater-sustainability"][
         "allowedOperations"
     ] == ["sustainability.evaluate"]
@@ -477,11 +480,12 @@ def test_groundwater_compiles_v12_research_outputs() -> None:
         "knowledge-db-password": {
             "file": "${PLATFORM_SECRETS_DIR:?required}/knowledge-db-password"
         },
-        "groundwater-sustainability-api-key": {
-            "file": "${PLATFORM_SECRETS_DIR:?required}/groundwater-sustainability-api-key"
-        },
-        "groundwater-sustainability-ca-bundle": {
-            "file": "${PLATFORM_SECRETS_DIR:?required}/groundwater-sustainability-ca-bundle"
+        **{
+            f"{service}-{suffix}": {
+                "file": f"${{PLATFORM_SECRETS_DIR:?required}}/{service}-{suffix}"
+            }
+            for service in bindings
+            for suffix in ("api-key", "ca-bundle")
         },
     }
     assert compose["services"]["kernel-service"]["secrets"] == [
@@ -560,7 +564,7 @@ def test_groundwater_compiles_native_png_model_and_expected_parallelism() -> Non
     assert tools["retrieve_evidence"]["outputSchemaChecksum"].startswith("sha256:")
     assert "url" not in tools["retrieve_evidence"]
     models = {item["modelId"]: item for item in executor["models"]}
-    assert set(models) == {
+    expected_models = {
         "groundwater.monitoring-trend",
         "groundwater.flow-field",
         "groundwater.drastic",
@@ -572,6 +576,18 @@ def test_groundwater_compiles_native_png_model_and_expected_parallelism() -> Non
         "groundwater.rule-classification",
         "groundwater.source-sustainability",
     }
+    if "porous-groundwater" in executor["remoteServices"]:
+        expected_models.update({
+            "groundwater.porous-simulation",
+            "groundwater.porous-calibration",
+            "groundwater.porous-scenario-comparison",
+            "groundwater.porous-map",
+            "groundwater.porous-inversion-training",
+            "groundwater.porous-inversion-sampling",
+            "groundwater.porous-agricultural-inversion",
+            "groundwater.sustainability-input-preparation",
+        })
+    assert set(models) == expected_models
     summary = models["groundwater.summary"]
     assert summary["version"] == "3.1.0"
     assert summary["workflowRef"]["workflowId"] == "groundwater.summary"
@@ -670,11 +686,13 @@ def test_groundwater_compiles_native_png_model_and_expected_parallelism() -> Non
     )
     assert compose["services"]["knowledge-bootstrap"]["restart"] == "no"
     assert compose["services"]["knowledge-bootstrap"]["profiles"] == ["bootstrap"]
-    assert lock["domainPackage"]["version"] == "6.0.0"
+    domain_ref = json.loads(_manifest("groundwater").read_bytes())["domainPackage"]
+    assert lock["domainPackage"]["version"] == domain_ref["version"]
+    additions = 8 if domain_ref["version"] == "6.1.0" else 0
     assert lock["knowledgeBootstrap"]["projects"] == ["groundwater-demo"]
-    assert lock["knowledgeBootstrap"]["documentCount"] == 103
-    assert lock["knowledgeBootstrap"]["chunkCount"] == 303
-    assert len(lock["knowledgeBootstrap"]["files"]) == 7
+    assert lock["knowledgeBootstrap"]["documentCount"] == 103 + additions
+    assert lock["knowledgeBootstrap"]["chunkCount"] == 303 + additions
+    assert len(lock["knowledgeBootstrap"]["files"]) == (8 if additions else 7)
     bootstrap = compose["services"]["knowledge-bootstrap"]
     assert bootstrap["command"][-2:] == ["--project", "groundwater-demo"]
     for name in (
@@ -855,7 +873,7 @@ def test_old_mutable_output_directory_is_rejected(tmp_path) -> None:
 def test_path_escape_and_checksum_drift_fail_before_output(tmp_path) -> None:
     _copy_inputs(tmp_path)
     manifest_path = tmp_path / "products/groundwater/product-manifest.json"
-    domain = tmp_path / "domains/groundwater/6.0.0"
+    domain = _selected_groundwater_domain(tmp_path)
     domain_path = domain / "domain-manifest.json"
     manifest = json.loads(domain_path.read_text())
     original = domain_path.read_bytes()
@@ -911,7 +929,7 @@ def test_many_input_is_rejected_before_assembly_output(tmp_path):
     from assembler import _checksum
 
     _copy_inputs(tmp_path)
-    domain = tmp_path / "domains/groundwater/6.0.0"
+    domain = _selected_groundwater_domain(tmp_path)
     workflow_path = domain / "workflows/summary.workflow.json"
     workflow = json.loads(workflow_path.read_text())
     workflow["inputs"][0]["cardinality"] = "many"
@@ -1056,7 +1074,7 @@ def test_reproject_pointcloud_branch_and_mixed_downstream_boundary() -> None:
 
 def test_unreachable_workflow_node_fails_before_output(tmp_path):
     _copy_inputs(tmp_path)
-    domain = tmp_path / "domains/groundwater/6.0.0"
+    domain = _selected_groundwater_domain(tmp_path)
     workflow_path = domain / "workflows/summary.workflow.json"
     workflow = json.loads(workflow_path.read_text())
     orphan = {**workflow["nodes"][0], "nodeId": "orphan"}
@@ -1071,7 +1089,7 @@ def test_unreachable_workflow_node_fails_before_output(tmp_path):
 
 def test_workflow_node_order_does_not_change_valid_graph(tmp_path):
     _copy_inputs(tmp_path)
-    domain = tmp_path / "domains/groundwater/6.0.0"
+    domain = _selected_groundwater_domain(tmp_path)
     workflow_path = domain / "workflows/flow-field.workflow.json"
     workflow = json.loads(workflow_path.read_text())
     workflow["nodes"].reverse()
@@ -1096,7 +1114,7 @@ def test_workflow_node_order_does_not_change_valid_graph(tmp_path):
 
 def test_cycle_with_forward_reference_fails_before_output(tmp_path):
     _copy_inputs(tmp_path)
-    domain = tmp_path / "domains/groundwater/6.0.0"
+    domain = _selected_groundwater_domain(tmp_path)
     workflow_path = domain / "workflows/flow-field.workflow.json"
     workflow = json.loads(workflow_path.read_text())
     workflow["nodes"][0]["inputs"]["observations"] = {
@@ -1121,7 +1139,7 @@ def test_cycle_with_forward_reference_fails_before_output(tmp_path):
 def test_model_binding_needs_required_argument_or_default(tmp_path, missing, error):
     _copy_inputs(tmp_path)
     model_name = "summary" if missing == "input" else "flow-field"
-    domain = tmp_path / "domains/groundwater/6.0.0"
+    domain = _selected_groundwater_domain(tmp_path)
     model_path = domain / "models" / f"{model_name}.model.json"
     model = json.loads(model_path.read_text())
     if missing == "input":
@@ -1140,7 +1158,7 @@ def test_model_binding_needs_required_argument_or_default(tmp_path, missing, err
 
 def test_model_input_default_covers_optional_bound_argument(tmp_path):
     _copy_inputs(tmp_path)
-    domain = tmp_path / "domains/groundwater/6.0.0"
+    domain = _selected_groundwater_domain(tmp_path)
     model_path = domain / "models/summary.model.json"
     model = json.loads(model_path.read_text())
     model["tool"]["inputSchema"]["required"].remove("versionId")

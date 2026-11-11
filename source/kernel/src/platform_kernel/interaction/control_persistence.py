@@ -3,8 +3,8 @@
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
-from ..database import append_event, connect_database, utc_now
-from ..errors import ConfirmationConflictError, ResourceNotFoundError
+from ..database import append_event, begin_immediate, connect_database, utc_now
+from ..errors import ConfirmationConflictError, ResourceNotFoundError, WriteLockUnavailableError
 from ..application.task_api import refresh_task
 from .actors import DEFAULT_LOCAL_ACTOR_SUBJECT
 
@@ -78,7 +78,7 @@ def _lease_until(seconds: int) -> str:
     ).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
 
-def claim_controls(database, owner, *, limit=32, lease_seconds=30):
+def claim_controls(database, owner, *, limit=32, lease_seconds=30, wait=True):
     """Claim a bounded FIFO batch, reclaiming only expired work.
 
     SQLite's ``BEGIN IMMEDIATE`` serializes selection and generation increment.
@@ -88,7 +88,20 @@ def claim_controls(database, owner, *, limit=32, lease_seconds=30):
     if not isinstance(owner, str) or not owner or limit < 1 or lease_seconds < 1:
         raise ValueError("CONTROL_CLAIM_INVALID")
     with connect_database(database) as connection:
-        connection.execute("BEGIN IMMEDIATE")
+        # Most dispatcher polls have no eligible controls. Keep that path
+        # read-only so unrelated auth/workflow writes cannot block it. This is
+        # only a hint: claim eligibility is re-read under the write lock below.
+        candidate = connection.execute(
+            """SELECT 1 FROM run_controls
+               WHERE status='REQUESTED'
+                  OR (status='PROCESSING' AND (claim_until IS NULL OR claim_until<=?))
+               LIMIT 1""",
+            (utc_now(),),
+        ).fetchone()
+        if candidate is None:
+            return ()
+        if not begin_immediate(connection, wait=wait):
+            raise WriteLockUnavailableError("KERNEL_WRITE_BUSY")
         now = utc_now()
         rows = connection.execute(
             """SELECT * FROM run_controls
@@ -166,14 +179,15 @@ def release_control(database, control):
         )
 
 
-def finalize_stop(database, control):
-    """Fence new work immediately; leave executing runs pending until Jobs settle."""
+def finalize_stop(database, control, *, wait=True):
+    """Fence work, returning None when this actor no longer owns the control."""
     run_id, session_id = control["agent_run_id"], control["session_id"]
     required_claim = {"claim_owner", "claim_generation"}
     if not required_claim <= control.keys() or not control["claim_owner"]:
         raise ValueError("CONTROL_CLAIM_REQUIRED")
     with connect_database(database) as c:
-        c.execute("BEGIN IMMEDIATE")
+        if not begin_immediate(c, wait=wait):
+            raise WriteLockUnavailableError("KERNEL_WRITE_BUSY")
         now = utc_now()
         owned = c.execute(
             """SELECT 1 FROM run_controls
@@ -188,7 +202,7 @@ def finalize_stop(database, control):
             ),
         ).fetchone()
         if owned is None:
-            return True
+            return None
         if c.execute(
             "SELECT 1 FROM workflow_runs WHERE agent_run_id=? AND status IN ('QUEUED','RUNNING')",
             (run_id,),
@@ -300,10 +314,10 @@ class ControlRequests:
         self.owner = f"kernel-runtime-{uuid4().hex}"
 
     def claim(self, *, limit=32):
-        return claim_controls(self.database, self.owner, limit=limit)
+        return claim_controls(self.database, self.owner, limit=limit, wait=False)
 
     def finalize(self, control):
-        return finalize_stop(self.database, control)
+        return finalize_stop(self.database, control, wait=False)
 
     def deciding(self, run_id):
         with connect_database(self.database) as connection:

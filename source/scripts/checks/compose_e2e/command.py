@@ -10,6 +10,7 @@ from scripts.maintenance.project_environment import validation_cache_root
 from .environment import ROOT, _http_base_url, _private_ipv4_subnet
 from .live_reply_quality import LiveReplyQualityConfig
 from .scenarios import _run_groundwater_knowledge
+from tests.e2e.groundwater.porous_live import PorousAcceptance
 
 
 def main() -> None:
@@ -81,6 +82,28 @@ def main() -> None:
         help="Run only the six assembled model lifecycles",
     )
     subset.add_argument(
+        "--native-real-cases",
+        type=Path,
+        help="Run the verified real-data run directory and classification control through V12",
+    )
+    subset.add_argument(
+        "--sustainability-only",
+        action="store_true",
+        help="Run the sustainability lifecycle against the deployed local HTTPS model",
+    )
+    parser.add_argument(
+        "--sustainability-case", type=Path,
+        help="Synthetic case manifest for --sustainability-only",
+    )
+    subset.add_argument(
+        "--porous-simulation-case", type=Path,
+        help="Run the isolated porous candidate with the staged rectangular project ZIP",
+    )
+    parser.add_argument("--porous-service-image", help="Locally built porous candidate image")
+    parser.add_argument("--porous-fixtures", type=Path, help="Exercise all porous workflows with these fixtures")
+    parser.add_argument("--porous-assessment-bridge", type=Path, help="Run assessment with the local service and supplied synthetic evidence")
+    parser.add_argument("--porous-report", type=Path, default=output_root / "porous-simulation.json")
+    subset.add_argument(
         "--reply-quality-only",
         action="store_true",
         help="Run the frozen 24-case real-Provider reply-quality gate",
@@ -102,6 +125,18 @@ def main() -> None:
         "--webui-report", type=Path, default=output_root / "webui-evidence"
     )
     args = parser.parse_args()
+    if args.sustainability_case is not None and (
+        not args.sustainability_only
+        or not args.sustainability_case.is_file()
+        or args.transfer_evidence.resolve().is_relative_to(ROOT)
+    ):
+        parser.error("--sustainability-case requires --sustainability-only and evidence outside source")
+    if args.native_real_cases is not None and (
+        args.product != "groundwater"
+        or not (args.native_real_cases / "summary.json").is_file()
+        or args.transfer_evidence.resolve().is_relative_to(ROOT)
+    ):
+        parser.error("native real cases require a verified run directory and evidence outside source")
     quality_values = {
         "provider": args.reply_quality_provider,
         "protocol": args.reply_quality_protocol,
@@ -126,6 +161,20 @@ def main() -> None:
         if any(value is not None for value in quality_values.values()):
             parser.error("reply-quality options require --reply-quality-only")
         reply_quality = None
+    porous = None
+    if args.porous_simulation_case is not None:
+        if args.product != "groundwater" or not args.porous_service_image:
+            parser.error("porous simulation requires --product groundwater and --porous-service-image")
+        if not args.porous_simulation_case.is_file() or args.porous_report.resolve().is_relative_to(ROOT):
+            parser.error("porous simulation requires a staged fixture and a report outside source")
+        if args.porous_assessment_bridge is not None and (
+            args.porous_fixtures is None or not args.porous_assessment_bridge.is_file()
+        ):
+            parser.error("the assessment bridge requires full porous fixtures and assessment evidence")
+        porous = PorousAcceptance(
+            args.porous_simulation_case, args.porous_service_image, args.porous_report,
+            args.porous_fixtures, args.porous_assessment_bridge,
+        )
     _run_groundwater_knowledge(
         args.transfer_case,
         args.transfer_evidence,
@@ -136,6 +185,10 @@ def main() -> None:
         webui_report=args.webui_report,
         tasks_only=args.tasks_only,
         six_model_only=args.six_model_only,
+        native_real_cases=args.native_real_cases,
+        sustainability_only=args.sustainability_only,
+        sustainability_case=args.sustainability_case,
+        porous=porous,
         embedding_base_url=args.embedding_base_url,
         embedding_report=args.embedding_report,
         network_subnet=args.network_subnet,

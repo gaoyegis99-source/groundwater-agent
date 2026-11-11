@@ -4,7 +4,7 @@ import App from './App';
 import { WorkflowDraftCard } from './WorkflowDraftCard';
 import { PreparationDetails } from './WorkspacePanel';
 import type { WorkflowDraft } from './types';
-import { capabilitiesFixture, dataRef, historyFixture, type HistoryFixture } from './test-fixtures';
+import { capabilitiesFixture, dataRef, historyFixture, sessionResultsFixture, type HistoryFixture } from './test-fixtures';
 
 const draft: WorkflowDraft = {
   schemaVersion: 'workflow-draft-resource.v1', draftId: 'draft-1', sessionId: 'session-1', goalRevision: 2,
@@ -272,6 +272,68 @@ class TestEvents {
   emit(type: string, id: number) { TestEvents.cursor = id; this.listeners.get(type)?.(new MessageEvent(type, { lastEventId: String(id), data: '{}' })); }
 }
 const json = (data: unknown) => new Response(JSON.stringify(data && typeof data === 'object' && 'turns' in data ? historyFixture({ eventCursor: TestEvents.cursor, ...data as HistoryFixture }) : data), { status: 200, headers: { 'Content-Type': 'application/json' } });
+
+it('keeps a readable draft visible when a sibling fails and retries only the failed detail', async () => {
+  window.location.hash = '#/sessions/session-1';
+  vi.stubGlobal('EventSource', TestEvents);
+  let finishFailed!: (response: Response) => void;
+  const reads = { first: 0, second: 0 };
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    if (url.endsWith('/capabilities')) return json(capabilitiesFixture());
+    if (url.endsWith('/sessions')) return json({ items: [], nextCursor: null });
+    if (url.includes('/results')) return json(sessionResultsFixture());
+    if (url.endsWith('/messages')) return json({ goalRevision: 2,
+      items: [{ messageId: 1, goalRevision: 1, role: 'user', content: '第一次编排' }, { messageId: 2, goalRevision: 2, role: 'user', content: '补充编排条件' }], turns: [
+      { goalRevision: 1, agentRunId: 'agent-1', status: 'COMPLETE', requestMode: 'WORKFLOW_DRAFT', workflowDraftId: 'draft-1' },
+      { goalRevision: 2, agentRunId: 'agent-2', status: 'COMPLETE', requestMode: 'WORKFLOW_DRAFT', workflowDraftId: 'draft-2' },
+    ] });
+    if (url.endsWith('/workflow-drafts/draft-1')) { reads.first++; return json(draft); }
+    if (url.endsWith('/workflow-drafts/draft-2')) {
+      reads.second++;
+      return reads.second === 1 ? new Promise<Response>(resolve => { finishFailed = resolve; })
+        : json({ ...draft, draftId: 'draft-2', payload: { ...draft.payload!, title: '恢复读取的第二份草稿' } });
+    }
+    throw new Error(`unexpected endpoint ${url}`);
+  }));
+  render(<App />);
+  await screen.findByText('插值与制图草稿');
+  expect(screen.getByText('正在读取工作流草稿…')).toBeVisible();
+  await act(async () => finishFailed(new Response(JSON.stringify({ code: 'SERVICE_UNAVAILABLE' }), { status: 503 })));
+  expect(screen.getByText('插值与制图草稿')).toBeVisible();
+  fireEvent.click(await screen.findByRole('button', { name: '重试读取草稿' }));
+  await screen.findByText('恢复读取的第二份草稿');
+  expect(reads).toEqual({ first: 1, second: 2 });
+  expect(screen.queryByRole('button', { name: '重试读取草稿' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+});
+
+it.each([
+  ['agent.cancelled', 'CANCELLED', '编排已停止。'],
+  ['agent.superseded', 'SUPERSEDED', '本次编排已由新的要求替代。'],
+] as const)('refreshes a generating draft after %s without claiming it is still running', async (event, status, message) => {
+  window.location.hash = '#/sessions/session-1';
+  vi.stubGlobal('EventSource', TestEvents);
+  let ended = false, draftReads = 0;
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    if (url.endsWith('/capabilities')) return json(capabilitiesFixture());
+    if (url.endsWith('/sessions')) return json({ items: [], nextCursor: null });
+    if (url.includes('/results')) return json(sessionResultsFixture());
+    if (url.endsWith('/messages')) return json({ goalRevision: 2,
+      items: [{ messageId: 2, goalRevision: 2, role: 'user', content: '编排工作流' }],
+      turns: [{ goalRevision: 2, agentRunId: 'agent-2', status: ended ? status : 'RUNNING', requestMode: 'WORKFLOW_DRAFT', workflowDraftId: 'draft-1' }],
+    });
+    if (url.endsWith('/workflow-drafts/draft-1')) { draftReads++; return json({ ...draft, payload: null, status: ended ? status : 'GENERATING' }); }
+    throw new Error(`unexpected endpoint ${url}`);
+  }));
+  render(<App />);
+  await screen.findByText('正在查阅可用方法与当前资料，整理分析步骤。');
+  ended = true;
+  act(() => TestEvents.latest.emit(event, 11));
+  await screen.findByText(message);
+  expect(draftReads).toBe(2);
+  expect(screen.queryByText('正在查阅可用方法与当前资料，整理分析步骤。')).not.toBeInTheDocument();
+  expect(screen.queryByRole('link', { name: '导出草稿 JSON' })).not.toBeInTheDocument();
+});
 
 it('revalidates a terminal draft after publication without allowing an older generating read to regress it', async () => {
   window.location.hash = '#/sessions/session-1';

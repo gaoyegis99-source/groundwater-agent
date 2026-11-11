@@ -76,7 +76,12 @@ describe("Operator activity center", () => {
 
     render(<OperationCenter />);
 
-    expect(await screen.findByText(/下一步：.*阻断性质量问题/)).toBeVisible();
+    expect(await screen.findByText("2 项需处理")).toBeVisible();
+    const disclosure = screen.getByText("操作记录").closest("details")!;
+    expect(disclosure).not.toHaveAttribute("open");
+    expect(screen.getByText(/下一步：.*阻断性质量问题/)).not.toBeVisible();
+    await user.click(screen.getByText("操作记录"));
+    expect(screen.getByText(/下一步：.*阻断性质量问题/)).toBeVisible();
     const overview = screen.getByLabelText("操作状态摘要");
     const cards = within(overview).getAllByText(/待处理|进行中|近期完成/);
     expect(cards).toHaveLength(3);
@@ -89,5 +94,13 @@ describe("Operator activity center", () => {
     expect(screen.getByText(/操作 ID quality-alert-1/)).toBeVisible();
     expect(screen.getByText(/错误码 CONSTRAINT_VIOLATION/)).toBeVisible();
     await waitFor(() => expect(screen.getByText(/更新于/)).toBeVisible());
+  });
+
+  it("exposes an unavailable activity source in the collapsed summary", async () => {
+    server.use(http.get("*/knowledge/v3/activity", () => HttpResponse.json({}, { status: 503 })));
+    render(<OperationCenter />);
+    expect(await screen.findByText("Knowledge 状态暂不可用")).toBeVisible();
+    expect(screen.getByText("操作记录").closest("details")).not.toHaveAttribute("open");
+    expect(screen.queryByText("暂无待处理")).not.toBeInTheDocument();
   });
 });

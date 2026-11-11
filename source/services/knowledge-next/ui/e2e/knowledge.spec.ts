@@ -32,9 +32,10 @@ test("imports, retrieves, compares immutable versions, withdraws and restores", 
   await expect(page.locator("#import-status")).toContainText("导入完成", { timeout: 45_000 });
   await page.getByRole("tab", { name: /知识目录/ }).click();
   await page.getByLabel("目录关键词").fill(id);
-  await page.getByRole("button", { name: "应用搜索", exact: true }).click();
+  await page.getByRole("button", { name: "搜索", exact: true }).click();
   await page.locator(".catalog").getByRole("button", { name: new RegExp(id) }).click();
   await expect(page.locator("#version-body")).toContainText("1.0.0");
+  await page.getByRole("button", { name: "关闭知识" }).click();
   const revised = {
     ...pkg, idempotencyKey: `${id}-v2`,
     documents: [{ ...pkg.documents[0], expectedVersion: originalVersionId, contentVersion: "1.0.1" }],
@@ -44,12 +45,13 @@ test("imports, retrieves, compares immutable versions, withdraws and restores", 
   await page.getByRole("button", { name: "确认并提交导入" }).click();
   await expect(page.locator("#import-status")).toContainText("导入完成", { timeout: 45_000 });
   await page.getByRole("tab", { name: /知识目录/ }).click();
-  await page.getByRole("button", { name: "应用搜索", exact: true }).click();
+  await page.getByRole("button", { name: "搜索", exact: true }).click();
   await page.locator(".catalog").getByRole("button", { name: new RegExp(id) }).click();
   await expect(page.locator("#version-body")).toContainText("1.0.1");
   await page.getByLabel("比较版本").selectOption(originalVersionId);
   await expect(page.getByRole("heading", { name: "版本差异" })).toBeVisible();
   await expect(page.getByRole("cell", { name: /内容版本/ })).toBeVisible();
+  await page.getByRole("button", { name: "关闭知识" }).click();
   await page.getByRole("tab", { name: /证据检索/ }).click();
   await page.getByLabel("检索问题").fill(id);
   await page.getByLabel("检索方式").selectOption("lexical");
@@ -58,6 +60,8 @@ test("imports, retrieves, compares immutable versions, withdraws and restores", 
   await assertNoSeriousAxe(page);
 
   await page.getByRole("tab", { name: /知识目录/ }).click();
+  await page.locator(".catalog").getByRole("button", { name: new RegExp(id) }).click();
+  await page.getByText("生命周期与变更记录", { exact: true }).click();
   await page.getByRole("button", { name: "撤回此版本" }).click();
   await page.getByLabel("原因").fill("浏览器测试撤回");
   await page.getByRole("button", { name: "确认撤回" }).click();

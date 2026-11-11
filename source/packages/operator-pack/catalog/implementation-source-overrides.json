@@ -1,6 +1,9 @@
 {
   "schemaVersion": "operator-implementation-source-overrides.v1",
   "operators": {
+    "groundwater.source_sustainability.prepare@1.0.0": [
+      "src/moperators/operators/sustainability_preparation.py"
+    ],
     "groundwater.drastic.evaluate@1.0.0": [
       "src/moperators/operators/drastic.py",
       "src/moperators/operators/groundwater.py"

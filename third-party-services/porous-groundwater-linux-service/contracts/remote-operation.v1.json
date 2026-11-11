@@ -1,49 +1,576 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:groundwater:porous:remote-operation.v1",
-  "title": "Porous groundwater fixed remote operations",
-  "type": "object",
+  "$defs": {
+    "Input": {
+      "additionalProperties": false,
+      "properties": {
+        "sizeBytes": {
+          "exclusiveMinimum": 0,
+          "maximum": 134217728,
+          "title": "Sizebytes",
+          "type": "integer"
+        },
+        "sha256": {
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "mediaType": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Mediatype",
+          "type": "string"
+        },
+        "format": {
+          "maxLength": 32,
+          "minLength": 1,
+          "title": "Format",
+          "type": "string"
+        },
+        "artifactId": {
+          "pattern": "^artifact-[a-f0-9]{32}$",
+          "title": "Artifactid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sizeBytes",
+        "sha256",
+        "mediaType",
+        "format",
+        "artifactId"
+      ],
+      "title": "Input",
+      "type": "object"
+    }
+  },
   "additionalProperties": false,
-  "required": ["operationType", "clientRequestId", "inputs", "parameters"],
   "properties": {
     "operationType": {
+      "maxLength": 64,
+      "title": "Operationtype",
+      "type": "string",
       "enum": [
         "model.compile",
         "flow_transport.simulate",
-        "pest.calibrate",
-        "scenario.compare",
         "result.analyze",
         "result.render",
+        "scenario.compare",
         "map.prepare",
+        "pest.calibrate",
         "inversion.train",
         "inversion.sample",
         "agri.invert"
       ]
     },
     "clientRequestId": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[A-Za-z0-9._:-]+$"
+      "pattern": "^[a-zA-Z0-9_.:-]{1,128}$",
+      "title": "Clientrequestid",
+      "type": "string"
     },
     "inputs": {
-      "type": "object",
-      "additionalProperties": {"$ref": "#/$defs/artifact"}
+      "additionalProperties": {
+        "$ref": "#/$defs/Input"
+      },
+      "title": "Inputs",
+      "type": "object"
     },
-    "parameters": {"type": "object"}
+    "parameters": {
+      "additionalProperties": true,
+      "title": "Parameters",
+      "type": "object"
+    }
   },
-  "$defs": {
-    "artifact": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["artifactId", "mediaType", "format", "sizeBytes", "sha256"],
-      "properties": {
-        "artifactId": {"type": "string"},
-        "mediaType": {"type": "string", "minLength": 1},
-        "format": {"type": "string", "minLength": 1},
-        "sizeBytes": {"type": "integer", "minimum": 1},
-        "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  "required": [
+    "operationType",
+    "clientRequestId",
+    "inputs",
+    "parameters"
+  ],
+  "title": "Porous groundwater fixed remote operations",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:groundwater:porous:remote-operation.v1",
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "operationType": {
+            "const": "model.compile"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "inputs": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "project_package"
+            ],
+            "properties": {
+              "project_package": {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/Input"
+                  },
+                  {
+                    "properties": {
+                      "format": {
+                        "const": "zip"
+                      },
+                      "mediaType": {
+                        "const": "application/zip"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "parameters": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {}
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operationType": {
+            "const": "flow_transport.simulate"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "inputs": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "model_package"
+            ],
+            "properties": {
+              "model_package": {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/Input"
+                  },
+                  {
+                    "properties": {
+                      "format": {
+                        "const": "zip"
+                      },
+                      "mediaType": {
+                        "const": "application/zip"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "parameters": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {}
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operationType": {
+            "const": "result.analyze"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "inputs": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "result_package"
+            ],
+            "properties": {
+              "result_package": {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/Input"
+                  },
+                  {
+                    "properties": {
+                      "format": {
+                        "const": "zip"
+                      },
+                      "mediaType": {
+                        "const": "application/zip"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "parameters": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {}
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operationType": {
+            "const": "result.render"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "inputs": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "result_package"
+            ],
+            "properties": {
+              "result_package": {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/Input"
+                  },
+                  {
+                    "properties": {
+                      "format": {
+                        "const": "zip"
+                      },
+                      "mediaType": {
+                        "const": "application/zip"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "parameters": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {}
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operationType": {
+            "const": "scenario.compare"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "inputs": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "scenario_package"
+            ],
+            "properties": {
+              "scenario_package": {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/Input"
+                  },
+                  {
+                    "properties": {
+                      "format": {
+                        "const": "zip"
+                      },
+                      "mediaType": {
+                        "const": "application/zip"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "parameters": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {}
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operationType": {
+            "const": "map.prepare"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "inputs": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "map_input"
+            ],
+            "properties": {
+              "map_input": {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/Input"
+                  },
+                  {
+                    "properties": {
+                      "format": {
+                        "const": "geotiff"
+                      },
+                      "mediaType": {
+                        "const": "image/tiff"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "parameters": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {}
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operationType": {
+            "const": "pest.calibrate"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "inputs": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "model_package",
+              "observations"
+            ],
+            "properties": {
+              "model_package": {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/Input"
+                  },
+                  {
+                    "properties": {
+                      "format": {
+                        "const": "zip"
+                      },
+                      "mediaType": {
+                        "const": "application/zip"
+                      }
+                    }
+                  }
+                ]
+              },
+              "observations": {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/Input"
+                  },
+                  {
+                    "properties": {
+                      "format": {
+                        "const": "json"
+                      },
+                      "mediaType": {
+                        "const": "application/json"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "parameters": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "includeCalibratedModel": {
+                "const": true,
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operationType": {
+            "const": "inversion.train"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "inputs": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "training_data"
+            ],
+            "properties": {
+              "training_data": {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/Input"
+                  },
+                  {
+                    "properties": {
+                      "format": {
+                        "const": "zip"
+                      },
+                      "mediaType": {
+                        "const": "application/zip"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "parameters": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {}
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operationType": {
+            "const": "inversion.sample"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "inputs": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "weights",
+              "sample_config"
+            ],
+            "properties": {
+              "weights": {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/Input"
+                  },
+                  {
+                    "properties": {
+                      "format": {
+                        "const": "binary"
+                      },
+                      "mediaType": {
+                        "const": "application/octet-stream"
+                      }
+                    }
+                  }
+                ]
+              },
+              "sample_config": {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/Input"
+                  },
+                  {
+                    "properties": {
+                      "format": {
+                        "const": "json"
+                      },
+                      "mediaType": {
+                        "const": "application/json"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "parameters": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {}
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operationType": {
+            "const": "agri.invert"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "inputs": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "agricultural_data"
+            ],
+            "properties": {
+              "agricultural_data": {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/Input"
+                  },
+                  {
+                    "properties": {
+                      "format": {
+                        "const": "zip"
+                      },
+                      "mediaType": {
+                        "const": "application/zip"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "parameters": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {}
+          }
+        }
       }
     }
-  }
+  ]
 }

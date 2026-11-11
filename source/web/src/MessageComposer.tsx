@@ -1,9 +1,10 @@
 import type { ReactNode, RefObject } from 'react';
 import { Icon } from './Icon';
 
-export function MessageComposer({ inputRef, value, selection, busy, canSend, tools, onChange, onSend }: {
+export function MessageComposer({ inputRef, value, selection, busy, canSend, tools, unavailableReason, onChange, onSend }: {
   inputRef: RefObject<HTMLTextAreaElement | null>; value: string; selection: boolean;
   busy: boolean; canSend: boolean; tools: ReactNode;
+  unavailableReason?: string;
   onChange: (value: string) => void; onSend: () => void;
 }) {
   return <>
@@ -12,8 +13,8 @@ export function MessageComposer({ inputRef, value, selection, busy, canSend, too
         if (event.nativeEvent.isComposing) return;
         if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); if (canSend) onSend(); }
       }} rows={2} />
-    <div className="composer-toolbar"><div>{tools}</div><button className="send-button" aria-label="发送消息" title={!canSend ? '请等待当前处理完成，或输入问题' : '发送消息'} disabled={!canSend} onClick={onSend}>
-      {busy ? <span className="sending-dot" /> : <><span>发送</span><Icon name="arrow-up" /></>}
+    <div className="composer-toolbar"><div>{tools}</div><button className="send-button" aria-label={busy && !canSend ? '发送消息：等待处理完成' : '发送消息'} title={canSend ? '发送消息' : unavailableReason ?? (busy ? '请等待当前处理完成' : '请输入问题或附加资料')} disabled={!canSend} onClick={onSend}>
+      {busy && !canSend ? <><span className="sending-dot" /><span>等待</span></> : <><span>发送</span><Icon name="arrow-up" /></>}
     </button></div>
   </>;
 }

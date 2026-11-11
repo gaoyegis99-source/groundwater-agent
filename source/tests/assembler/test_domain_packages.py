@@ -22,6 +22,12 @@ from platform_knowledge_next.package_conversion import convert_domain_package
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def selected_domain(source):
+    product = json.loads((source / "products/groundwater/product-manifest.json").read_text())
+    ref = product["domainPackage"]
+    return source / "domains" / ref["domainId"] / ref["version"]
+
+
 def write(path, value):
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n")
 
@@ -73,7 +79,7 @@ def pin(source, name):
 def test_release_is_deterministic_portable_and_contains_only_declared_files(
     source, tmp_path
 ):
-    directory = source / "domains/groundwater/6.0.0"
+    directory = selected_domain(source)
     (directory / "unlisted.py").write_text("raise RuntimeError('never packaged')")
     domain = load_domain(directory)
     first, second = tmp_path / "first.zip", tmp_path / "second.zip"
@@ -96,7 +102,7 @@ def test_two_products_reuse_one_package_without_copying_definitions(source):
     product["productId"] = "second-product"
     target = source / "products/second-product"
     shutil.copytree(source / "products/groundwater/ui", target / "ui")
-    ui_path = target / "ui/product-ui.json"
+    ui_path = target / product["uiProfile"]["path"]
     ui = json.loads(ui_path.read_text())
     ui["productId"] = "second-product"
     write(ui_path, ui)
@@ -124,7 +130,7 @@ def test_two_products_reuse_one_package_without_copying_definitions(source):
     ["instructions.md", "models/summary.model.json", "workflows/summary.workflow.json"],
 )
 def test_pinned_package_rejects_any_changed_file_before_output(source, file):
-    path = source / "domains/groundwater/6.0.0" / file
+    path = selected_domain(source) / file
     path.write_bytes(path.read_bytes() + b"\n")
     with pytest.raises(ValueError, match="DOMAIN_IDENTITY_MISMATCH"):
         compile_product(source, "groundwater/product-manifest.json")
@@ -133,7 +139,7 @@ def test_pinned_package_rejects_any_changed_file_before_output(source, file):
 
 @pytest.mark.parametrize("alpha", [0, 1])
 def test_model_default_respects_exclusive_schema_bounds_before_output(source, alpha):
-    path = source / "domains/groundwater/6.0.0/models/monitoring-trend.model.json"
+    path = selected_domain(source) / "models/monitoring-trend.model.json"
     model = json.loads(path.read_text())
     model["defaultParameters"]["alpha"] = alpha
     write(path, model)
@@ -145,8 +151,7 @@ def test_model_default_respects_exclusive_schema_bounds_before_output(source, al
 
 def test_model_default_respects_pattern_before_output(source):
     path = (
-        source
-        / "domains/groundwater/6.0.0/models/transfer-learning-analysis.model.json"
+        selected_domain(source) / "models/transfer-learning-analysis.model.json"
     )
     model = json.loads(path.read_text())
     model["defaultParameters"]["boundary-projected.targetCrs"] = "EPSG 32650"
@@ -165,7 +170,7 @@ def test_model_default_respects_pattern_before_output(source):
     ],
 )
 def test_model_default_must_satisfy_bound_operator_schema(source, value, schema):
-    path = source / "domains/groundwater/6.0.0/models/summary.model.json"
+    path = selected_domain(source) / "models/summary.model.json"
     model = json.loads(path.read_text())
     model["tool"]["inputSchema"]["properties"]["axis"] = schema
     model["defaultParameters"]["axis"] = value
@@ -178,7 +183,7 @@ def test_model_default_must_satisfy_bound_operator_schema(source, value, schema)
 
 
 def test_model_default_must_satisfy_every_downstream_parameter(source):
-    directory = source / "domains/groundwater/6.0.0"
+    directory = selected_domain(source)
     workflow_path = directory / "workflows/summary.workflow.json"
     workflow = json.loads(workflow_path.read_text())
     workflow["nodes"][0]["parameters"]["axis"] = {"workflowParameter": "column"}
@@ -198,7 +203,7 @@ def test_model_default_must_satisfy_every_downstream_parameter(source):
 
 
 def test_invalid_model_json_schema_fails_before_output(source):
-    path = source / "domains/groundwater/6.0.0/models/monitoring-trend.model.json"
+    path = selected_domain(source) / "models/monitoring-trend.model.json"
     model = json.loads(path.read_text())
     model["tool"]["inputSchema"]["properties"]["alpha"]["exclusiveMinimum"] = "zero"
     write(path, model)
@@ -238,7 +243,7 @@ def test_invalid_model_json_schema_fails_before_output(source):
     ],
 )
 def test_model_field_requirement_is_validated_at_assembly(source, requirement):
-    path = source / "domains/groundwater/6.0.0/models/monitoring-trend.model.json"
+    path = selected_domain(source) / "models/monitoring-trend.model.json"
     model = json.loads(path.read_text())
     model["fieldRequirements"] = [requirement]
     write(path, model)
@@ -293,7 +298,7 @@ def test_model_field_requirement_is_validated_at_assembly(source, requirement):
     ],
 )
 def test_model_semantic_requirement_is_validated_at_assembly(source, requirement):
-    path = source / "domains/groundwater/6.0.0/models/monitoring-trend.model.json"
+    path = selected_domain(source) / "models/monitoring-trend.model.json"
     model = json.loads(path.read_text())
     model["schemaVersion"] = "executable-model.v6"
     model["semanticRequirements"] = [requirement]
@@ -335,7 +340,7 @@ def test_operator_revision_covers_manifest_and_source_digest(source):
     ["../outside.json", "/tmp/outside.json", "./instructions.md", "instructions.md"],
 )
 def test_domain_paths_cannot_escape_or_alias(source, path):
-    manifest_path = source / "domains/groundwater/6.0.0/domain-manifest.json"
+    manifest_path = selected_domain(source) / "domain-manifest.json"
     manifest = json.loads(manifest_path.read_text())
     manifest["workflowDefinitions"] = [path]
     write(manifest_path, manifest)
@@ -345,7 +350,7 @@ def test_domain_paths_cannot_escape_or_alias(source, path):
 
 
 def test_symlink_escape_is_rejected(source):
-    directory = source / "domains/groundwater/6.0.0"
+    directory = selected_domain(source)
     external = source / "outside.md"
     external.write_text("not in the package")
     (directory / "instructions.md").unlink()
@@ -407,7 +412,7 @@ def test_bootstrap_is_independent_and_does_not_expose_domain_to_runtime(source):
     compose = json.loads((out / "compose.json").read_text())["services"]
     lock = json.loads((out / "assembly-lock.json").read_text())
     assert lock["schemaVersion"] == "assembly-lock.v8"
-    assert len(lock["knowledgeBootstrap"]["documents"]) == 103
+    assert len(lock["knowledgeBootstrap"]["documents"]) == 111
     domain_version = lock["domainPackage"]["version"]
     domain_root = source / "domains/groundwater" / domain_version
     manifest = json.loads((domain_root / "domain-manifest.json").read_text())
@@ -419,9 +424,9 @@ def test_bootstrap_is_independent_and_does_not_expose_domain_to_runtime(source):
             idempotency_key=f"part-{index}",
         )
         documents.extend(package.documents)
-    assert len(documents) == lock["knowledgeBootstrap"]["documentCount"] == 103
-    assert sum(len(document.units) for document in documents) == 303
-    assert lock["knowledgeBootstrap"]["chunkCount"] == 303
+    assert len(documents) == lock["knowledgeBootstrap"]["documentCount"] == 111
+    assert sum(len(document.units) for document in documents) == 311
+    assert lock["knowledgeBootstrap"]["chunkCount"] == 311
     assert compose["knowledge-bootstrap"]["restart"] == "no"
     assert compose["knowledge-bootstrap"]["profiles"] == ["bootstrap"]
     assert all(
@@ -442,7 +447,7 @@ def test_bootstrap_is_independent_and_does_not_expose_domain_to_runtime(source):
 
 
 def test_native_only_declarations_select_only_required_services(source):
-    directory = source / "domains/groundwater/6.0.0"
+    directory = selected_domain(source)
     domain_path = directory / "domain-manifest.json"
     domain = json.loads(domain_path.read_text())
     domain["workflowDefinitions"] = ["workflows/summary.workflow.json"]
@@ -460,7 +465,7 @@ def test_native_only_declarations_select_only_required_services(source):
         if route["service"] in product["services"]
     ]
     product["knowledgeProjects"] = []
-    ui_path = source / "products/groundwater/ui/product-ui.json"
+    ui_path = product_path.parent / product["uiProfile"]["path"]
     ui = json.loads(ui_path.read_text())
     ui["models"] = {"groundwater.summary": ui["models"]["groundwater.summary"]}
     ui["parameterNames"] = {
@@ -504,7 +509,7 @@ def test_kernel_prompt_has_no_capability_specific_policy():
 
 
 def test_retired_domain_profile_field_is_rejected(source):
-    directory = source / "domains/groundwater/6.0.0"
+    directory = selected_domain(source)
     path = directory / "domain-manifest.json"
     manifest = json.loads(path.read_text())
     manifest["mapFactoryProfile"] = None
@@ -518,7 +523,7 @@ def test_retired_domain_profile_field_is_rejected(source):
     "field,value", [("mapFactoryAction", None), ("outputPolicy", "namedResources")]
 )
 def test_retired_model_fields_are_rejected(source, field, value):
-    path = source / "domains/groundwater/6.0.0/models/summary.model.json"
+    path = selected_domain(source) / "models/summary.model.json"
     model = json.loads(path.read_text())
     model[field] = value
     write(path, model)

@@ -1,0 +1,94 @@
+{
+  "schemaVersion": "executable-model.v6",
+  "modelId": "groundwater.sustainability-input-preparation",
+  "version": "1.0.0",
+  "workflowRef": {
+    "workflowId": "groundwater.sustainability-input-preparation",
+    "version": "1.0.0",
+    "checksum": "sha256:8348828744c309628f406c15f6d522c2e523960cc8786c86ccd7f4ee6eb246b3"
+  },
+  "tool": {
+    "name": "prepare_source_sustainability",
+    "description": "汇总模拟、监测及管理资料，核对同一区域、时段和指标口径，生成候选评价输入与字段来源报告。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "simulationEvidenceVersionId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "monitoringEvidenceVersionId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "managementEvidenceVersionId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "simulationEvidenceVersionId",
+        "monitoringEvidenceVersionId",
+        "managementEvidenceVersionId"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "inputBindings": {
+    "simulation": "simulationEvidenceVersionId",
+    "monitoring": "monitoringEvidenceVersionId",
+    "management": "managementEvidenceVersionId"
+  },
+  "fieldRequirements": [],
+  "semanticRequirements": [],
+  "defaultParameters": {},
+  "parameterBindings": {},
+  "deadlineSeconds": 120,
+  "maxParallelNodes": 1,
+  "finalOutputs": [
+    "assessment-input-candidate",
+    "assessment-input-sources"
+  ],
+  "executionService": "executor",
+  "executorId": "workflow-dag",
+  "outputPublications": {
+    "assessment-input-candidate": {
+      "title": "候选评价 JSON 或阻止标记",
+      "format": "json",
+      "mediaType": "application/json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "候选评价 JSON 或阻止标记",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    },
+    "assessment-input-sources": {
+      "title": "指标来源与缺项诊断",
+      "format": "json",
+      "mediaType": "application/json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "指标来源与缺项诊断",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    }
+  }
+}

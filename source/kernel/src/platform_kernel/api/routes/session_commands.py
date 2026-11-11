@@ -82,16 +82,15 @@ def stop_run(
     identity: Annotated[RequestIdentity, Depends(current_identity)],
     application: PlatformApplication = Depends(platform_application),
 ):
-    return to_wire(
-        request_stop(
-            application.database,
-            session_id,
-            application.settings.project_id,
-            request.request_id,
-            request.agent_run_id,
-            identity.subject,
-        )
+    control = request_stop(
+        application.database,
+        session_id,
+        application.settings.project_id,
+        request.request_id,
+        request.agent_run_id,
+        identity.subject,
     )
+    return to_wire({name: control[name] for name in StopResponse.model_fields})
 
 
 @router.post(

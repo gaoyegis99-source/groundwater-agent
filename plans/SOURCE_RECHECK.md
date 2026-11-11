@@ -483,3 +483,30 @@ Kernel pytest 在清理历史 `/tmp/pytest-of-mtd/garbage-*` 时仍报告目录�
 最终隔离 Compose 使用随机项目、动态端口、私网与新卷，报告记录 `existingDeploymentMutation=false`；16 个实时浏览器场景全部通过，覆盖结构化证据精确读取、Data/Knowledge 抽屉、上传与精确版本附加、双成果下载/恢复、拒绝不产生 WorkflowRun、意图路由与问题矩阵。默认 `source-groundwater` 栈在验收后保持健康，隔离 E2E 资源已回收。
 
 结论边界保持严格：4 个 skip 是未激活的独立 MF6 release input、FloPy 或 Pastas spike 环境；工程状态为 PASS，但真实场地科学有效性、真实 Provider 表现和第三方服务可用性仍为 `NOT_ASSESSED`。这些边界不构成当前实现目标的剩余缺陷，也不得被工程 PASS 替代。
+
+## 9. 2026-11-11 追加界面精修与真实案例复核（已完成）
+
+本节对应 `26f66732ffbb9609a155bf585448a5f4d7b21cd2` 之后用户追加的精修要求，不能用第 8 节的历史 PASS 代替新改动验收。原六方向实现保留；新增工作在现有会话、任务、数据库、知识和管理组件内完成，没有增加平行执行或展示系统。
+
+最新交互要求优先于此前的“管理页保留绿色”：改用暖白、深灰与淡蓝点缀，精简重复解释，以数据内容和知识正文为主要视图，详情与编辑允许放入抽屉/弹框。用户明确废弃移动端开发；后续新增实现和验收以桌面为目标，既有响应式结果仅保留为历史覆盖。
+
+| 范围 | 当前源码修复 | 验收入口 |
+| --- | --- | --- |
+| 会话与上传 | 异步归属、防重、失败保留、模板撤销、短版本与完整身份 | `web/src/conversation-polish.test.tsx`、`app.test.tsx`、`upload.test.tsx`、生产浏览器 |
+| 对话正文与成果 | 标题层级、可聚焦完整表格、确认/结果/错误视觉层级 | `message-content.test.tsx`、`card-review.test.tsx`、`application-accessibility.spec.ts` |
+| 数据库与工作台 | 请求隔离、独立重试、元数据比较、1050px 覆盖面板、键盘导航与焦点 | `DatabaseWorkbench.test.tsx`、`workbench-state.test.tsx`、`workspace-parameter.test.tsx`、`build-viewers.spec.ts` |
+| 知识与管理 | 搜索分页、精确引用、返回位置、历史版本保留、提交状态、暖白低密度；Data 默认内容表格、Knowledge 正文抽屉与按需治理 | `knowledge.test.tsx`、两管理 workspace 完整测试与 `test:ui` |
+| 产品通用夹具 | 生成的 UI 路径与 checksum 同时绑定，不继承母产品的替代 profile 路径 | `tests/assembler/test_air_quality_web_fixture.py`、Air Quality 生产构建测试 |
+| Kernel 空控制队列 | 没有可领取项时只读返回，有候选仍在写锁内重查并保留 lease fencing | `kernel/tests/test_task_controls.py`、Kernel owner、隔离完整 Compose |
+
+真实案例见 `REAL_DATA_VALIDATION_2026-11-11.md`，4 项均 PASS。完整新回归最初在最终 Compose 发现调度在 SQLite 写锁错误后停止；本轮备份现场并将候选修复置于隔离工作树重跑，最终已通过。并发探针没有确定历史锁持有者；精确区分已复现的空队列写锁缺陷、未知来源和候选全链路结果。
+
+当前三文件候选的完整 Kernel 为 853 PASS，wheel 和最终隔离 Compose 均 PASS；完整报告 `ddec33fe6cc6` 为 14/14 阶段、2,515 passed / 4 条件 skip，六模型生命周期 6/6、实时浏览器 16/16。当前前端最终门禁为主 Web 238 单测/15 浏览器、Data 25/9、Knowledge 18/11，类型和生产构建均通过；新增桌面视图、来源阅读及弹框操作已目视复核。随机测试项目已清理，现有部署未修改。完整证据与截图索引见 `UI_POLISH_VALIDATION_2026-11-11.md`。
+
+主工作区同时含产品 6.1.0/第三方服务的独立变更，文档已对齐当前产品 pin；这些内容不会因前端门禁通过而自动取得完整部署/科学验收结论。当前进度与准确命令记录在 `90_PROGRESS.md` 的 REAL-01 / UI-REFINE-01。
+
+## 10. 2026-11-11 工作流与任务专项复核
+
+当前源码基于 HEAD `26f66732ffbb9609a155bf585448a5f4d7b21cd2` 及已有未提交变更，产品为 6.1.0；历史 6.0 冻结报告不代表当前源码。先红后绿确认并修复了任务控制争锁和失效租约、停止后的重新领取、远端恢复误取消、事件漏订阅与草稿/结果刷新、恢复范围和跨会话迟到响应。测试设施按当前双远程绑定与派生产品 UI 身份修正。
+
+专项全套及隔离集成证据、源码摘要、失败复现及未评估边界见 `WORKFLOW_TASK_VALIDATION_2026-11-11.md`；不将固定 Provider 或模拟远端结果当作真实服务和科学验证。

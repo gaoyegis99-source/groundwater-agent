@@ -16,7 +16,10 @@ const capabilities = {
 const document = {
   knowledgeId: "manual-1", title: "运行手册", contentVersion: "1.0.0", kind: "knowledge", language: "zh-CN", summary: "应用操作说明",
   sources: [{ sourceId: "source-1", kind: "MANUAL", title: "内部手册", publisher: "Operator", reviewAfter: "2099-01-01", lifecycleStatus: "ACTIVE" }],
-  units: [{ unitId: "unit-1", content: "按受控流程操作。", sourceRefs: ["source-1"], requiredUnits: [] }],
+  units: [
+    { unitId: "unit-1", content: "按受控流程操作。", sourceRefs: ["source-1"], requiredUnits: [] },
+    { unitId: "unit-2", content: "阅读知识时，先确认所选版本与引用来源。记录适用的数据范围、采样时间和单位，再将需要复核的条目交给项目负责人。\n保留历史版本，以便之后还原当时的分析依据。", sourceRefs: ["source-1"], requiredUnits: [] },
+  ],
   bindings: [], aliases: [],
 };
 const version = {
@@ -35,6 +38,11 @@ const documentFacets = {
   sourceKinds: [{ name: "MANUAL", count: 1 }], knowledgeKinds: [{ name: "knowledge", count: 1 }],
   bindingStates: [{ name: "general", count: 1 }],
 };
+const directoryExamples = [
+  documentSummary,
+  { ...documentSummary, documentId: "document-2", currentVersion: "version-2", title: "水位观测质量检查", summary: "采样时间、水位单位与异常记录的复核流程" },
+  { ...documentSummary, documentId: "document-3", currentVersion: "version-3", title: "地下水趋势分析", summary: "分析前的数据覆盖期、采样间隔与缺失检查" },
+];
 const emptyActivity = { items: [], generatedAt: createdAt };
 
 async function assertNoSeriousAxe(page: Page) {
@@ -42,11 +50,17 @@ async function assertNoSeriousAxe(page: Page) {
   expect(result.violations.filter(item => ["critical", "serious"].includes(item.impact ?? ""))).toEqual([]);
 }
 
+async function capture(page: Page, path: string, fullPage = true) {
+  await expect(async () => {
+    await page.screenshot({ path, fullPage, animations: "disabled" });
+  }).toPass({ timeout: 5000, intervals: [100, 250, 500] });
+}
+
 test.beforeEach(async ({ page }) => {
   await page.route("**/data/v3/activity**", route => route.fulfill({ json: emptyActivity }));
 });
 
-async function routeWorkspace(page: Page, withDocument = false, capabilityOverrides: Partial<typeof capabilities> = {}) {
+async function routeWorkspace(page: Page, withDocument = false, capabilityOverrides: Partial<typeof capabilities> = {}, directory = withDocument ? [documentSummary] : []) {
   let lifecycleStatus: "ACTIVE" | "WITHDRAWN" = "ACTIVE";
   let lifecycleRevision = 1;
   let lifecycleReviewAfter = "2099-01-01";
@@ -76,7 +90,7 @@ async function routeWorkspace(page: Page, withDocument = false, capabilityOverri
         })),
       };
     }
-    else if (path === "documents") response = { items: withDocument ? [{ ...documentSummary, status: lifecycleStatus }] : [], nextCursor: null, totalMatches: withDocument ? 1 : 0, facets: withDocument ? documentFacets : { statuses: [], reviewStates: [], sourceKinds: [], knowledgeKinds: [], bindingStates: [] } };
+    else if (path === "documents") response = { items: directory.map(item => ({ ...item, status: item.documentId === "document-1" ? lifecycleStatus : item.status })), nextCursor: null, totalMatches: directory.length, facets: directory.length ? Object.fromEntries(Object.entries(documentFacets).map(([key, items]) => [key, items.map(item => ({ ...item, count: directory.length }))])) : { statuses: [], reviewStates: [], sourceKinds: [], knowledgeKinds: [], bindingStates: [] } };
     else if (path === "documents/document-1/versions") response = { items: [{ versionId: "version-1", checksum, createdAt }], nextCursor: null };
     else if (path === "versions/version-1") response = { ...version, status: lifecycleStatus, lifecycleRevision, reviewAfter: lifecycleReviewAfter };
     else if (path === "lifecycle/batch/preflight" && request.method() === "POST") {
@@ -114,11 +128,12 @@ async function routeWorkspace(page: Page, withDocument = false, capabilityOverri
 test("renders the catalog and resets the lifecycle action after an update", async ({ page }) => {
   await routeWorkspace(page, true);
   await page.goto("/knowledge/");
-  await page.getByText("查看身份与环境").click();
+  await page.getByText("系统信息").click();
   await expect(page.getByText(/operator-1/)).toBeVisible();
   await page.getByRole("button", { name: /运行手册/ }).click();
   await expect(page.locator("#version-body")).toContainText("1.0.0");
   await assertNoSeriousAxe(page);
+  await page.getByText("生命周期与变更记录", { exact: true }).click();
   await page.getByRole("button", { name: "撤回此版本" }).click();
   const dialog = page.getByRole("dialog", { name: "撤回知识版本？" });
   await expect(dialog).toBeVisible();
@@ -134,6 +149,65 @@ test("renders the catalog and resets the lifecycle action after an update", asyn
   await page.getByRole("button", { name: "确认恢复" }).click();
   await expect(page.getByRole("button", { name: "撤回此版本" })).toBeVisible();
 });
+
+test("reads knowledge in a drawer, clears stale content on navigation, and returns focus when closed", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await routeWorkspace(page, true);
+  const secondSummary = { ...documentSummary, documentId: "document-2", currentVersion: "version-2", title: "水位监测规范", summary: "采样与复核的适用条件" };
+  const secondVersion = { ...version, versionId: "version-2", documentId: "document-2", body: { ...document, knowledgeId: "manual-2", title: secondSummary.title, summary: secondSummary.summary, units: [{ ...document.units[0], content: "记录采样时间并复核水位。" }] } };
+  let releaseSecond = () => {};
+  const secondReady = new Promise<void>(resolve => { releaseSecond = resolve; });
+  await page.route(/\/knowledge\/v3\/documents\?/, route => route.fulfill({ json: { items: [documentSummary, secondSummary], nextCursor: null, totalMatches: 2, facets: documentFacets } }));
+  await page.route("**/knowledge/v3/documents/document-2/versions?*", route => route.fulfill({ json: { items: [{ versionId: "version-2", checksum, createdAt }], nextCursor: null } }));
+  await page.route("**/knowledge/v3/versions/version-2/lifecycle", route => route.fulfill({ json: { items: [], nextCursor: null } }));
+  await page.route("**/knowledge/v3/versions/version-2", async route => { await secondReady; await route.fulfill({ json: secondVersion }); });
+  await page.goto("/knowledge/?q=监测");
+  const firstEntry = page.getByRole("button", { name: /运行手册/ });
+  await firstEntry.click();
+  const reader = page.getByRole("dialog", { name: "知识阅读" });
+  await expect(reader.getByRole("region", { name: "知识正文" })).toContainText("按受控流程操作。");
+  await expect(reader.getByText(checksum, { exact: true })).not.toBeVisible();
+  await reader.getByRole("button", { name: "下一篇" }).click();
+  await expect(reader.getByRole("status")).toContainText("正在读取不可变知识版本");
+  await expect(reader.getByText("按受控流程操作。", { exact: true })).toHaveCount(0);
+  releaseSecond();
+  await expect(reader.getByRole("region", { name: "知识正文" })).toContainText("记录采样时间并复核水位。");
+  await expect(reader.getByRole("heading", { name: "水位监测规范" })).toBeVisible();
+  await expect.poll(() => new URL(page.url()).searchParams.get("version")).toBe("version-2");
+  await page.keyboard.press("Escape");
+  await expect(reader).toHaveCount(0);
+  await expect(firstEntry).toBeFocused();
+  await expect(page.getByRole("textbox", { name: "目录关键词" })).toHaveValue("监测");
+  const secondEntry = page.getByRole("button", { name: /水位监测规范/ });
+  await secondEntry.click();
+  await reader.getByRole("button", { name: "关闭知识" }).click();
+  await expect(reader).toHaveCount(0);
+  await expect(secondEntry).toBeFocused();
+});
+
+for (const viewport of [{ width: 1440, height: 900 }, { width: 1366, height: 768 }]) {
+  test(`shows readable knowledge with sources at ${viewport.width}x${viewport.height}`, async ({ page }, testInfo) => {
+    await page.setViewportSize(viewport);
+    await routeWorkspace(page, true, {}, directoryExamples);
+    await page.goto("/knowledge/");
+    await expect(page.locator(".catalog > li")).toHaveCount(3);
+    await capture(page, testInfo.outputPath(`knowledge-directory-${viewport.width}.png`));
+    await page.getByRole("button", { name: /运行手册/ }).click();
+    const reader = page.getByRole("dialog", { name: "知识阅读" });
+    await expect(reader.getByRole("region", { name: "知识正文" })).toContainText("按受控流程操作。");
+    await expect(reader.locator(".knowledge-source-overview")).toContainText("内部手册");
+    await expect(reader.getByRole("combobox", { name: "查看版本" })).toHaveValue("version-1");
+    await capture(page, testInfo.outputPath(`knowledge-reader-${viewport.width}.png`), false);
+    await assertNoSeriousAxe(page);
+    if (viewport.width === 1366) {
+      await reader.getByText("版本与来源详情", { exact: true }).click();
+      await reader.getByText("生命周期与变更记录", { exact: true }).click();
+      await reader.getByRole("button", { name: "撤回此版本" }).click();
+      await expect(page.getByRole("dialog", { name: "撤回知识版本？" })).toBeVisible();
+      await capture(page, testInfo.outputPath("knowledge-governance-1366.png"), false);
+    }
+  });
+}
 
 test("preflights and atomically applies batch lifecycle governance", async ({ page }) => {
   await routeWorkspace(page, true);
@@ -315,12 +389,17 @@ test("previews append or replace effects before applying one binding to every do
   await expect(page.locator(".package-preview pre")).not.toContainText("old-version");
 });
 
+
 for (const viewport of [{ width: 1440, height: 900 }, { width: 1366, height: 768 }, { width: 390, height: 844 }]) {
-  test(`has no serious accessibility findings at ${viewport.width}x${viewport.height} and 200%`, async ({ page }) => {
+  test(`has no serious accessibility findings at ${viewport.width}x${viewport.height} and 200%`, async ({ page }, testInfo) => {
     await page.setViewportSize(viewport);
     await routeWorkspace(page);
     await page.goto("/knowledge/");
-    await expect(page.getByRole("heading", { name: "知识管理工作台" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "知识管理" })).toBeVisible();
+    await expect(page.getByText("没有找到匹配的知识")).toBeVisible();
+    await expect(async () => {
+      await page.screenshot({ path: testInfo.outputPath(`knowledge-catalog-${viewport.width}.png`), fullPage: true, animations: "disabled" });
+    }).toPass({ timeout: 5000, intervals: [100, 250, 500] });
     await assertNoSeriousAxe(page);
     await page.evaluate(() => { document.documentElement.style.zoom = "2"; });
     await assertNoSeriousAxe(page);

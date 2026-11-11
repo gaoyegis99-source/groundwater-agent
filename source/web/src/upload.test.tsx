@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import * as apiClient from './api';
 import { ApiError, callApi, observeApi } from './api';
@@ -235,6 +235,33 @@ it('distinguishes complete file transfer from successful server storage', async 
   expect(onUploaded).not.toHaveBeenCalled();
 });
 
+it.each(['late success', 'transport abort'])('keeps upload locked until cancellation is acknowledged after %s', async outcome => {
+  vi.spyOn(upload, 'checksumInWorker').mockResolvedValue('sha256:checksum');
+  let finishUpload!: (value: Awaited<ReturnType<typeof upload.uploadFile>>) => void;
+  let failUpload!: (error: unknown) => void;
+  let finishCancel!: () => void;
+  vi.spyOn(upload, 'uploadFile').mockImplementation((_file, _metadata, _scope, _progress, _signal, publication) => {
+    publication?.('publication-1', 'idempotency-1');
+    return new Promise((resolve, reject) => { finishUpload = resolve; failUpload = reject; });
+  });
+  const abort = vi.spyOn(upload, 'abortUpload').mockImplementation(() => new Promise(resolve => { finishCancel = resolve; }));
+  const onUploaded = vi.fn();
+  render(<UploadDialog file={new File(['x'], 'file.csv')} project="demo" onClose={vi.fn()} onUploaded={onUploaded} />);
+  fireEvent.click(screen.getByRole('button', { name: '上传并附加' }));
+  await screen.findByText('正在上传文件');
+  fireEvent.click(screen.getByRole('button', { name: '取消上传' }));
+  expect(screen.getByRole('button', { name: '正在取消…' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: '上传并附加' })).toBeDisabled();
+  await act(async () => {
+    if (outcome === 'transport abort') failUpload(new DOMException('Aborted', 'AbortError'));
+    else finishUpload({ kind: 'data_version', service: 'data-primary', datasetId: 'dataset-1', versionId: 'version-1', semanticId: 'semantics-1', objectId: 'object-1', checksum: 'sha256:checksum', familyId: 'dataset-1', name: 'file.csv', format: 'csv', mediaType: 'text/csv', sizeBytes: 1 });
+  });
+  expect(onUploaded).not.toHaveBeenCalled();
+  await act(async () => finishCancel());
+  expect(screen.getByRole('button', { name: '上传并附加' })).toBeEnabled();
+  expect(abort).toHaveBeenCalledExactlyOnceWith('publication-1', 'idempotency-1', '');
+});
+
 it('focuses the upload name, supports Escape before submitting and restores focus on close', () => {
   const opener = document.createElement('button');
   document.body.append(opener); opener.focus();
@@ -252,7 +279,7 @@ it('opens saved attachments by name without rendering the internal identity', ()
   const checksum = 'a'.repeat(64);
   const open = vi.fn();
   render(<MessageContent content={`附加数据：\n- 水位.csv（数据集: dataset-1；版本: exact-id；语义: semantics-1；校验和: ${checksum}）`} onResource={open} />);
-  fireEvent.click(screen.getByRole('button', { name: '查看附件 水位.csv' }));
+  fireEvent.click(screen.getByRole('button', { name: /查看附件 水位.csv/ }));
   expect(open).toHaveBeenCalledExactlyOnceWith('exact-id');
   expect(screen.queryByText(new RegExp(checksum))).not.toBeInTheDocument();
   expect(screen.queryByText('附件标识与校验信息')).not.toBeInTheDocument();
@@ -262,7 +289,7 @@ it('opens legacy English attachments with a prefixed checksum without leaking me
   const checksum = 'a'.repeat(64);
   const open = vi.fn();
   render(<MessageContent content={`附加数据：\n- 水位.csv（Dataset: dataset-1；Version: exact-id；Semantics: semantics-1；checksum: sha256:${checksum}）`} onResource={open} />);
-  fireEvent.click(screen.getByRole('button', { name: '查看附件 水位.csv' }));
+  fireEvent.click(screen.getByRole('button', { name: /查看附件 水位.csv/ }));
   expect(open).toHaveBeenCalledExactlyOnceWith('exact-id');
   expect(screen.queryByText(/Dataset: dataset-1/)).not.toBeInTheDocument();
   expect(screen.queryByText(new RegExp(checksum))).not.toBeInTheDocument();

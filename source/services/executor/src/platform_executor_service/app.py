@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+import sqlite3
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -27,7 +28,7 @@ from .routers import (
     register_system_routes,
     register_worker_routes,
 )
-from .database import runtime_metrics
+from .database import is_sqlite_busy_error, runtime_metrics
 
 
 def create_app(application: ExecutorApplication) -> FastAPI:
@@ -104,6 +105,12 @@ def create_app(application: ExecutorApplication) -> FastAPI:
             trace_id=request.state.trace_id,
             product_id=product_id,
         )
+
+    @app.exception_handler(sqlite3.OperationalError)
+    async def database_busy(request: Request, error: sqlite3.OperationalError):
+        if not is_sqlite_busy_error(error):
+            raise error
+        return await unavailable(request, ExecutorUnavailableError("EXECUTOR_DATABASE_BUSY"))
 
     register_system_routes(app, application)
     register_execution_routes(app, application)

@@ -15,7 +15,7 @@ from scripts.lib.wire_json import from_wire_json, to_wire_json
 
 
 PROJECT = "groundwater-demo"
-TERMINAL = {"COMPLETE", "FAILED"}
+TERMINAL = {"COMPLETE", "FAILED", "CANCELLED"}
 SYNTHETIC_TEST_ONLY = "SYNTHETIC_TEST_ONLY"
 REAL_DERIVED_TEST_SAMPLE = "REAL_DERIVED_TEST_SAMPLE"
 REAL_OBSERVED = "REAL_OBSERVED"
@@ -116,8 +116,19 @@ def _publish(
     media_type: str,
     data_nature: str,
     source: str,
+    semantics: dict | None = None,
 ) -> dict:
     headers = {"X-Project-ID": PROJECT, "X-Client-Type": "cli"}
+    output = _publication_output(
+        name=name, format_=format_, media_type=media_type,
+        data_nature=data_nature, source=source,
+    )
+    field_meanings = {}
+    if semantics:
+        field_meanings = semantics.get("fields", {})
+        output["semantics"].update(
+            {key: value for key, value in semantics.items() if key != "fields"}
+        )
     accepted = _request(
         client,
         "POST",
@@ -125,15 +136,7 @@ def _publish(
         headers=headers,
         json={
             "idempotency_key": "six-model-" + uuid4().hex,
-            "outputs": [
-                _publication_output(
-                    name=name,
-                    format_=format_,
-                    media_type=media_type,
-                    data_nature=data_nature,
-                    source=source,
-                )
-            ],
+            "outputs": [output],
             "input_versions": [],
             "provenance": {"purpose": "v12-six-model-lifecycle"},
         },
@@ -179,6 +182,26 @@ def _publish(
         "/api/v12/data/versions/" + committed["version_id"],
         headers=headers,
     )
+    semantic_id = committed["semantic_id"]
+    if field_meanings:
+        # Data assigns immutable IDs when it profiles the uploaded columns.
+        field_ids = {
+            field["name"]: field["field_id"] for field in detail["descriptor"]["fields"]
+        }
+        revision = _request(
+            client,
+            "POST",
+            f"/api/v12/data/versions/{committed['version_id']}/semantics",
+            headers=headers,
+            json={
+                "expected_semantic_id": semantic_id,
+                "semantics": {
+                    **output["semantics"],
+                    "fields": {field_ids[name]: meaning for name, meaning in field_meanings.items()},
+                },
+            },
+        )
+        semantic_id = revision["semantic_id"]
     raw = next(item for item in detail["objects"] if item["role"] == "raw")
     return {
         "kind": "data_version",
@@ -186,7 +209,7 @@ def _publish(
         "project_id": PROJECT,
         "dataset_id": committed["dataset_id"],
         "version_id": committed["version_id"],
-        "semantic_id": committed["semantic_id"],
+        "semantic_id": semantic_id,
         "object_id": raw["object_id"],
         "format": raw["format"],
         "media_type": raw["media_type"],
@@ -198,7 +221,11 @@ def _publish(
 def _wait_session(client: httpx.Client, session_id: str, timeout: float) -> dict:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
-        value = _request(client, "GET", f"/api/v12/sessions/{session_id}")
+        try:
+            value = _request(client, "GET", f"/api/v12/sessions/{session_id}")
+        except httpx.TransportError:
+            time.sleep(0.5)
+            continue
         if value["agent_steps"] and value["agent_steps"][-1] in {
             "WAITING_CONFIRMATION",
             *TERMINAL,
@@ -238,6 +265,9 @@ def _execute(
     input_versions: set[str],
     data_nature: str,
     timeout: float = 900,
+    on_confirmed=None,
+    cancelled: bool = False,
+    output_directory: Path | None = None,
 ) -> dict:
     model = next(
         item for item in capabilities["models"] if item["model_id"] == model_id
@@ -264,6 +294,7 @@ def _execute(
     assert waiting["goal_revision"] == accepted["goal_revision"]
     if waiting["agent_steps"][-1] != "WAITING_CONFIRMATION":
         raise AssertionError(_failure_diagnostics(client, waiting, model_id))
+    assert not waiting["workflow_run_ids"] and not waiting["remote_outputs"]
     confirmation = waiting["confirmation"]
     assert confirmation and len(confirmation["actions"]) == 1
     action = confirmation["actions"][0]
@@ -282,7 +313,12 @@ def _execute(
         f"/api/v12/sessions/{session_id}/confirm",
         json={"confirmationId": confirmation["confirmation_id"]},
     )
+    if on_confirmed is not None:
+        on_confirmed(session_id, waiting["agent_run_id"])
     completed = _wait_session(client, session_id, timeout)
+    if cancelled:
+        assert completed["agent_steps"][-1] == "CANCELLED" and not completed["remote_outputs"], completed
+        return {"session_id": session_id, "status": "CANCELLED"}
     if completed["agent_steps"][-1] != "COMPLETE":
         raise AssertionError(_failure_diagnostics(client, completed, model_id))
     assert len(completed["workflow_run_ids"]) == 1
@@ -324,6 +360,11 @@ def _execute(
             "sha256:" + hashlib.sha256(downloaded.content).hexdigest()
             == output["checksum"]
         )
+        if output_directory is not None:
+            name = output["output_name"]
+            assert name == Path(name).name and name not in {".", ".."}
+            output_directory.mkdir(parents=True, exist_ok=True)
+            (output_directory / name).write_bytes(downloaded.content)
         output_references.append(
             {
                 key: output[key]

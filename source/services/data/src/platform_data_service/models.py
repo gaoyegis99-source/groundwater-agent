@@ -63,7 +63,7 @@ class Output(Model):
         "arrow-ipc-file", "binary", "cog", "copc", "csv", "docx",
         "flatgeobuf", "geojson", "geopackage", "geoparquet", "geotiff",
         "json", "las", "laz", "markdown", "npy", "parquet", "pdf",
-        "png", "pytorch-state-dict", "text", "xlsx",
+        "png", "pytorch-state-dict", "text", "xlsx", "zip",
     ]
     media_type: str | None = Field(default=None, min_length=1, max_length=200)
     policy: Literal["FILE_ONLY", "FILE_QUERYABLE", "FILE_AND_METRICS"] = "FILE_ONLY"

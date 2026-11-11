@@ -7,28 +7,28 @@
 
 | 来源 | 路径 | 身份 |
 |---|---|---|
-| Product manifest | `products/groundwater/product-manifest.json` | `sha256:9fc89a1d7e5ec93709058e18d0858c652616fa6bf1285a28d49ebfb20e9966d2` |
-| Domain manifest | `domains/groundwater/6.0.0/domain-manifest.json` | package `sha256:e5e8702c14a8ac0298b91f88399faa91154c107ccc7fc283fba34fffbf21eb09` |
-| Operator Catalog index | `packages/operator-pack/catalog/index.json` | manifest `sha256:c1a1e52cdf6d4f50e866585766746b8f4429377254ae9c2baa21e1e95187272f`<br>execution `sha256:ecff554a86f4a6d77e5aaa9aee859c068dc9c1e50ba57f6afd5973fad6657b18` |
-| Product UI | `products/groundwater/ui/product-ui.json` | source `sha256:1d8bc1e3db2182548965ad8c7398c642836a605b9b03855d25521d9d7a19849d`<br>compiled `sha256:abb88199e9e7be44bd9b9c30bda2a15889c435ea15648bea23fcb5c3f068eb0b` |
+| Product manifest | `products/groundwater/product-manifest.json` | `sha256:43e8105e92e621b32a9092c429a24ddf10bb8c875e4289f07248e1984a13288b` |
+| Domain manifest | `domains/groundwater/6.1.0/domain-manifest.json` | package `sha256:8662efa7382bbe4f9fe7c35fd873bf7109a4d75ee3213fd4bb0fdc92b4c4b10d` |
+| Operator Catalog index | `packages/operator-pack/catalog/index.json` | manifest `sha256:550ba7d4150cfef5119019838d0120e782a667b55fd104bcddfcac0d6afbee7d`<br>execution `sha256:9b264c2310155ab146a65f7da653adb5f91be8ad6b7c327d9c0fd70c3821a433` |
+| Product UI | `products/groundwater/ui/product-ui-porous.v1.json` | source `sha256:8629570bfac04fb36a555a66bc1df99c0d4710d10ba92c7ae2c861b3491b903f`<br>compiled `sha256:8629570bfac04fb36a555a66bc1df99c0d4710d10ba92c7ae2c861b3491b903f` |
 
 ## 摘要
 
 | 项目 | 当前值 |
 |---|---:|
-| 可执行模型 | 10 |
-| 工作流 | 10 |
-| Catalog 算子 | 109 |
-| 被当前工作流引用的唯一算子 | 43 |
-| UI 模型配置 | 10 |
+| 可执行模型 | 18 |
+| 工作流 | 18 |
+| Catalog 算子 | 111 |
+| 被当前工作流引用的唯一算子 | 54 |
+| UI 模型配置 | 18 |
 | UI 示例 / featured | 11 / 7 |
 | Agent observation tools | 7 |
-| Knowledge documents | 7 |
+| Knowledge documents | 8 |
 | Execution cases | 1 |
 
-算子 runtime：`native` 83、`qgis` 15、`remote_http` 11。
+算子 runtime：`native` 84、`qgis` 15、`remote_http` 12。
 
-结果 viewer：`chart` 9、`image` 1、`json` 14、`map` 21、`metadata` 3、`table` 26。
+结果 viewer：`chart` 9、`image` 2、`json` 41、`map` 22、`metadata` 16、`table` 26。
 
 ## 可执行模型
 
@@ -39,10 +39,18 @@
 | `groundwater.kriging` | 克里金插值 | `1.0.0` | `run_kriging` | `groundwater.kriging@1.0.0` | `points←versionId` | 1 / 5 | `json` 2、`map` 2、`table` 1 |
 | `groundwater.monitoring-coverage` | 监测井覆盖 | `3.1.0` | `run_monitoring_coverage` | `groundwater.monitoring-coverage@1.2.0` | `wells←versionId` | 3 / 2 | `json` 1、`map` 1 |
 | `groundwater.monitoring-trend` | 监测趋势 | `3.1.0` | `run_monitoring_trend` | `groundwater.monitoring-trend@1.1.0` | `observations←versionId` | 10 / 21 | `chart` 6、`table` 15 |
+| `groundwater.porous-agricultural-inversion` | 孔隙型农业抽水反演 | `1.0.0` | `run_porous_agri_inversion` | `groundwater.porous-agricultural-inversion@1.0.0` | `agricultural_data←agriculturalDataVersionId` | 1 / 4 | `json` 2、`metadata` 2 |
+| `groundwater.porous-calibration` | 孔隙型 PEST 水头率定 | `1.0.0` | `run_porous_pest_calibration` | `groundwater.porous-calibration@1.0.0` | `observations←calibrationObservationsVersionId`<br>`project_package←projectPackageVersionId` | 3 / 9 | `json` 6、`metadata` 3 |
+| `groundwater.porous-inversion-sampling` | 孔隙型反演采样 | `1.0.0` | `run_porous_inversion_sample` | `groundwater.porous-inversion-sampling@1.0.0` | `sample_config←inversionSamplingVersionId`<br>`weights←inversionWeightsVersionId` | 1 / 4 | `json` 2、`metadata` 2 |
+| `groundwater.porous-inversion-training` | 孔隙型反演训练 | `1.0.0` | `run_porous_inversion_train` | `groundwater.porous-inversion-training@1.0.0` | `training_data←inversionTrainingVersionId` | 1 / 4 | `json` 2、`metadata` 2 |
+| `groundwater.porous-map` | 孔隙型栅格地图准备 | `1.0.0` | `run_porous_map_prepare` | `groundwater.porous-map@1.0.0` | `map_input←geoTiffVersionId` | 1 / 3 | `json` 2、`map` 1 |
+| `groundwater.porous-scenario-comparison` | 孔隙型情景对比 | `1.0.0` | `run_porous_scenario_compare` | `groundwater.porous-scenario-comparison@1.0.0` | `scenario_package←scenarioPackageVersionId` | 1 / 4 | `json` 3、`metadata` 1 |
+| `groundwater.porous-simulation` | 孔隙型地下水流与溶质运移 | `1.0.0` | `run_porous_simulation` | `groundwater.porous-simulation@1.0.0` | `project_package←projectPackageVersionId` | 4 / 12 | `image` 1、`json` 8、`metadata` 3 |
 | `groundwater.render-map` | 静态地图 | `3.1.0` | `render_map` | `groundwater.render-map@1.1.0` | `data←sourceVersionId` | 1 / 2 | `image` 1、`json` 1 |
 | `groundwater.rule-classification` | 规则分类 | `1.0.0` | `run_rule_classification` | `groundwater.rule-classification@1.0.0` | `bindings←bindingsVersionId`<br>`data←dataVersionId`<br>`rules←rulesVersionId` | 1 / 4 | `json` 1、`table` 3 |
 | `groundwater.source-sustainability` | 水源地综合评价 | `1.1.0` | `run_source_sustainability` | `groundwater.source-sustainability@1.0.0` | `assessment_input←assessmentVersionId` | 1 / 3 | `json` 2、`metadata` 1 |
 | `groundwater.summary` | 数据概览 | `3.1.0` | `run_summary` | `groundwater.summary@1.1.0` | `data←versionId` | 1 / 2 | `json` 2 |
+| `groundwater.sustainability-input-preparation` | 水源地评价输入准备 | `1.0.0` | `prepare_source_sustainability` | `groundwater.sustainability-input-preparation@1.0.0` | `management←managementEvidenceVersionId`<br>`monitoring←monitoringEvidenceVersionId`<br>`simulation←simulationEvidenceVersionId` | 1 / 2 | `json` 2 |
 | `groundwater.transfer-learning-analysis` | 迁移学习回测 | `3.1.0` | `run_transfer_learning_analysis` | `groundwater.transfer-learning-analysis@1.0.0` | `basin_boundary←basin_boundaryVersionId`<br>`boundary←boundaryVersionId`<br>`counties←countiesVersionId`<br>`groundwater_systems←groundwater_systemsVersionId`<br>`holdout-windows-rules←holdout-windows-rulesVersionId`<br>`imagery←imageryVersionId`<br>`imagery-rules←imagery-rulesVersionId`<br>`inverse-rules←inverse-rulesVersionId`<br>`monthMapping←monthMappingVersionId`<br>`railways←railwaysVersionId`<br>`rivers←riversVersionId`<br>`source-scaler-rules←source-scaler-rulesVersionId`<br>`source-windows-rules←source-windows-rulesVersionId`<br>`sourceFilter←sourceFilterVersionId`<br>`target-scaler-rules←target-scaler-rulesVersionId`<br>`target-windows-rules←target-windows-rulesVersionId`<br>`targetFilter←targetFilterVersionId`<br>`townships←townshipsVersionId`<br>`workbook←workbookVersionId` | 58 / 25 | `chart` 3、`json` 4、`map` 11、`metadata` 2、`table` 5 |
 
 ## 模型说明与适用性
@@ -54,10 +62,18 @@
 | `groundwater.kriging` | 使用 Ordinary Kriging 或带平面漂移的 Universal Kriging 生成预测栅格和克里金方差，并提供变异函数与留一法诊断。 | 适用于带数值字段和 X/Y 坐标字段的点表；目标坐标系必须为米制投影。变异函数、邻域和点位覆盖会影响结果，外推区域需单独复核，克里金不保证优于 IDW。 |
 | `groundwater.monitoring-coverage` | 计算监测井点的几何凸包，报告重复点、唯一点及按坐标系计算的面积和周长；结果不是含水层边界或地下水影响范围。 | 至少需要三个唯一且不共线的 GeoJSON 点；重复坐标会计数但不改变凸包。地理坐标系采用椭球测地面积和周长，投影坐标系采用平面量测并换算为米。 |
 | `groundwater.monitoring-trend` | 按监测对象和时间分析完整性、缺测段、趋势、变化点、异常及阈值事件。 | 适用于带分组、时间和数值字段的长期监测表；季节趋势和阈值事件需显式启用并提供分析参数。 |
+| `groundwater.porous-agricultural-inversion` | 以明确的农业抽水记录和监测水头计算响应矩阵，分期率定并独立验证。 | 用于本机科研。现场科学等价待验证。 |
+| `groundwater.porous-calibration` | 用原生 PEST 拟合给定水头观测和全局参数倍率，随后用率定模型重新执行仿真。 | 用于本机科研。现场科学等价待验证。 |
+| `groundwater.porous-inversion-sampling` | 用已训练权重和明确观测条件采样参数场后验。 | 用于本机科研。现场科学等价待验证。 |
+| `groundwater.porous-inversion-training` | 用同批水头、地表形变与参数场训练条件扩散反演模型。 | 用于本机科研。现场科学等价待验证。 |
+| `groundwater.porous-map` | 校验并整理本地 GeoTIFF，发布栅格与坐标参考系信息。 | 用于本机科研。现场科学等价待验证。 |
+| `groundwater.porous-scenario-comparison` | 以固定模型为基准，计算声明的各个参数情景并汇总差异。 | 用于本机科研。现场科学等价待验证。 |
+| `groundwater.porous-simulation` | 编译孔隙型地下水模型，计算地下水流与溶质运移，汇总结果并生成图件。 | 用于核对合成算例与候选 Linux 服务。现场科学等价待验证。 |
 | `groundwater.render-map` | 把一个单文件 GeoJSON、GeoTIFF 或 COG 按源 CRS 和数据范围渲染为 PNG，并报告色标、单位与无数据表达摘要。 | 只绘制一个已存在的空间文件且不重投影；不支持多图层、在线底图、交互地图、地图发布或 PDF。GeoJSON 可选数值字段着色，栅格固定绘制第一波段。 |
 | `groundwater.rule-classification` | 使用独立的规则与字段语义绑定，对完整表格逐指标分类，并在全部指标可评价时按最不利类别顺序生成综合类别。 | 适用于已有明确来源、版本、核验状态、单位、口径、类别顺序及开闭或多区间边界的分类规则。未核验规则、缺测、非数值、超范围和规则空隙保持未评价；不自动换算单位或近似双侧规则。 |
 | `groundwater.source-sustainability` | 把已核实的评价 JSON 委托给部署绑定的外部服务；平台按版本白名单调用并做输入、结构化结果与下载文件的完整性校验，但平台不复现外部评分算法。 | 适用于已按外部服务契约整理的非正式综合评价；依赖服务配置、凭据和可用性，完整性凭据不证明科学有效性，结果不能替代专业复核或行政审批。 |
 | `groundwater.summary` | 对完整输入文件或数组执行描述统计，分别报告有效值、声明空值和非有限值；可按已核实字段做有界分组。 | 表格输入必须选择数值字段，NPY 可按列或展平统计。完整输入不等于目标区域或业务总体，结果不代表总体分布、趋势或因果关系。 |
+| `groundwater.sustainability-input-preparation` | 汇总模拟、监测及管理资料，核对同一区域、时段和指标口径，生成候选评价输入与字段来源报告。 | 用于本机科研。现场科学等价待验证。 |
 | `groundwater.transfer-learning-analysis` | 在源域预训练、目标域训练段微调，并以观测历史执行目标域单步留出回测，生成评价和空间诊断成果。 | 适用于资料完整、边界明确且已冻结输入版本的迁移学习回测；目标域缩放器只用训练段拟合，结果不是递归未来预测。 |
 
 ## 工作流与算子组合
@@ -69,10 +85,18 @@
 | `groundwater.kriging@1.0.0` | 1 | `points.interpolate.kriging@1.0.0` | `native` 1 | 5 |
 | `groundwater.monitoring-coverage@1.2.0` | 3 | `vector.dissolve@1.0.0`<br>`vector.convex_hull@1.0.0`<br>`data.convert@1.0.0` | `native` 1、`qgis` 2 | 2 |
 | `groundwater.monitoring-trend@1.1.0` | 10 | `timeseries.aggregate@1.0.0`<br>`timeseries.completeness@1.0.0`<br>`statistics.linear_trend@1.0.0`<br>`statistics.mann_kendall@1.0.0`<br>`statistics.mad_outliers@1.0.0`<br>`timeseries.period_change@1.0.0`<br>`statistics.pettitt_change_point@1.0.0`<br>`statistics.seasonal_mann_kendall@1.0.0`<br>`timeseries.gap_runs@1.0.0`<br>`timeseries.threshold_events@1.0.0` | `native` 10 | 21 |
+| `groundwater.porous-agricultural-inversion@1.0.0` | 1 | `groundwater.porous.agri_invert@1.0.0` | `remote_http` 1 | 4 |
+| `groundwater.porous-calibration@1.0.0` | 3 | `groundwater.porous.model_compile@1.0.0`<br>`groundwater.porous.pest_calibrate@1.1.0`<br>`groundwater.porous.flow_transport_simulate@1.0.0` | `remote_http` 3 | 9 |
+| `groundwater.porous-inversion-sampling@1.0.0` | 1 | `groundwater.porous.inversion_sample@1.0.0` | `remote_http` 1 | 4 |
+| `groundwater.porous-inversion-training@1.0.0` | 1 | `groundwater.porous.inversion_train@1.0.0` | `remote_http` 1 | 4 |
+| `groundwater.porous-map@1.0.0` | 1 | `groundwater.porous.map_prepare@1.0.0` | `remote_http` 1 | 3 |
+| `groundwater.porous-scenario-comparison@1.0.0` | 1 | `groundwater.porous.scenario_compare@1.0.0` | `remote_http` 1 | 4 |
+| `groundwater.porous-simulation@1.0.0` | 4 | `groundwater.porous.model_compile@1.0.0`<br>`groundwater.porous.flow_transport_simulate@1.0.0`<br>`groundwater.porous.result_analyze@1.0.0`<br>`groundwater.porous.result_render@1.0.0` | `remote_http` 4 | 12 |
 | `groundwater.render-map@1.1.0` | 1 | `cartography.render-png@1.0.0` | `native` 1 | 2 |
 | `groundwater.rule-classification@1.0.0` | 1 | `table.classify@1.0.0` | `native` 1 | 4 |
 | `groundwater.source-sustainability@1.0.0` | 1 | `groundwater.source_sustainability.evaluate@1.0.0` | `remote_http` 1 | 3 |
 | `groundwater.summary@1.1.0` | 1 | `statistics.describe@1.0.0` | `native` 1 | 2 |
+| `groundwater.sustainability-input-preparation@1.0.0` | 1 | `groundwater.source_sustainability.prepare@1.0.0` | `native` 1 | 2 |
 | `groundwater.transfer-learning-analysis@1.0.0` | 58 | `spreadsheet.extract_table@1.0.0`<br>`table.timeseries_unpivot@1.0.0`<br>`table.filter@1.0.0`<br>`timeseries.chronological_split@1.0.0`<br>`preprocessing.standard_scaler_fit@1.0.0`<br>`preprocessing.standard_scaler_transform@1.0.0`<br>`timeseries.supervised_windows@1.0.0`<br>`ml.gru_attention_pretrain@1.0.0`<br>`ml.gru_attention_finetune@1.0.0`<br>`ml.gru_attention_predict@1.0.0`<br>`preprocessing.standard_scaler_inverse@1.0.0`<br>`statistics.regression_metrics@1.0.0`<br>`crs.reproject@1.0.0`<br>`vector.envelope@1.0.0`<br>`raster.window@1.0.0`<br>`vector.clip@1.0.0`<br>`vector.from_xy@1.0.0`<br>`vector.tag_membership@1.0.0`<br>`timeseries.snapshot@1.0.0`<br>`data.convert@1.0.0`<br>`raster.reproject@1.0.0` | `native` 52、`qgis` 6 | 25 |
 
 ## 工作流成果与 Viewer
@@ -84,17 +108,25 @@
 | `groundwater.kriging@1.0.0` | `kriging-prediction — 克里金预测栅格 [map]`<br>`kriging-variance — 克里金方差栅格 [map]`<br>`variogram-diagnostics — 变异函数诊断 [json]`<br>`kriging-loo — 留一法交叉验证 [table]`<br>`kriging-summary — 克里金运行摘要 [json]` |
 | `groundwater.monitoring-coverage@1.2.0` | `coverage — 井点几何凸包 [map]`<br>`coverage-summary — 井点几何覆盖摘要 [json]` |
 | `groundwater.monitoring-trend@1.1.0` | `aggregated-series — 聚合后的监测序列 [chart]`<br>`aggregate-summary — 聚合统计摘要 [table]`<br>`completeness-profiles — 数据完整性明细 [table]`<br>`completeness-summary — 数据完整性摘要 [table]`<br>`linear-trends — 线性趋势结果 [chart]`<br>`linear-summary — 线性趋势摘要 [table]`<br>`mann-kendall-trends — Mann–Kendall 趋势检验 [chart]`<br>`mann-kendall-summary — 趋势检验摘要 [table]`<br>`outlier-observations — 异常观测明细 [table]`<br>`outlier-summary — 异常检测摘要 [table]`<br>`period-changes — 期间变化明细 [chart]`<br>`period-change-summary — 期间变化摘要 [table]`<br>`change-points — 变化点检验结果 [table]`<br>`change-point-summary — 变化点检验摘要 [table]`<br>`seasonal-trends — 季节 Mann–Kendall 趋势检验 [chart]`<br>`seasonal-trend-summary — 季节趋势检验摘要 [table]`<br>`gap-runs — 连续缺测段 [table]`<br>`gap-run-summary — 连续缺测段摘要 [table]`<br>`threshold-classification — 阈值分类序列 [chart]`<br>`threshold-events — 阈值事件明细 [table]`<br>`threshold-event-summary — 阈值事件摘要 [table]` |
+| `groundwater.porous-agricultural-inversion@1.0.0` | `porous-agricultural-arrays — 基准、线性估计和重算水头 [metadata]`<br>`porous-agricultural-metrics — 农业抽水反演指标 [json]`<br>`porous-agricultural-report — 农业反演分组及报告 [metadata]`<br>`porous-agricultural-inversion-receipt — 运行凭据 [json]` |
+| `groundwater.porous-calibration@1.0.0` | `porous-calibrated-parameters — 率定参数倍率 [json]`<br>`porous-calibration-residuals — 率定残差 [json]`<br>`porous-calibration-package — PEST 率定报告 [metadata]`<br>`porous-calibrated-model — 可重算的已率定模型包 [metadata]`<br>`porous-calibrated-summary — 率定后仿真摘要 [json]`<br>`porous-calibrated-result — 率定后仿真结果包 [metadata]`<br>`porous-pest-compile-receipt — 率定前编译凭据 [json]`<br>`porous-pest-receipt — PEST 率定凭据 [json]`<br>`porous-pest-simulation-receipt — 率定后仿真凭据 [json]` |
+| `groundwater.porous-inversion-sampling@1.0.0` | `porous-posterior-samples — 后验样本数组 [metadata]`<br>`porous-sampling-metrics — 采样指标 [json]`<br>`porous-sampling-report — 后验均值与标准差 [metadata]`<br>`porous-inversion-sampling-receipt — 运行凭据 [json]` |
+| `groundwater.porous-inversion-training@1.0.0` | `porous-inversion-weights — 反演训练权重 [metadata]`<br>`porous-training-metrics — 训练与验证指标 [json]`<br>`porous-training-report — 训练报告与缩放参数 [metadata]`<br>`porous-inversion-training-receipt — 运行凭据 [json]` |
+| `groundwater.porous-map@1.0.0` | `porous-map-raster — 可查看的 GeoTIFF [map]`<br>`porous-map-crs — 坐标系、范围与波段信息 [json]`<br>`porous-map-receipt — 运行凭据 [json]` |
+| `groundwater.porous-scenario-comparison@1.0.0` | `porous-scenario-table — 逐情景对比表 [json]`<br>`porous-scenario-summary — 情景对比摘要 [json]`<br>`porous-scenario-results — 逐情景仿真结果包 [metadata]`<br>`porous-scenario-comparison-receipt — 运行凭据 [json]` |
+| `groundwater.porous-simulation@1.0.0` | `porous-model-package — 已编译的模型包 [metadata]`<br>`porous-model-validation — 模型校验报告 [json]`<br>`porous-calculation-summary — 仿真摘要 [json]`<br>`porous-effective-parameters — 有效模型参数 [json]`<br>`porous-result-package — 水头与浓度结果包 [metadata]`<br>`porous-analysis — 按时段和层统计的结果 [json]`<br>`porous-figure — 最终时刻结果图 [image]`<br>`porous-vtk-package — VTU 和 PVD 文件包 [metadata]`<br>`porous-compile-receipt — 模型编译运行凭据 [json]`<br>`porous-simulation-receipt — 仿真运行凭据 [json]`<br>`porous-analysis-receipt — 分析运行凭据 [json]`<br>`porous-render-receipt — 制图运行凭据 [json]` |
 | `groundwater.render-map@1.1.0` | `map-image — 静态地图 [image]`<br>`map-summary — 静态地图表达摘要 [json]` |
 | `groundwater.rule-classification@1.0.0` | `classified-table — 规则分类结果表 [table]`<br>`indicator-classifications — 逐指标分类明细 [table]`<br>`classification-rule-summary — 分类规则审计表 [table]`<br>`classification-summary — 规则分类运行摘要 [json]` |
 | `groundwater.source-sustainability@1.0.0` | `sustainability-result — 外部服务返回的结构化评价 [json]`<br>`sustainability-result-file — 完整性校验后的外部结果文件 [json]`<br>`sustainability-run-receipt — 外部执行与完整性凭据 [metadata]` |
 | `groundwater.summary@1.1.0` | `summary — 汇总结果 [json]`<br>`summary-details — 描述统计范围与语义 [json]` |
+| `groundwater.sustainability-input-preparation@1.0.0` | `assessment-input-candidate — 候选评价 JSON 或阻止标记 [json]`<br>`assessment-input-sources — 指标来源与缺项诊断 [json]` |
 | `groundwater.transfer-learning-analysis@1.0.0` | `source-scaler — 源域缩放器 [json]`<br>`target-scaler — 目标域缩放器 [json]`<br>`target-split — 目标域时间划分诊断 [table]`<br>`pretrained-weights — 预训练权重 [metadata]`<br>`pretrained-model-spec — 预训练模型规格 [json]`<br>`pretrain-loss — 预训练损失 [chart]`<br>`finetuned-weights — 微调权重 [metadata]`<br>`finetuned-model-spec — 微调模型规格 [json]`<br>`finetune-loss — 微调损失 [chart]`<br>`predictions — 单步留出回测结果 [chart]`<br>`metrics — 留出回测总体指标 [table]`<br>`per-well-metrics — 逐井留出回测指标 [table]`<br>`prediction-points — 预测点资料 [map]`<br>`map-points — 制图点资料 [map]`<br>`boundary — 区域边界 [map]`<br>`extent — 分析范围 [map]`<br>`imagery — 影像 [map]`<br>`imagery-coverage — 影像窗口覆盖诊断 [table]`<br>`map-month-diagnostics — 制图月份选择诊断 [table]`<br>`counties — 县级区划 [map]`<br>`townships — 乡镇区划 [map]`<br>`rivers — 河流 [map]`<br>`groundwater_systems — 地下水系统 [map]`<br>`railways — 铁路 [map]`<br>`basin_boundary — 流域边界 [map]` |
 
 ## Operator Catalog 摘要
 
-领域分布：`cartography` 1、`crs` 1、`data` 2、`document` 2、`geometry` 2、`groundwater` 16、`hydrology` 8、`ml` 3、`points` 2、`preprocessing` 3、`raster` 19、`statistics` 7、`table` 10、`timeseries` 17、`vector` 16。
+领域分布：`cartography` 1、`crs` 1、`data` 2、`document` 2、`geometry` 2、`groundwater` 18、`hydrology` 8、`ml` 3、`points` 2、`preprocessing` 3、`raster` 19、`statistics` 7、`table` 10、`timeseries` 17、`vector` 16。
 
-Catalog 中存在不等于当前领域工作流已暴露；下表的“工作流”与“节点使用”来自当前 10 个工作流的精确引用。
+Catalog 中存在不等于当前领域工作流已暴露；下表的“工作流”与“节点使用”来自当前 18 个工作流的精确引用。
 
 | Operator | Domain | Runtime | 工作流 | 节点使用 |
 |---|---|---|---:|---:|
@@ -111,17 +143,19 @@ Catalog 中存在不等于当前领域工作流已暴露；下表的“工作流
 | `groundwater.drawdown.calculate@1.0.0` | `groundwater` | `native` | 0 | 0 |
 | `groundwater.head.calculate@1.0.0` | `groundwater` | `native` | 1 | 1 |
 | `groundwater.hydraulic_gradient@1.0.0` | `groundwater` | `native` | 1 | 1 |
-| `groundwater.porous.agri_invert@1.0.0` | `groundwater` | `remote_http` | 0 | 0 |
-| `groundwater.porous.flow_transport_simulate@1.0.0` | `groundwater` | `remote_http` | 0 | 0 |
-| `groundwater.porous.inversion_sample@1.0.0` | `groundwater` | `remote_http` | 0 | 0 |
-| `groundwater.porous.inversion_train@1.0.0` | `groundwater` | `remote_http` | 0 | 0 |
-| `groundwater.porous.map_prepare@1.0.0` | `groundwater` | `remote_http` | 0 | 0 |
-| `groundwater.porous.model_compile@1.0.0` | `groundwater` | `remote_http` | 0 | 0 |
+| `groundwater.porous.agri_invert@1.0.0` | `groundwater` | `remote_http` | 1 | 1 |
+| `groundwater.porous.flow_transport_simulate@1.0.0` | `groundwater` | `remote_http` | 2 | 2 |
+| `groundwater.porous.inversion_sample@1.0.0` | `groundwater` | `remote_http` | 1 | 1 |
+| `groundwater.porous.inversion_train@1.0.0` | `groundwater` | `remote_http` | 1 | 1 |
+| `groundwater.porous.map_prepare@1.0.0` | `groundwater` | `remote_http` | 1 | 1 |
+| `groundwater.porous.model_compile@1.0.0` | `groundwater` | `remote_http` | 2 | 2 |
 | `groundwater.porous.pest_calibrate@1.0.0` | `groundwater` | `remote_http` | 0 | 0 |
-| `groundwater.porous.result_analyze@1.0.0` | `groundwater` | `remote_http` | 0 | 0 |
-| `groundwater.porous.result_render@1.0.0` | `groundwater` | `remote_http` | 0 | 0 |
-| `groundwater.porous.scenario_compare@1.0.0` | `groundwater` | `remote_http` | 0 | 0 |
+| `groundwater.porous.pest_calibrate@1.1.0` | `groundwater` | `remote_http` | 1 | 1 |
+| `groundwater.porous.result_analyze@1.0.0` | `groundwater` | `remote_http` | 1 | 1 |
+| `groundwater.porous.result_render@1.0.0` | `groundwater` | `remote_http` | 1 | 1 |
+| `groundwater.porous.scenario_compare@1.0.0` | `groundwater` | `remote_http` | 1 | 1 |
 | `groundwater.source_sustainability.evaluate@1.0.0` | `groundwater` | `remote_http` | 1 | 1 |
+| `groundwater.source_sustainability.prepare@1.0.0` | `groundwater` | `native` | 1 | 1 |
 | `hydrology.basins@1.0.0` | `hydrology` | `native` | 0 | 0 |
 | `hydrology.fill_sinks@1.0.0` | `hydrology` | `qgis` | 0 | 0 |
 | `hydrology.flow_accumulation@1.0.0` | `hydrology` | `native` | 0 | 0 |

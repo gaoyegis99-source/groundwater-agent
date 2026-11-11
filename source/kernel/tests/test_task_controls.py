@@ -1,5 +1,8 @@
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from dataclasses import replace
+from threading import Barrier
 
 from agents.testing import ModelStep
 import pytest
@@ -15,6 +18,7 @@ from platform_kernel.interaction.control_persistence import (
     request_stop,
     validate_correction,
 )
+import platform_kernel.interaction.control_persistence as control_persistence
 from platform_kernel.interaction.persistence import create_session
 from platform_kernel.agent_runtime.preview import PreviewHub, ReplyPreview
 
@@ -65,6 +69,61 @@ def test_control_claims_are_fifo_bounded_and_do_not_scan_an_unbounded_batch(tmp_
         f"request-{index:03d}" for index in range(32, 40)
     ]
     assert all(item["claim_generation"] == 1 for item in (*first, *second))
+
+
+@pytest.mark.parametrize("state", ["empty", "COMPLETE", "PROCESSING"])
+def test_idle_control_poll_does_not_wait_for_an_unrelated_writer(
+    tmp_path, monkeypatch, state
+):
+    database = _control_store(tmp_path, count=0 if state == "empty" else 1)
+    with connect_database(database) as connection:
+        connection.execute(
+            "UPDATE run_controls SET status=?,claim_until='2999-01-01T00:00:00.000Z'",
+            (state,),
+        )
+
+    @contextmanager
+    def short_timeout(path):
+        with connect_database(path) as connection:
+            connection.execute("PRAGMA busy_timeout=50")
+            yield connection
+
+    monkeypatch.setattr(control_persistence, "connect_database", short_timeout)
+    # Auth and workflow writes share this WAL store. An idle control poll is
+    # read-only and must keep returning while another writer owns its lock.
+    with connect_database(database) as writer:
+        writer.execute("BEGIN IMMEDIATE")
+        writer.execute("UPDATE sessions SET title='uncommitted' WHERE session_id='session'")
+        assert claim_controls(database, "dispatcher") == ()
+
+
+def test_concurrent_control_claimers_recheck_candidates_under_the_write_lock(
+    tmp_path, monkeypatch
+):
+    database = _control_store(tmp_path)
+    contenders = Barrier(2)
+
+    class PausedConnection:
+        def __init__(self, connection):
+            self.connection = connection
+
+        def execute(self, sql, *args):
+            if sql == "BEGIN IMMEDIATE":
+                contenders.wait(timeout=5)
+            return self.connection.execute(sql, *args)
+
+    @contextmanager
+    def concurrent_connection(path):
+        with connect_database(path) as connection:
+            yield PausedConnection(connection)
+
+    monkeypatch.setattr(control_persistence, "connect_database", concurrent_connection)
+    with ThreadPoolExecutor(max_workers=2) as workers:
+        claims = tuple(workers.map(lambda owner: claim_controls(database, owner), ("a", "b")))
+
+    claimed = [item for batch in claims for item in batch]
+    assert len(claimed) == 1
+    assert claimed[0]["claim_generation"] == 1
 
 
 def test_control_claim_lease_recovery_fences_an_old_worker(tmp_path):

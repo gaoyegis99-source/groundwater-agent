@@ -164,16 +164,7 @@ export function RetrievalPanel({
   return (
     <section className="panel task-panel">
       <div className="panel-heading">
-        <div>
-          <p className="step-kicker">任务 2</p>
-          <h2>检索可引用证据</h2>
-          <p>用完整问题检索知识，并核对证据状态、适用范围和来源。结果是候选证据，不会代替人工判断。</p>
-        </div>
-      </div>
-      <div className="retrieval-guide" aria-label="检索流程">
-        <span><strong>1</strong>描述需要判断的问题</span>
-        <span><strong>2</strong>必要时限定数据版本</span>
-        <span><strong>3</strong>核对证据与回执</span>
+        <h2>证据检索</h2>
       </div>
       <form className="retrieval-form" onSubmit={event => { event.preventDefault(); void retrieve(); }}>
         <label className="question-field">要查证什么？
@@ -190,13 +181,12 @@ export function RetrievalPanel({
           <label>知识范围<select aria-label="适用范围" value={scope} onChange={event => setScope(event.target.value as typeof scope)}><option value="">根据是否绑定数据自动选择</option><option value="general">仅通用知识</option><option value="bound">仅这份数据的专属知识</option><option value="combined">通用知识 + 数据专属知识</option></select></label>
         </div>
         <details className="binding-details" open={scope === "bound" || scope === "combined" ? true : undefined}>
-          <summary>需要限定到某份数据？选择不可变版本和语义修订</summary>
-          <p className="muted">精确匹配只确认产品、项目、版本、语义和可选字段身份一致，不证明业务解释正确。</p>
+          <summary>数据范围{binding ? " · 已绑定" : "（可选）"}</summary>
           <BindingPicker capabilities={dataCapabilities} compatible={crossServiceCompatible} value={binding} onChange={setBinding} />
         </details>
         <details className="retrieval-tuning">
-          <summary>调整候选数量、阈值与元数据过滤</summary>
-          <p className="muted">相关度是本次候选中的归一化融合分数；提高阈值会减少弱匹配，但可能漏掉有用证据。</p>
+          <summary>高级检索选项</summary>
+          <p className="muted">提高相关度阈值会减少弱匹配，也可能漏掉有用证据。</p>
           <div className="tuning-grid">
             <label>最多返回<input aria-label="最多返回证据" type="number" min="1" max="16" value={topK} onChange={event => setTopK(Math.max(1, Math.min(16, Number(event.target.value) || 1)))} /></label>
             <label>最低相关度<input aria-label="最低相关度" type="number" min="0" max="1" step="0.05" value={minScore} onChange={event => setMinScore(Math.max(0, Math.min(1, Number(event.target.value) || 0)))} /></label>
@@ -208,7 +198,7 @@ export function RetrievalPanel({
         </details>
         <div className="form-actions">
           {!capabilities.permissions.retrievalCreate && <span className="inline-error">当前身份没有创建检索的权限。</span>}
-          <span className="muted">{binding ? "本次检索已限定到明确的数据版本。" : "未选择数据时，将按通用知识范围检索。"}</span>
+          {(scope === "bound" || scope === "combined") && !binding && <span className="muted">请先选择数据版本。</span>}
           <button disabled={busy || !capabilities.permissions.retrievalCreate || ((scope === "bound" || scope === "combined") && !binding)}>{busy ? "正在检索…" : "开始检索"}</button>
         </div>
       </form>

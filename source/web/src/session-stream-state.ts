@@ -38,7 +38,7 @@ export const applySnapshot = (state: StreamProgress, cursor: number): { state: S
 };
 
 export type DetailScope = { results: boolean; drafts: boolean };
-const metadataEvents = new Set(['agent.activity', 'agent.planRecorded', 'workflow.stageChanged', 'workflow.communicationChanged', 'confirmation.processing']);
+const metadataEvents = new Set(['agent.activity', 'agent.plan_recorded', 'workflow.stage_changed', 'workflow.communication_changed', 'confirmation.processing']);
 
 export const noDetails = (): DetailScope => ({ results: false, drafts: false });
 export const allDetails = (): DetailScope => ({ results: true, drafts: true });
@@ -52,8 +52,8 @@ export const mergeDetails = (left: DetailScope, right: DetailScope): DetailScope
 export const detailsAfterEvent = (scope: DetailScope, type: string): DetailScope => {
   if (isMetadataEvent(type)) return scope;
   return {
-    results: scope.results || /^(workflow|job)\.(succeeded|failed|timedOut|cancelled)$/.test(type),
+    results: scope.results || /^(workflow|job)\.(succeeded|failed|timed_out|cancelled|retry_queued|recovery_completed|recovery_failed)$/.test(type),
     drafts: scope.drafts || type.startsWith('workflow_draft.')
-      || ['turn.accepted', 'intent_routing.resolved', 'agent.complete', 'agent.failed'].includes(type),
+      || ['turn.accepted', 'intent_routing.resolved', 'agent.complete', 'agent.failed', 'agent.cancelled', 'agent.superseded', 'control.complete'].includes(type),
   };
 };

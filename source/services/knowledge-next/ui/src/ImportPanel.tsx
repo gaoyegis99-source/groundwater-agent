@@ -224,38 +224,27 @@ export function ImportPanel({
   return (
     <section className="panel task-panel">
       <div className="panel-heading">
-        <div>
-          <p className="step-kicker">任务 3</p>
-          <h2>导入或更新知识</h2>
-          <p>选择结构化知识包，先核对内容和数据绑定，再提交原子更新。失败不会替换当前有效版本。</p>
-        </div>
-        <span className="safety-badge">原子更新</span>
+        <h2>导入更新</h2>
       </div>
-      <ol className="steps import-steps" aria-label="导入步骤">
-        <li aria-current={!knowledgePackage && !current ? "step" : undefined}>1. 选择知识包</li>
-        <li aria-current={knowledgePackage && !current ? "step" : undefined}>2. 核对内容与绑定</li>
-        <li aria-current={current ? "step" : undefined}>3. 查看结果与回执</li>
-      </ol>
       {capabilities.permissions.importWrite && (
         <>
           {!knowledgePackage && !current && (
             <div className="upload-start">
               <label className="file-dropzone">
-                <span className="dropzone-icon" aria-hidden="true">＋</span>
                 <strong>选择知识包 JSON</strong>
-                <span>系统会先检查结构、项目身份和大小，不会在选择文件时直接写入。</span>
+                <span>文件通过预检后，由你确认提交。</span>
                 <input aria-label="知识包文件" type="file" accept=".json,application/json" disabled={submitting} onChange={event => void chooseFile(event.target.files?.[0])} />
               </label>
-              <aside className="guidance-card">
-                <strong>导入前请确认</strong>
+              <details className="guidance-card">
+                <summary>知识包要求</summary>
                 <ul><li>每条知识都有可核验来源</li><li>复核日期与生命周期信息明确</li><li>如绑定 Data，已选择不可变版本和语义修订</li></ul>
-              </aside>
+              </details>
             </div>
           )}
           {knowledgePackage && (
             <div className="package-preview">
               <div className="preview-heading">
-                <div><span className="status-chip">本地校验通过</span><h3>核对待导入内容</h3></div>
+                <div><span className="status-chip">本地校验通过</span><h3>待导入内容</h3></div>
                 <label className="replace-file">更换文件<input aria-label="更换知识包文件" type="file" accept=".json,application/json" disabled={submitting} onChange={event => void chooseFile(event.target.files?.[0])} /></label>
               </div>
               <dl className="summary-grid">
@@ -266,13 +255,13 @@ export function ImportPanel({
                 <div><dt>已有精确绑定</dt><dd>{knowledgePackage.documents.reduce((total, document) => total + (document.bindings?.length ?? 0), 0)}</dd></div>
               </dl>
               <section className="preflight" aria-labelledby="preflight-title">
-                <div className="section-heading"><div><h4 id="preflight-title">服务端预检与变更清单</h4><p>预检只读取当前目录，不写入版本或索引。</p></div>{preflightLoading ? <span className="state-badge state-running">正在预检</span> : preflight && <span className={`state-badge state-${preflight.canSubmit ? "ready" : "failed"}`}>{preflight.canSubmit ? "可提交" : "需要修正"}</span>}</div>
+                <div className="section-heading"><h4 id="preflight-title">变更预检</h4>{preflightLoading ? <span className="state-badge state-running">正在预检</span> : preflight && <span className={`state-badge state-${preflight.canSubmit ? "ready" : "failed"}`}>{preflight.canSubmit ? "可提交" : "需要修正"}</span>}</div>
                 {preflight && <>
                   <ul className="preflight-checks">{preflight.checks.map(check => <li key={check.name} className={`check-${check.state.toLowerCase()}`}><strong>{check.state === "PASSED" ? "已完成" : check.state === "PENDING" ? "提交后执行" : "未通过"}</strong><span>{check.detail}</span></li>)}</ul>
-                  <div className="table-scroll"><table><thead><tr><th>知识</th><th>操作 / expectedVersion</th><th>内容版本</th><th>来源与复核</th><th>Data 绑定差异</th></tr></thead><tbody>{preflight.documents.map(document => <tr key={document.knowledgeId}><td>{document.title}<small>{document.knowledgeId}</small></td><td>{document.operation === "CREATE" ? "新建" : "更新"}<small className={document.expectedVersionMatches ? "status-ok" : "inline-error"}>{document.expectedVersionMatches ? "当前版本匹配" : `冲突：当前 ${document.currentVersion ?? "不存在"}`}</small></td><td>{document.currentContentVersion ?? "—"} → {document.nextContentVersion}<small>{document.contentVersionChanged ? "内容版本将变化" : "内容版本号未变化"}</small></td><td>{document.sourceCount} 个来源<small>最早复核 {document.nextReviewAfter}</small></td><td>+{document.bindingAdded} / −{document.bindingRemoved} / 保留 {document.bindingUnchanged}</td></tr>)}</tbody></table></div>
+                  <div className="table-scroll" role="region" tabIndex={0} aria-label="知识导入预检表格"><table><thead><tr><th>知识</th><th>操作 / expectedVersion</th><th>内容版本</th><th>来源与复核</th><th>Data 绑定差异</th></tr></thead><tbody>{preflight.documents.map(document => <tr key={document.knowledgeId}><td>{document.title}<small>{document.knowledgeId}</small></td><td>{document.operation === "CREATE" ? "新建" : "更新"}<small className={document.expectedVersionMatches ? "status-ok" : "inline-error"}>{document.expectedVersionMatches ? "当前版本匹配" : `冲突：当前 ${document.currentVersion ?? "不存在"}`}</small></td><td>{document.currentContentVersion ?? "—"} → {document.nextContentVersion}<small>{document.contentVersionChanged ? "内容版本将变化" : "内容版本号未变化"}</small></td><td>{document.sourceCount} 个来源<small>最早复核 {document.nextReviewAfter}</small></td><td>+{document.bindingAdded} / −{document.bindingRemoved} / 保留 {document.bindingUnchanged}</td></tr>)}</tbody></table></div>
                 </>}
               </section>
-              <p className="muted">如这些知识仅适用于某份数据，可在下方选择明确版本并应用到全部文档；通用知识无需绑定。</p>
+              <p className="muted">数据专属知识可绑定版本；通用知识无需绑定。</p>
               <BindingPicker capabilities={dataCapabilities} compatible={crossServiceCompatible} value={binding} onChange={setBinding} />
               <label className="binding-mode">应用方式
                 <select value={bindingMode} onChange={event => setBindingMode(event.target.value as "append" | "replace")}>
@@ -285,7 +274,7 @@ export function ImportPanel({
                   <section className="dialog" role="dialog" aria-modal="true" aria-labelledby="binding-confirm-title">
                       <h2 id="binding-confirm-title">确认批量应用 Data 绑定</h2>
                       <p>{bindingMode === "append" ? "现有绑定会保留，并追加当前选择。" : "每个文档的现有绑定都会被当前选择替换。"}</p>
-                      <div className="table-scroll"><table><thead><tr><th>知识</th><th>现有绑定</th><th>应用后</th></tr></thead><tbody>
+                      <div className="table-scroll" role="region" tabIndex={0} aria-label="批量 Data 绑定差异表格"><table><thead><tr><th>知识</th><th>现有绑定</th><th>应用后</th></tr></thead><tbody>
                         {knowledgePackage.documents.map(document => {
                           const existing = document.bindings?.length ?? 0;
                           return <tr key={document.knowledgeId}><td>{document.title}</td><td>{existing}</td><td>{bindingMode === "replace" ? 1 : existing + (document.bindings?.some(item => JSON.stringify(item) === JSON.stringify(binding)) ? 0 : 1)}</td></tr>;
@@ -332,7 +321,7 @@ export function ImportPanel({
       <details className="history-details">
         <summary>查看最近导入记录</summary>
         {history.isLoading ? <p>正在读取…</p> : (
-          <div className="table-scroll"><table><thead><tr><th>更新时间</th><th>状态</th><th>Data 核验</th><th>操作</th></tr></thead><tbody>
+          <div className="table-scroll" role="region" tabIndex={0} aria-label="知识导入历史表格"><table><thead><tr><th>更新时间</th><th>状态</th><th>Data 核验</th><th>操作</th></tr></thead><tbody>
             {history.data?.items.map(item => <tr key={item.importId}><td>{item.updatedAt ? new Date(item.updatedAt).toLocaleString() : "—"}<small>{item.importId}</small></td><td>{importStateLabels[item.state] ?? item.state}</td><td>{item.dataAttempts} 次</td><td><button className="link-button" onClick={() => { const record = saveImportRecovery(sessionStorage, recoveryKey, item.importId, item.createdAt ?? undefined); setImportId(item.importId); setUrlImportId(item.importId, "replace"); setCreatedAt(record.createdAt); setKnowledgePackage(null); }}>查看回执</button></td></tr>)}
           </tbody></table>
           </div>

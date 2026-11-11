@@ -13,9 +13,13 @@ export function isVerificationHistory(history: History | null) {
 }
 export function canConfirm(confirmation: Confirmation, history: History | null, busy: boolean) {
   const current = history?.turns.find(turn => turn.goalRevision === history.goalRevision);
+  // Recovery is a new decision on a frozen workflow attempt; the original
+  // AgentRun remains terminal while the Kernel awaits that decision.
+  const recoveryPending = confirmation.kind === 'RECOVERY' && !!confirmation.sourceWorkflowRunId &&
+    current?.agentRunId === confirmation.agentRunId && ['FAILED', 'CANCELLED', 'COMPLETE'].includes(current.status);
   return !busy && confirmation.status === 'PENDING' && confirmation.decision === null &&
-    confirmation.decisionState === null && current?.status === 'WAITING_CONFIRMATION' &&
-    current.confirmations.at(-1)?.confirmationId === confirmation.confirmationId &&
+    confirmation.decisionState === null && (current?.status === 'WAITING_CONFIRMATION' || recoveryPending) &&
+    current?.confirmations.at(-1)?.confirmationId === confirmation.confirmationId &&
     history?.goalRevision === confirmation.goalRevision;
 }
 export function withReferences(message: string, resources: (ResourceReference & { name: string })[]) {

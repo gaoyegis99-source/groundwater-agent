@@ -99,8 +99,27 @@ def sqlite_busy_total() -> int:
         return _sqlite_busy_total
 
 
-def begin_immediate(connection: sqlite3.Connection) -> None:
-    connection.execute("BEGIN IMMEDIATE")
+def begin_immediate(connection: sqlite3.Connection, *, wait: bool = True) -> bool:
+    """Return False only when a nonblocking BEGIN meets another writer."""
+    global _sqlite_busy_total
+    if wait:
+        connection.execute("BEGIN IMMEDIATE")
+        return True
+    previous_timeout = connection.execute("PRAGMA busy_timeout").fetchone()[0]
+    connection.execute("PRAGMA busy_timeout=0")
+    try:
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+        except sqlite3.OperationalError as error:
+            code = getattr(error, "sqlite_errorcode", None)
+            if code is not None and code & 0xFF == sqlite3.SQLITE_BUSY:
+                with _sqlite_busy_lock:
+                    _sqlite_busy_total += 1
+                return False
+            raise
+        return True
+    finally:
+        connection.execute(f"PRAGMA busy_timeout={previous_timeout}")
 
 
 def initialize_database(path: Path) -> None:

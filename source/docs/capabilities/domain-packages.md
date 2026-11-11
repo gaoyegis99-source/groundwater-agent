@@ -1,12 +1,12 @@
 # v12 领域包
 
-当前 Groundwater 产品精确选择 `groundwater@6.0.0`，产品清单固定 ID、版本和 checksum。
-运行时服务只读取 Assembler 生成配置，不读取领域包目录。当前源码只保留这个领域包；
-退休版本通过 Git 标签查阅。
+当前 Groundwater 产品精确选择 `groundwater@6.1.0`，产品清单固定 ID、版本和 checksum。
+运行时服务只读取 Assembler 生成配置，不读取领域包目录。产品只加载所选的精确版本；
+其他目录的存在不表示它们已启用。
 
 ```bash
 ../bin/dev compile --product groundwater
-platform-domain check domains/groundwater/6.0.0 --root .
+platform-domain check domains/groundwater/6.1.0 --root .
 ```
 
 包内包含 `domain-manifest.json`、指令、Workflow、Executable Model、Knowledge 文档和

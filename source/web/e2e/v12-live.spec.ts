@@ -56,7 +56,7 @@ async function proposeSummary(page: Page, sessionId: string, marker: string) {
   return versionId;
 }
 
-test('01 shell, navigation, API boundary and responsive controls', async ({ page }, info) => {
+test('01 desktop shell, navigation, API boundary and keyboard controls', async ({ page }, info) => {
   const errors: string[] = [];
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
   const response = await page.goto('/');
@@ -66,14 +66,18 @@ test('01 shell, navigation, API boundary and responsive controls', async ({ page
   await expect(page.getByTestId('connection-status')).toContainText('项目已连接');
   await expect(page.getByRole('button', { name: '数据库' })).toBeEnabled();
   await expect(page.getByRole('button', { name: '知识库' })).toBeEnabled();
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize({ width: 1280, height: 800 });
   await expect(page.getByRole('button', { name: '折叠会话侧栏' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '任务工作台' })).toBeVisible();
   await expect(page.getByRole('tab', { name: '数据' })).toBeVisible();
-  await page.keyboard.press('Escape');
+  const tabs = page.getByRole('tablist', { name: '任务工作台视图' });
+  await tabs.getByRole('tab', { name: '数据', exact: true }).click();
+  await page.keyboard.press('End');
+  await expect(tabs.getByRole('tab', { name: '成果', exact: true })).toBeFocused();
+  await page.getByRole('button', { name: '折叠任务工作台' }).click();
   await expect(page.getByRole('button', { name: '打开任务工作台' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.screenshot({ path: info.outputPath('01-shell-mobile.png'), fullPage: true });
+  await page.screenshot({ path: info.outputPath('01-shell-desktop.png'), fullPage: true });
   expect(errors).toEqual([]);
 });
 
@@ -83,6 +87,7 @@ test('02 Data and Knowledge drawers navigate real v12 records', async ({ page },
   const data = page.getByTestId('database-workbench');
   await expect(data.locator('.database-item').first()).toBeVisible();
   await data.locator('.database-item').first().click();
+  await data.locator('details.database-identity > summary').click();
   await expect(data.getByText('数据版本', { exact: true }).first()).toBeVisible();
   await expect(data.getByText('数据集', { exact: true })).toBeVisible();
   await expect(data.getByText('语义版本', { exact: true })).toBeVisible();

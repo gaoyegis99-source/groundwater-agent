@@ -21,8 +21,8 @@
   ],
   "domainPackage": {
     "domainId": "groundwater",
-    "version": "6.0.0",
-      "checksum": "sha256:e5e8702c14a8ac0298b91f88399faa91154c107ccc7fc283fba34fffbf21eb09"
+    "version": "6.1.0",
+    "checksum": "sha256:8662efa7382bbe4f9fe7c35fd873bf7109a4d75ee3213fd4bb0fdc92b4c4b10d"
   },
   "knowledgeProjects": [
     "groundwater-demo"
@@ -38,13 +38,47 @@
       "connectTimeoutSeconds": 10,
       "pollIntervalSeconds": 2,
       "apiVersion": "remote-operation.v1",
-      "allowedServiceVersions": ["0.7.0"],
-      "allowedModelVersions": ["sustainability-evaluation.v1.1"],
-      "allowedOperations": ["sustainability.evaluate"]
+      "allowedServiceVersions": [
+        "0.7.0"
+      ],
+      "allowedModelVersions": [
+        "sustainability-evaluation.v1.1"
+      ],
+      "allowedOperations": [
+        "sustainability.evaluate"
+      ]
+    },
+    {
+      "serviceId": "porous-groundwater",
+      "baseUrlEnvironment": "POROUS_GROUNDWATER_BASE_URL",
+      "allowedHostEnvironment": "POROUS_GROUNDWATER_ALLOWED_HOST",
+      "credentialSecret": "porous-groundwater-api-key",
+      "caBundleSecret": "porous-groundwater-ca-bundle",
+      "connectTimeoutSeconds": 10,
+      "pollIntervalSeconds": 2,
+      "apiVersion": "remote-operation.v1",
+      "allowedServiceVersions": [
+        "1.1.1"
+      ],
+      "allowedModelVersions": [
+        "porous-groundwater-v2.6.2-linux.v2"
+      ],
+      "allowedOperations": [
+        "model.compile",
+        "flow_transport.simulate",
+        "result.analyze",
+        "result.render",
+        "pest.calibrate",
+        "scenario.compare",
+        "map.prepare",
+        "inversion.train",
+        "inversion.sample",
+        "agri.invert"
+      ]
     }
   ],
   "uiProfile": {
-    "path": "ui/product-ui.json",
-      "checksum": "sha256:1d8bc1e3db2182548965ad8c7398c642836a605b9b03855d25521d9d7a19849d"
+    "path": "ui/product-ui-porous.v1.json",
+    "checksum": "sha256:8629570bfac04fb36a555a66bc1df99c0d4710d10ba92c7ae2c861b3491b903f"
   }
 }

@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any, Iterable
 
+from scripts.development.source_mounts import source_mount_python_path
+
 
 DEV_METRIC_SERVICES = {
     "kernel": "kernel-service",
@@ -273,7 +275,7 @@ def build_compose_override(
                 }
             ],
             "environment": {
-                "PYTHONPATH": python_path,
+                "PYTHONPATH": source_mount_python_path(name, python_path),
                 "PYTHONDONTWRITEBYTECODE": "1",
             },
             "labels": {"platform.dev.mode": "interactive"},

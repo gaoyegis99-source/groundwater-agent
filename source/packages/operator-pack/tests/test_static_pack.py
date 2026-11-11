@@ -25,7 +25,8 @@ def test_remote_http_smoke_does_not_import_native_numeric_runtime(
 
     completed = run_smokes(PACK_ROOT / "catalog/operators", "remote_http")
 
-    assert len(completed) == 11
+    # Ten porous operations, the compatible PEST 1.1 output contract, and evaluation.
+    assert len(completed) == 12
 
 
 def test_native_dependencies_exclude_duckdb_without_arrow_table_api() -> None:
@@ -39,10 +40,10 @@ def test_catalog_lock_smokes_and_static_mapping_are_complete() -> None:
 
     assert ("cartography.render-png", "1.0.0") in identities
     assert not any(identity.startswith("mapfactory.") for identity, _ in identities)
-    assert len(identities) == 109
-    assert sum(item.runtime == "native" for item in catalog.operators) == 83
+    assert len(identities) == 111
+    assert sum(item.runtime == "native" for item in catalog.operators) == 84
     assert sum(item.runtime == "qgis" for item in catalog.operators) == 15
-    assert sum(item.runtime == "remote_http" for item in catalog.operators) == 11
+    assert sum(item.runtime == "remote_http" for item in catalog.operators) == 12
     assert set(catalog.smoke_cases) == identities
     mapping_source = PACK_ROOT / "src" / "moperators" / "static_implementations.py"
     tree = ast.parse(mapping_source.read_text(encoding="utf-8"))

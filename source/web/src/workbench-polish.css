@@ -1,0 +1,75 @@
+/* Data/version inspection and the task workspace keep their existing layouts. */
+.database-workbench.database-workbench { display: flex; flex-direction: column; }
+.database-workbench > .database-heading, .database-workbench > .database-mobile-nav { flex: 0 0 auto; }
+.database-workbench .database-grid { flex: 1; grid-template-columns: minmax(220px, .9fr) minmax(300px, 1.15fr) minmax(340px, 1.6fr); }
+.database-workbench .database-pane { padding: 20px; scrollbar-gutter: stable; }
+.database-workbench .database-pane-heading { align-items: start; }
+.database-workbench .database-pane-heading > .text-button { flex: 0 0 auto; }
+.database-workbench .database-filters label, .database-workbench .database-object-select,
+.database-workbench .database-pane-heading span:not(.type-badge), .database-workbench .database-summary span,
+.database-workbench .database-item small, .database-workbench .database-item .tag-list i { font-size: 12px; }
+.database-workbench .database-item { border-radius: 8px; padding: 14px 12px; margin: 4px 0; border: 1px solid transparent; }
+.database-workbench .database-item strong { font-size: 14px; }
+.database-workbench .database-item.selected { border-color: #c9d1ef; background: var(--accent-soft); box-shadow: inset 3px 0 var(--accent); }
+.database-workbench .database-item:hover:not(:disabled):not(.selected) { background: var(--soft); border-color: var(--border); }
+.database-workbench .database-item small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.database-workbench .database-summary strong { font-size: 14px; }
+.database-workbench .version-control { align-items: stretch; flex-direction: column; gap: 6px; }
+.database-workbench .version-control label { margin: 0; min-width: 0; width: 100%; }
+.database-workbench .version-control select { min-width: 0; width: 100%; text-overflow: ellipsis; }
+.database-workbench .version-control small { margin: 0; padding: 0; }
+.database-workbench .table-scroll { border: 1px solid var(--border); border-radius: 8px; }
+.database-workbench .table-scroll table { min-width: 360px; }
+.database-workbench .table-scroll th, .database-workbench .table-scroll td { padding: 10px 12px; vertical-align: top; font-size: 13px; }
+.database-workbench .table-scroll tbody th { background: var(--paper); font-weight: 400; min-width: 140px; white-space: normal; }
+.database-workbench .table-scroll tbody th strong, .database-workbench .table-scroll tbody th small { display: block; }
+.database-workbench .table-scroll tbody th details { margin: 4px 0 0; }
+.database-workbench .table-scroll tbody th summary { padding: 0; font-size: 12px; }
+.database-workbench .database-identity { margin: 20px 0; border-top: 1px solid var(--border); padding-top: 8px; }
+.database-workbench .database-actions { gap: 8px; border-top: 1px solid var(--border); background: var(--paper); padding-top: 16px; }
+.workbench-read-error { margin: 12px 0; }
+.workbench-read-error > button { margin-top: 8px; }
+.workbench-loading { padding: 16px 0; }
+.workbench-loading p { margin: 0 0 12px; color: var(--muted); }
+.workbench-skeleton { display: grid; gap: 12px; }
+.workbench-skeleton span { display: block; height: 20px; border-radius: 5px; background: #edf0f5; }
+.workbench-skeleton span:nth-child(2) { width: 85%; }
+.workbench-skeleton span:nth-child(3) { width: 64%; }
+.workspace-panel .workspace-state small, .workspace-panel .workspace-data-title small,
+.workspace-panel .reference-state, .workspace-panel .workspace-reference-details,
+.workspace-panel .workspace-inline-actions button, .workspace-panel .workspace-outputs button small,
+.workspace-panel .workspace-tabs button > span, .workspace-panel .workspace-section-heading .text-button { font-size: 12px; }
+.workspace-panel .workspace-section h3, .workspace-panel .workspace-data-group h4 { font-size: 14px; }
+.workspace-panel .workspace-tabs button { min-height: var(--control-height, 36px); font-size: 13px; }
+.workspace-panel .workspace-tabs button:focus-visible { outline-offset: -2px; }
+.workspace-panel .workspace-section { padding-top: 16px; }
+.workspace-panel .workspace-data-group > ul > li { padding: 12px; box-shadow: none; }
+.workspace-panel .workspace-outputs button { padding: 12px; box-shadow: none; }
+.workspace-panel .workspace-outputs button strong { font-size: 14px; }
+.workspace-panel .workspace-tasks li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; }
+.workspace-panel .workspace-tasks li > small:last-child:not(:nth-child(2)) { grid-column: 1 / -1; white-space: normal; color: var(--error); }
+.workspace-panel .workspace-empty { padding: 10px 0; font-size: 13px; }
+.workspace-panel .workspace-resizer:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+.workspace-backdrop.workspace-backdrop { position: fixed; z-index: 39; inset: 0; padding: 0; border: 0; border-radius: 0; background: #20263340; cursor: default; }
+.workspace-backdrop.workspace-backdrop:hover { background: #20263340; }
+.workspace-panel.workspace-panel.is-overlay { position: fixed; z-index: 40; inset: 10px 10px 10px auto; width: min(620px, calc(100vw - 20px)) !important; height: auto; flex-basis: auto !important; border-radius: 12px; box-shadow: -20px 0 50px #20263326; }
+.workspace-panel.is-overlay .workspace-heading { justify-content: space-between; padding: 9px 16px; }
+.workspace-panel.is-overlay .workspace-heading h2 { display: block; }
+.workspace-panel.is-overlay .workspace-controls button { display: inline-flex; }
+.workspace-panel.is-overlay .workspace-scroll { display: block; padding: 4px 16px 24px; }
+.workspace-panel.is-overlay .workspace-state { margin: 10px 16px 0; }
+.workspace-panel.workspace-panel.is-fullscreen { inset: 10px; width: auto !important; }
+
+@media (max-width: 1050px) {
+  .workspace-panel.workspace-panel.is-collapsed { width: 48px; flex-basis: 48px; }
+  .database-workbench .database-grid { display: block; }
+  .database-workbench > .database-mobile-nav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+  .database-workbench .database-mobile-nav button.active { color: var(--accent); background: var(--accent-soft); border-color: #c9d1ef; }
+  .database-workbench .database-pane { display: none; height: 100%; border-right: 0; }
+  .database-workbench .database-pane[data-mobile-active="true"] { display: block; }
+}
+@media (max-width: 640px) {
+  .workspace-panel.workspace-panel.is-overlay { inset: 0; width: 100% !important; height: 100dvh; border: 0; border-radius: 0; }
+  .database-workbench .database-pane { padding: 16px; }
+  .database-workbench .database-actions { bottom: -16px; padding-bottom: 16px; }
+}

@@ -255,7 +255,7 @@ def test_directory_pages_all_109_and_marks_four_many_operators(catalog):
     assert (
         len(items)
         == len({(item["operator_id"], item["operator_version"]) for item in items})
-        == 109
+        == 111
     )
     assert {
         item["operator_id"] for item in items if not item["composition_supported"]
@@ -733,3 +733,47 @@ def test_data_bindings_are_exact_and_format_checked(catalog, mutation, code):
 def test_duplicate_data_input_bindings_rejected(catalog):
     with pytest.raises(WorkflowValidationError, match="DRAFT_DATA_BINDINGS_INVALID"):
         draft(catalog, bindings=[binding(), binding()])
+
+
+def test_fan_out_fan_in_keeps_separate_rule_inputs_and_precise_draft_gaps(catalog):
+    def node_output(node):
+        return {"nodeOutput": {"nodeId": node, "port": "data"}}
+
+    def project(node_id, parent):
+        return {
+            "nodeId": node_id, "operatorId": "table.project", "operatorVersion": "1.0.0",
+            "inputs": {"data": parent, "rules": {"workflowInput": "rules"}},
+            "parameters": {},
+        }
+
+    parameters = ["joinType", "cardinality", "maxOutputRows"]
+    graph = {
+        "inputs": [
+            {"name": "data", "cardinality": "one", "mediaTypes": ["text/csv"], "formats": ["csv"]},
+            {"name": "rules", "cardinality": "one", "mediaTypes": ["application/json"], "formats": ["json"]},
+        ],
+        "parameters": parameters,
+        "nodes": [
+            project("left", node_output("source")),
+            project("right", node_output("source")),
+            {
+                "nodeId": "join", "operatorId": "table.join", "operatorVersion": "1.0.0",
+                "inputs": {"left": node_output("left"), "right": node_output("right"), "rules": {"workflowInput": "rules"}},
+                "parameters": {name: {"workflowParameter": name} for name in parameters},
+            },
+            project("source", {"workflowInput": "data"}),
+        ],
+        "outputs": [{"name": "joined", **node_output("join")}, {"name": "branch", **node_output("left")}],
+    }
+    raw = {"schemaVersion": "workflow.v6", "workflowId": "test.diamond", "version": "1.0.0", **graph}
+    assert len(compile_workflow(raw, catalog)["nodes"]) == 4
+    prepared = draft(catalog, graph=graph)
+    assert {(item["kind"], item["name"]) for item in prepared["missing_inputs"]} == {
+        ("DATA", "data"), ("DATA", "rules"),
+        *(("PARAMETER", name) for name in parameters),
+    }
+    assert prepared["execution_allowed"] is False
+    invalid = deepcopy(raw)
+    invalid["nodes"][0]["inputs"]["rules"] = {"workflowInput": "data"}
+    with pytest.raises(WorkflowValidationError, match="WORKFLOW_PORT_INCOMPATIBLE"):
+        compile_workflow(invalid, catalog)

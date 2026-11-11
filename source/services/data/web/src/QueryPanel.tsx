@@ -42,10 +42,9 @@ export function QueryPanel({ controller, run, allowed, onChooseDataset }: Props)
   const updateSort = (index: number, patch: Partial<SortDraft>) => setSorts(current => current.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item));
   return (
     <section className="panel task-panel">
-      <div className="panel-heading"><div><p className="step-kicker">任务 2</p><h2>查询工作台</h2><p>组合字段、筛选、分组、汇总和排序，并在提交前核对完整请求摘要。</p></div></div>
       {!allowed && <p className="muted">当前身份没有创建查询的权限。</p>}
       {!selected && (
-        <div className="empty-state actionable"><span className="empty-icon" aria-hidden="true">1</span><div><strong>先选择一份数据</strong><p>查询需要绑定明确的数据版本和语义修订，不能对“最新数据”进行模糊操作。</p></div><button onClick={onChooseDataset}>前往数据目录</button></div>
+        <div className="empty-state actionable"><strong>先选择一份数据</strong><button onClick={onChooseDataset}>前往数据目录</button></div>
       )}
       {selected && fields.length > 0 && (
         <div className="query-builder">
@@ -118,7 +117,7 @@ export function QueryPanel({ controller, run, allowed, onChooseDataset }: Props)
           {requestSnapshot && <details className="request-snapshot"><summary>本次查询请求</summary><pre>{pretty(requestSnapshot)}</pre></details>}
           {["RUNNING", "QUEUED"].includes(result.state) && <button onClick={() => void run(cancel)}>取消查询</button>}
           {Boolean(result.error) && <p className="inline-error">{String((result.error as { code?: unknown }).code ?? "QUERY_FAILED")}</p>}
-          {result.result && <><div className="table-scroll"><table><thead><tr>{result.result.fields.map((item, index) => { const fieldId = item.fieldId ?? item.id ?? ""; return <th key={index}>{fieldId ? fieldName(fieldId) : `字段 ${index + 1}`}</th>; })}</tr></thead><tbody>{result.result.rows.map((row, rowIndex) => <tr key={offset + rowIndex}>{row.map((cell, cellIndex) => <td key={cellIndex}>{cell === null ? "∅" : String(cell)}</td>)}</tr>)}</tbody></table></div>{result.result.truncated && <p>返回结果已截断；计算覆盖范围见查询回执。</p>}<div className="pagination"><button className="secondary" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - pageSize))}>上一页</button><span>第 {Math.floor(offset / pageSize) + 1} 页</span><button className="secondary" disabled={result.result.nextOffset === null} onClick={() => setOffset(result.result!.nextOffset!)}>下一页</button></div><a href={`/data/v3/queries/${encodeURIComponent(queryId)}/content`}>下载查询结果</a></>}
+          {result.result && <><div className="table-scroll" role="region" tabIndex={0} aria-label="查询结果表格"><table><thead><tr>{result.result.fields.map((item, index) => { const fieldId = item.fieldId ?? item.id ?? ""; return <th key={index}>{fieldId ? fieldName(fieldId) : `字段 ${index + 1}`}</th>; })}</tr></thead><tbody>{result.result.rows.map((row, rowIndex) => <tr key={offset + rowIndex}>{row.map((cell, cellIndex) => <td key={cellIndex}>{cell === null ? "∅" : String(cell)}</td>)}</tr>)}</tbody></table></div>{result.result.truncated && <p>返回结果已截断；计算覆盖范围见查询回执。</p>}<div className="pagination"><button className="secondary" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - pageSize))}>上一页</button><span>第 {Math.floor(offset / pageSize) + 1} 页</span><button className="secondary" disabled={result.result.nextOffset === null} onClick={() => setOffset(result.result!.nextOffset!)}>下一页</button></div><a href={`/data/v3/queries/${encodeURIComponent(queryId)}/content`}>下载查询结果</a></>}
           {result.state === "SUCCEEDED" && !result.resultAvailable && <p>结果已过期，可保留回执或重新查询。</p>}
           <details><summary>查询回执与计算范围</summary><pre>{pretty(result.receipt)}</pre></details>
         </div>
@@ -127,7 +126,7 @@ export function QueryPanel({ controller, run, allowed, onChooseDataset }: Props)
       <details className="query-history">
         <summary>最近查询记录（{historyEntries.length}）</summary>
         <div className="history-heading"><p className="muted">浏览器保存操作 ID 和对应请求快照，便于准确恢复；服务端仍是结果和回执的权威来源。</p><button type="button" className="secondary" disabled={historyEntries.length === 0} onClick={clearHistory}>清空本地记录</button></div>
-        {historyEntries.length === 0 ? <p className="muted">暂无查询记录。</p> : <div className="table-scroll"><table><thead><tr><th>时间</th><th>数据</th><th>摘要</th><th>操作</th></tr></thead><tbody>{historyEntries.map(entry => <tr key={entry.queryId}><td>{new Date(entry.createdAt).toLocaleString()}</td><td>{entry.title}<small>{entry.versionId}</small></td><td>{entry.summary}</td><td><button type="button" className="link-button" onClick={() => void openHistory(entry.queryId)}>查看结果</button></td></tr>)}</tbody></table></div>}
+        {historyEntries.length === 0 ? <p className="muted">暂无查询记录。</p> : <div className="table-scroll" role="region" tabIndex={0} aria-label="查询历史表格"><table><thead><tr><th>时间</th><th>数据</th><th>摘要</th><th>操作</th></tr></thead><tbody>{historyEntries.map(entry => <tr key={entry.queryId}><td>{new Date(entry.createdAt).toLocaleString()}</td><td>{entry.title}<small>{entry.versionId}</small></td><td>{entry.summary}</td><td><button type="button" className="link-button" onClick={() => void openHistory(entry.queryId)}>查看结果</button></td></tr>)}</tbody></table></div>}
       </details>
     </section>
   );

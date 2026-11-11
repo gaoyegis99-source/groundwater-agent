@@ -1,0 +1,24 @@
+{
+  "contract": "Session SSE event names are persisted verbatim; only JSON data fields use to_wire.",
+  "sources": [
+    "kernel/src/platform_kernel/api/routes/session_streams.py",
+    "kernel/src/platform_kernel/interaction",
+    "kernel/src/platform_kernel/tasks",
+    "kernel/src/platform_kernel/agent_runtime/persistence",
+    "kernel/src/platform_kernel/workflow_execution/persistence"
+  ],
+  "events": [
+    "session.created", "session.metadata_updated", "turn.accepted",
+    "task.created", "task.revised", "task.completed", "task.reopened", "task.preparation_revised",
+    "control.requested", "control.complete", "control.proposed", "control.confirmed", "control.dismissed", "control.stale", "control.failed",
+    "workflow_draft.requested", "workflow_draft.published",
+    "intent_routing.requested", "intent_routing.resolved", "intent_routing.failed", "intent_routing.corrected",
+    "agent.running", "agent.waiting_confirmation", "agent.waiting_execution", "agent.complete", "agent.failed", "agent.superseded", "agent.cancelled",
+    "agent.activity", "agent.plan_recorded",
+    "confirmation.pending", "confirmation.processing", "confirmation.confirmed", "confirmation.rejected", "confirmation.superseded", "confirmation.revised", "confirmation.recovery_created",
+    "job.queued", "job.running", "job.succeeded", "job.failed", "job.cancelled", "job.timed_out",
+    "workflow.queued", "workflow.succeeded", "workflow.failed", "workflow.cancelled", "workflow.timed_out",
+    "workflow.retry_queued", "workflow.recovery_completed", "workflow.recovery_failed", "workflow.stage_changed", "workflow.communication_changed"
+  ],
+  "compatibilityEvents": ["workflow.running"]
+}

@@ -61,6 +61,7 @@ def test_compose_override_is_dev_only_loopback_and_source_read_only(
         "knowledge-next-worker": {},
         "executor-control": {},
         "executor-native-worker": {},
+        "executor-qgis-worker": {},
         "gateway": {},
     }
     override = build_compose_override(tmp_path, available)
@@ -79,6 +80,9 @@ def test_compose_override_is_dev_only_loopback_and_source_read_only(
         in services["knowledge-next-service"]["command"]
     )
     assert services["data-worker"].get("command") is None
+    native = services["executor-native-worker"]["environment"]["PYTHONPATH"].split(":")
+    qgis = services["executor-qgis-worker"]["environment"]["PYTHONPATH"].split(":")
+    assert qgis == [*native, "/usr/share/qgis/python", "/usr/share/qgis/python/plugins"]
 
     for service in services.values():
         source_mount = next(

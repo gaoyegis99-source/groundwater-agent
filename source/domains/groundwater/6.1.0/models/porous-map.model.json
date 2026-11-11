@@ -1,0 +1,102 @@
+{
+  "schemaVersion": "executable-model.v6",
+  "modelId": "groundwater.porous-map",
+  "version": "1.0.0",
+  "workflowRef": {
+    "workflowId": "groundwater.porous-map",
+    "version": "1.0.0",
+    "checksum": "sha256:a7da07e4f652b503a9f2caed833cfe8fb5cd8e3e7ae7a774202cfaf2c93f7d27"
+  },
+  "tool": {
+    "name": "run_porous_map_prepare",
+    "description": "校验并整理本地 GeoTIFF，发布栅格与坐标参考系信息。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "geoTiffVersionId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "geoTiffVersionId"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "inputBindings": {
+    "map_input": "geoTiffVersionId"
+  },
+  "fieldRequirements": [],
+  "semanticRequirements": [],
+  "defaultParameters": {},
+  "parameterBindings": {},
+  "deadlineSeconds": 7200,
+  "maxParallelNodes": 1,
+  "finalOutputs": [
+    "porous-map-raster",
+    "porous-map-crs",
+    "porous-map-receipt"
+  ],
+  "executionService": "executor",
+  "executorId": "workflow-dag",
+  "outputPublications": {
+    "porous-map-raster": {
+      "title": "可查看的 GeoTIFF",
+      "format": "geotiff",
+      "mediaType": "image/tiff",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "可查看的 GeoTIFF",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    },
+    "porous-map-crs": {
+      "title": "坐标系、范围与波段信息",
+      "format": "json",
+      "mediaType": "application/json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "坐标系、范围与波段信息",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    },
+    "porous-map-receipt": {
+      "title": "运行凭据",
+      "format": "json",
+      "mediaType": "application/json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "运行凭据",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    }
+  }
+}

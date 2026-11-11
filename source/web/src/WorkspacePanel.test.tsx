@@ -7,6 +7,40 @@ import { scopedStorageKey } from './browser-scope';
 
 beforeEach(() => sessionStorage.clear());
 
+it('does not offer recovery for a failed run from an earlier goal or a replaced attempt', () => {
+  const view = render(<WorkspacePanel history={historyFixture({ goalRevision: 2, turns: [
+    { goalRevision: 1, agentRunId: 'agent-old', executionTasks: [taskFixture({ agentRunId: 'agent-old', status: 'FAILED', isLatestAttempt: true })] },
+    { goalRevision: 2, agentRunId: 'agent-current', status: 'COMPLETE' },
+  ] })} results={[]} activeId="session-1" collapsed={false} onToggle={vi.fn()} onJump={vi.fn()} />);
+  expect(screen.queryByRole('button', { name: /恢复.*批次/ })).not.toBeInTheDocument();
+  view.rerender(<WorkspacePanel history={historyFixture({ turns: [{ executionTasks: [
+    taskFixture({ status: 'FAILED', isLatestAttempt: false, attempt: 1 }),
+    taskFixture({ workflowRunId: 'retry', status: 'SUCCEEDED', isLatestAttempt: true, attempt: 2 }),
+  ] }] })} results={[]} activeId="session-1" collapsed={false} onToggle={vi.fn()} onJump={vi.fn()} />);
+  expect(screen.queryByRole('button', { name: /恢复.*批次/ })).not.toBeInTheDocument();
+});
+
+it('recovers the failed source and its blocked downstream batch, not just the last blocked row', () => {
+  const recover = vi.fn();
+  render(<WorkspacePanel history={historyFixture({ turns: [{ status: 'FAILED', executionTasks: [
+    taskFixture({ workflowRunId: 'succeeded', position: 0, status: 'SUCCEEDED', isLatestAttempt: true }),
+    taskFixture({ workflowRunId: 'failed-source', toolCallId: 'source', position: 1, status: 'TIMED_OUT', isLatestAttempt: true }),
+    taskFixture({ workflowRunId: 'blocked', toolCallId: 'downstream', position: 2, status: 'FAILED', blockedByWorkflowRunId: 'failed-source', isLatestAttempt: true }),
+  ] }] })} results={[]} activeId="session-1" collapsed={false} onToggle={vi.fn()} onJump={vi.fn()} onRecover={recover} />);
+  fireEvent.click(screen.getByRole('button', { name: /恢复.*批次/ }));
+  expect(recover).toHaveBeenCalledExactlyOnceWith('failed-source');
+  expect(screen.getByText(/2 项分析.*确认后执行/)).toBeVisible();
+});
+
+it('allows the latest cancelled source to request a separate recovery confirmation', () => {
+  const recover = vi.fn();
+  render(<WorkspacePanel history={historyFixture({ turns: [{ status: 'CANCELLED', executionTasks: [
+    taskFixture({ workflowRunId: 'cancelled-source', status: 'CANCELLED', isLatestAttempt: true }),
+  ] }] })} results={[]} activeId="session-1" collapsed={false} onToggle={vi.fn()} onJump={vi.fn()} onRecover={recover} />);
+  fireEvent.click(screen.getByRole('button', { name: /恢复.*批次/ }));
+  expect(recover).toHaveBeenCalledExactlyOnceWith('cancelled-source');
+});
+
 it('shows recorded work and released outputs without presenting pending files as published', () => {
   const onJump = vi.fn(), onResource = vi.fn();
   const task = taskFixture({ status: 'SUCCEEDED', stage: null, outputCount: 1 });
@@ -35,12 +69,19 @@ it('shows recorded work and released outputs without presenting pending files as
 
 it('keeps every selected tab usable for an empty session', () => {
   render(<WorkspacePanel history={null} results={[]} activeId="" collapsed={false} onToggle={vi.fn()} onJump={vi.fn()} onResource={vi.fn()} />);
-  expect(screen.getByText('正在读取会话')).toBeInTheDocument();
+  expect(screen.getByText('暂无任务')).toBeVisible();
+  expect(screen.queryByText('正在读取会话')).not.toBeInTheDocument();
   expect(screen.getByText('本轮未创建持续任务。')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('tab', { name: '数据' }));
   expect(screen.getByRole('button', { name: '打开数据库选择数据' })).toBeInTheDocument();
   fireEvent.click(screen.getByRole('tab', { name: '成果' }));
   expect(screen.getByText('暂无已发布成果。')).toBeInTheDocument();
+});
+
+it('shows loading while the selected session history is being read', () => {
+  render(<WorkspacePanel history={null} results={[]} activeId="session-loading" collapsed={false} onToggle={vi.fn()} onJump={vi.fn()} />);
+  expect(screen.getByText('正在读取会话')).toBeVisible();
+  expect(screen.queryByText('暂无任务')).not.toBeInTheDocument();
 });
 
 it('recovers invalid persisted tab, pin and width without hiding the panel', () => {

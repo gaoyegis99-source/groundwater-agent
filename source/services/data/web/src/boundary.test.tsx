@@ -160,8 +160,11 @@ describe("Data UI trust boundary", () => {
       })),
     );
     renderApp();
-    await screen.findByRole("heading", { name: "数据管理工作台" });
-    await user.click(screen.getByText("查看身份与环境"));
+    await screen.findByRole("heading", { name: "数据管理" });
+    const system = screen.getByText("系统信息").closest("details")!;
+    expect(system).not.toHaveAttribute("open");
+    expect(screen.getByText("operator-1")).not.toBeVisible();
+    await user.click(screen.getByText("系统信息"));
     expect(await screen.findByText(/operator-1/)).toBeVisible();
     expect(screen.queryByRole("button", { name: /发布数据/ })).not.toBeInTheDocument();
     expect(screen.queryByLabelText("选择文件")).not.toBeInTheDocument();

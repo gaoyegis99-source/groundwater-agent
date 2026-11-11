@@ -31,7 +31,8 @@ def source(tmp_path: Path) -> Path:
 
 def _profile(source: Path) -> tuple[Path, Path, dict]:
     product_path = source / "products/groundwater/product-manifest.json"
-    profile_path = source / "products/groundwater/ui/product-ui.json"
+    product = json.loads(product_path.read_text())
+    profile_path = product_path.parent / product["uiProfile"]["path"]
     return product_path, profile_path, json.loads(profile_path.read_text())
 
 

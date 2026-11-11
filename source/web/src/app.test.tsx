@@ -36,7 +36,7 @@ it('all eight examples only populate the single composer without posting', async
   render(<App />);
   await screen.findByTitle('项目：demo');
   for (const [label, message] of examples.slice(0, 4)) {
-    fireEvent.click(screen.getByRole('button', { name: label }));
+    fireEvent.click(screen.getByRole('button', { name: `${label} ${message}` }));
     expect(screen.getByRole('textbox', { name: '消息输入框' })).toHaveValue(message);
   }
   const more = screen.getByText('更多场景').closest('details');
@@ -44,7 +44,7 @@ it('all eight examples only populate the single composer without posting', async
   fireEvent.click(screen.getByText('更多场景'));
   expect(more).toHaveAttribute('open');
   for (const [label, message] of examples.slice(4)) {
-    fireEvent.click(screen.getByRole('button', { name: label }));
+    fireEvent.click(screen.getByRole('button', { name: `${label} ${message}` }));
     expect(screen.getByRole('textbox', { name: '消息输入框' })).toHaveValue(message);
   }
   expect(calls.mock.calls).toHaveLength(2);
@@ -325,7 +325,7 @@ it('a delayed older page cannot overwrite a new running turn or unlock the compo
   await screen.findByText('新一轮问题');
   await screen.findByText('更早的问题');
   fireEvent.change(screen.getByRole('textbox', { name: '消息输入框' }), { target: { value: '暂存草稿' } });
-  expect(screen.getByRole('button', { name: '发送消息' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: /发送消息/ })).toBeDisabled();
   expect(screen.getAllByRole('status').filter(item => item.textContent === '处理请求')).toHaveLength(1);
 });
 
@@ -395,7 +395,7 @@ it('blocks ordinary messages while a control proposal awaits confirmation', asyn
   expect(screen.getByText(/等待控制确认/)).toBeVisible();
   const input = screen.getByRole('textbox', { name: '消息输入框' });
   fireEvent.change(input, { target: { value: '继续普通分析' } });
-  expect(screen.getByRole('button', { name: '发送消息' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: /发送消息/ })).toBeDisabled();
   fireEvent.change(input, { target: { value: '查看状态' } });
   expect(screen.getByRole('button', { name: '发送消息' })).toBeEnabled();
 });

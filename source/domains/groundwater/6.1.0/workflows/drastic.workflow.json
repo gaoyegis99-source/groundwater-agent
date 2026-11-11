@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "workflow.v6",
+  "workflowId": "groundwater.drastic",
+  "version": "1.0.0",
+  "inputs": [
+    {"name": "D", "cardinality": "one", "mediaTypes": ["image/tiff"], "formats": ["geotiff", "cog"]},
+    {"name": "R", "cardinality": "one", "mediaTypes": ["image/tiff"], "formats": ["geotiff", "cog"]},
+    {"name": "A", "cardinality": "one", "mediaTypes": ["image/tiff"], "formats": ["geotiff", "cog"]},
+    {"name": "S", "cardinality": "one", "mediaTypes": ["image/tiff"], "formats": ["geotiff", "cog"]},
+    {"name": "T", "cardinality": "one", "mediaTypes": ["image/tiff"], "formats": ["geotiff", "cog"]},
+    {"name": "I", "cardinality": "one", "mediaTypes": ["image/tiff"], "formats": ["geotiff", "cog"]},
+    {"name": "C", "cardinality": "one", "mediaTypes": ["image/tiff"], "formats": ["geotiff", "cog"]},
+    {"name": "config", "cardinality": "one", "mediaTypes": ["application/json"], "formats": ["json"]}
+  ],
+  "parameters": [],
+  "nodes": [
+    {
+      "nodeId": "evaluate-drastic",
+      "operatorId": "groundwater.drastic.evaluate",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "D": {"workflowInput": "D"},
+        "R": {"workflowInput": "R"},
+        "A": {"workflowInput": "A"},
+        "S": {"workflowInput": "S"},
+        "T": {"workflowInput": "T"},
+        "I": {"workflowInput": "I"},
+        "C": {"workflowInput": "C"},
+        "config": {"workflowInput": "config"}
+      },
+      "parameters": {}
+    }
+  ],
+  "outputs": [
+    {"name": "drastic-index", "nodeOutput": {"nodeId": "evaluate-drastic", "port": "index"}},
+    {"name": "drastic-classification", "nodeOutput": {"nodeId": "evaluate-drastic", "port": "classification"}},
+    {"name": "drastic-summary", "nodeOutput": {"nodeId": "evaluate-drastic", "port": "summary"}}
+  ]
+}

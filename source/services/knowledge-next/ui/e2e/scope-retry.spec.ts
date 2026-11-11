@@ -27,7 +27,7 @@ test("exact task binding combines with general knowledge; defaults exclude bound
     await expect(page.locator("#evidence")).toContainText(`${id} general`);
     await expect(page.locator("#evidence")).not.toContainText(`${id} bound`);
 
-    await page.getByText("需要限定到某份数据？选择不可变版本和语义修订").click();
+    await page.getByText("数据范围（可选）").click();
     await page.getByRole("button", { name: "打开数据集列表" }).click();
     await page.getByRole("option", { name: new RegExp(dataset.title) }).click();
     await page.getByRole("button", { name: /打开版本列表/ }).click();

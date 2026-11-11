@@ -255,6 +255,10 @@ def claim_agent_start(database: Path, start: AgentStart) -> str | None:
                  AND pending_agent_run_id = ?
                  AND agent_start_state = 'REQUESTED'
                  AND NOT EXISTS (
+                     SELECT 1 FROM run_controls AS stop
+                     WHERE stop.agent_run_id = sessions.pending_agent_run_id
+                 )
+                 AND NOT EXISTS (
                      SELECT 1 FROM message_requests AS r
                      WHERE r.agent_run_id = ?
                        AND r.routing_status NOT IN ('DECIDED','START_REQUESTED')
@@ -332,6 +336,10 @@ def requested_agent_starts(database: Path, limit: int | None = None) -> tuple[st
                WHERE s.pending_agent_run_id IS NOT NULL
                  AND s.agent_start_state = 'REQUESTED'
                  AND (r.agent_run_id IS NULL OR r.routing_status IN ('DECIDED','START_REQUESTED'))
+                 AND NOT EXISTS (
+                     SELECT 1 FROM run_controls AS stop
+                     WHERE stop.agent_run_id = s.pending_agent_run_id
+                 )
                  AND NOT EXISTS (
                      SELECT 1 FROM confirmations AS c
                      WHERE c.session_id=s.session_id

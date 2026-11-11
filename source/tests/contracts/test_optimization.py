@@ -9,18 +9,17 @@ from scripts.evaluation import measure_agent_context as measure
 def test_current_common_domain_tool_surface_fits_hard_input_budget(kernel_settings):
     settings = kernel_settings("groundwater")
     result = asyncio.run(measure.measure(settings))
-    assert len(settings.models) == 10
+    assert len(settings.models) in {10, 18}
     assert result["available_input_tokens"] == 131072 - 4096
     assert {mode: value["tool_count"] for mode, value in result["modes"].items()} == {
         "DIALOGUE_READ_ONLY": 9,
-        "DIALOGUE_EXECUTION_PROPOSAL": 21,
+        "DIALOGUE_EXECUTION_PROPOSAL": 11 + len(settings.models),
         "WORKFLOW_DRAFT": 11,
     }
     initial_token_ceiling = {
         "DIALOGUE_READ_ONLY": 15_000,
-        # Ten models consume 20,491 tokens with the DRASTIC model schema;
-        # retain a 259-token regression margin.
-        "DIALOGUE_EXECUTION_PROPOSAL": 20_750,
+        # The base and porous releases use 20,491 and 22,305 tokens.
+        "DIALOGUE_EXECUTION_PROPOSAL": 22_600 if len(settings.models) == 18 else 20_750,
         "WORKFLOW_DRAFT": 15_000,
     }
     for name, mode in result["modes"].items():

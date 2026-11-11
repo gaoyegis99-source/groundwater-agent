@@ -11,6 +11,7 @@ const formats: Record<string, [string, string, string]> = {
   parquet: ['parquet', 'application/vnd.apache.parquet', 'Parquet 表格'], arrow: ['arrow-ipc-file', 'application/vnd.apache.arrow.file', 'Arrow 表格'],
   tif: ['geotiff', 'image/tiff', 'GeoTIFF 栅格'], tiff: ['geotiff', 'image/tiff', 'GeoTIFF 栅格'], png: ['png', 'image/png', 'PNG 图片'],
   xlsx: ['xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Excel 工作簿'], gpkg: ['geopackage', 'application/geopackage+sqlite3', 'GeoPackage 地理数据'],
+  zip: ['zip', 'application/zip', 'ZIP 压缩包'],
 };
 export function UploadDialog({ file, project, storageScope = '', onClose, onUploaded, maxBytes = 1024 ** 3 }: {
   file: File; project: string; storageScope?: string; onClose: () => void; onUploaded: (resource: ResourceItem) => void; maxBytes?: number;
@@ -28,46 +29,66 @@ export function UploadDialog({ file, project, storageScope = '', onClose, onUplo
   const [mediaType, setMediaType] = useState(initial?.[1] ?? file.type);
   const [name, setName] = useState(file.name);
   const [description, setDescription] = useState('');
-  const [phase, setPhase] = useState<'idle' | 'hash' | 'upload' | 'verify'>('idle');
+  const [phase, setPhase] = useState<'idle' | 'hash' | 'upload' | 'verify' | 'cancel'>('idle');
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<ApiError | string | null>(null);
   const [uncertain, setUncertain] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const attemptRef = useRef(0);
+  const cancellingRef = useRef(false);
   const publicationRef = useRef<string | null>(null);
   const idempotencyKeyRef = useRef<string | null>(null);
   const busy = phase !== 'idle';
+  useEffect(() => () => {
+    attemptRef.current += 1;
+    abortRef.current?.abort();
+  }, []);
   useEffect(() => { if (busy) dialogRef.current?.focus(); }, [busy]);
   async function submit() {
+    if (abortRef.current || cancellingRef.current || uncertain || !format.trim() || !mediaType.trim() || !name.trim()) return;
     setError(null);
     if (file.size > maxBytes) {
       setError(`单个文件最大 ${sizeLabel(maxBytes)}。更大文件请联系项目管理员。`); return;
     }
     const controller = new AbortController();
+    const attempt = ++attemptRef.current;
+    const isCurrent = () => attempt === attemptRef.current && !controller.signal.aborted;
     abortRef.current = controller;
     try {
       setPhase('hash'); setProgress(0);
-      const checksum = await checksumInWorker(file, processed => setProgress(file.size ? processed / file.size : 1), controller.signal);
+      const checksum = await checksumInWorker(file, processed => { if (isCurrent()) setProgress(file.size ? processed / file.size : 1); }, controller.signal);
+      if (!isCurrent()) return;
       setPhase('upload'); setProgress(0);
       const result = await uploadFile(file, {
         projectId: project, name, description: description || null, tags: [], effectiveDate: null,
         mediaType, format, sizeBytes: file.size, checksum,
-      }, storageScope, (loaded, total) => { setProgress(loaded / total); if (loaded === total) setPhase('verify'); }, controller.signal, (publicationId, idempotencyKey) => {
+      }, storageScope, (loaded, total) => { if (isCurrent()) { setProgress(total ? loaded / total : 0); if (loaded === total) setPhase('verify'); } }, controller.signal, (publicationId, idempotencyKey) => {
+        if (!isCurrent()) return;
         publicationRef.current = publicationId;
         idempotencyKeyRef.current = idempotencyKey;
       });
-      onUploaded(result);
+      if (isCurrent()) onUploaded(result);
     } catch (caught) {
+      if (controller.signal.aborted && caught instanceof DOMException && caught.name === 'AbortError') return;
       if (!(caught instanceof ApiError)) throw caught;
+      if (!isCurrent()) return;
       setError(caught); setUncertain(uploadOutcomeUncertain(caught)); setPhase('idle');
     } finally {
-      abortRef.current = null;
+      if (abortRef.current === controller) abortRef.current = null;
     }
   }
   async function cancel() {
+    if (cancellingRef.current) return;
+    cancellingRef.current = true;
+    const attempt = ++attemptRef.current;
+    setPhase('cancel');
     abortRef.current?.abort();
     let confirmed = publicationRef.current === null;
     try { await abortUpload(publicationRef.current, idempotencyKeyRef.current, storageScope); confirmed = true; }
     catch { /* A later status lookup remains authoritative if abort could not be confirmed. */ }
+    if (attempt !== attemptRef.current) return;
+    cancellingRef.current = false;
+    abortRef.current = null;
     publicationRef.current = null;
     idempotencyKeyRef.current = null;
     setPhase('idle');
@@ -90,9 +111,9 @@ export function UploadDialog({ file, project, storageScope = '', onClose, onUplo
     {!initial && <p className="limitations">无法从文件名确定格式。请根据文件来源说明填写文件格式和媒体类型；填写完整后才能上传。</p>}
     <details open={!initial}><summary>{initial && format === initial[0] && mediaType === initial[1] ? `${initial[2]} · 高级设置` : '文件格式与高级信息'}</summary><div className="field-row"><label>文件格式<input value={format} onChange={e => setFormat(e.target.value)} disabled={busy || uncertain} placeholder="例如 csv、geojson" /></label>
       <label>媒体类型<input value={mediaType} onChange={e => setMediaType(e.target.value)} disabled={busy || uncertain} placeholder="例如 text/csv" /></label></div><p className="muted">媒体类型是文件的标准类型名称，例如 CSV 对应 text/csv。无法确定时，请向文件提供方核对。</p><p className="muted">所有格式统一限制为 {sizeLabel(maxBytes)}。</p></details>
-    {busy && <div role="status" data-testid="upload-progress"><div className="progress-label"><span>{phase === 'hash' ? '检查文件完整性' : phase === 'verify' ? '文件已传送，等待校验和保存' : '正在上传文件'}</span>{phase !== 'verify' && <span>{Math.round(progress * 100)}%</span>}</div>{phase === 'verify' ? <progress aria-label="正在校验和保存" /> : <progress aria-label={phase === 'hash' ? '文件检查进度' : '文件上传进度'} value={progress} max={1} />}</div>}
+    {busy && <div role="status" data-testid="upload-progress"><div className="progress-label"><span>{phase === 'cancel' ? '正在取消上传，等待服务确认' : phase === 'hash' ? '检查文件完整性' : phase === 'verify' ? '文件已传送，等待校验和保存' : '正在上传文件'}</span>{phase !== 'verify' && phase !== 'cancel' && <span>{Math.round(progress * 100)}%</span>}</div>{phase === 'verify' || phase === 'cancel' ? <progress aria-label={phase === 'cancel' ? '正在取消上传' : '正在校验和保存'} /> : <progress aria-label={phase === 'hash' ? '文件检查进度' : '文件上传进度'} value={progress} max={1} />}</div>}
     {error && <ErrorNotice error={error} title={uncertain ? '上传结果尚未确认' : '文件尚未上传成功'} />}
     {uncertain && <p className="limitations" role="status">请保留当前文件并重新选择同一文件。系统会先查询已记录的 publication 状态；只有确认仍可继续时才会重新传送，避免产生重复版本。</p>}
-    <div className="upload-actions">{busy && <button type="button" onClick={() => void cancel()}>取消上传</button>}<button className="primary wide" disabled={busy || uncertain || !format.trim() || !mediaType.trim() || !name.trim()} onClick={() => void submit()}>上传并附加</button></div>
+    <div className="upload-actions">{busy && <button type="button" disabled={phase === 'cancel'} onClick={() => void cancel()}>{phase === 'cancel' ? '正在取消…' : '取消上传'}</button>}<button className="primary wide" disabled={busy || uncertain || !format.trim() || !mediaType.trim() || !name.trim()} onClick={() => void submit()}>上传并附加</button></div>
   </section></div>;
 }

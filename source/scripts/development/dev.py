@@ -33,6 +33,7 @@ from scripts.development.capability_inventory import (  # noqa: E402
     CapabilityInventoryRefusal,
     generate_capability_inventory,
 )
+from scripts.development.source_mounts import source_mount_python_path  # noqa: E402
 from scripts.development.workflow_golden import (  # noqa: E402
     WorkflowGoldenRefusal,
     run_workflow_golden,
@@ -398,6 +399,46 @@ def _ensure_research_dependencies(root: Path = ROOT) -> Path:
     return Path(str(current["path"]))
 
 
+def _research_worker_secrets(
+    names: list[str], source: Path, state: Path
+) -> dict[str, dict[str, str]]:
+    if not names:
+        return {}
+    # Compose bind mounts preserve the host mode, regardless of secret mode
+    # declarations. Stage copies under the private state directory for UID 10001.
+    directory = state / "worker-secrets"
+    directory.mkdir(mode=0o700, exist_ok=True)
+    if directory.is_symlink() or stat.S_IMODE(directory.stat().st_mode) != 0o700:
+        raise ValueError("RESEARCH_WORKER_SECRET_DIRECTORY_INVALID")
+    overrides = {}
+    for name in names:
+        original = source / name
+        if original.is_symlink():
+            raise ValueError(f"RESEARCH_SECRET_INVALID:{name}")
+        info = original.stat()
+        if (
+            not stat.S_ISREG(info.st_mode)
+            or info.st_uid != os.getuid()
+            or stat.S_IMODE(info.st_mode) not in {0o400, 0o600}
+        ):
+            raise ValueError(f"RESEARCH_SECRET_INVALID:{name}")
+        target = directory / name
+        value = original.read_bytes()
+        if (
+            target.is_symlink()
+            or not target.is_file()
+            or stat.S_IMODE(target.stat().st_mode) != 0o444
+            or target.read_bytes() != value
+        ):
+            with tempfile.NamedTemporaryFile(dir=directory, delete=False) as staged:
+                staged.write(value)
+                staged_path = Path(staged.name)
+            staged_path.chmod(0o444)
+            staged_path.replace(target)
+        overrides[name] = {"file": str(target)}
+    return overrides
+
+
 def _research_runtime(product_id: str) -> tuple[Path, Path, Path, Path, str]:
     paths = lifecycle()
     output = current_bundle(generated_root(ROOT), product_id)
@@ -469,12 +510,19 @@ def _research_runtime(product_id: str) -> tuple[Path, Path, Path, Path, str]:
         "executor-control",
         "executor-native-worker",
         "executor-qgis-worker",
+        "executor-remote_http-worker",
     )
     available = json.loads((output / "compose.json").read_text())["services"]
+    worker_secrets = _research_worker_secrets(
+        available.get("executor-remote_http-worker", {}).get("secrets", []),
+        secrets,
+        state,
+    )
     override = state / "compose.source.json"
     override.write_text(
         json.dumps(
             {
+                "secrets": worker_secrets,
                 "services": {
                     name: {
                         "volumes": [
@@ -485,7 +533,9 @@ def _research_runtime(product_id: str) -> tuple[Path, Path, Path, Path, str]:
                                 "read_only": True,
                             }
                         ],
-                        "environment": {"PYTHONPATH": python_path},
+                        "environment": {
+                            "PYTHONPATH": source_mount_python_path(name, python_path)
+                        },
                     }
                     for name in source_services
                     if name in available

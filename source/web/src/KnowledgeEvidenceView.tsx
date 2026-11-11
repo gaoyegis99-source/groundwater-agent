@@ -127,7 +127,7 @@ function EvidenceArticle({ item, primary, project, hasReference }: {
     : localizedLabel(item.status, evidenceStatusLabels);
   const relation = hasReference ? (primary ? '引用片段原文' : '必需上下文') : '知识片段';
   const title = item.documentTitle?.trim() || '知识文档';
-  return <article className={`knowledge-body evidence-article ${usable ? '' : 'evidence-unavailable'}`} aria-label={`${relation}：${title}`}>
+  return <article className={`knowledge-body evidence-article ${usable ? '' : 'evidence-unavailable'}`} tabIndex={-1} data-primary={primary} aria-label={`${relation}：${title}`}>
     <header className="detail-hero">
       <div className="detail-kicker">
         <span className={`status-badge ${usable ? 'status-active' : 'status-invalid'}`}>{usable ? evidenceStatusLabels.OK : statusLabel}</span>

@@ -198,9 +198,12 @@ def _create_air_quality_product(root: Path) -> Path:
     ]
     product["knowledgeProjects"] = []
     product["domainPackage"] = load_domain(domain).identity
-    product["uiProfile"]["checksum"] = (
-        "sha256:" + hashlib.sha256(profile_path.read_bytes()).hexdigest()
-    )
+    # This fixture authors its own profile; a source product may select another
+    # profile file, so keep the derived path and checksum bound together.
+    product["uiProfile"] = {
+        "path": profile_path.relative_to(product_dir).as_posix(),
+        "checksum": "sha256:" + hashlib.sha256(profile_path.read_bytes()).hexdigest(),
+    }
     manifest = product_dir / "product-manifest.json"
     _write(manifest, product)
     return manifest

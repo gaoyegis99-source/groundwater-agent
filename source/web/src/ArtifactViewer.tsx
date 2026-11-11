@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { contentUrl } from './api';
 import { Icon } from './Icon';
 import type { ResourceDetail } from './types';
@@ -24,13 +24,17 @@ export function resolveViewerPreference(preferred: ViewerKind, object: ResourceD
 }
 
 export function ArtifactViewer({ resource, project, objectId, showIdentity = true, preferredViewer = 'auto', onResource = () => {} }: { resource: ResourceDetail; project: string; objectId?: string; showIdentity?: boolean; preferredViewer?: ViewerKind; onResource?: (id: string) => void }) {
+  const [openedJson, setOpenedJson] = useState<string | null>(null);
   const object = resource.objects.find(item => item.objectId === objectId) ?? resource.objects.find(item => item.role === 'raw') ?? resource.objects[0];
   if (!object) return <div className="artifact-unsupported"><p>该数据版本没有可读取对象。</p></div>;
   const format = object.format.toLowerCase();
   const url = contentUrl(project, resource.versionId, object.objectId);
   const preference = resolveViewerPreference(preferredViewer, object);
+  const canOpenJson = preference === 'metadata' && (format === 'json' || object.mediaType === 'application/json') && object.size <= 32 * 1024 ** 2;
+  const showingJson = canOpenJson && openedJson === url;
   let viewer;
-  if (preference === 'metadata') viewer = <MetadataViewer resource={resource} object={object} url={url} reason="产品建议首先查看元数据。" />;
+  if (showingJson) viewer = <JsonViewer url={url} />;
+  else if (preference === 'metadata') viewer = <MetadataViewer resource={resource} object={object} url={url} reason="产品建议首先查看元数据。" />;
   else if (object.mediaType === 'image/png' || format === 'png') viewer = object.size <= 128 * 1024 ** 2 ? <ImageViewer url={url} name={resource.title || '数据图片'} /> : <MetadataViewer resource={resource} object={object} url={url} reason="图像超过 128 MiB，仅提供元数据和下载。" />;
   else if (object.mediaType.includes('geo+json') || format === 'geojson') viewer = object.size <= 32 * 1024 ** 2 ? <GeoViewer url={url} /> : <MetadataViewer resource={resource} object={object} url={url} reason="GeoJSON 超过 32 MiB，在线地图已关闭。" />;
   else if (object.mediaType.includes('tiff') || ['geotiff', 'cog', 'tif', 'tiff'].includes(format)) viewer = <RasterViewer url={url} />;
@@ -42,6 +46,7 @@ export function ArtifactViewer({ resource, project, objectId, showIdentity = tru
   return <div className="artifact-resource">
     {showIdentity && <dl className="argument-list"><div><dt>数据集</dt><dd>{resource.datasetId}</dd></div><div><dt>数据版本</dt><dd>{resource.versionId}</dd></div><div><dt>语义版本</dt><dd>{resource.semanticId}</dd></div><div><dt>数据对象</dt><dd>{object.objectId}</dd></div></dl>}
     {showIdentity && resource.inputVersions.length > 0 && <section className="lineage-section"><h4>血缘输入</h4><div className="citation-list">{resource.inputVersions.map(id => <button className="citation" key={id} onClick={() => onResource(id)}>{id}<Icon name="arrow-up-right" /></button>)}</div></section>}
-    <Suspense fallback={<p className="muted">正在加载数据查看器…</p>}>{viewer}</Suspense>
+    {canOpenJson && <div className="artifact-toolbar"><button aria-expanded={showingJson} onClick={() => setOpenedJson(showingJson ? null : url)}>{showingJson ? '返回元数据' : '查看 JSON 内容'}</button></div>}
+    <Suspense key={url} fallback={<p className="muted">正在加载数据查看器…</p>}>{viewer}</Suspense>
   </div>;
 }

@@ -1,0 +1,159 @@
+{
+  "schemaVersion": "workflow.v6",
+  "workflowId": "groundwater.porous-simulation",
+  "version": "1.0.0",
+  "inputs": [
+    {
+      "name": "project_package",
+      "cardinality": "one",
+      "mediaTypes": [
+        "application/zip"
+      ],
+      "formats": [
+        "zip"
+      ]
+    }
+  ],
+  "parameters": [],
+  "nodes": [
+    {
+      "nodeId": "compile",
+      "operatorId": "groundwater.porous.model_compile",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "project_package": {
+          "workflowInput": "project_package"
+        }
+      },
+      "parameters": {}
+    },
+    {
+      "nodeId": "simulate",
+      "operatorId": "groundwater.porous.flow_transport_simulate",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "model_package": {
+          "nodeOutput": {
+            "nodeId": "compile",
+            "port": "model_package"
+          }
+        }
+      },
+      "parameters": {}
+    },
+    {
+      "nodeId": "analyze",
+      "operatorId": "groundwater.porous.result_analyze",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "result_package": {
+          "nodeOutput": {
+            "nodeId": "simulate",
+            "port": "result_package"
+          }
+        }
+      },
+      "parameters": {}
+    },
+    {
+      "nodeId": "render",
+      "operatorId": "groundwater.porous.result_render",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "result_package": {
+          "nodeOutput": {
+            "nodeId": "simulate",
+            "port": "result_package"
+          }
+        }
+      },
+      "parameters": {}
+    }
+  ],
+  "outputs": [
+    {
+      "name": "porous-model-package",
+      "nodeOutput": {
+        "nodeId": "compile",
+        "port": "model_package"
+      }
+    },
+    {
+      "name": "porous-model-validation",
+      "nodeOutput": {
+        "nodeId": "compile",
+        "port": "validation_report"
+      }
+    },
+    {
+      "name": "porous-calculation-summary",
+      "nodeOutput": {
+        "nodeId": "simulate",
+        "port": "calculation_summary"
+      }
+    },
+    {
+      "name": "porous-effective-parameters",
+      "nodeOutput": {
+        "nodeId": "simulate",
+        "port": "effective_parameters"
+      }
+    },
+    {
+      "name": "porous-result-package",
+      "nodeOutput": {
+        "nodeId": "simulate",
+        "port": "result_package"
+      }
+    },
+    {
+      "name": "porous-analysis",
+      "nodeOutput": {
+        "nodeId": "analyze",
+        "port": "analysis_table"
+      }
+    },
+    {
+      "name": "porous-figure",
+      "nodeOutput": {
+        "nodeId": "render",
+        "port": "rendered_figure"
+      }
+    },
+    {
+      "name": "porous-vtk-package",
+      "nodeOutput": {
+        "nodeId": "render",
+        "port": "vtu_pvd_package"
+      }
+    },
+    {
+      "name": "porous-compile-receipt",
+      "nodeOutput": {
+        "nodeId": "compile",
+        "port": "run_receipt"
+      }
+    },
+    {
+      "name": "porous-simulation-receipt",
+      "nodeOutput": {
+        "nodeId": "simulate",
+        "port": "run_receipt"
+      }
+    },
+    {
+      "name": "porous-analysis-receipt",
+      "nodeOutput": {
+        "nodeId": "analyze",
+        "port": "run_receipt"
+      }
+    },
+    {
+      "name": "porous-render-receipt",
+      "nodeOutput": {
+        "nodeId": "render",
+        "port": "run_receipt"
+      }
+    }
+  ]
+}

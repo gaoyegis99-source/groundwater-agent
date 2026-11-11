@@ -1,0 +1,49 @@
+/* Conversation states build on the existing product shell and its color tokens. */
+.sidebar .session-link { min-height: 42px; position: relative; }
+.sidebar .session-link:hover, .sidebar .session-link:focus-visible { background: #e4e8f1; }
+.sidebar .session-link.active { border-color: #cbd3f0; background: #e6ebfa; box-shadow: inset 3px 0 var(--accent); }
+.sidebar .session-link .session-title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sidebar .session-link .session-archive-label { flex: 0 0 auto; color: var(--muted); font-size: 12px; }
+.sidebar.is-collapsed .session-archive-label, .sidebar.is-collapsed .session-notice, .sidebar.is-collapsed .session-list-error { display: none; }
+.sidebar .session-actions button { min-height: 34px; font-size: 12px; }
+.sidebar .sidebar-tools button { min-height: 40px; gap: 10px; }
+.sidebar .sidebar-tools button > .app-icon:first-child { width: 18px; height: 18px; }
+.sidebar .session-filters .archive-toggle, .sidebar .sidebar-label { font-size: 12px; }
+.session-notice, .session-list-error { margin: 8px 6px 0; padding: 8px; border-radius: 6px; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.session-notice { color: #246351; background: #eaf5ee; }
+.session-list-error { color: var(--error); background: var(--error-soft); }
+.session-list-error p { margin-bottom: 6px; }
+.session-list-error button { font-size: 12px; }
+.session-loading { color: var(--muted); }
+.example-grid > button { align-items: flex-start; min-height: 82px; }
+.example-grid > button > .app-icon { margin-top: 3px; }
+.example-grid .example-copy { display: grid; gap: 4px; min-width: 0; flex: 1; }
+.example-copy strong { font-size: 14px; font-weight: 600; }
+.example-copy small { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; color: var(--muted); font-size: 12px; line-height: 1.6; font-weight: 400; }
+.composer .template-feedback { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 13px; border-radius: 12px 12px 0 0; background: var(--accent-soft); color: var(--accent); font-size: 12px; }
+.template-feedback .text-button { flex: 0 0 auto; min-height: 30px; }
+.composer .pending-attachments { max-height: min(240px, 30vh); overflow-y: auto; padding-bottom: 2px; }
+.attachment-heading { margin: 10px 13px 0; font-size: 12px; color: var(--muted); }
+.composer .attachment-list { padding-top: 6px; }
+.composer .attachment-chip { border-radius: 8px; }
+.composer .attachment-chip .text-button { max-width: min(360px, 50vw); }
+.composer .attachment-identities { margin: 4px 13px 0; font-size: 12px; }
+.attachment-identities > summary { padding: 4px 0; font-size: 12px; }
+.attachment-identities .argument-list { margin: 6px 0 12px; }
+.attachment-identities dd { overflow-wrap: anywhere; }
+.composer .send-button { min-width: 84px; }
+.upload-preparing { font-size: 12px; color: var(--muted); }
+.upload-dialog .file-summary strong { min-width: 0; overflow-wrap: anywhere; }
+.upload-dialog .file-summary > span { white-space: nowrap; }
+.upload-dialog .upload-actions { align-items: center; gap: 8px; }
+.upload-dialog .upload-actions button { min-height: 38px; }
+.upload-dialog [data-testid="upload-progress"] { padding: 12px; border-radius: 8px; background: var(--soft); }
+.upload-dialog [data-testid="upload-progress"] progress { width: 100%; accent-color: var(--accent); }
+@media (max-width: 800px) {
+  .sidebar .session-archive-label, .sidebar .session-notice, .sidebar .session-list-error { display: none; }
+}
+@media (max-width: 640px) {
+  .composer .template-feedback { align-items: flex-start; gap: 8px; }
+  .composer .attachment-chip .text-button { max-width: calc(100vw - 130px); }
+  .example-grid > button { min-height: 76px; }
+}

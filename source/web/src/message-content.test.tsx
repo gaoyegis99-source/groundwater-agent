@@ -73,6 +73,16 @@ it('renders tables and emphasis without executing HTML, unsafe links or remote i
   expect(screen.queryByRole('link', { name: '危险链接' })).not.toBeInTheDocument();
 });
 
+it('makes wide analysis tables reachable by keyboard without losing scientific text', () => {
+  const markdown = '## 监测结果\n\n| 监测井 | 适用范围与限制 |\n| --- | --- |\n| W01 | 插值估计不代表实际观测，单位为米，缺测值未填零。 |';
+  render(<AssistantContent reply={reply({ conclusion: { markdown, sourceIndexes: [] }, sources: [] })} onKnowledge={vi.fn()} onResource={vi.fn()} />);
+  const tableRegion = screen.getByRole('region', { name: '分析表格，可横向滚动' });
+  expect(tableRegion).toHaveAttribute('tabindex', '0');
+  tableRegion.focus();
+  expect(tableRegion).toHaveFocus();
+  expect(screen.getByRole('cell', { name: '插值估计不代表实际观测，单位为米，缺测值未填零。' })).toBeVisible();
+});
+
 it('keeps structured code collapsed and opens exact resource links', () => {
   const openResource = vi.fn();
   const markdown = `[查看结果](/api/v12/data/versions/version-1)\n\n\`\`\`json\n{"trace_id":"internal-123"}\n\`\`\``;
@@ -100,6 +110,18 @@ it('preserves ordinary user text and incomplete attachment-like text verbatim', 
   const content = '附加资料：\n- 井号 W-001（Resource ID: 不完整）';
   render(<MessageContent content={content} onResource={vi.fn()} />);
   expect(screen.getByText(content, { normalizer: text => text })).toBeVisible();
+});
+
+it('summarizes saved attachment versions while preserving complete inspection and navigation', () => {
+  const versionId = '01234567-89ab-cdef-0123-456789abcdef';
+  const open = vi.fn();
+  render(<MessageContent content={`附加数据：\n- 监测井.csv（数据集: dataset-1；版本: ${versionId}；语义: semantics-1；校验和: ${checksum}）`} onResource={open} />);
+  const attachment = screen.getByRole('button', { name: /查看附件 监测井.csv/ });
+  expect(attachment).toHaveTextContent('01234567…cdef');
+  expect(attachment).not.toHaveTextContent(versionId);
+  expect(attachment).toHaveAttribute('title', `数据版本 ${versionId}`);
+  fireEvent.click(attachment);
+  expect(open).toHaveBeenCalledExactlyOnceWith(versionId);
 });
 
 it('explains failures without exposing diagnostic codes until requested', () => {

@@ -212,6 +212,12 @@ describe('actual activity and task presentation', () => {
   });
 });
 
+it.each(['CANCELLED', 'SUPERSEDED'] as const)('does not label the %s turn as completed', status => {
+  render(<ActivityPanel turn={turnFixture({ status })} snapshotAt={instant} connected />);
+  expect(screen.getByTestId('activity-panel').querySelector('.activity-toggle strong')).toHaveTextContent(status === 'CANCELLED' ? '已取消' : '已被新要求替代');
+  expect(screen.queryByText('已完成')).not.toBeInTheDocument();
+});
+
 it('keeps live status and cursor when loading history, and rejects an older latest snapshot', () => {
   const latest = historyFixture({ eventCursor: 120, turns: [{ status: 'COMPLETE' }] });
   const historical = historyFixture({ goalRevision: 2, eventCursor: 135, snapshotAt: '2026-10-09T01:05:00Z', turns: [{ status: 'RUNNING' }], nextCursor: 5 });

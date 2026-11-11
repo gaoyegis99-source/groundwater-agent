@@ -11,7 +11,10 @@ from pathlib import Path
 from urllib.parse import urlsplit
 from scripts.maintenance.project_environment import paths as project_paths
 ROOT = Path(__file__).resolve().parents[3]
-for value in (str(ROOT), str(ROOT / "packages/workflow-compiler/src"), str(ROOT / "platform/assembler")):
+for value in (
+    str(ROOT), str(ROOT / "packages/workflow-compiler/src"),
+    str(ROOT / "packages/operator-pack/src"), str(ROOT / "platform/assembler"),
+):
     if value not in sys.path:
         sys.path.insert(0, value)
 from scripts.release.create_deployment_secrets import create as create_deployment_secrets  # noqa: E402
@@ -49,6 +52,7 @@ def _compose_secrets(
     compose: dict,
     *,
     provider_key: str | None = None,
+    remote_services: dict[str, dict] | None = None,
 ) -> Path:
     agent_key = directory / "agent-provider-key"
     key = provider_key or "p0-1-agent-sentinel-" + secrets.token_urlsafe(32)
@@ -58,7 +62,9 @@ def _compose_secrets(
     agent_key.chmod(0o600)
     secret_dir = directory / "secrets"
     create_deployment_secrets(secret_dir, agent_key, agent_key)
-    remote_environment = _remote_http_fixture_environment(compose, secret_dir)
+    remote_environment = _remote_http_fixture_environment(
+        compose, secret_dir, remote_services or {}
+    )
     instance_data = directory / "instance-data"
     instance_data.mkdir()
     prefix = "${PLATFORM_INSTANCE_DATA_ROOT:?required}/"
@@ -94,7 +100,7 @@ def _compose_secrets(
 
 
 def _remote_http_fixture_environment(
-    compose: dict, secret_dir: Path,
+    compose: dict, secret_dir: Path, remote_services: dict[str, dict],
 ) -> dict[str, str]:
     """Provide inert deployment bindings for an assembled remote worker.
 
@@ -106,27 +112,25 @@ def _remote_http_fixture_environment(
     if worker is None:
         return {}
     expected_secrets = {
-        "groundwater-sustainability-api-key",
-        "groundwater-sustainability-ca-bundle",
+        binding[key]
+        for binding in remote_services.values()
+        for key in ("credentialSecret", "caBundleSecret")
     }
-    if not expected_secrets <= set(worker.get("secrets", [])):
+    if not remote_services or expected_secrets != set(worker.get("secrets", [])):
         raise ValueError("COMPOSE_REMOTE_HTTP_SECRETS_INVALID")
-    fixtures = {
-        "groundwater-sustainability-api-key": secrets.token_urlsafe(48),
-        "groundwater-sustainability-ca-bundle": "unused-e2e-ca-bundle",
-    }
-    for name, value in fixtures.items():
-        path = secret_dir / name
-        path.write_text(value, encoding="ascii")
-        path.chmod(0o444)
-    return {
-        "GROUNDWATER_SUSTAINABILITY_BASE_URL": (
-            "https://groundwater-sustainability.invalid"
-        ),
-        "GROUNDWATER_SUSTAINABILITY_ALLOWED_HOST": (
-            "groundwater-sustainability.invalid"
-        ),
-    }
+    values = {}
+    for service_id, binding in remote_services.items():
+        host = f"{service_id}.invalid"
+        values[binding["baseUrlEnvironment"]] = f"https://{host}"
+        values[binding["allowedHostEnvironment"]] = host
+        for name, value in (
+            (binding["credentialSecret"], secrets.token_urlsafe(48)),
+            (binding["caBundleSecret"], "unused-e2e-ca-bundle"),
+        ):
+            path = secret_dir / name
+            path.write_text(value, encoding="ascii")
+            path.chmod(0o444)
+    return values
 
 
 def _test_upstream_build(directory: Path) -> Path:

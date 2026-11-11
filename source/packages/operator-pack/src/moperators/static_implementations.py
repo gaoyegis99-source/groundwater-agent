@@ -4,7 +4,13 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from moperators.operators import cartography, gru_attention, transfer_data, transfer_spatial
+from moperators.operators import (
+    cartography,
+    gru_attention,
+    sustainability_preparation,
+    transfer_data,
+    transfer_spatial,
+)
 from moperators.operators.native import StagedInput, run_native_operator
 from moperators.operators.qgis import run_qgis_operator
 
@@ -34,10 +40,14 @@ IMPLEMENTATIONS: dict[tuple[str, str], Runner] = {
     ("groundwater.porous.map_prepare", "1.0.0"): _remote_http,
     ("groundwater.porous.model_compile", "1.0.0"): _remote_http,
     ("groundwater.porous.pest_calibrate", "1.0.0"): _remote_http,
+    ("groundwater.porous.pest_calibrate", "1.1.0"): _remote_http,
     ("groundwater.porous.result_analyze", "1.0.0"): _remote_http,
     ("groundwater.porous.result_render", "1.0.0"): _remote_http,
     ("groundwater.porous.scenario_compare", "1.0.0"): _remote_http,
     ("groundwater.source_sustainability.evaluate", "1.0.0"): _remote_http,
+    ("groundwater.source_sustainability.prepare", "1.0.0"): (
+        sustainability_preparation.prepare_operator
+    ),
     ("cartography.render-png", "1.0.0"): cartography.render_png,
     ("table.timeseries_unpivot", "1.0.0"): transfer_data.unpivot,
     ("timeseries.chronological_split", "1.0.0"): transfer_data.split,

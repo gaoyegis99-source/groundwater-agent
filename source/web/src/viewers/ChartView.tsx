@@ -78,7 +78,8 @@ export function ChartView({ resource, fields, filters }: {
 
   useEffect(() => {
     if (!host.current || !data || data.groups.length === 0) return;
-    const instance = echarts.init(host.current);
+    const element = host.current;
+    const instance = echarts.init(element);
     instance.setOption({
       tooltip: { trigger: 'axis' },
       legend: {},
@@ -90,9 +91,15 @@ export function ChartView({ resource, fields, filters }: {
         data: group.points.map(point => [point[0], point[yIndex + 1]]),
       }))),
     });
-    const resize = () => instance.resize();
+    const resize = () => {
+      if (element.clientWidth > 0 && element.clientHeight > 0) instance.resize();
+    };
+    // Mobile panes can become visible without a window resize.
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(resize);
+    observer?.observe(element);
     window.addEventListener('resize', resize);
     return () => {
+      observer?.disconnect();
       window.removeEventListener('resize', resize);
       instance.dispose();
     };

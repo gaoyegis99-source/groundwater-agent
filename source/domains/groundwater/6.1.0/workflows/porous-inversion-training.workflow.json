@@ -1,0 +1,61 @@
+{
+  "schemaVersion": "workflow.v6",
+  "workflowId": "groundwater.porous-inversion-training",
+  "version": "1.0.0",
+  "inputs": [
+    {
+      "name": "training_data",
+      "cardinality": "one",
+      "mediaTypes": [
+        "application/zip"
+      ],
+      "formats": [
+        "zip"
+      ]
+    }
+  ],
+  "parameters": [],
+  "nodes": [
+    {
+      "nodeId": "execute",
+      "operatorId": "groundwater.porous.inversion_train",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "training_data": {
+          "workflowInput": "training_data"
+        }
+      },
+      "parameters": {}
+    }
+  ],
+  "outputs": [
+    {
+      "name": "porous-inversion-weights",
+      "nodeOutput": {
+        "nodeId": "execute",
+        "port": "weights"
+      }
+    },
+    {
+      "name": "porous-training-metrics",
+      "nodeOutput": {
+        "nodeId": "execute",
+        "port": "metrics"
+      }
+    },
+    {
+      "name": "porous-training-report",
+      "nodeOutput": {
+        "nodeId": "execute",
+        "port": "report_package"
+      }
+    },
+    {
+      "name": "porous-inversion-training-receipt",
+      "nodeOutput": {
+        "nodeId": "execute",
+        "port": "run_receipt"
+      }
+    }
+  ]
+}

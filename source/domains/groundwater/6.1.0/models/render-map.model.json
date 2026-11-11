@@ -1,0 +1,141 @@
+{
+  "schemaVersion": "executable-model.v6",
+  "modelId": "groundwater.render-map",
+  "version": "3.1.0",
+  "workflowRef": {
+    "workflowId": "groundwater.render-map",
+    "version": "1.1.0",
+    "checksum": "sha256:5b463cdd0f6636f9b0aafad85df1809a1fdb9ebfea74ef96cb30fc4cfd33bd69"
+  },
+  "tool": {
+    "name": "render_map",
+    "description": "Render one exact GeoJSON or GeoTIFF/COG INPUT or named RESULT Data version as a single static PNG in its source CRS, plus a summary of source extent, image dimensions, style and nodata. A nonempty valueField colors a numeric GeoJSON property; leave it empty for rasters or uniform vector styling. No reprojection, basemap, multi-layer composition, interactivity or PDF is provided.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "sourceVersionId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string"
+        },
+        "valueField": {
+          "type": "string"
+        },
+        "palette": {
+          "type": "string",
+          "enum": [
+            "viridis",
+            "cividis",
+            "plasma",
+            "magma",
+            "Blues",
+            "RdBu_r"
+          ]
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 640,
+          "maximum": 4096
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 480,
+          "maximum": 4096
+        },
+        "unit": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "sourceVersionId"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "inputBindings": {
+    "data": "sourceVersionId"
+  },
+  "fieldRequirements": [
+    {
+      "parameter": "valueField",
+      "inputParameter": "sourceVersionId",
+      "identifier": "name",
+      "allowedTypes": ["number"]
+    }
+  ],
+  "semanticRequirements": [
+    {
+      "kind": "crs",
+      "inputParameter": "sourceVersionId"
+    }
+  ],
+  "defaultParameters": {
+    "title": "",
+    "valueField": "",
+    "palette": "viridis",
+    "width": 1024,
+    "height": 768,
+    "unit": ""
+  },
+  "parameterBindings": {
+    "title": "title",
+    "valueField": "valueField",
+    "palette": "palette",
+    "width": "width",
+    "height": "height",
+    "unit": "unit"
+  },
+  "deadlineSeconds": 300,
+  "maxParallelNodes": 1,
+  "finalOutputs": [
+    "map-image",
+    "map-summary"
+  ],
+  "executionService": "executor",
+  "executorId": "workflow-dag",
+  "outputPublications": {
+    "map-image": {
+      "title": "Map Image",
+      "mediaType": "image/png",
+      "format": "png",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "Single-source static PNG rendered at the requested dimensions with title, source CRS coordinate axes and extent annotation. A selected numeric GeoJSON field or raster band 1 is colored with the requested palette and explicit unit; nodata is shown separately.",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": "The source CRS is preserved without reprojection and printed on the map axes.",
+        "vertical_datum": null,
+        "limitations": [
+          "The PNG contains one source only and does not provide a basemap, multiple layers, interactivity, tiles, a publication service, or PDF output.",
+          "Colors and labels visualize existing data but do not establish its accuracy, provenance, unit, analytical validity, or vertical datum."
+        ],
+        "source": "workflow-declared"
+      }
+    },
+    "map-summary": {
+      "title": "Static map expression summary",
+      "mediaType": "application/json",
+      "format": "json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "One render summary recording source kind and format, source CRS and extent, output width and height, title, value field, palette, explicit unit, colorbar label, nodata styling and vector-feature or rendered-pixel nodata counts.",
+        "fields": {},
+        "grain": "one summary per static PNG render",
+        "time_range": null,
+        "timezone": null,
+        "crs": "The crs and extent fields use the unchanged source coordinate reference system.",
+        "vertical_datum": null,
+        "limitations": [
+          "No reprojection is performed; extent coordinates remain in the source CRS.",
+          "Raster valid and nodata counts describe rendered pixels after bounded nearest-neighbour display resampling, not necessarily every source pixel.",
+          "The renderer has no basemap, multi-layer composition, interactivity, tile publication, or PDF output."
+        ],
+        "source": "workflow-declared"
+      }
+    }
+  }
+}

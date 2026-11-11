@@ -3,6 +3,7 @@ import { identityScope } from "@platform/ui-boundary";
 import {
   DiagnosticsPanel,
   OperationCenter,
+  SystemInformation,
   TaskTabs,
   WorkspaceHeader,
   tabIds,
@@ -120,43 +121,20 @@ function DataWorkspace({ capabilities }: { capabilities: DataCapabilities }) {
     catalog.load,
     visitedViews.has("publication"),
   );
-  const roles = capabilities.currentUser.roles.join("、");
-  const tabs: Array<{ id: DataView; label: string; description: string }> = [
-    { id: "catalog", label: "数据目录", description: "查找、核对版本和字段含义" },
-    { id: "query", label: "查询分析", description: "筛选数据并比较版本指标" },
+  const tabs: Array<{ id: DataView; label: string }> = [
+    { id: "catalog", label: "数据目录" },
+    { id: "query", label: "查询分析" },
     ...(capabilities.permissions.managedPublicationWrite
-      ? [{ id: "publication" as const, label: "发布数据", description: "上传并生成不可变数据版本" }]
+      ? [{ id: "publication" as const, label: "发布数据" }]
       : []),
   ];
   return (
     <main className="workspace-shell">
       <WorkspaceHeader current="data" />
       <section className="workspace-intro" aria-labelledby="workspace-title">
-        <div>
-          <p className="eyebrow">DATA OPERATIONS</p>
-          <h1 id="workspace-title">数据管理工作台</h1>
-          <p>先选择数据并核对版本与字段含义，再进行查询、比较或发布。每一步都会保留可追溯回执。</p>
-        </div>
-        <div className="service-state" aria-label="当前服务状态">
-          <span className="status-dot" aria-hidden="true" />
-          <span><strong>Data 服务已连接</strong><small>{capabilities.writeEnabled ? "允许治理与发布" : "当前为只读模式"}</small></span>
-        </div>
+        <h1 id="workspace-title">数据管理</h1>
       </section>
-      <details className="environment-details">
-        <summary>
-          <span><strong>{capabilities.currentUser.displayName}</strong> / {capabilities.project}</span>
-          <span className={capabilities.writeEnabled ? "status-ok" : "status-warning"}>
-            {capabilities.writeEnabled ? "管理员写入已启用" : "只读部署"}
-          </span>
-          <span className="summary-action">查看身份与环境</span>
-        </summary>
-        <dl className="environment-grid">
-          <div><dt>当前用户</dt><dd>{capabilities.currentUser.displayName}</dd></div>
-          <div><dt>身份标识</dt><dd><code>{capabilities.currentUser.subject}</code></dd></div>
-          <div><dt>角色</dt><dd>{roles}</dd></div>
-          <div><dt>项目 / 产品</dt><dd>{capabilities.project} / {capabilities.productId}</dd></div>
-        </dl>
-      </details>
+      <SystemInformation service="data" currentUser={capabilities.currentUser} project={capabilities.project} productId={capabilities.productId} writeEnabled={capabilities.writeEnabled} />
       <OperationCenter enabled={capabilities.currentUser.roles.includes("admin")} />
       {error && (
         <div role="alert" className="error">
@@ -174,14 +152,12 @@ function DataWorkspace({ capabilities }: { capabilities: DataCapabilities }) {
         </div>
       )}
       <TaskTabs prefix="data-task" label="数据管理任务" tabs={tabs} value={view} onChange={setView} />
-      {catalog.selected && (
+      {catalog.selected && view !== "catalog" && (
         <aside className="working-context" aria-label="当前工作数据">
           <div>
-            <span className="context-label">当前工作数据</span>
             <strong>{catalog.selected.title}</strong>
-            <small>{catalog.selected.descriptor.rowCount ?? "未检查"} 行 · {catalog.selected.descriptor.fields.length} 个字段</small>
           </div>
-          {view !== "catalog" && <button className="secondary" onClick={() => setView("catalog")}>返回核对数据</button>}
+          <button className="secondary" onClick={() => setView("catalog")}>返回数据目录</button>
           {view !== "query" && <button onClick={() => setView("query")}>查询这份数据</button>}
         </aside>
       )}
@@ -191,7 +167,10 @@ function DataWorkspace({ capabilities }: { capabilities: DataCapabilities }) {
           run={run}
           canWriteSemantics={capabilities.permissions.semanticWrite}
           canPreview={capabilities.permissions.previewCreate}
+          canQueryContent={capabilities.permissions.queryCreate}
           previewDeadlineSeconds={capabilities.limits.previewSeconds ?? 60}
+          queryDeadlineSeconds={capabilities.limits.querySeconds ?? 60}
+          onQuery={() => setView("query")}
         />
       </div>}
       {visitedViews.has("query") && <div id={tabIds("data-task", "query").panel} role="tabpanel" aria-labelledby={tabIds("data-task", "query").tab} hidden={view !== "query"}>
@@ -207,7 +186,6 @@ function DataWorkspace({ capabilities }: { capabilities: DataCapabilities }) {
           <PublicationPanel controller={publication} run={run} formats={capabilities.formats} />
         </div>
       )}
-      <footer>业务含义来自声明；字段与统计检查不代表业务适用性已经确认。</footer>
       <DiagnosticsPanel sink={dataDiagnostics} />
     </main>
   );

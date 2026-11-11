@@ -1,0 +1,122 @@
+{
+  "schemaVersion": "executable-model.v6",
+  "modelId": "groundwater.porous-scenario-comparison",
+  "version": "1.0.0",
+  "workflowRef": {
+    "workflowId": "groundwater.porous-scenario-comparison",
+    "version": "1.0.0",
+    "checksum": "sha256:d34bcee2b7947fa73233b30c4e80533d125002ce9dc54be2fc95959db002fc9f"
+  },
+  "tool": {
+    "name": "run_porous_scenario_compare",
+    "description": "以固定模型为基准，计算声明的各个参数情景并汇总差异。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "scenarioPackageVersionId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "scenarioPackageVersionId"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "inputBindings": {
+    "scenario_package": "scenarioPackageVersionId"
+  },
+  "fieldRequirements": [],
+  "semanticRequirements": [],
+  "defaultParameters": {},
+  "parameterBindings": {},
+  "deadlineSeconds": 7200,
+  "maxParallelNodes": 1,
+  "finalOutputs": [
+    "porous-scenario-table",
+    "porous-scenario-summary",
+    "porous-scenario-results",
+    "porous-scenario-comparison-receipt"
+  ],
+  "executionService": "executor",
+  "executorId": "workflow-dag",
+  "outputPublications": {
+    "porous-scenario-table": {
+      "title": "逐情景对比表",
+      "format": "json",
+      "mediaType": "application/json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "逐情景对比表",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    },
+    "porous-scenario-summary": {
+      "title": "情景对比摘要",
+      "format": "json",
+      "mediaType": "application/json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "情景对比摘要",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    },
+    "porous-scenario-results": {
+      "title": "逐情景仿真结果包",
+      "format": "zip",
+      "mediaType": "application/zip",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "逐情景仿真结果包",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    },
+    "porous-scenario-comparison-receipt": {
+      "title": "运行凭据",
+      "format": "json",
+      "mediaType": "application/json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "运行凭据",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    }
+  }
+}

@@ -30,6 +30,10 @@ class KernelUnavailableError(RuntimeError):
     pass
 
 
+class WriteLockUnavailableError(RuntimeError):
+    """A queued operation could not begin its transaction; no write ran."""
+
+
 class AuthenticationRequiredError(ValueError):
     pass
 
