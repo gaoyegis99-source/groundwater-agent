@@ -32,6 +32,10 @@ from scripts.development.capability_inventory import (  # noqa: E402
     CapabilityInventoryRefusal,
     generate_capability_inventory,
 )
+from scripts.development.real_case import (  # noqa: E402
+    RealCaseRefusal,
+    run_real_cases,
+)
 from scripts.development.workflow_golden import (  # noqa: E402
     WorkflowGoldenRefusal,
     run_workflow_golden,
@@ -1365,6 +1369,59 @@ def _run_workflow_golden(
         )
 
 
+def _real_case_run_directory(configured: Path | None) -> tuple[Path, Path]:
+    paths = lifecycle()
+    ensure_private_roots(paths, ("cache",))
+    real_case_root = owned_path("real-cases", paths.cache)
+    source_cache = owned_path("sources", real_case_root)
+    runs = owned_path("runs", real_case_root)
+    for path in (real_case_root, source_cache, runs):
+        path.mkdir(parents=True, mode=0o700, exist_ok=True)
+        path.chmod(0o700)
+    try:
+        output = (
+            owned_path(configured, runs)
+            if configured
+            else owned_path(uuid.uuid4().hex, runs)
+        )
+    except EnvironmentRefusal as error:
+        raise RealCaseRefusal("REAL_CASE_OUTPUT_OUTSIDE_CACHE") from error
+    if output == runs:
+        raise RealCaseRefusal("REAL_CASE_OUTPUT_INVALID")
+    output.parent.mkdir(parents=True, mode=0o700, exist_ok=True)
+    return output, source_cache
+
+
+def _run_real_case(args: argparse.Namespace, product_id: str) -> dict[str, object]:
+    output, source_cache = _real_case_run_directory(args.output_dir)
+    image_id, system_evidence = _verified_workflow_runtime_image(args.runtime_image)
+    with _native_runtime_python() as (python, runtime_evidence):
+        task_command = _workflow_container_task_command(image_id, python, output.parent)
+        runtime_evidence = {
+            **runtime_evidence,
+            "systemRuntime": system_evidence,
+        }
+        return run_real_cases(
+            repository_root=ROOT,
+            catalog_directory=ROOT / "packages/operator-pack/catalog/operators",
+            manifest_path=(
+                ROOT
+                / "products"
+                / product_id
+                / "development"
+                / "real-data-cases.v1.json"
+            ),
+            case_id=args.case,
+            source_root=args.source_root,
+            source_cache=source_cache,
+            run_directory=output,
+            python_executable=python,
+            image_id=image_id,
+            runtime_evidence=runtime_evidence,
+            task_command=task_command,
+        )
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -1378,6 +1435,7 @@ def main(argv: list[str] | None = None) -> None:
             "check",
             "operator-smoke",
             "workflow-golden",
+            "real-case",
             "agent-replay",
             "capability-inventory",
             "interactive",
@@ -1408,6 +1466,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--case")
     parser.add_argument("--repetitions", type=int)
     parser.add_argument("--runtime-image")
+    parser.add_argument("--source-root", type=Path)
     parser.add_argument("--verify", action="store_true")
     parser.add_argument("--dashboard-port", type=int, default=28185)
     parser.add_argument("--poll-interval", type=float, default=0.75)
@@ -1438,6 +1497,7 @@ def main(argv: list[str] | None = None) -> None:
             or args.case is not None
             or args.repetitions is not None
             or args.runtime_image is not None
+            or args.source_root is not None
             or args.output_dir is not None
             or args.scope is not None
             or args.dry_run
@@ -1478,6 +1538,7 @@ def main(argv: list[str] | None = None) -> None:
             or args.verify
             or args.scope is not None
             or args.product is not None
+            or args.source_root is not None
             or args.dry_run
         ):
             parser.error(
@@ -1506,6 +1567,7 @@ def main(argv: list[str] | None = None) -> None:
             or args.scope is not None
             or args.dry_run
             or args.verify
+            or args.source_root is not None
         ):
             parser.error(
                 "workflow-golden requires --case and does not accept operator, "
@@ -1515,6 +1577,38 @@ def main(argv: list[str] | None = None) -> None:
         try:
             result = _run_workflow_golden(args, product_id)
         except WorkflowGoldenRefusal as error:
+            print(
+                json.dumps(
+                    {"status": "FAILED", "code": error.code},
+                    ensure_ascii=False,
+                    sort_keys=True,
+                ),
+                file=sys.stderr,
+            )
+            raise SystemExit(2) from error
+        print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2))
+        if result.get("status") != "PASS":
+            raise SystemExit(1)
+        return
+    if args.command == "real-case":
+        if (
+            args.case is None
+            or args.source_root is None
+            or args.runtime_image is None
+            or operator_specific_arguments
+            or args.repetitions is not None
+            or args.scope is not None
+            or args.dry_run
+            or args.verify
+        ):
+            parser.error(
+                "real-case requires --case, --source-root, and --runtime-image "
+                "and does not accept operator, --scope, or --dry-run arguments"
+            )
+        product_id = _select_product(ROOT, args.product)
+        try:
+            result = _run_real_case(args, product_id)
+        except (RealCaseRefusal, WorkflowGoldenRefusal) as error:
             print(
                 json.dumps(
                     {"status": "FAILED", "code": error.code},
@@ -1539,6 +1633,7 @@ def main(argv: list[str] | None = None) -> None:
             or args.product is not None
             or args.dry_run
             or args.verify
+            or args.source_root is not None
         ):
             parser.error(
                 "agent-replay requires --case and does not accept operator, "
@@ -1566,11 +1661,13 @@ def main(argv: list[str] | None = None) -> None:
         or args.repetitions is not None
         or args.output_dir is not None
         or args.runtime_image is not None
+        or args.source_root is not None
         or args.verify
     ):
         parser.error(
             "operator arguments, --case, --repetitions, and --output-dir are "
-            "only valid with operator-smoke, workflow-golden, or agent-replay"
+            "only valid with operator-smoke, workflow-golden, real-case, or "
+            "agent-replay"
         )
     interactive_options_changed = (
         args.dashboard_port != 28185

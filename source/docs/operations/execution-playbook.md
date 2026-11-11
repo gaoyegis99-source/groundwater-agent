@@ -8,6 +8,8 @@
 ../bin/dev compile --product groundwater
 ../bin/dev operator-smoke --operator-id timeseries.gap_runs --operator-version 1.0.0
 ../bin/dev workflow-golden --case monitoring-trend
+../bin/dev real-case --case all --source-root /home/mtd/liweigis/workflow \
+  --runtime-image source-groundwater-executor-native-worker:latest
 ../bin/dev agent-replay --case all
 ../bin/dev capability-inventory --verify
 ../bin/dev interactive --product groundwater --dry-run
@@ -35,6 +37,15 @@ GDAL 的 case 可显式传入 `--runtime-image <local-image>`；CLI 只使用项
 本地 Linux/amd64 image，以 no-network、read-only、no-pull 边界提供系统工具，不使用其中的 Python
 或源码，也不修改默认 root/Native/QGIS runtime。完整命令、当前三条重复 PASS 和 NOT_RUN 边界见
 [Vibecoding 本地快速参考](../development/vibecoding-quick-reference.md)。
+
+真实数据案例入口使用产品开发目录中的签入清单，允许读取调用者显式给出的本地数据根，并且只从
+清单固定的官方 HTTPS URL 下载网络数据。下载缓存、准备数据、运行结果和逐节点 checksum 全部写入
+`$XDG_CACHE_HOME/groundwater-v6/real-cases/`；源码树、默认装配和 Native/QGIS/root runtime 不承载
+这些状态。入口重新验证 size、MD5（清单声明时）和 SHA-256，安全解包后才调用真实 workflow compiler
+与生产 task 子进程。`--runtime-image` 必须是项目 rootless daemon 中已验证的本地 Linux/amd64 Native
+镜像；运行时 no-network、read-only、no-pull。`--case all` 运行完整案例集，单案例 ID 用于快速复核。
+当前数据选择、质量边界、外部核验结果和可复现运行证据见仓库级
+`plans/REAL_DATA_VALIDATION_2026-11-11.md`。
 
 Agent 级反馈入口复用真实 Kernel 状态机，以签入 `ScriptedModel` 步骤和进程内 `MockTransport` 回放
 六个关键边界；默认每个 case 重复三轮，核对逐项不变量、Confirmation/WorkflowRun 计数和稳定
