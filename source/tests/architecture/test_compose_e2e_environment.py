@@ -119,6 +119,80 @@ def test_lineage_audit_passes_api_token_via_stdin(
     ]
 
 
+def test_executor_restart_acceptance_compares_the_persisted_output_snapshot(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    snapshot = {
+        "status": "SUCCEEDED",
+        "outputs": [
+            {"name": "summary", "versionId": "version-1"},
+            {"name": "details", "versionId": "version-2"},
+        ],
+    }
+    responses = iter(
+        (
+            "job-1\nlease-1\n",
+            json.dumps(snapshot),
+            json.dumps(
+                {
+                    "job": snapshot,
+                    "stale": {"status": 409, "code": "LEASE_STALE"},
+                }
+            ),
+        )
+    )
+    restart_commands: list[list[str]] = []
+    monkeypatch.setattr(
+        assertions, "_exec_python", lambda *_args, **_kwargs: next(responses)
+    )
+    monkeypatch.setattr(
+        assertions, "_run", lambda command, **_kwargs: restart_commands.append(command)
+    )
+
+    assertions._verify_executor_restart(["docker", "compose"], "job-1")
+
+    assert restart_commands == [
+        [
+            "docker",
+            "compose",
+            "up",
+            "-d",
+            "--no-deps",
+            "--no-build",
+            "--force-recreate",
+            "-V",
+            "--wait",
+            "--wait-timeout",
+            "120",
+            "executor-control",
+        ]
+    ]
+
+
+def test_executor_restart_acceptance_rejects_changed_outputs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    before = {
+        "status": "SUCCEEDED",
+        "outputs": [{"name": "summary", "versionId": "version-1"}],
+    }
+    after = {
+        "job": {
+            "status": "SUCCEEDED",
+            "outputs": [{"name": "summary", "versionId": "changed"}],
+        },
+        "stale": {"status": 409, "code": "LEASE_STALE"},
+    }
+    responses = iter(("job-1\nlease-1\n", json.dumps(before), json.dumps(after)))
+    monkeypatch.setattr(
+        assertions, "_exec_python", lambda *_args, **_kwargs: next(responses)
+    )
+    monkeypatch.setattr(assertions, "_run", lambda *_args, **_kwargs: None)
+
+    with pytest.raises(RuntimeError, match="EXECUTOR_RESTART_CHECK_FAILED"):
+        assertions._verify_executor_restart(["docker", "compose"], "job-1")
+
+
 def test_knowledge_data_probes_use_current_data_v3_wire_identity() -> None:
     root = Path(__file__).resolve().parents[2]
     scripts = (

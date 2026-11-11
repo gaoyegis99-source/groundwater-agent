@@ -111,15 +111,25 @@ def definition_set_digest(config: dict) -> str:
 
 
 def _model(model: object, runtimes: dict, remote_services: dict) -> None:
-    fields = {
+    fields_v4 = {
         "schemaVersion", "modelId", "version", "workflowRef", "tool",
         "inputBindings", "defaultParameters", "parameterBindings", "deadlineSeconds",
         "maxParallelNodes", "finalOutputs", "executionService", "executorId",
         "modelChecksum", "inputSchemaChecksum", "workflow", "outputPublications",
     }
-    _fields(model, fields)
-    if model["schemaVersion"] != "executable-model.v4":
+    if not isinstance(model, dict) or model.get("schemaVersion") not in {
+        "executable-model.v4", "executable-model.v5", "executable-model.v6"
+    }:
         raise ValueError("EXECUTOR_CONFIG_INVALID")
+    fields_v5 = fields_v4 | {"fieldRequirements"}
+    fields = (
+        fields_v5 | {"semanticRequirements"}
+        if model["schemaVersion"] == "executable-model.v6"
+        else fields_v5
+        if model["schemaVersion"] == "executable-model.v5"
+        else fields_v4
+    )
+    _fields(model, fields)
     for name in ("modelId", "version", "executionService", "executorId"):
         _text(model[name])
     for name in ("deadlineSeconds", "maxParallelNodes"):
@@ -131,6 +141,100 @@ def _model(model: object, runtimes: dict, remote_services: dict) -> None:
         for source, target in bindings.items():
             _text(source)
             _text(target)
+    if model["schemaVersion"] in {"executable-model.v5", "executable-model.v6"}:
+        requirements = model["fieldRequirements"]
+        if not isinstance(requirements, list):
+            raise ValueError("EXECUTOR_CONFIG_INVALID")
+        for requirement in requirements:
+            _fields(
+                requirement,
+                {"parameter", "inputParameter", "identifier", "allowedTypes"},
+            )
+            _text(requirement["parameter"])
+            _text(requirement["inputParameter"])
+            if requirement["identifier"] not in {"fieldId", "name"}:
+                raise ValueError("EXECUTOR_CONFIG_INVALID")
+            if (
+                not isinstance(requirement["allowedTypes"], list)
+                or not requirement["allowedTypes"]
+                or any(
+                    not isinstance(item, str) or not item
+                    for item in requirement["allowedTypes"]
+                )
+            ):
+                raise ValueError("EXECUTOR_CONFIG_INVALID")
+    if model["schemaVersion"] == "executable-model.v6":
+        requirements = model["semanticRequirements"]
+        if not isinstance(requirements, list):
+            raise ValueError("EXECUTOR_CONFIG_INVALID")
+        allowed_shapes = {
+            "fieldUnit": (
+                {"kind", "inputParameter", "fieldParameter"},
+                {"kind", "inputParameter", "fieldParameter", "unitParameter"},
+            ),
+            "crs": (
+                {"kind", "inputParameter"},
+                {"kind", "inputParameter", "crsParameter"},
+            ),
+            "crsParameter": (
+                {"kind", "parameter", "requirement"},
+            ),
+            "timeField": (
+                {"kind", "inputParameter", "fieldParameter"},
+            ),
+            "timeRange": (
+                {
+                    "kind", "inputParameter", "fieldParameter",
+                    "startParameter", "endParameter",
+                },
+            ),
+            "verticalBasis": (
+                {
+                    "kind", "inputParameter", "referenceFieldParameter",
+                    "depthFieldParameter", "referenceMeanings", "depthMeanings",
+                },
+            ),
+        }
+        for requirement in requirements:
+            if (
+                not isinstance(requirement, dict)
+                or requirement.get("kind") not in allowed_shapes
+                or set(requirement) not in allowed_shapes[requirement["kind"]]
+            ):
+                raise ValueError("EXECUTOR_CONFIG_INVALID")
+            for name, value in requirement.items():
+                if name in {"referenceMeanings", "depthMeanings"}:
+                    if (
+                        not isinstance(value, list)
+                        or not value
+                        or any(not isinstance(item, str) or not item for item in value)
+                        or len(value) != len(set(value))
+                    ):
+                        raise ValueError("EXECUTOR_CONFIG_INVALID")
+                elif not isinstance(value, str) or not value:
+                    raise ValueError("EXECUTOR_CONFIG_INVALID")
+            if (
+                requirement["kind"] == "crsParameter"
+                and requirement["requirement"]
+                not in {"valid", "projectedMetric"}
+            ):
+                raise ValueError("EXECUTOR_CONFIG_INVALID")
+            if requirement["kind"] == "verticalBasis":
+                reference_meanings = {
+                    value.casefold() for value in requirement["referenceMeanings"]
+                }
+                depth_meanings = {
+                    value.casefold() for value in requirement["depthMeanings"]
+                }
+                if (
+                    requirement["referenceFieldParameter"]
+                    == requirement["depthFieldParameter"]
+                    or len(reference_meanings)
+                    != len(requirement["referenceMeanings"])
+                    or len(depth_meanings) != len(requirement["depthMeanings"])
+                    or not reference_meanings.isdisjoint(depth_meanings)
+                ):
+                    raise ValueError("EXECUTOR_CONFIG_INVALID")
     _fields(model["tool"], {"name", "description", "inputSchema"})
     _text(model["tool"]["name"])
     _text(model["tool"]["description"])

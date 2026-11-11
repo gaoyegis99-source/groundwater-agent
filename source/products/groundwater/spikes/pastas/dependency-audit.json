@@ -1,0 +1,64 @@
+{
+  "schema_version": "groundwater-pastas-dependency-audit.v1",
+  "reviewed_on": "2026-11-10",
+  "decision": "ACCEPTED_FOR_INDEPENDENT_SPIKE_ONLY",
+  "default_runtime_changed": false,
+  "package": {
+    "name": "pastas",
+    "version": "2.0.1",
+    "requires_python": ">=3.11,<3.16",
+    "license_expression": "MIT",
+    "wheel": {
+      "filename": "pastas-2.0.1-py3-none-any.whl",
+      "python_tag": "py3-none-any",
+      "sha256": "sha256:97a1e338ac4e8578f17b48281b75f001b08ffbf15748ebd6291a6b47f41a3c27",
+      "size_bytes": 216910
+    }
+  },
+  "resolved_environment": {
+    "python": "3.12.*",
+    "direct_runtime_dependencies": [
+      "pastas==2.0.1"
+    ],
+    "direct_test_dependencies": [
+      "pytest==8.4.2",
+      "ruff==0.15.16"
+    ],
+    "compiled_transitive_dependencies": [
+      "contourpy",
+      "kiwisolver",
+      "llvmlite",
+      "matplotlib",
+      "numba",
+      "numpy",
+      "pandas",
+      "pillow",
+      "scipy"
+    ],
+    "abi_result": "PASS_ON_LOCKED_CPYTHON_3.12_LINUX_ENVIRONMENT",
+    "license_review": {
+      "status": "PASS_FOR_SPIKE_REVIEW",
+      "basis": "Installed distribution metadata and bundled license-file declarations were inspected for every resolved runtime and test distribution; no copyleft runtime license was identified. This is dependency review evidence, not legal advice."
+    }
+  },
+  "api_review": {
+    "model": "pastas.Model",
+    "stress_model": "pastas.RechargeModel",
+    "recharge_model": "pastas.rch.Linear",
+    "response_function": "pastas.Exponential",
+    "solver": "pastas.solver.LeastSquares",
+    "solver_backend": "scipy.optimize.least_squares",
+    "deprecated_noise_argument_used": false
+  },
+  "sources": [
+    "https://pypi.org/project/pastas/2.0.1/",
+    "https://pastas.readthedocs.io/stable/",
+    "https://github.com/pastas/pastas"
+  ],
+  "boundaries": [
+    "The lock is owned by this product spike and is not part of the native, qgis, build, testing, or root dependency domains.",
+    "No Operator Catalog, executable model, workflow, product UI, or default deployment manifest references Pastas.",
+    "The chosen daily linear-recharge exponential-response model is a synthetic benchmark assumption, not a field-model recommendation.",
+    "A successful optimizer result and finite local covariance do not establish structural or practical identifiability."
+  ]
+}

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from .settings_types import (
     ExecutableModelDefinition,
+    ExecutableModelFieldRequirement,
+    ExecutableModelSemanticRequirement,
     ExecutionCaseDefinition,
     ExecutionCaseInputRole,
     ObservationToolDefinition,
@@ -218,6 +220,8 @@ def _parse_models(
         "deadlineSeconds",
         "finalOutputs",
         "dataInputParameters",
+        "fieldRequirements",
+        "semanticRequirements",
         "modelChecksum",
         "inputSchemaChecksum",
     }
@@ -256,6 +260,213 @@ def _parse_models(
                        for name in data_parameters)
                 or len(set(data_parameters)) != len(data_parameters)):
             raise ValueError("KERNEL_CONFIG_INVALID")
+        field_requirements = item["fieldRequirements"]
+        allowed_field_types = {
+            "any", "boolean", "date-time", "integer", "number", "string"
+        }
+        if not isinstance(field_requirements, list):
+            raise ValueError("KERNEL_CONFIG_INVALID")
+        parsed_field_requirements = []
+        seen_field_parameters = set()
+        for requirement in field_requirements:
+            if (
+                not isinstance(requirement, dict)
+                or set(requirement) != {
+                    "parameter", "inputParameter", "identifier", "allowedTypes"
+                }
+                or not isinstance(requirement["parameter"], str)
+                or requirement["parameter"] not in tool["inputSchema"]["properties"]
+                or requirement["parameter"] in seen_field_parameters
+                or not isinstance(requirement["inputParameter"], str)
+                or requirement["inputParameter"] not in data_parameters
+                or not isinstance(requirement["identifier"], str)
+                or requirement["identifier"] not in {"fieldId", "name"}
+                or not isinstance(requirement["allowedTypes"], list)
+                or not requirement["allowedTypes"]
+                or any(
+                    not isinstance(field_type, str)
+                    for field_type in requirement["allowedTypes"]
+                )
+                or len(set(requirement["allowedTypes"]))
+                != len(requirement["allowedTypes"])
+                or not set(requirement["allowedTypes"]) <= allowed_field_types
+            ):
+                raise ValueError("KERNEL_CONFIG_INVALID")
+            seen_field_parameters.add(requirement["parameter"])
+            parsed_field_requirements.append(
+                ExecutableModelFieldRequirement(
+                    parameter=requirement["parameter"],
+                    input_parameter=requirement["inputParameter"],
+                    identifier=requirement["identifier"],
+                    allowed_types=tuple(requirement["allowedTypes"]),
+                )
+            )
+        semantic_requirements = item["semanticRequirements"]
+        if not isinstance(semantic_requirements, list):
+            raise ValueError("KERNEL_CONFIG_INVALID")
+        parsed_semantic_requirements = []
+        seen_semantic_requirements = set()
+        field_inputs = {
+            (requirement.parameter, requirement.input_parameter)
+            for requirement in parsed_field_requirements
+        }
+        available_arguments = set(tool["inputSchema"].get("required", [])) | set(
+            item["defaultParameters"]
+        )
+        for requirement in semantic_requirements:
+            if not isinstance(requirement, dict):
+                raise ValueError("KERNEL_CONFIG_INVALID")
+            kind = requirement.get("kind")
+            input_parameter = requirement.get("inputParameter")
+            if (
+                kind not in {
+                    "fieldUnit", "crs", "crsParameter", "timeField", "timeRange",
+                    "verticalBasis",
+                }
+                or (
+                    kind != "crsParameter"
+                    and (
+                        not isinstance(input_parameter, str)
+                        or input_parameter not in data_parameters
+                    )
+                )
+            ):
+                raise ValueError("KERNEL_CONFIG_INVALID")
+            field_parameter = None
+            expected_parameter = None
+            start_parameter = None
+            end_parameter = None
+            parameter = None
+            crs_requirement = None
+            reference_field_parameter = None
+            depth_field_parameter = None
+            reference_meanings = None
+            depth_meanings = None
+            if kind == "fieldUnit":
+                if set(requirement) not in (
+                    {"kind", "inputParameter", "fieldParameter"},
+                    {"kind", "inputParameter", "fieldParameter", "unitParameter"},
+                ):
+                    raise ValueError("KERNEL_CONFIG_INVALID")
+                field_parameter = requirement.get("fieldParameter")
+                expected_parameter = requirement.get("unitParameter")
+            elif kind == "crs":
+                if set(requirement) not in (
+                    {"kind", "inputParameter"},
+                    {"kind", "inputParameter", "crsParameter"},
+                ):
+                    raise ValueError("KERNEL_CONFIG_INVALID")
+                expected_parameter = requirement.get("crsParameter")
+            elif kind == "crsParameter":
+                if set(requirement) != {"kind", "parameter", "requirement"}:
+                    raise ValueError("KERNEL_CONFIG_INVALID")
+                input_parameter = None
+                parameter = requirement.get("parameter")
+                crs_requirement = requirement.get("requirement")
+            elif kind == "verticalBasis":
+                if set(requirement) != {
+                    "kind", "inputParameter", "referenceFieldParameter",
+                    "depthFieldParameter", "referenceMeanings", "depthMeanings",
+                }:
+                    raise ValueError("KERNEL_CONFIG_INVALID")
+                reference_field_parameter = requirement.get(
+                    "referenceFieldParameter"
+                )
+                depth_field_parameter = requirement.get("depthFieldParameter")
+                reference_meanings = requirement.get("referenceMeanings")
+                depth_meanings = requirement.get("depthMeanings")
+            elif kind == "timeField":
+                if set(requirement) != {
+                    "kind", "inputParameter", "fieldParameter"
+                }:
+                    raise ValueError("KERNEL_CONFIG_INVALID")
+                field_parameter = requirement.get("fieldParameter")
+            else:
+                if set(requirement) != {
+                    "kind", "inputParameter", "fieldParameter",
+                    "startParameter", "endParameter",
+                }:
+                    raise ValueError("KERNEL_CONFIG_INVALID")
+                field_parameter = requirement.get("fieldParameter")
+                start_parameter = requirement.get("startParameter")
+                end_parameter = requirement.get("endParameter")
+            needs_field = kind in {"fieldUnit", "timeField", "timeRange"}
+            if (
+                (needs_field and (
+                    not isinstance(field_parameter, str)
+                    or (field_parameter, input_parameter) not in field_inputs
+                ))
+                or (expected_parameter is not None and (
+                    not isinstance(expected_parameter, str)
+                    or expected_parameter not in available_arguments
+                ))
+                or (kind == "timeRange" and (
+                    not isinstance(start_parameter, str)
+                    or start_parameter not in available_arguments
+                    or not isinstance(end_parameter, str)
+                    or end_parameter not in available_arguments
+                ))
+                or (kind == "crsParameter" and (
+                    not isinstance(parameter, str)
+                    or parameter not in available_arguments
+                    or crs_requirement not in {"valid", "projectedMetric"}
+                ))
+                or (kind == "verticalBasis" and (
+                    not isinstance(reference_field_parameter, str)
+                    or (reference_field_parameter, input_parameter)
+                    not in field_inputs
+                    or not isinstance(depth_field_parameter, str)
+                    or (depth_field_parameter, input_parameter) not in field_inputs
+                    or reference_field_parameter == depth_field_parameter
+                    or not isinstance(reference_meanings, list)
+                    or not reference_meanings
+                    or any(
+                        not isinstance(value, str) or not value
+                        for value in reference_meanings
+                    )
+                    or len(reference_meanings) != len(set(reference_meanings))
+                    or len(reference_meanings)
+                    != len({value.casefold() for value in reference_meanings})
+                    or not isinstance(depth_meanings, list)
+                    or not depth_meanings
+                    or any(
+                        not isinstance(value, str) or not value
+                        for value in depth_meanings
+                    )
+                    or len(depth_meanings) != len(set(depth_meanings))
+                    or len(depth_meanings)
+                    != len({value.casefold() for value in depth_meanings})
+                    or not {
+                        value.casefold() for value in reference_meanings
+                    }.isdisjoint({value.casefold() for value in depth_meanings})
+                ))
+            ):
+                raise ValueError("KERNEL_CONFIG_INVALID")
+            identity = (
+                kind, input_parameter, field_parameter, expected_parameter,
+                start_parameter, end_parameter, parameter, crs_requirement,
+                reference_field_parameter, depth_field_parameter,
+                tuple(reference_meanings or ()), tuple(depth_meanings or ()),
+            )
+            if identity in seen_semantic_requirements:
+                raise ValueError("KERNEL_CONFIG_INVALID")
+            seen_semantic_requirements.add(identity)
+            parsed_semantic_requirements.append(
+                ExecutableModelSemanticRequirement(
+                    kind=kind,
+                    input_parameter=input_parameter,
+                    field_parameter=field_parameter,
+                    expected_parameter=expected_parameter,
+                    start_parameter=start_parameter,
+                    end_parameter=end_parameter,
+                    parameter=parameter,
+                    crs_requirement=crs_requirement,
+                    reference_field_parameter=reference_field_parameter,
+                    depth_field_parameter=depth_field_parameter,
+                    reference_meanings=tuple(reference_meanings or ()),
+                    depth_meanings=tuple(depth_meanings or ()),
+                )
+            )
         models.append(
             ExecutableModelDefinition(
                 model_id=_text(item["modelId"], "KERNEL_CONFIG_INVALID"),
@@ -274,6 +485,8 @@ def _parse_models(
                 input_schema_checksum=_text(item["inputSchemaChecksum"], "KERNEL_CONFIG_INVALID"),
                 final_outputs=tuple(_text(name, "KERNEL_CONFIG_INVALID") for name in final_outputs),
                 data_input_parameters=tuple(data_parameters),
+                field_requirements=tuple(parsed_field_requirements),
+                semantic_requirements=tuple(parsed_semantic_requirements),
             )
         )
     if len({item.model_id for item in models}) != len(models) or len(

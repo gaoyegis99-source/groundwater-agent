@@ -43,6 +43,9 @@
   "workflowDefinitions": [
     "workflows/monitoring-trend.workflow.json",
     "workflows/flow-field.workflow.json",
+    "workflows/kriging.workflow.json",
+    "workflows/rule-classification.workflow.json",
+    "workflows/drastic.workflow.json",
     "workflows/transfer-learning-analysis.workflow.json",
     "workflows/summary.workflow.json",
     "workflows/monitoring-coverage.workflow.json",
@@ -52,6 +55,9 @@
   "executableModels": [
     "models/monitoring-trend.model.json",
     "models/flow-field.model.json",
+    "models/kriging.model.json",
+    "models/rule-classification.model.json",
+    "models/drastic.model.json",
     "models/transfer-learning-analysis.model.json",
     "models/summary.model.json",
     "models/monitoring-coverage.model.json",

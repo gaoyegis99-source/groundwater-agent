@@ -125,12 +125,22 @@ def split(_identity, inputs, parameters, output_dir):
         outputs[name] = write_table(result, output_dir / f"{name}.parquet")
     outputs["split"] = write_json(
         {
+            "schemaVersion": "chronological-split.v1",
+            "strategy": "shared-time-axis-chronological",
             "monthCount": len(axis),
             "trainMonthCount": end,
             "holdoutMonthCount": len(axis) - end,
             "groupCount": len(groups),
+            "trainRatio": parameters["trainRatio"],
+            "trainingStart": axis[0].isoformat(),
             "trainingEnd": axis[end - 1].isoformat(),
+            "holdoutStart": axis[end].isoformat() if end < len(axis) else None,
+            "holdoutEnd": axis[-1].isoformat() if end < len(axis) else None,
             "inputWindow": window,
+            "fitScope": "training-rows-only",
+            "evaluationMode": (
+                "single-step-holdout-with-observed-history" if end < len(axis) else None
+            ),
         },
         output_dir / "split.json",
     )
@@ -280,6 +290,15 @@ def _metrics(actual, predicted):
     }
 
 
+def _metric_comparison(actual, predicted, baseline):
+    model = _metrics(actual, predicted)
+    reference = _metrics(actual, baseline)
+    improvement = (
+        100 * (reference["rmse"] - model["rmse"]) / reference["rmse"] if reference["rmse"] else None
+    )
+    return model, reference, improvement
+
+
 def regression_metrics(_identity, inputs, parameters, output_dir):
     import pyarrow as pa
 
@@ -296,16 +315,20 @@ def regression_metrics(_identity, inputs, parameters, output_dir):
         raise ValueError("OUTPUT_FIELD_CONFLICT")
     data = data.append_column("error", pa.array(predicted - actual))
     data = data.append_column("absolute_error", pa.array(np.abs(predicted - actual)))
-    overall, persistence = _metrics(actual, predicted), _metrics(actual, baseline)
+    overall, persistence, improvement = _metric_comparison(actual, predicted, baseline)
     overall.update(
         {
+            "schemaVersion": "regression-metrics.v1",
+            "comparison": "model-vs-declared-baseline-on-identical-rows",
+            "fields": {
+                "group": parameters["groupField"],
+                "actual": parameters["actualField"],
+                "predicted": parameters["predictedField"],
+                "baseline": parameters["baselineField"],
+            },
             "unit": parameters["unit"],
             "baseline": persistence,
-            "rmse_improvement_pct": (
-                100 * (persistence["rmse"] - overall["rmse"]) / persistence["rmse"]
-            )
-            if persistence["rmse"]
-            else None,
+            "rmse_improvement_pct": improvement,
             "improvement_reason": None if persistence["rmse"] else "ZERO_BASELINE_RMSE",
         }
     )
@@ -315,8 +338,21 @@ def regression_metrics(_identity, inputs, parameters, output_dir):
     per_group = []
     for group in sorted(set(groups), key=str):
         selected = np.asarray([value == group for value in groups])
+        model, reference, improvement = _metric_comparison(
+            actual[selected], predicted[selected], baseline[selected]
+        )
         per_group.append(
-            {parameters["groupField"]: group, **_metrics(actual[selected], predicted[selected])}
+            {
+                parameters["groupField"]: group,
+                **model,
+                "baseline_mae": reference["mae"],
+                "baseline_rmse": reference["rmse"],
+                "baseline_r2": reference["r2"],
+                "baseline_r2_reason": reference["r2_reason"],
+                "rmse_improvement_pct": improvement,
+                "improvement_reason": (None if reference["rmse"] else "ZERO_BASELINE_RMSE"),
+                "unit": parameters["unit"],
+            }
         )
     return {
         "evaluated": write_table(data, output_dir / "evaluated.parquet"),

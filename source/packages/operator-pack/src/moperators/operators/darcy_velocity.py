@@ -52,6 +52,7 @@ def run(
         valid &= (direction.filled(-1) >= 0) & (direction.filled(360) < 360)
         nodata = float(gradient_ds.nodata) if gradient_ds.nodata is not None else -9999.0
         output_profile = profile(gradient_ds, nodata)
+        horizontal_crs = gradient_ds.crs.to_string()
         flux = np.full(gradient.shape, nodata, dtype=np.float32)
         velocity = np.full(gradient.shape, nodata, dtype=np.float32)
         east = np.full(gradient.shape, nodata, dtype=np.float32)
@@ -78,6 +79,32 @@ def run(
         "value": {
             "validCellCount": int(np.count_nonzero(valid)),
             "velocityUnit": "m/day",
+            "darcyFluxUnit": "m/day",
+            "seepageVelocityUnit": "m/day",
+            "directionUnit": "degree",
+            "directionConvention": (
+                "clockwise degrees from grid north toward decreasing hydraulic head"
+            ),
+            "horizontalCrs": horizontal_crs,
+            "hydraulicConductivityMetersPerDay": conductivity,
+            "effectivePorosity": porosity,
+            "darcyFluxFormula": "q = K * |grad h|",
+            "seepageVelocityFormula": "v = q / n_e",
+            "resultKind": "MODEL_DERIVED_NOT_OBSERVED",
+            "interpretation": (
+                "Darcy flux is specific discharge per bulk area; seepage velocity divides "
+                "that flux by effective porosity. Both follow the derived downhill "
+                "direction of the interpolated head surface."
+            ),
+            "limitations": [
+                "The calculation assumes a homogeneous, isotropic scalar hydraulic "
+                "conductivity and spatially uniform effective porosity.",
+                "It is a two-dimensional, steady horizontal Darcy estimate that omits "
+                "anisotropy, heterogeneity, transient storage, density effects, and "
+                "vertical flow.",
+                "These rasters are model-derived estimates, not an observed groundwater "
+                "velocity or a calibrated transport model.",
+            ],
         },
     }
     return result

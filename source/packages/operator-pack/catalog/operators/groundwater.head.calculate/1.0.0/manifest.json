@@ -67,6 +67,51 @@
       "kind": "value",
       "name": "summary",
       "schema": {
+        "properties": {
+          "calculation": {
+            "type": "string"
+          },
+          "depthPositiveDirection": {
+            "type": "string"
+          },
+          "depthToWaterField": {
+            "type": "string"
+          },
+          "depthToWaterUnit": {
+            "type": "string"
+          },
+          "interpretation": {
+            "type": "string"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "outputField": {
+            "type": "string"
+          },
+          "outputUnit": {
+            "const": "m",
+            "type": "string"
+          },
+          "referenceElevationField": {
+            "type": "string"
+          },
+          "referenceElevationUnit": {
+            "type": "string"
+          },
+          "resultKind": {
+            "const": "COMPUTED_HEAD_ELEVATION",
+            "type": "string"
+          },
+          "rowCount": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
         "type": "object"
       }
     }

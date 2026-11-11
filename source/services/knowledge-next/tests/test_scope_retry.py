@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from threading import Barrier
+from types import SimpleNamespace
 
 import httpx
 import pytest
@@ -278,6 +279,83 @@ def test_combined_uses_global_modality_ranks_no_quotas(
         == result.coverage["lexical_candidates"]
         == 80
     )
+
+
+class CandidateResult:
+    def __init__(self, rows=None, row=None):
+        self.rows = rows or []
+        self.row = row
+
+    def fetchall(self):
+        return self.rows
+
+    def fetchone(self):
+        return self.row
+
+
+class CandidateCursor:
+    def __init__(self, approximate, available, exact):
+        self.approximate = approximate
+        self.available = available
+        self.exact = exact
+        self.dense_calls = 0
+        self.statements = []
+
+    def execute(self, statement, parameters=()):
+        self.statements.append((statement, parameters))
+        if "ts_rank" in statement:
+            return CandidateResult()
+        if "LEAST(count(*),40)" in statement:
+            return CandidateResult(row={"count": self.available})
+        if "embedding <=>" in statement:
+            self.dense_calls += 1
+            rows = self.approximate if self.dense_calls == 1 else self.exact
+            return CandidateResult(rows=rows)
+        return CandidateResult()
+
+
+def hnsw_service():
+    settings = SimpleNamespace(project="local-data", vector_search="hnsw")
+    return EvidenceService(SimpleNamespace(settings=settings), embeddings=None)
+
+
+def candidate_rows(count):
+    return [
+        {
+            "version_id": f"version-{index}",
+            "unit_id": "text",
+            "document_id": f"document-{index}",
+            "ordinal": 0,
+            "distance": index / 100,
+        }
+        for index in range(count)
+    ]
+
+
+def test_hnsw_candidate_under_return_uses_exact_fallback():
+    exact = candidate_rows(40)
+    cursor = CandidateCursor(approximate=[], available=40, exact=exact)
+
+    dense, lexical = hnsw_service().candidates(
+        cursor, Retrieval(query="head"), "general", (0.0,)
+    )
+
+    assert dense == exact and lexical == []
+    assert cursor.dense_calls == 2
+    assert any("enable_indexscan=off" in sql for sql, _ in cursor.statements)
+
+
+def test_hnsw_small_cohort_does_not_use_exact_fallback():
+    approximate = candidate_rows(2)
+    cursor = CandidateCursor(approximate=approximate, available=2, exact=[])
+
+    dense, lexical = hnsw_service().candidates(
+        cursor, Retrieval(query="head"), "general", (0.0,)
+    )
+
+    assert dense == approximate and lexical == []
+    assert cursor.dense_calls == 1
+    assert not any("enable_indexscan=off" in sql for sql, _ in cursor.statements)
 
 
 def test_combined_candidates_share_snapshot(

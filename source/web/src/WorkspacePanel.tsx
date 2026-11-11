@@ -8,7 +8,7 @@ import { ConfirmationEditor } from './ConfirmationEditor';
 import { ErrorNotice } from './ErrorNotice';
 import { Icon } from './Icon';
 import { readEnumCache, readFlagCache, readNumberCache } from './browser-cache';
-import type { Capabilities, Confirmation, History, ResourceDetail, ResourceItem, ResourceReference, Result, TaskPreparationEntry } from './types';
+import type { Capabilities, Confirmation, History, ResourceDetail, ResourceItem, ResourceReference, Result, TaskPreparationCheck, TaskPreparationEntry } from './types';
 import type { ConfirmationFocus } from './use-workspace-controller';
 import { scopedStorageKey } from './browser-scope';
 
@@ -69,12 +69,55 @@ function preparationIssues(
   });
 }
 
+const DATA_SEMANTIC_CHECKS = new Set([
+  'FIELD_METADATA', 'FIELD_SEMANTICS', 'FIELD_UNIT', 'CRS',
+  'TIME_FIELD_PARSEABILITY', 'TIMEZONE', 'TIME_RANGE', 'VERTICAL_BASIS',
+]);
+
+function preparationCheckFacts(check: TaskPreparationCheck): string | null {
+  if (check.kind === 'FIELD_UNIT') {
+    return [
+      check.actualUnit ? `已声明 ${check.actualUnit}` : null,
+      check.expectedUnit ? `执行参数 ${check.expectedUnit}` : null,
+      check.relationship ?? null,
+    ].filter(Boolean).join('；') || null;
+  }
+  if (check.kind === 'CRS' || check.kind === 'CRS_PARAMETER') {
+    return [
+      check.actualCrs ? `已声明 ${check.actualCrs}` : null,
+      check.expectedCrs ? `期望 ${check.expectedCrs}` : null,
+      check.crsRequirement === 'projectedMetric' ? '要求米制投影 CRS' : null,
+      check.crsUnit ? `轴单位 ${check.crsUnit}` : null,
+    ].filter(Boolean).join('；') || null;
+  }
+  if (check.kind === 'TIMEZONE') return check.timezone ? `时区 ${check.timezone}` : null;
+  if (check.kind === 'TIME_RANGE') {
+    return [
+      check.timeRange ? `可用范围 ${check.timeRange}` : null,
+      check.requestedStart || check.requestedEnd
+        ? `请求 ${check.requestedStart ?? '？'} 至 ${check.requestedEnd ?? '？'}`
+        : null,
+    ].filter(Boolean).join('；') || null;
+  }
+  if (check.kind === 'VERTICAL_BASIS') {
+    return [
+      check.referenceField ? `高程字段 ${check.referenceField}` : null,
+      check.depthField ? `埋深字段 ${check.depthField}` : null,
+      check.referenceMeaning ? `高程含义 ${check.referenceMeaning}` : null,
+      check.depthMeaning ? `埋深含义 ${check.depthMeaning}` : null,
+      check.verticalDatum ? `高程基准 ${check.verticalDatum}` : null,
+    ].filter(Boolean).join('；') || null;
+  }
+  return null;
+}
+
 export function PreparationDetails({ history, dataAvailable = true, onData, onVersion, onParameter }: { history: History; dataAvailable?: boolean; onData: (formats: string[]) => void; onVersion: (id: string, input?: string) => void; onParameter: (name: string) => void }) {
   const entries = history.preparation?.entries ?? [];
   return <details open><summary>输入准备 · {!history.preparation?.freshForCurrentTurn ? '需要本轮重新核验' : history.preparation.status === 'READY' ? '合同可提案' : '需要补充'}</summary><p>准备修订 {history.preparation?.revision} · {history.preparation?.disposition}</p>{entries.map((entry, entryIndex) => <section key={`${entry.targetId}/${entryIndex}`}><h4>{modelName(entry.targetId)}</h4>{entry.knowledgeRefs.length > 0 && <p>已核验知识证据 {entry.knowledgeRefs.length} 项</p>}{entry.checks.map((check, index) => {
     const inputVersion = check.input ? entry.inputs[check.input]?.versionId : undefined;
-    const needsAdmin = check.status === 'UNKNOWN' && (check.kind === 'FIELD_METADATA' || check.kind === 'FIELD_SEMANTICS');
-    return <div className="preparation-check" key={`${check.kind}/${check.input ?? index}`}><span>{check.status === 'PASS' ? '通过' : check.status === 'UNKNOWN' ? '待判断' : '失败'} · {check.input ? `${argumentLabel(check.input, entry.targetId)} · ` : ''}{check.kind}</span>{dataAvailable && check.currentVersion && check.status === 'FAIL' && <button onClick={() => onVersion(check.currentVersion!, check.input)}>使用当前版本</button>}{needsAdmin && inputVersion && <><p className="muted">需要 Data 管理员补充字段元数据或语义；主工作区不修改这些事实。</p>{dataAvailable && <button onClick={() => onVersion(inputVersion)}>查看数据详情</button>}</>}</div>;
+    const needsAdmin = check.status === 'UNKNOWN' && DATA_SEMANTIC_CHECKS.has(check.kind);
+    const facts = preparationCheckFacts(check);
+    return <div className="preparation-check" key={`${check.kind}/${check.input ?? 'global'}/${index}`}><span>{check.status === 'PASS' ? '通过' : check.status === 'UNKNOWN' ? '待判断' : '失败'} · {check.input ? `${argumentLabel(check.input, entry.targetId)} · ` : ''}{check.kind}</span>{facts && <p className="muted">{facts}</p>}{dataAvailable && check.currentVersion && check.status === 'FAIL' && <button onClick={() => onVersion(check.currentVersion!, check.input)}>使用当前版本</button>}{needsAdmin && inputVersion && <><p className="muted">需要 Data 管理员补充或更正字段、单位、CRS 或时间语义；主工作区不修改这些事实。</p>{dataAvailable && <button onClick={() => onVersion(inputVersion)}>查看数据详情</button>}</>}</div>;
   })}{preparationIssues(entry).map((issue, index) => {
     const formats = issue.input ? productUi().models[entry.targetId]?.inputs[issue.input]?.formats ?? [] : [];
     const currentVersion = issue.input ? entry.checks.find(check => check.input === issue.input && check.currentVersion)?.currentVersion : undefined;

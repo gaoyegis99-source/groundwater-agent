@@ -38,22 +38,44 @@ def graph_for(catalog, operator_id="statistics.describe"):
     operator = catalog[(operator_id, "1.0.0")]
     parameters = list(operator["parametersSchema"]["properties"])
     return {
-        "inputs": [{key: port[key] for key in ("name", "cardinality", "mediaTypes", "formats")}
-                   for port in operator["inputs"]],
+        "inputs": [
+            {key: port[key] for key in ("name", "cardinality", "mediaTypes", "formats")}
+            for port in operator["inputs"]
+        ],
         "parameters": parameters,
-        "nodes": [{
-            "nodeId": "analysis", "operatorId": operator_id, "operatorVersion": "1.0.0",
-            "inputs": {port["name"]: {"workflowInput": port["name"]} for port in operator["inputs"]},
-            "parameters": {name: {"workflowParameter": name} for name in parameters},
-        }],
-        "outputs": [{"name": "result", "nodeOutput": {"nodeId": "analysis", "port": operator["outputs"][0]["name"]}}],
+        "nodes": [
+            {
+                "nodeId": "analysis",
+                "operatorId": operator_id,
+                "operatorVersion": "1.0.0",
+                "inputs": {
+                    port["name"]: {"workflowInput": port["name"]}
+                    for port in operator["inputs"]
+                },
+                "parameters": {
+                    name: {"workflowParameter": name} for name in parameters
+                },
+            }
+        ],
+        "outputs": [
+            {
+                "name": "result",
+                "nodeOutput": {
+                    "nodeId": "analysis",
+                    "port": operator["outputs"][0]["name"],
+                },
+            }
+        ],
     }
 
 
 def draft(catalog, graph=None, values=None, sources=None, bindings=None):
     return compile_draft(
-        graph_for(catalog) if graph is None else graph, catalog, workflow_id="draft.example",
-        operator_catalog_digest=DIGEST, parameter_values={} if values is None else values,
+        graph_for(catalog) if graph is None else graph,
+        catalog,
+        workflow_id="draft.example",
+        operator_catalog_digest=DIGEST,
+        parameter_values={} if values is None else values,
         parameter_sources=[] if sources is None else sources,
         data_bindings=[] if bindings is None else bindings,
     )
@@ -64,25 +86,38 @@ def source(name, kind="USER"):
 
 
 def binding(name="data"):
-    return {"input_name": name, "data_ref": {
-        "kind": "data_version", "service": "data-primary",
-        "dataset_id": "dataset-example", "version_id": "version-example",
-        "semantic_id": "semantic-example", "object_id": "object-example",
-        "checksum": "sha256:" + "a" * 64,
-        "media_type": "text/csv", "format": "csv", "size_bytes": 123,
-    }}
+    return {
+        "input_name": name,
+        "data_ref": {
+            "kind": "data_version",
+            "service": "data-primary",
+            "dataset_id": "dataset-example",
+            "version_id": "version-example",
+            "semantic_id": "semantic-example",
+            "object_id": "object-example",
+            "checksum": "sha256:" + "a" * 64,
+            "media_type": "text/csv",
+            "format": "csv",
+            "size_bytes": 123,
+        },
+    }
 
 
 def convert_render_graph():
     return {
-        "inputs": [{
-            "name": "data", "cardinality": "one",
-            "mediaTypes": ["text/csv"], "formats": ["csv"],
-        }],
+        "inputs": [
+            {
+                "name": "data",
+                "cardinality": "one",
+                "mediaTypes": ["text/csv"],
+                "formats": ["csv"],
+            }
+        ],
         "parameters": ["outputFormat"],
         "nodes": [
             {
-                "nodeId": "convert", "operatorId": "data.convert",
+                "nodeId": "convert",
+                "operatorId": "data.convert",
                 "operatorVersion": "1.0.0",
                 "inputs": {"data": {"workflowInput": "data"}},
                 "parameters": {
@@ -90,7 +125,8 @@ def convert_render_graph():
                 },
             },
             {
-                "nodeId": "render", "operatorId": "cartography.render-png",
+                "nodeId": "render",
+                "operatorId": "cartography.render-png",
                 "operatorVersion": "1.0.0",
                 "inputs": {
                     "data": {"nodeOutput": {"nodeId": "convert", "port": "data"}},
@@ -98,9 +134,12 @@ def convert_render_graph():
                 "parameters": {},
             },
         ],
-        "outputs": [{
-            "name": "image", "nodeOutput": {"nodeId": "render", "port": "image"},
-        }],
+        "outputs": [
+            {
+                "name": "image",
+                "nodeOutput": {"nodeId": "render", "port": "image"},
+            }
+        ],
     }
 
 
@@ -110,20 +149,34 @@ def test_all_static_workflows_keep_model_pinned_checksums(catalog):
     assert len(workflows) == 6
     for path in workflows:
         raw = json.loads(path.read_text())
-        model = json.loads((directory / "models" / path.name.replace(".workflow", ".model")).read_text())
-        assert compile_workflow(raw, catalog)["definitionChecksum"] == model["workflowRef"]["checksum"]
+        model = json.loads(
+            (
+                directory / "models" / path.name.replace(".workflow", ".model")
+            ).read_text()
+        )
+        assert (
+            compile_workflow(raw, catalog)["definitionChecksum"]
+            == model["workflowRef"]["checksum"]
+        )
 
 
 def test_compilation_state_is_isolated_after_a_failed_graph(catalog):
-    raw = {"schemaVersion": "workflow.v6", "workflowId": "test.isolation",
-           "version": "1.0.0", **graph_for(catalog)}
+    raw = {
+        "schemaVersion": "workflow.v6",
+        "workflowId": "test.isolation",
+        "version": "1.0.0",
+        **graph_for(catalog),
+    }
     original_raw, original_catalog = deepcopy(raw), deepcopy(catalog)
     expected = compile_workflow(raw, catalog)
     invalid = deepcopy(raw)
     invalid["outputs"][0]["nodeOutput"]["port"] = "missing"
     with pytest.raises(WorkflowValidationError) as caught:
         compile_workflow(invalid, catalog)
-    assert (caught.value.code, caught.value.path) == ("WORKFLOW_OUTPUT_INVALID", "/outputs/0")
+    assert (caught.value.code, caught.value.path) == (
+        "WORKFLOW_OUTPUT_INVALID",
+        "/outputs/0",
+    )
     assert compile_workflow(raw, catalog) == expected
     assert raw == original_raw
     assert catalog == original_catalog
@@ -132,10 +185,16 @@ def test_compilation_state_is_isolated_after_a_failed_graph(catalog):
 def test_parameter_format_selection_does_not_leak_to_next_compilation(catalog):
     from platform_workflow_compiler.graph import _compile_workflow
 
-    raw = {"schemaVersion": "workflow.v6", "workflowId": "test.formats",
-           "version": "1.0.0", **graph_for(catalog, "data.convert")}
+    raw = {
+        "schemaVersion": "workflow.v6",
+        "workflowId": "test.formats",
+        "version": "1.0.0",
+        **graph_for(catalog, "data.convert"),
+    }
     for output_format in ("geojson", "csv", "geojson"):
-        result = _compile_workflow(raw, catalog, parameter_values={"outputFormat": output_format})
+        result = _compile_workflow(
+            raw, catalog, parameter_values={"outputFormat": output_format}
+        )
         pairs = result["nodes"][0]["outputContracts"][0]["formatPairs"]
         assert {pair["format"] for pair in pairs} == {output_format}
     unbound = compile_workflow(raw, catalog)
@@ -185,7 +244,7 @@ def test_missing_selector_and_static_compile_remain_conservative(catalog):
         compile_workflow(raw, catalog)
 
 
-def test_directory_pages_all_106_and_marks_four_many_operators(catalog):
+def test_directory_pages_all_109_and_marks_four_many_operators(catalog):
     items, cursor = [], None
     while True:
         page = list_operators(catalog, after=cursor, limit=20)
@@ -193,50 +252,73 @@ def test_directory_pages_all_106_and_marks_four_many_operators(catalog):
         cursor = page["next_cursor"]
         if cursor is None:
             break
-    assert len(items) == len({
-        (item["operator_id"], item["operator_version"]) for item in items
-    }) == 106
-    assert {item["operator_id"] for item in items if not item["composition_supported"]} == {
-        "raster.algebra", "raster.cell_statistics", "raster.mosaic", "vector.merge",
+    assert (
+        len(items)
+        == len({(item["operator_id"], item["operator_version"]) for item in items})
+        == 109
+    )
+    assert {
+        item["operator_id"] for item in items if not item["composition_supported"]
+    } == {
+        "raster.algebra",
+        "raster.cell_statistics",
+        "raster.mosaic",
+        "vector.merge",
     }
     assert all("parametersSchema" not in item for item in items)
     assert list_operators(catalog, query="no such operator")["items"] == []
     assert "table.sort" in {
         item["operator_id"]
         for item in list_operators(
-            catalog, query="请基于规则文件完成稳定排序后再分析",
+            catalog,
+            query="请基于规则文件完成稳定排序后再分析",
         )["items"]
     }
     assert "statistics.describe" in {
         item["operator_id"]
         for item in list_operators(
-            catalog, query="计算各数值列的描述统计结果",
+            catalog,
+            query="计算各数值列的描述统计结果",
         )["items"]
     }
-    assert all(item["domain"] == "groundwater" for item in list_operators(catalog, domain="groundwater")["items"])
+    assert all(
+        item["domain"] == "groundwater"
+        for item in list_operators(catalog, domain="groundwater")["items"]
+    )
     assert [
         item["operator_id"]
         for item in list_operators(
-            catalog, capability="descriptive-statistics",
+            catalog,
+            capability="descriptive-statistics",
         )["items"]
     ] == ["statistics.describe"]
-    assert get_operator(catalog, "statistics.describe", "1.0.0")["binding_rules"]["value_outputs_feed_nodes"] is False
+    assert (
+        get_operator(catalog, "statistics.describe", "1.0.0")["binding_rules"][
+            "value_outputs_feed_nodes"
+        ]
+        is False
+    )
     assert "examples" not in get_operator(catalog, "statistics.describe", "1.0.0")
 
 
 def test_directory_cursor_uses_identity_order_for_prefix_ids(catalog):
     operator = catalog[("statistics.describe", "1.0.0")]
-    entries = {(name, "1.0.0"): {**operator, "id": name} for name in ("a", "a.child", "b")}
+    entries = {
+        (name, "1.0.0"): {**operator, "id": name} for name in ("a", "a.child", "b")
+    }
     first = list_operators(entries, limit=1)
     second = list_operators(entries, after=first["next_cursor"], limit=1)
     assert second["items"][0]["operator_id"] == "a.child"
 
 
-@pytest.mark.parametrize("kwargs,code", [
-    ({"limit": True}, "OPERATOR_PAGE_LIMIT_INVALID"),
-    ({"limit": 51}, "OPERATOR_PAGE_LIMIT_INVALID"),
-    ({"after": "missing@1.0.0"}, "OPERATOR_CURSOR_INVALID"),
-])
+@pytest.mark.parametrize(
+    "kwargs,code",
+    [
+        ({"limit": True}, "OPERATOR_PAGE_LIMIT_INVALID"),
+        ({"limit": 51}, "OPERATOR_PAGE_LIMIT_INVALID"),
+        ({"after": "missing@1.0.0"}, "OPERATOR_CURSOR_INVALID"),
+    ],
+)
 def test_directory_rejects_invalid_paging(catalog, kwargs, code):
     with pytest.raises(WorkflowValidationError, match=code):
         list_operators(catalog, **kwargs)
@@ -250,8 +332,12 @@ def test_catalog_rejects_changed_shape_duplicates_and_external_schema(catalog):
     with pytest.raises(WorkflowValidationError, match="OPERATOR_IDENTITY_DUPLICATE"):
         validate_catalog(operators, DIGEST)
     operators = list(deepcopy(catalog).values())
-    operators[0]["parametersSchema"]["properties"]["external"] = {"$ref": "https://invalid.example/schema"}
-    with pytest.raises(WorkflowValidationError, match="OPERATOR_SCHEMA_REFERENCE_UNSUPPORTED"):
+    operators[0]["parametersSchema"]["properties"]["external"] = {
+        "$ref": "https://invalid.example/schema"
+    }
+    with pytest.raises(
+        WorkflowValidationError, match="OPERATOR_SCHEMA_REFERENCE_UNSUPPORTED"
+    ):
         validate_catalog(operators, DIGEST)
 
 
@@ -281,15 +367,20 @@ def test_catalog_rejects_invalid_parameter_format_cases(catalog, defect, code):
         cases.pop()
     elif defect == "selector_without_string_enum":
         operator["parametersSchema"]["properties"]["outputFormat"] = {
-            "type": "number", "enum": [1, 2],
+            "type": "number",
+            "enum": [1, 2],
         }
     elif defect == "wrong_pair":
         cases[0].update(mediaType="image/png", format="png")
     elif defect == "mixed_discriminators":
-        output["formatCases"] = [{
-            "inputPort": "data", "inputFormats": ["csv"],
-            "mediaType": "text/csv", "format": "csv",
-        }]
+        output["formatCases"] = [
+            {
+                "inputPort": "data",
+                "inputFormats": ["csv"],
+                "mediaType": "text/csv",
+                "format": "csv",
+            }
+        ]
     else:
         output["kind"] = "value"
         output["schema"] = {}
@@ -298,35 +389,68 @@ def test_catalog_rejects_invalid_parameter_format_cases(catalog, defect, code):
         validate_catalog(operators, DIGEST)
 
 
-@pytest.mark.parametrize("mutation", [
-    lambda g: g.update({"workflowId": "model-chosen"}),
-    lambda g: g["nodes"][0].update({"runtime": "native"}),
-    lambda g: g["nodes"][0].update({"operatorId": {"invalid": "type"}}),
-    lambda g: g["inputs"][0].update({"formatPairs": [{"mediaType": "text/csv", "format": "csv"}]}),
-    lambda g: g["nodes"][0]["inputs"]["data"].update({"url": "https://invalid.example/data"}),
-    lambda g: g["nodes"][0]["parameters"].update({"axis": {"literal": "columns"}}),
-])
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda g: g.update({"workflowId": "model-chosen"}),
+        lambda g: g["nodes"][0].update({"runtime": "native"}),
+        lambda g: g["nodes"][0].update({"operatorId": {"invalid": "type"}}),
+        lambda g: g["inputs"][0].update(
+            {"formatPairs": [{"mediaType": "text/csv", "format": "csv"}]}
+        ),
+        lambda g: g["nodes"][0]["inputs"]["data"].update(
+            {"url": "https://invalid.example/data"}
+        ),
+        lambda g: g["nodes"][0]["parameters"].update({"axis": {"literal": "columns"}}),
+    ],
+)
 def test_raw_graph_rejects_untrusted_nested_fields_and_types(catalog, mutation):
     graph = graph_for(catalog)
     mutation(graph)
-    with pytest.raises(WorkflowValidationError, match="WORKFLOW_FIELDS_INVALID") as error:
+    with pytest.raises(
+        WorkflowValidationError, match="WORKFLOW_FIELDS_INVALID"
+    ) as error:
         draft(catalog, graph)
     assert error.value.path.startswith("/graph")
 
 
-@pytest.mark.parametrize("mutation,code,path", [
-    (lambda g: g["nodes"][0].update(operatorId="unknown.operator"),
-     "WORKFLOW_OPERATOR_UNKNOWN", "/graph/nodes/0/operatorId"),
-    (lambda g: g["nodes"][0]["inputs"].update(data={"nodeOutput": {"nodeId": "analysis", "port": "unknown"}}),
-     "WORKFLOW_PORT_INCOMPATIBLE", "/graph/nodes/0/inputs/data/nodeOutput"),
-    (lambda g: g["nodes"][0]["inputs"].update(data={"workflowInput": "missing"}),
-     "WORKFLOW_PORT_INCOMPATIBLE", "/graph/nodes/0/inputs/data/workflowInput"),
-    (lambda g: g["nodes"][0]["parameters"].update(axis={"workflowParameter": "missing"}),
-     "WORKFLOW_PARAMETER_BINDING_INVALID", "/graph/nodes/0/parameters/axis"),
-    (lambda g: g["outputs"][0]["nodeOutput"].update(port="missing"),
-     "WORKFLOW_OUTPUT_INVALID", "/graph/outputs/0"),
-])
-def test_draft_validation_pointer_resolves_against_submitted_graph(catalog, mutation, code, path):
+@pytest.mark.parametrize(
+    "mutation,code,path",
+    [
+        (
+            lambda g: g["nodes"][0].update(operatorId="unknown.operator"),
+            "WORKFLOW_OPERATOR_UNKNOWN",
+            "/graph/nodes/0/operatorId",
+        ),
+        (
+            lambda g: g["nodes"][0]["inputs"].update(
+                data={"nodeOutput": {"nodeId": "analysis", "port": "unknown"}}
+            ),
+            "WORKFLOW_PORT_INCOMPATIBLE",
+            "/graph/nodes/0/inputs/data/nodeOutput",
+        ),
+        (
+            lambda g: g["nodes"][0]["inputs"].update(data={"workflowInput": "missing"}),
+            "WORKFLOW_PORT_INCOMPATIBLE",
+            "/graph/nodes/0/inputs/data/workflowInput",
+        ),
+        (
+            lambda g: g["nodes"][0]["parameters"].update(
+                axis={"workflowParameter": "missing"}
+            ),
+            "WORKFLOW_PARAMETER_BINDING_INVALID",
+            "/graph/nodes/0/parameters/axis",
+        ),
+        (
+            lambda g: g["outputs"][0]["nodeOutput"].update(port="missing"),
+            "WORKFLOW_OUTPUT_INVALID",
+            "/graph/outputs/0",
+        ),
+    ],
+)
+def test_draft_validation_pointer_resolves_against_submitted_graph(
+    catalog, mutation, code, path
+):
     graph = graph_for(catalog)
     mutation(graph)
     with pytest.raises(WorkflowValidationError, match=code) as error:
@@ -338,12 +462,16 @@ def test_draft_validation_pointer_resolves_against_submitted_graph(catalog, muta
 
 
 def test_draft_value_and_data_pointers_use_input_fields_and_array_indexes(catalog):
-    with pytest.raises(WorkflowValidationError, match="DRAFT_PARAMETER_INVALID") as error:
+    with pytest.raises(
+        WorkflowValidationError, match="DRAFT_PARAMETER_INVALID"
+    ) as error:
         draft(catalog, values={"axis": "unknown"}, sources=[source("axis")])
     assert error.value.path == "/parameter_values/axis"
     reference = binding()
     reference["data_ref"].update(media_type="image/png", format="png")
-    with pytest.raises(WorkflowValidationError, match="DRAFT_DATA_FORMAT_INCOMPATIBLE") as error:
+    with pytest.raises(
+        WorkflowValidationError, match="DRAFT_DATA_FORMAT_INCOMPATIBLE"
+    ) as error:
         draft(catalog, bindings=[reference])
     assert error.value.path == "/data_bindings/0/data_ref"
 
@@ -354,21 +482,30 @@ def test_graph_rejects_unknown_operator_cycle_unreachable_and_value_input(catalo
     with pytest.raises(WorkflowValidationError, match="WORKFLOW_OPERATOR_UNKNOWN"):
         draft(catalog, graph)
     graph = graph_for(catalog, "groundwater.head.calculate")
-    graph["nodes"][0]["inputs"]["observations"] = {"nodeOutput": {"nodeId": "analysis", "port": "heads"}}
+    graph["nodes"][0]["inputs"]["observations"] = {
+        "nodeOutput": {"nodeId": "analysis", "port": "heads"}
+    }
     with pytest.raises(WorkflowValidationError, match="WORKFLOW_CYCLE"):
         draft(catalog, graph)
     graph = graph_for(catalog)
     graph["nodes"].append({**deepcopy(graph["nodes"][0]), "nodeId": "orphan"})
     with pytest.raises(WorkflowValidationError, match="WORKFLOW_NODE_UNREACHABLE"):
         draft(catalog, graph)
-    graph["nodes"][0]["inputs"]["data"] = {"nodeOutput": {"nodeId": "orphan", "port": "summary"}}
+    graph["nodes"][0]["inputs"]["data"] = {
+        "nodeOutput": {"nodeId": "orphan", "port": "summary"}
+    }
     with pytest.raises(WorkflowValidationError, match="WORKFLOW_PORT_INCOMPATIBLE"):
         draft(catalog, graph)
 
 
-@pytest.mark.parametrize("operator_id", ["raster.algebra", "raster.cell_statistics", "raster.mosaic", "vector.merge"])
+@pytest.mark.parametrize(
+    "operator_id",
+    ["raster.algebra", "raster.cell_statistics", "raster.mosaic", "vector.merge"],
+)
 def test_many_inputs_remain_unsupported(catalog, operator_id):
-    with pytest.raises(WorkflowValidationError, match="WORKFLOW_CARDINALITY_UNSUPPORTED"):
+    with pytest.raises(
+        WorkflowValidationError, match="WORKFLOW_CARDINALITY_UNSUPPORTED"
+    ):
         draft(catalog, graph_for(catalog, operator_id))
 
 
@@ -376,22 +513,31 @@ def test_missing_inputs_are_derived_and_no_defaults_are_inserted(catalog):
     value = draft(catalog, graph_for(catalog, "groundwater.head.calculate"))
     missing = {(item["kind"], item["name"]) for item in value["missing_inputs"]}
     assert missing == {
-        ("DATA", "observations"), ("PARAMETER", "referenceElevationField"),
-        ("PARAMETER", "depthToWaterField"), ("PARAMETER", "referenceElevationUnit"),
-        ("PARAMETER", "depthToWaterUnit"), ("PARAMETER", "outputField"),
+        ("DATA", "observations"),
+        ("PARAMETER", "referenceElevationField"),
+        ("PARAMETER", "depthToWaterField"),
+        ("PARAMETER", "referenceElevationUnit"),
+        ("PARAMETER", "depthToWaterUnit"),
+        ("PARAMETER", "outputField"),
     }
     assert value["parameter_values"] == {}
     assert value["execution_allowed"] is False
-    assert value["operators"][0]["implementation_revision"] == catalog[("groundwater.head.calculate", "1.0.0")]["implementationRevision"]
+    assert (
+        value["operators"][0]["implementation_revision"]
+        == catalog[("groundwater.head.calculate", "1.0.0")]["implementationRevision"]
+    )
 
 
 def test_explicit_defaults_and_data_facts_freeze_without_aliasing(catalog):
     graph = graph_for(catalog)
-    graph["parameters"].remove("column")
-    del graph["nodes"][0]["parameters"]["column"]
+    for name in ("column", "groupField", "unit"):
+        graph["parameters"].remove(name)
+        del graph["nodes"][0]["parameters"][name]
     bindings = [binding()]
     values = {"axis": "columns"}
-    compiled = draft(catalog, graph, values, [source("axis", "OPERATOR_DEFAULT")], bindings)
+    compiled = draft(
+        catalog, graph, values, [source("axis", "OPERATOR_DEFAULT")], bindings
+    )
     assert compiled["missing_inputs"] == []
     assert compiled["execution_allowed"] is False
     assert compiled["workflow"]["workflowId"] == "draft.example"
@@ -403,17 +549,32 @@ def test_explicit_defaults_and_data_facts_freeze_without_aliasing(catalog):
     assert compiled["parameter_values"] == {"axis": "columns"}
 
 
-@pytest.mark.parametrize("values,sources,code", [
-    ({"axis": "flatten"}, [source("axis", "OPERATOR_DEFAULT")], "DRAFT_OPERATOR_DEFAULT_INVALID"),
-    ({"column": "x"}, [source("column", "OPERATOR_DEFAULT")], "DRAFT_OPERATOR_DEFAULT_INVALID"),
-    ({"axis": "invalid"}, [source("axis")], "DRAFT_PARAMETER_INVALID"),
-    ({"unknown": 1}, [source("unknown")], "DRAFT_PARAMETER_UNKNOWN"),
-    ({"axis": "columns"}, [], "DRAFT_PARAMETER_SOURCES_INVALID"),
-    ({}, [source("axis")], "DRAFT_PARAMETER_SOURCES_INVALID"),
-    ({"axis": "columns"}, [source("axis"), source("axis")], "DRAFT_PARAMETER_SOURCES_INVALID"),
-    ({"axis": float("nan")}, [source("axis")], "WORKFLOW_JSON_INVALID"),
-    ({"axis": "\ud800"}, [source("axis")], "WORKFLOW_JSON_INVALID"),
-])
+@pytest.mark.parametrize(
+    "values,sources,code",
+    [
+        (
+            {"axis": "flatten"},
+            [source("axis", "OPERATOR_DEFAULT")],
+            "DRAFT_OPERATOR_DEFAULT_INVALID",
+        ),
+        (
+            {"column": "x"},
+            [source("column", "OPERATOR_DEFAULT")],
+            "DRAFT_OPERATOR_DEFAULT_INVALID",
+        ),
+        ({"axis": "invalid"}, [source("axis")], "DRAFT_PARAMETER_INVALID"),
+        ({"unknown": 1}, [source("unknown")], "DRAFT_PARAMETER_UNKNOWN"),
+        ({"axis": "columns"}, [], "DRAFT_PARAMETER_SOURCES_INVALID"),
+        ({}, [source("axis")], "DRAFT_PARAMETER_SOURCES_INVALID"),
+        (
+            {"axis": "columns"},
+            [source("axis"), source("axis")],
+            "DRAFT_PARAMETER_SOURCES_INVALID",
+        ),
+        ({"axis": float("nan")}, [source("axis")], "WORKFLOW_JSON_INVALID"),
+        ({"axis": "\ud800"}, [source("axis")], "WORKFLOW_JSON_INVALID"),
+    ],
+)
 def test_parameter_failures_are_explicit(catalog, values, sources, code):
     with pytest.raises(WorkflowValidationError, match=code):
         draft(catalog, values=values, sources=sources)
@@ -424,14 +585,23 @@ def test_nested_parameter_values_are_complete_when_supplied(catalog):
     schema = catalog[("statistics.describe", "1.0.0")]["parametersSchema"]
     schema["required"] = ["axis"]
     schema["properties"]["axis"] = {
-        "type": "object", "properties": {"threshold": {"type": "number", "minimum": 0}},
-        "required": ["threshold"], "additionalProperties": False,
+        "type": "object",
+        "properties": {"threshold": {"type": "number", "minimum": 0}},
+        "required": ["threshold"],
+        "additionalProperties": False,
     }
     assert any(item["name"] == "axis" for item in draft(catalog)["missing_inputs"])
-    for value in ({}, {"threshold": -1}, {"threshold": 0, "extra": 1}, {"threshold": float("inf")}):
+    for value in (
+        {},
+        {"threshold": -1},
+        {"threshold": 0, "extra": 1},
+        {"threshold": float("inf")},
+    ):
         with pytest.raises(WorkflowValidationError):
             draft(catalog, values={"axis": value}, sources=[source("axis")])
-    assert draft(catalog, values={"axis": {"threshold": 0}}, sources=[source("axis")])["parameter_values"] == {"axis": {"threshold": 0}}
+    assert draft(catalog, values={"axis": {"threshold": 0}}, sources=[source("axis")])[
+        "parameter_values"
+    ] == {"axis": {"threshold": 0}}
 
 
 def test_shared_parameter_is_checked_against_every_operator(catalog):
@@ -444,9 +614,15 @@ def test_shared_parameter_is_checked_against_every_operator(catalog):
     node["parameters"]["band"] = {"workflowParameter": "axis"}
     graph["parameters"].remove("band")
     graph["nodes"].append(node)
-    graph["outputs"].append({
-        "name": "slope", "nodeOutput": {"nodeId": "slope", "port": slope["outputs"][0]["nodeOutput"]["port"]},
-    })
+    graph["outputs"].append(
+        {
+            "name": "slope",
+            "nodeOutput": {
+                "nodeId": "slope",
+                "port": slope["outputs"][0]["nodeOutput"]["port"],
+            },
+        }
+    )
     # Valid for statistics.describe.axis; invalid for raster.slope.band.
     with pytest.raises(WorkflowValidationError, match="DRAFT_PARAMETER_INVALID"):
         draft(catalog, graph, {"axis": "columns"}, [source("axis")])
@@ -455,7 +631,10 @@ def test_shared_parameter_is_checked_against_every_operator(catalog):
 def test_optional_bound_parameter_is_still_a_draft_gap(catalog):
     compiled = draft(catalog, bindings=[binding()])
     assert {(item["kind"], item["name"]) for item in compiled["missing_inputs"]} == {
-        ("PARAMETER", "axis"), ("PARAMETER", "column"),
+        ("PARAMETER", "axis"),
+        ("PARAMETER", "column"),
+        ("PARAMETER", "groupField"),
+        ("PARAMETER", "unit"),
     }
 
 
@@ -473,12 +652,18 @@ def test_unused_declarations_are_rejected_only_by_draft_boundary(catalog):
 def test_rasterize_exclusive_burn_parameters_are_validated_as_a_node(catalog):
     graph = graph_for(catalog, "raster.rasterize")
     with pytest.raises(WorkflowValidationError, match="DRAFT_PARAMETER_INVALID"):
-        draft(catalog, graph, {"burnField": "value", "burnValue": 1},
-              [source("burnField"), source("burnValue")])
+        draft(
+            catalog,
+            graph,
+            {"burnField": "value", "burnValue": 1},
+            [source("burnField"), source("burnValue")],
+        )
     for name in ("burnField", "burnValue"):
         graph["parameters"].remove(name)
         del graph["nodes"][0]["parameters"][name]
-    with pytest.raises(WorkflowValidationError, match="DRAFT_PARAMETER_BINDING_REQUIRED"):
+    with pytest.raises(
+        WorkflowValidationError, match="DRAFT_PARAMETER_BINDING_REQUIRED"
+    ):
         draft(catalog, graph)
 
 
@@ -487,23 +672,57 @@ def test_threshold_conditional_gap_waits_for_discriminator_then_checks_binding(c
     graph["parameters"].remove("thresholdValue")
     del graph["nodes"][0]["parameters"]["thresholdValue"]
     compiled = draft(catalog, graph)
-    assert "thresholdSource" in {item["name"] for item in compiled["missing_inputs"]}
-    with pytest.raises(WorkflowValidationError, match="DRAFT_PARAMETER_BINDING_REQUIRED"):
-        draft(catalog, graph, {"thresholdSource": "scalar"}, [source("thresholdSource")])
+    assert {"enabled", "thresholdSource"} <= {
+        item["name"] for item in compiled["missing_inputs"]
+    }
+    with pytest.raises(
+        WorkflowValidationError, match="DRAFT_PARAMETER_BINDING_REQUIRED"
+    ):
+        draft(
+            catalog,
+            graph,
+            {"enabled": True, "thresholdSource": "scalar", "comparison": "above"},
+            [source("enabled"), source("thresholdSource"), source("comparison")],
+        )
     assert "thresholdField" in {
-        item["name"] for item in draft(catalog, graph, {"thresholdSource": "field"},
-                                      [source("thresholdSource")])["missing_inputs"]
+        item["name"]
+        for item in draft(
+            catalog,
+            graph,
+            {"enabled": True, "thresholdSource": "field", "comparison": "above"},
+            [source("enabled"), source("thresholdSource"), source("comparison")],
+        )["missing_inputs"]
     }
 
 
-@pytest.mark.parametrize("mutation,code", [
-    (lambda r: r.update({"input_name": "unknown"}), "DRAFT_DATA_BINDINGS_INVALID"),
-    (lambda r: r["data_ref"].update({"version_id": True}), "DRAFT_DATA_BINDINGS_INVALID"),
-    (lambda r: r["data_ref"].update({"version_id": 1.0}), "DRAFT_DATA_BINDINGS_INVALID"),
-    (lambda r: r["data_ref"].update({"checksum": "wrong"}), "DRAFT_DATA_BINDINGS_INVALID"),
-    (lambda r: r["data_ref"].update({"kind": "resource"}), "DRAFT_DATA_BINDINGS_INVALID"),
-    (lambda r: r["data_ref"].update({"media_type": "image/png", "format": "png"}), "DRAFT_DATA_FORMAT_INCOMPATIBLE"),
-])
+@pytest.mark.parametrize(
+    "mutation,code",
+    [
+        (lambda r: r.update({"input_name": "unknown"}), "DRAFT_DATA_BINDINGS_INVALID"),
+        (
+            lambda r: r["data_ref"].update({"version_id": True}),
+            "DRAFT_DATA_BINDINGS_INVALID",
+        ),
+        (
+            lambda r: r["data_ref"].update({"version_id": 1.0}),
+            "DRAFT_DATA_BINDINGS_INVALID",
+        ),
+        (
+            lambda r: r["data_ref"].update({"checksum": "wrong"}),
+            "DRAFT_DATA_BINDINGS_INVALID",
+        ),
+        (
+            lambda r: r["data_ref"].update({"kind": "resource"}),
+            "DRAFT_DATA_BINDINGS_INVALID",
+        ),
+        (
+            lambda r: r["data_ref"].update(
+                {"media_type": "image/png", "format": "png"}
+            ),
+            "DRAFT_DATA_FORMAT_INCOMPATIBLE",
+        ),
+    ],
+)
 def test_data_bindings_are_exact_and_format_checked(catalog, mutation, code):
     reference = binding()
     mutation(reference)

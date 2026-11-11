@@ -50,9 +50,9 @@ export function AssistantContent({ reply, onKnowledge, onResource }: {
         className="citation-entry" key={JSON.stringify([source.versionId, source.unitId, source.checksum])}
       ><button className="citation"
           data-knowledge-version-id={source.versionId} data-knowledge-unit-id={source.unitId}
-          aria-label={`打开依据：${source.title}，单元 ${source.unitId}`}
+          aria-label={`打开依据：${source.title}`}
           onClick={() => onKnowledge({ versionId: source.versionId, unitId: source.unitId, checksum: source.checksum })}
-        ><Icon name="book" />{source.title} · {source.unitId}</button>{index < reply.sources.length - 1 && <span aria-hidden="true">；</span>}</span>)}</div></section>}
+        ><Icon name="book" />{source.title}</button>{index < reply.sources.length - 1 && <span aria-hidden="true">；</span>}</span>)}</div></section>}
     </details>}
   </div>;
 }

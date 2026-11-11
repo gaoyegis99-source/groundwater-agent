@@ -1,0 +1,79 @@
+{
+  "schema_version": "groundwater-mf6-binary-lock.v1",
+  "reviewed_on": "2026-11-10",
+  "decision": "ACCEPTED_FOR_INDEPENDENT_ADV_02_DOCKER_SPIKE_ONLY",
+  "default_runtime_changed": false,
+  "release": {
+    "authority": "U.S. Geological Survey",
+    "project": "modflow61/modflow6",
+    "version": "6.8.1",
+    "released_at": "2026-09-23T22:06:21Z",
+    "architecture": "linux-x86_64",
+    "license": "Public Domain, CC0-1.0",
+    "metadata_url": "https://code.usgs.gov/api/v4/projects/modflow61%2Fmodflow6/releases/6.8.1"
+  },
+  "archive": {
+    "filename": "mf6.8.1_linux.zip",
+    "url": "https://code.usgs.gov/api/v4/projects/modflow61%2Fmodflow6/uploads/7efae4bcb8045fa9c6872f73bede3466/mf6.8.1_linux.zip",
+    "size_bytes": 136031064,
+    "sha256": "sha256:439a29f3e60f8e88b0ac083db10c92e3474b203d18ca6583863d8464b811ba90"
+  },
+  "binary": {
+    "archive_member": "mf6.8.1_linux/bin/mf6",
+    "size_bytes": 49554232,
+    "sha256": "sha256:004e333a73605c6b6b048127ce8099e2130c0125e2b161812a49691a8fcdc8f3",
+    "format": "ELF",
+    "elf_class": "ELF64",
+    "elf_data": "little-endian",
+    "elf_machine": "x86-64",
+    "minimum_glibc": "2.34",
+    "build_id": "d01ed10a23c42bd4dbcc3a9baa91f22ef85010d4"
+  },
+  "shared_library": {
+    "archive_member": "mf6.8.1_linux/bin/libmf6.so",
+    "size_bytes": 52968792,
+    "sha256": "sha256:09fb8cf64d3b04a60ec1e52c9f7becef58dff85df0c27b3bfd683fc1d8147687",
+    "build_id": "46cf4c35464f7e0d7ddd4dee6706adb7b6042a8b",
+    "included_in_spike_image": false
+  },
+  "release_metadata": {
+    "archive_member": "mf6.8.1_linux/code.json",
+    "size_bytes": 1383,
+    "sha256": "sha256:cec1dacaa44dcfe4c9847631876bffae9cf1626da7c4619c585f3042596b2727",
+    "declared_version": "6.8.1",
+    "declared_organization": "U.S. Geological Survey",
+    "declared_license": "Public Domain, CC0-1.0"
+  },
+  "license_evidence": {
+    "license_url": "https://code.usgs.gov/api/v4/projects/8605/repository/files/LICENSE.md/raw?ref=6.8.1",
+    "license_size_bytes": 1650,
+    "license_sha256": "sha256:8f7f9f0a052bd4b9883e2a6ad88ef52fde0fecf05e75abae674c4c7a072e3043",
+    "disclaimer_url": "https://code.usgs.gov/api/v4/projects/8605/repository/files/DISCLAIMER.md/raw?ref=6.8.1",
+    "disclaimer_size_bytes": 652,
+    "disclaimer_sha256": "sha256:46ebbe1391ef4e52541f1ca9e97a198e35c8057aff5b8ae54f967c48fc96d37c",
+    "review_result": "PASS_FOR_INDEPENDENT_SPIKE_REVIEW"
+  },
+  "docker": {
+    "base_image": "ubuntu@sha256:68ee22004a9109b44973313b02ff7b1de250f1de0f5ecb628d73f579aaff33ac",
+    "base_image_architecture": "linux-amd64",
+    "network_during_build": "none",
+    "network_during_run": "none",
+    "root_filesystem_during_run": "read-only",
+    "default_user": "65532:65532"
+  },
+  "validation": {
+    "host_execution": "INCOMPATIBLE_GLIBC_2_34_NOT_AVAILABLE",
+    "container_version_output": "mf6: 6.8.1",
+    "container_version_status": "PASS",
+    "runtime_dynamic_dependencies": [
+      "libc.so.6",
+      "ld-linux-x86-64.so.2"
+    ]
+  },
+  "boundaries": [
+    "Only the exact USGS-hosted release archive, license, and disclaimer identities in this lock may be staged into the image.",
+    "The build performs no network download and accepts no GitHub or other third-party binary source.",
+    "The image is an independent ADV-02 spike and is not referenced by root, Native, QGIS, catalog, workflow, model, or deployment locks.",
+    "libmf6.so and modflowapi are outside this steady executable spike."
+  ]
+}

@@ -73,7 +73,8 @@ def test_data_route_compiles_research_streaming_limits_at_gateway():
     generated = compile_product(ROOT, _manifest("groundwater"))
     lines = (generated / "nginx.conf").read_text().splitlines()
     data_lines = [
-        line for line in lines
+        line
+        for line in lines
         if "location /api/v12/data" in line and "proxy_pass $upstream_data;" in line
     ]
     identity_lines = [
@@ -90,8 +91,7 @@ def test_data_route_compiles_research_streaming_limits_at_gateway():
         assert "client_body_timeout 60s;" in line
     assert any("auth_request /_platform_identity" in line for line in lines)
     assert any(
-        "proxy_pass $upstream_kernel/internal/identity/verify" in line
-        for line in lines
+        "proxy_pass $upstream_kernel/internal/identity/verify" in line for line in lines
     )
     assert f"client_max_body_size {1024**3};" in identity_lines[0]
     other_public_api_lines = [
@@ -207,9 +207,9 @@ def test_groundwater_compiles_v12_research_outputs() -> None:
     assert kernel["schemaVersion"] == "kernel-config.v8"
     authoring = kernel["workflowAuthoring"]
     assert authoring["operatorCatalogDigest"] == executor["operatorCatalogDigest"]
-    assert len(authoring["operators"]) == 106
+    assert len(authoring["operators"]) == 109
     assert all("implementationRevision" in item for item in authoring["operators"])
-    assert len(authoring["enabledOperators"]) == 96
+    assert len(authoring["enabledOperators"]) == 99
     assert [
         item["remoteBinding"]
         for item in authoring["operators"]
@@ -217,11 +217,13 @@ def test_groundwater_compiles_v12_research_outputs() -> None:
             item["runtime"] == "remote_http"
             and f"{item['id']}@{item['version']}" in authoring["enabledOperators"]
         )
-    ] == [{
-        "serviceId": "groundwater-sustainability",
-        "operationType": "sustainability.evaluate",
-    }]
-    assert len(kernel["models"]) == 7
+    ] == [
+        {
+            "serviceId": "groundwater-sustainability",
+            "operationType": "sustainability.evaluate",
+        }
+    ]
+    assert len(kernel["models"]) == 10
     assert {"retrieve_evidence", "read_evidence", "lookup_knowledge"} <= {
         item["name"] for item in kernel["observationTools"]
     }
@@ -264,7 +266,91 @@ def test_groundwater_compiles_v12_research_outputs() -> None:
         "finalOutputs",
         "inputSchemaChecksum",
         "dataInputParameters",
+        "fieldRequirements",
+        "semanticRequirements",
     }
+    trend = next(
+        model
+        for model in kernel["models"]
+        if model["modelId"] == "groundwater.monitoring-trend"
+    )
+    assert trend["fieldRequirements"] == [
+        {
+            "parameter": "groupField",
+            "inputParameter": "versionId",
+            "identifier": "name",
+            "allowedTypes": ["string", "number"],
+        },
+        {
+            "parameter": "timeField",
+            "inputParameter": "versionId",
+            "identifier": "name",
+            "allowedTypes": ["string", "date-time"],
+        },
+        {
+            "parameter": "valueField",
+            "inputParameter": "versionId",
+            "identifier": "name",
+            "allowedTypes": ["string", "number"],
+        },
+    ]
+    assert trend["semanticRequirements"] == [
+        {
+            "kind": "fieldUnit",
+            "inputParameter": "versionId",
+            "fieldParameter": "valueField",
+        },
+        {
+            "kind": "timeField",
+            "inputParameter": "versionId",
+            "fieldParameter": "timeField",
+        },
+        {
+            "kind": "timeRange",
+            "inputParameter": "versionId",
+            "fieldParameter": "timeField",
+            "startParameter": "expectedStart",
+            "endParameter": "expectedEnd",
+        },
+        {
+            "kind": "timeRange",
+            "inputParameter": "versionId",
+            "fieldParameter": "timeField",
+            "startParameter": "baselineStart",
+            "endParameter": "baselineEnd",
+        },
+        {
+            "kind": "timeRange",
+            "inputParameter": "versionId",
+            "fieldParameter": "timeField",
+            "startParameter": "comparisonStart",
+            "endParameter": "comparisonEnd",
+        },
+    ]
+    flow = next(
+        model
+        for model in kernel["models"]
+        if model["modelId"] == "groundwater.flow-field"
+    )
+    assert {
+        "kind": "crsParameter",
+        "parameter": "targetCrs",
+        "requirement": "projectedMetric",
+    } in flow["semanticRequirements"]
+    assert {
+        "kind": "verticalBasis",
+        "inputParameter": "versionId",
+        "referenceFieldParameter": "referenceElevationField",
+        "depthFieldParameter": "depthToWaterField",
+        "referenceMeanings": [
+            "reference_elevation",
+            "land_surface_elevation",
+        ],
+        "depthMeanings": [
+            "depth_to_water",
+            "depth_below_reference_surface",
+        ],
+    } in flow["semanticRequirements"]
     assert next(
         model for model in kernel["models"] if model["tool"]["name"] == "render_map"
     )["dataInputParameters"] == ["sourceVersionId"]
@@ -325,7 +411,9 @@ def test_groundwater_compiles_v12_research_outputs() -> None:
     nginx = (output / "nginx.conf").read_text()
     assert "auth_request /_platform_identity;" in nginx
     assert "location = /_platform_identity { internal; auth_request off;" in nginx
-    assert "X-Platform-Identity-Assertion $http_x_platform_identity_assertion" not in nginx
+    assert (
+        "X-Platform-Identity-Assertion $http_x_platform_identity_assertion" not in nginx
+    )
     assert "proxy_set_header Authorization $http_authorization;" in nginx
     assert "proxy_set_header Cookie $http_cookie;" in nginx
     # The auth subrequest validates credentials and Kernel validates them again.
@@ -340,10 +428,7 @@ def test_groundwater_compiles_v12_research_outputs() -> None:
     assert "proxy_set_header X-Trace-ID $request_id;" in nginx
     assert "proxy_set_header X-Client-Type web;" in nginx
     assert "proxy_set_header X-Platform-Subject $verified_subject;" in nginx
-    assert (
-        "proxy_set_header X-Platform-Display-Name $verified_display_name;"
-        in nginx
-    )
+    assert "proxy_set_header X-Platform-Display-Name $verified_display_name;" in nginx
     assert "proxy_set_header X-Platform-Roles $verified_roles;" in nginx
     assert "proxy_set_header X-Platform-Subject $http_x_platform_subject;" not in nginx
     assert "proxy_set_header X-Content-SHA256 $http_x_content_sha256;" in nginx
@@ -478,28 +563,51 @@ def test_groundwater_compiles_native_png_model_and_expected_parallelism() -> Non
     assert set(models) == {
         "groundwater.monitoring-trend",
         "groundwater.flow-field",
+        "groundwater.drastic",
+        "groundwater.kriging",
         "groundwater.transfer-learning-analysis",
         "groundwater.summary",
         "groundwater.monitoring-coverage",
         "groundwater.render-map",
+        "groundwater.rule-classification",
         "groundwater.source-sustainability",
     }
     summary = models["groundwater.summary"]
-    assert summary["version"] == "3.0.0"
+    assert summary["version"] == "3.1.0"
     assert summary["workflowRef"]["workflowId"] == "groundwater.summary"
-    assert summary["workflowRef"]["version"] == "1.0.0"
+    assert summary["workflowRef"]["version"] == "1.1.0"
+    assert summary["defaultParameters"] == {"axis": "columns", "unit": ""}
+    assert summary["finalOutputs"] == ["summary", "summary-details"]
     assert models["groundwater.monitoring-trend"]["maxParallelNodes"] == 4
-    assert len(models["groundwater.monitoring-trend"]["workflow"]["nodes"]) == 6
+    assert len(models["groundwater.monitoring-trend"]["workflow"]["nodes"]) == 10
     assert models["groundwater.flow-field"]["maxParallelNodes"] == 1
+    transfer = models["groundwater.transfer-learning-analysis"]
+    assert transfer["version"] == "3.1.0"
+    assert transfer["workflowRef"]["version"] == "1.0.0"
+    assert len(transfer["workflow"]["nodes"]) == 58
+    assert len(transfer["finalOutputs"]) == 25
     assert (
-        len(models["groundwater.transfer-learning-analysis"]["workflow"]["nodes"]) == 58
+        "single-step"
+        in transfer["outputPublications"]["predictions"]["semantics"]["description"]
     )
-    assert len(models["groundwater.transfer-learning-analysis"]["finalOutputs"]) == 25
+    assert (
+        "r2_reason"
+        in transfer["outputPublications"]["metrics"]["semantics"]["description"]
+    )
     render = models["groundwater.render-map"]
+    assert render["version"] == "3.1.0"
+    assert render["workflowRef"]["version"] == "1.1.0"
     assert render["tool"]["name"] == "render_map"
     assert render["inputBindings"] == {"data": "sourceVersionId"}
-    assert render["defaultParameters"] == {"title": "", "valueField": ""}
-    assert render["finalOutputs"] == ["map-image"]
+    assert render["defaultParameters"] == {
+        "title": "",
+        "valueField": "",
+        "palette": "viridis",
+        "width": 1024,
+        "height": 768,
+        "unit": "",
+    }
+    assert render["finalOutputs"] == ["map-image", "map-summary"]
     assert len(render["workflow"]["nodes"]) == 1
     node = render["workflow"]["nodes"][0]
     assert (node["operatorId"], node["operatorVersion"], node["runtime"]) == (
@@ -507,6 +615,20 @@ def test_groundwater_compiles_native_png_model_and_expected_parallelism() -> Non
         "1.0.0",
         "native",
     )
+    sustainability = models["groundwater.source-sustainability"]
+    assert sustainability["version"] == "1.1.0"
+    assert sustainability["workflowRef"]["version"] == "1.0.0"
+    assert sustainability["finalOutputs"] == [
+        "sustainability-result",
+        "sustainability-result-file",
+        "sustainability-run-receipt",
+    ]
+    remote_node = sustainability["workflow"]["nodes"][0]
+    assert remote_node["runtime"] == "remote_http"
+    assert remote_node["remoteBinding"] == {
+        "serviceId": "groundwater-sustainability",
+        "operationType": "sustainability.evaluate",
+    }
     assert all(
         "mapFactoryAction" not in model and "outputPolicy" not in model
         for model in models.values()
@@ -547,13 +669,11 @@ def test_groundwater_compiles_native_png_model_and_expected_parallelism() -> Non
         if name not in {"data-migrate", "knowledge-next-migrate", "knowledge-bootstrap"}
     )
     assert compose["services"]["knowledge-bootstrap"]["restart"] == "no"
-    assert compose["services"]["knowledge-bootstrap"]["profiles"] == [
-        "bootstrap"
-    ]
+    assert compose["services"]["knowledge-bootstrap"]["profiles"] == ["bootstrap"]
     assert lock["domainPackage"]["version"] == "6.0.0"
     assert lock["knowledgeBootstrap"]["projects"] == ["groundwater-demo"]
-    assert lock["knowledgeBootstrap"]["documentCount"] == 99
-    assert lock["knowledgeBootstrap"]["chunkCount"] == 291
+    assert lock["knowledgeBootstrap"]["documentCount"] == 103
+    assert lock["knowledgeBootstrap"]["chunkCount"] == 303
     assert len(lock["knowledgeBootstrap"]["files"]) == 7
     bootstrap = compose["services"]["knowledge-bootstrap"]
     assert bootstrap["command"][-2:] == ["--project", "groundwater-demo"]
@@ -589,9 +709,7 @@ def test_groundwater_compiles_native_png_model_and_expected_parallelism() -> Non
         "executor-qgis-worker",
     }
     assert all(
-        compose["services"][name]["environment"][
-            "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"
-        ]
+        compose["services"][name]["environment"]["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"]
         == "${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:-}"
         for name in traced_services
     )
@@ -601,9 +719,9 @@ def test_groundwater_compiles_native_png_model_and_expected_parallelism() -> Non
         "${DATA_QUALITY_WEBHOOK_URL:-}"
     )
     assert data_environment["MLFLOW_ADAPTER_URL"] == "${MLFLOW_ADAPTER_URL:-}"
-    assert "knowledge-bootstrap" not in compose["services"][
-        "kernel-service"
-    ].get("depends_on", {})
+    assert "knowledge-bootstrap" not in compose["services"]["kernel-service"].get(
+        "depends_on", {}
+    )
 
 
 def test_compilation_is_deterministic() -> None:

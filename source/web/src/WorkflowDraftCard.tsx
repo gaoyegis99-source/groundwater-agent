@@ -2,6 +2,7 @@ import type { KnowledgeReference, WorkflowDraft } from './types';
 import { ArgumentValue, argumentLabel, outputName } from './card-presentation';
 import { ErrorNotice } from './ErrorNotice';
 import { Icon } from './Icon';
+import { WorkflowDraftGraph } from './WorkflowDraftGraph';
 
 const sourceNames = { USER: '用户说明', DATA: '数据', KNOWLEDGE: '知识', OPERATOR_DEFAULT: '算子默认值' };
 
@@ -22,6 +23,7 @@ export function WorkflowDraftCard({ draft, onKnowledge, onResource }: {
         {payload.missingInputs.length > 0 && <ul>{payload.missingInputs.map(input => <li key={`${input.kind}:${input.name}`}><strong>{input.kind === 'DATA' ? '缺少数据' : '缺少参数'}：{argumentLabel(input.name)}</strong><p className="muted">用于 {input.requiredBy.map(item => nodeName(item.nodeId)).join('、')}</p></li>)}</ul>}
         {payload.unresolvedItems.length > 0 && <ul>{payload.unresolvedItems.map((item, index) => <li key={index}>{item}</li>)}</ul>}
       </section>}
+      <h4>依赖关系图</h4><WorkflowDraftGraph draftId={draft.draftId} payload={payload} />
       <h4>分析步骤</h4>
       <ol className="draft-nodes" data-testid="draft-nodes">{payload.workflow.nodes.map((node, index) => {
         const operator = payload.operators.find(item => item.nodeId === node.nodeId)!;

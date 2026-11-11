@@ -7,6 +7,10 @@
     "FIELD_REQUIRED",
     "UNSUPPORTED_DIMENSION",
     "INVALID_GEOMETRY",
+    "POINT_GEOMETRY_REQUIRED",
+    "INSUFFICIENT_UNIQUE_POINTS",
+    "COLLINEAR_POINTS",
+    "CRS_UNSUPPORTED",
     "BLOCKED_BY_ENVIRONMENT"
   ],
   "examples": [
@@ -58,6 +62,93 @@
         "application/geopackage+sqlite3"
       ],
       "name": "vector"
+    },
+    {
+      "kind": "value",
+      "name": "summary",
+      "schema": {
+        "properties": {
+          "inputFeatureCount": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "inputPointCount": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "uniquePointCount": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "duplicatePointCount": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "hullGeometryType": {
+            "const": "Polygon",
+            "type": "string"
+          },
+          "crs": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "crsKind": {
+            "enum": [
+              "GEOGRAPHIC",
+              "PROJECTED"
+            ],
+            "type": "string"
+          },
+          "measurementMethod": {
+            "enum": [
+              "GEODESIC_ELLIPSOID",
+              "PLANAR_PROJECTED_TO_METRES"
+            ],
+            "type": "string"
+          },
+          "areaSquareMeters": {
+            "exclusiveMinimum": 0,
+            "type": "number"
+          },
+          "perimeterMeters": {
+            "exclusiveMinimum": 0,
+            "type": "number"
+          },
+          "areaUnit": {
+            "const": "m2",
+            "type": "string"
+          },
+          "perimeterUnit": {
+            "const": "m",
+            "type": "string"
+          },
+          "resultKind": {
+            "enum": [
+              "DISSOLVED_VECTOR",
+              "GEOMETRIC_CONVEX_HULL"
+            ],
+            "type": "string"
+          },
+          "interpretation": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "limitations": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "resultKind",
+          "interpretation",
+          "limitations"
+        ],
+        "type": "object"
+      }
     }
   ],
   "parametersSchema": {
@@ -70,6 +161,10 @@
       "layer": {
         "minLength": 1,
         "type": "string"
+      },
+      "pointCoverageMode": {
+        "default": false,
+        "type": "boolean"
       },
       "separateDisjoint": {
         "default": false,

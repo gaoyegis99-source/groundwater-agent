@@ -116,7 +116,7 @@ def test_deepseek_schema_wire_keeps_high_thinking_and_strict_types(
     asyncio.run(exercise())
 
 
-def test_empty_final_stops_after_one_request_and_keeps_usage(
+def test_repeated_empty_final_stops_after_one_protocol_repair_and_counts_usage(
     kernel_settings, monkeypatch
 ):
     requests = []
@@ -173,8 +173,12 @@ def test_empty_final_stops_after_one_request_and_keeps_usage(
                         on_admitted=on_admitted,
                     )
                 assert failure.value.code == "AGENT_MODEL_OUTPUT_INVALID"
-                assert failure.value.usage.total_tokens == 15
-                assert len(requests) == 1
+                assert (
+                    failure.value.usage.input_tokens,
+                    failure.value.usage.output_tokens,
+                    failure.value.usage.total_tokens,
+                ) == (20, 10, 30)
+                assert len(requests) == 2
             finally:
                 await application.close()
                 await configured.close()

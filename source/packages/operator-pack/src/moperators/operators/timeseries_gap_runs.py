@@ -52,7 +52,23 @@ def run(inputs: dict[str, Any], parameters: dict[str, Any], output_dir: Path) ->
     return {
         "gaps": write_rows(result, output_dir / "gap-runs.parquet"),
         "summary": summary(
-            {"groupCount": len(groups), "gapRunCount": len(result), "longestGapPeriods": longest}
+            {
+                "groupCount": len(groups),
+                "gapRunCount": len(result),
+                "missingPeriodCount": sum(item["missing_period_count"] for item in result),
+                "longestGapPeriods": longest,
+                "frequency": frequency,
+                "expectedStart": parameters["expectedStart"],
+                "expectedEnd": parameters["expectedEnd"],
+                "interpretation": (
+                    "Each row is one contiguous run of expected calendar periods "
+                    "without a non-null value."
+                ),
+                "limitations": [
+                    "Gap-run length describes continuity of missing periods, not overall "
+                    "completeness; use the completeness output for ratios."
+                ],
+            }
         ),
     }
 

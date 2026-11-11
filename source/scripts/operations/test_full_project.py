@@ -48,6 +48,9 @@ from scripts.maintenance.dependency_materializer import (  # noqa: E402
     root as dependency_material_root,
 )
 from scripts.maintenance.xdg_layout import resolve_lifecycle_paths  # noqa: E402
+from scripts.operations.render_full_project_report import (  # noqa: E402
+    write_markdown_report,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_OUTPUT = validation_state_root(ROOT) / "current/full-project-test-report.json"
@@ -543,8 +546,7 @@ class Runner:
             )
             if (
                 result.returncode == 0
-                and self._stage.name
-                in {"python_contracts", "native_operator_suite"}
+                and self._stage.name in {"python_contracts", "native_operator_suite"}
                 and test_summary.get("skipped", 0) > 0
             ):
                 raise RuntimeError(
@@ -712,13 +714,44 @@ def _wheel_projects() -> dict[str, Path]:
     }
 
 
+def _prepare_wheel_build_input(project: Path, destination: Path) -> Path:
+    """Copy one project without generated state before invoking its backend.
+
+    Setuptools can reuse an existing ``build/lib`` tree and silently place
+    deleted modules or package data in a new wheel. The full-project release
+    gate must assess current source without deleting a developer's local build
+    artifacts, so every wheel is built from an isolated clean snapshot.
+    """
+
+    ignored = shutil.ignore_patterns(
+        ".git",
+        ".mypy_cache",
+        ".pytest_cache",
+        ".ruff_cache",
+        ".tox",
+        ".venv",
+        "*.egg-info",
+        "*.pyc",
+        "*.pyo",
+        "__pycache__",
+        "build",
+        "dist",
+        "node_modules",
+    )
+    shutil.copytree(project, destination, symlinks=True, ignore=ignored)
+    return destination
+
+
 def _build_and_check_wheels(runner: Runner) -> None:
     with tempfile.TemporaryDirectory(prefix="platform-full-wheels-") as temporary:
         wheel_dir = Path(temporary)
+        source_dir = wheel_dir / "source"
+        source_dir.mkdir()
         wheel_paths: dict[str, Path] = {}
         for option, project in _wheel_projects().items():
+            build_input = _prepare_wheel_build_input(project, source_dir / option)
             before = set(wheel_dir.glob("*.whl"))
-            runner.command(_offline_wheel_build_command(project, wheel_dir))
+            runner.command(_offline_wheel_build_command(build_input, wheel_dir))
             candidates = sorted(set(wheel_dir.glob("*.whl")) - before)
             if not candidates:
                 raise RuntimeError(f"WHEEL_NOT_BUILT:{option}")
@@ -1185,6 +1218,25 @@ def main() -> int:
                 "failureHandling": "stable_error_request_identity_log_phase_minimal_reproduction",
             },
         )
+        try:
+            markdown_output = write_markdown_report(output)
+        except (OSError, ValueError) as error:
+            stage_status = "FAIL"
+            extra["markdownReport"] = {
+                "status": "FAIL",
+                "error": f"{type(error).__name__}:{error}",
+            }
+            runner.write_report(
+                status=stage_status,
+                baseline=baseline,
+                extra={
+                    **extra,
+                    "reportPolicy": "single_canonical_report",
+                    "failureHandling": "stable_error_request_identity_log_phase_minimal_reproduction",
+                },
+            )
+        else:
+            print(f"Full project Markdown report: {markdown_output}", flush=True)
     print(f"Full project report: {output}", flush=True)
     return 0 if stage_status == "PASS" else 1
 

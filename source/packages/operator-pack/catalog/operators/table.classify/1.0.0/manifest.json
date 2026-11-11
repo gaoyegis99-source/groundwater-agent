@@ -1,0 +1,96 @@
+{
+  "description": "Classify complete table rows with separate versioned rule and field-binding artifacts that preserve indicator, unit, measurement basis, source and verification status. Rules support explicit open, closed and multi-interval bounds; unverified rules, missing values, non-numeric values, gaps and out-of-range values remain not evaluated rather than being approximated.",
+  "domain": "table",
+  "errorCodes": [
+    "BASIS_MISMATCH",
+    "FIELD_REQUIRED",
+    "FORMAT_UNSUPPORTED",
+    "HEADER_INVALID",
+    "INDICATOR_BINDING_MISMATCH",
+    "INPUT_METADATA_INVALID",
+    "OUTPUT_FIELD_CONFLICT",
+    "OUTPUT_ROW_LIMIT_EXCEEDED",
+    "OUTPUT_VALIDATION_FAILED",
+    "PARAMETER_INVALID",
+    "RULESET_INVALID",
+    "UNIT_MISMATCH"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-table-classify",
+      "inputs": {
+        "data": {"artifactId": "art_measurements_01"},
+        "rules": {"artifactId": "art_verified_rules_01"},
+        "bindings": {"artifactId": "art_indicator_bindings_01"}
+      },
+      "mode": "ASYNC",
+      "operator": {"id": "table.classify", "version": "1.0.0"},
+      "parameters": {},
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "table.classify",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": ["csv", "parquet", "arrow-ipc-file"],
+      "mediaTypes": [
+        "text/csv",
+        "application/vnd.apache.parquet",
+        "application/vnd.apache.arrow.file"
+      ],
+      "name": "data",
+      "required": true
+    },
+    {
+      "cardinality": "one",
+      "formats": ["json"],
+      "mediaTypes": ["application/json"],
+      "name": "rules",
+      "required": true
+    },
+    {
+      "cardinality": "one",
+      "formats": ["json"],
+      "mediaTypes": ["application/json"],
+      "name": "bindings",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": ["parquet"],
+      "kind": "artifact",
+      "mediaTypes": ["application/vnd.apache.parquet"],
+      "name": "classified"
+    },
+    {
+      "formats": ["parquet"],
+      "kind": "artifact",
+      "mediaTypes": ["application/vnd.apache.parquet"],
+      "name": "indicatorClassifications"
+    },
+    {
+      "formats": ["parquet"],
+      "kind": "artifact",
+      "mediaTypes": ["application/vnd.apache.parquet"],
+      "name": "ruleSummary"
+    },
+    {
+      "kind": "value",
+      "name": "summary",
+      "schema": {"type": "object"}
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {},
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": ["table", "classification", "rules", "provenance"],
+  "timeoutSeconds": 1200,
+  "title": "Classify table rows with verified rules",
+  "version": "1.0.0"
+}

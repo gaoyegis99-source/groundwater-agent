@@ -100,17 +100,29 @@ class EvidenceService:
         )
         dense = []
         if vector is not None:
+            dense_query = f"""SELECT version_id,unit_id,document_id,ordinal,
+                embedding <=> %s::vector AS distance FROM search_entries WHERE {where}
+                ORDER BY embedding <=> %s::vector LIMIT 40"""
+            dense_parameters = (vector_text(vector), *params, vector_text(vector))
             if self.db.settings.vector_search == "exact":
                 c.execute("SET LOCAL enable_indexscan=off")
             else:
                 c.execute("SET LOCAL hnsw.ef_search=100")
                 c.execute("SET LOCAL hnsw.iterative_scan='strict_order'")
-            dense = c.execute(
-                f"""SELECT version_id,unit_id,document_id,ordinal,
-                embedding <=> %s::vector AS distance FROM search_entries WHERE {where}
-                ORDER BY embedding <=> %s::vector LIMIT 40""",
-                (vector_text(vector), *params, vector_text(vector)),
-            ).fetchall()
+            dense = c.execute(dense_query, dense_parameters).fetchall()
+            if self.db.settings.vector_search == "hnsw" and len(dense) < 40:
+                available = c.execute(
+                    f"SELECT LEAST(count(*),40)::integer AS count "
+                    f"FROM search_entries WHERE {where}",
+                    params,
+                ).fetchone()["count"]
+                if len(dense) < available:
+                    # HNSW is approximate and can under-return after heavy
+                    # filtered churn even with iterative scans.  Preserve the
+                    # retrieval contract only when the live cohort proves that
+                    # candidates were missed; small cohorts stay on HNSW.
+                    c.execute("SET LOCAL enable_indexscan=off")
+                    dense = c.execute(dense_query, dense_parameters).fetchall()
             c.execute("SET LOCAL enable_indexscan=on")
         return dense, lexical
 

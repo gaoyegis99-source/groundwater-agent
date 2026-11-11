@@ -109,6 +109,63 @@
       "kind": "value",
       "name": "summary",
       "schema": {
+        "properties": {
+          "darcyFluxFormula": {
+            "type": "string"
+          },
+          "darcyFluxUnit": {
+            "const": "m/day",
+            "type": "string"
+          },
+          "directionConvention": {
+            "type": "string"
+          },
+          "directionUnit": {
+            "const": "degree",
+            "type": "string"
+          },
+          "effectivePorosity": {
+            "exclusiveMinimum": 0,
+            "maximum": 1,
+            "type": "number"
+          },
+          "horizontalCrs": {
+            "type": "string"
+          },
+          "hydraulicConductivityMetersPerDay": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "interpretation": {
+            "type": "string"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "resultKind": {
+            "const": "MODEL_DERIVED_NOT_OBSERVED",
+            "type": "string"
+          },
+          "seepageVelocityFormula": {
+            "type": "string"
+          },
+          "seepageVelocityUnit": {
+            "const": "m/day",
+            "type": "string"
+          },
+          "validCellCount": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "velocityUnit": {
+            "const": "m/day",
+            "type": "string"
+          }
+        },
         "type": "object"
       }
     }

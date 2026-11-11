@@ -26,8 +26,9 @@ it('shows the conclusion first and keeps deduplicated details and sources in one
   expect(screen.queryByText(checksum)).not.toBeInTheDocument();
   fireEvent.click(screen.getByText('更多信息'));
   expect(screen.getByText('可展开的详细依据。')).toBeVisible();
-  expect(screen.getAllByRole('button', { name: '打开依据：方法说明，单元 unit-2' })).toHaveLength(1);
-  fireEvent.click(screen.getByRole('button', { name: '打开依据：方法说明，单元 unit-2' }));
+  expect(screen.getAllByRole('button', { name: '打开依据：方法说明' })).toHaveLength(1);
+  expect(screen.getByRole('button', { name: '打开依据：方法说明' })).not.toHaveTextContent('unit-2');
+  fireEvent.click(screen.getByRole('button', { name: '打开依据：方法说明' }));
   expect(read).toHaveBeenCalledExactlyOnceWith({ versionId: source.versionId, unitId: source.unitId, checksum });
   expect(screen.queryByText('原始回复与引用标识')).not.toBeInTheDocument();
 });
@@ -35,7 +36,8 @@ it('shows the conclusion first and keeps deduplicated details and sources in one
 it('separates adjacent evidence labels in copied text', () => {
   render(<AssistantContent reply={reply({ sources: [source, { ...source, unitId: 'unit-3' }] })} onKnowledge={vi.fn()} onResource={vi.fn()} />);
   fireEvent.click(screen.getByText('更多信息'));
-  expect(screen.getByRole('region', { name: '回答依据' })).toHaveTextContent('方法说明 · unit-2；方法说明 · unit-3');
+  expect(screen.getByRole('region', { name: '回答依据' })).toHaveTextContent('方法说明；方法说明');
+  expect(screen.getByRole('region', { name: '回答依据' })).not.toHaveTextContent('unit-2');
 });
 
 it('keeps execution summaries and unresolved questions visible without a conclusion', () => {
@@ -87,10 +89,10 @@ it('retains a source DOM target across parent updates so drawers can restore foc
   const onKnowledge = vi.fn(), onResource = vi.fn();
   const view = render(<AssistantContent reply={value} onKnowledge={onKnowledge} onResource={onResource} />);
   fireEvent.click(screen.getByText('更多信息'));
-  const link = screen.getByRole('button', { name: '打开依据：方法说明，单元 unit-2' });
+  const link = screen.getByRole('button', { name: '打开依据：方法说明' });
   link.focus();
   view.rerender(<AssistantContent reply={value} onKnowledge={onKnowledge} onResource={onResource} />);
-  expect(screen.getByRole('button', { name: '打开依据：方法说明，单元 unit-2' })).toBe(link);
+  expect(screen.getByRole('button', { name: '打开依据：方法说明' })).toBe(link);
   expect(link).toHaveFocus();
 });
 

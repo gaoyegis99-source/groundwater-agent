@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "operator-smoke-test.v1",
+  "operator": {
+    "id": "points.interpolate.kriging",
+    "version": "1.0.0"
+  },
+  "inputs": {
+    "points": {
+      "fixtureId": "table"
+    }
+  },
+  "parameters": {
+    "valueField": "value",
+    "xField": "x",
+    "yField": "y",
+    "sourceCrs": "EPSG:3857",
+    "targetCrs": "EPSG:3857",
+    "pixelSize": 50.0,
+    "extentMinX": 0.0,
+    "extentMinY": 0.0,
+    "extentMaxX": 100.0,
+    "extentMaxY": 100.0,
+    "krigingType": "ordinary",
+    "variogramModel": "spherical",
+    "neighborCount": 4,
+    "minimumNeighbors": 3,
+    "exact": true,
+    "valueUnit": "m"
+  },
+  "expectedOutputs": {
+    "prediction": {
+      "kind": "artifact",
+      "mediaType": "image/tiff",
+      "format": "geotiff"
+    },
+    "variance": {
+      "kind": "artifact",
+      "mediaType": "image/tiff",
+      "format": "geotiff"
+    },
+    "variogramDiagnostics": {
+      "kind": "value"
+    },
+    "loo": {
+      "kind": "artifact",
+      "mediaType": "text/csv",
+      "format": "csv"
+    },
+    "summary": {
+      "kind": "value"
+    }
+  }
+}

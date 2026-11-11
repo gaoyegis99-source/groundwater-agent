@@ -1,10 +1,12 @@
 {
-  "description": "Render GeoJSON features or the first GeoTIFF/COG raster band to a 1024 x 768 PNG with coordinate axes and a legend. No reprojection or network access.",
+  "description": "Render one GeoJSON source or the first GeoTIFF/COG raster band to a configurable static PNG with source-CRS axes, source extent, colorbar, explicit unit and nodata styling. No reprojection or network access.",
   "domain": "cartography",
   "errorCodes": [
     "CARTOGRAPHY_SOURCE_INVALID",
     "CARTOGRAPHY_FIELD_INVALID",
     "CARTOGRAPHY_FORMAT_UNSUPPORTED",
+    "CARTOGRAPHY_FORMAT_MISMATCH",
+    "CARTOGRAPHY_PARAMETER_INVALID",
     "CRS_REQUIRED",
     "ROTATED_GRID_UNSUPPORTED"
   ],
@@ -22,8 +24,12 @@
         "version": "1.0.0"
       },
       "parameters": {
+        "height": 768,
+        "palette": "viridis",
         "title": "Monitoring values",
-        "valueField": "value"
+        "unit": "m",
+        "valueField": "value",
+        "width": 1024
       },
       "schemaVersion": "operator-execution-request.v1"
     }
@@ -56,15 +62,120 @@
         "image/png"
       ],
       "name": "image"
+    },
+    {
+      "kind": "value",
+      "name": "summary",
+      "schema": {
+        "additionalProperties": false,
+        "properties": {
+          "sourceKind": {
+            "enum": [
+              "vector",
+              "raster"
+            ],
+            "type": "string"
+          },
+          "sourceFormat": {
+            "enum": [
+              "geojson",
+              "geotiff",
+              "cog"
+            ],
+            "type": "string"
+          },
+          "crs": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "extent": {
+            "additionalProperties": false,
+            "properties": {
+              "minX": {"type": "number"},
+              "minY": {"type": "number"},
+              "maxX": {"type": "number"},
+              "maxY": {"type": "number"}
+            },
+            "required": ["minX", "minY", "maxX", "maxY"],
+            "type": "object"
+          },
+          "image": {
+            "additionalProperties": false,
+            "properties": {
+              "width": {"maximum": 4096, "minimum": 640, "type": "integer"},
+              "height": {"maximum": 4096, "minimum": 480, "type": "integer"}
+            },
+            "required": ["width", "height"],
+            "type": "object"
+          },
+          "style": {
+            "type": "object"
+          },
+          "data": {
+            "type": "object"
+          },
+          "interpretation": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "limitations": {
+            "items": {"minLength": 1, "type": "string"},
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "sourceKind",
+          "sourceFormat",
+          "crs",
+          "extent",
+          "image",
+          "style",
+          "data",
+          "interpretation",
+          "limitations"
+        ],
+        "type": "object"
+      }
     }
   ],
   "parametersSchema": {
     "additionalProperties": false,
     "properties": {
       "title": {
+        "default": "",
         "type": "string"
       },
       "valueField": {
+        "default": "",
+        "type": "string"
+      },
+      "palette": {
+        "default": "viridis",
+        "enum": [
+          "viridis",
+          "cividis",
+          "plasma",
+          "magma",
+          "Blues",
+          "RdBu_r"
+        ],
+        "type": "string"
+      },
+      "width": {
+        "default": 1024,
+        "maximum": 4096,
+        "minimum": 640,
+        "type": "integer"
+      },
+      "height": {
+        "default": 768,
+        "maximum": 4096,
+        "minimum": 480,
+        "type": "integer"
+      },
+      "unit": {
+        "default": "",
         "type": "string"
       }
     },

@@ -1,8 +1,18 @@
 {
-  "description": "Descriptive statistics operator.",
+  "description": "Full staged-input descriptive statistics with explicit null, non-finite, grouping, unit, and scope metadata.",
   "domain": "statistics",
   "errorCodes": [
+    "BLOCKED_BY_ENVIRONMENT",
     "COLUMN_REQUIRED",
+    "COLUMN_UNSUPPORTED",
+    "FORMAT_UNSUPPORTED",
+    "GROUP_COLUMN_REQUIRED",
+    "GROUP_FIELD_UNSUPPORTED",
+    "GROUP_LIMIT_EXCEEDED",
+    "GROUP_VALUE_INVALID",
+    "INPUT_INVALID",
+    "INPUT_METADATA_INVALID",
+    "NO_FINITE_VALUES",
     "NON_NUMERIC_VALUE",
     "OUTPUT_VALIDATION_FAILED"
   ],
@@ -54,6 +64,191 @@
       "schema": {
         "type": "object"
       }
+    },
+    {
+      "kind": "value",
+      "name": "details",
+      "schema": {
+        "additionalProperties": false,
+        "properties": {
+          "conventions": {
+            "additionalProperties": false,
+            "properties": {
+              "declaredNulls": {
+                "const": "excluded-and-counted"
+              },
+              "nonFiniteValues": {
+                "const": "excluded-and-counted"
+              },
+              "quantiles": {
+                "const": "linear-interpolation"
+              },
+              "stddev": {
+                "const": "population-ddof-0"
+              }
+            },
+            "required": [
+              "declaredNulls",
+              "nonFiniteValues",
+              "stddev",
+              "quantiles"
+            ],
+            "type": "object"
+          },
+          "interpretation": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "limitations": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "schemaVersion": {
+            "const": "statistics-describe-details.v1"
+          },
+          "scope": {
+            "additionalProperties": false,
+            "properties": {
+              "basis": {
+                "const": "FULL_STAGED_INPUT"
+              },
+              "inputFormat": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "sourceCount": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "sourceCountKind": {
+                "enum": [
+                  "elements",
+                  "rows"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "basis",
+              "inputFormat",
+              "sourceCount",
+              "sourceCountKind"
+            ],
+            "type": "object"
+          },
+          "selection": {
+            "additionalProperties": false,
+            "properties": {
+              "axis": {
+                "enum": [
+                  "columns",
+                  "flatten"
+                ],
+                "type": "string"
+              },
+              "column": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "groupField": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "unit": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "axis",
+              "column",
+              "groupField",
+              "unit"
+            ],
+            "type": "object"
+          },
+          "series": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "field": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "enum": [
+                        "array-column",
+                        "array-values",
+                        "table-column"
+                      ],
+                      "type": "string"
+                    },
+                    "name": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "name"
+                  ],
+                  "type": "object"
+                },
+                "groups": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "key": {
+                        "type": "object"
+                      },
+                      "statistics": {
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "key",
+                      "statistics"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 100,
+                  "type": "array"
+                },
+                "statistics": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "field",
+                "statistics",
+                "groups"
+              ],
+              "type": "object"
+            },
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "scope",
+          "selection",
+          "series",
+          "conventions",
+          "interpretation",
+          "limitations"
+        ],
+        "type": "object"
+      }
     }
   ],
   "parametersSchema": {
@@ -68,6 +263,16 @@
         "type": "string"
       },
       "column": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "groupField": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "unit": {
+        "default": "",
+        "maxLength": 64,
         "type": "string"
       }
     },

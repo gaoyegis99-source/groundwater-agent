@@ -17,7 +17,9 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from scripts.maintenance import (  # noqa: E402
+    bootstrap_toolchain,
     config_runtime,
+    dependency_materializer,
     instance_runtime,
     lifecycle_cleanup,
     migration_runtime,
@@ -98,7 +100,9 @@ def doctor() -> dict[str, Any]:
     }
 
 
-def _apply_or_plan(plan: dict[str, Any], confirmation: str | None, apply) -> dict[str, Any]:
+def _apply_or_plan(
+    plan: dict[str, Any], confirmation: str | None, apply
+) -> dict[str, Any]:
     if confirmation is None:
         return {"status": "PLAN", **plan}
     return apply(plan, confirmation)
@@ -190,7 +194,11 @@ def _archive(args: argparse.Namespace) -> dict[str, Any]:
             Path(args.archive).absolute(), "research-archive.v1"
         )
     return research_artifacts.create_archive(
-        lifecycle(), SOURCE_ROOT, args.instance, args.run, args.level,
+        lifecycle(),
+        SOURCE_ROOT,
+        args.instance,
+        args.run,
+        args.level,
         Path(args.assessment).absolute() if args.assessment else None,
     )
 
@@ -198,7 +206,9 @@ def _archive(args: argparse.Namespace) -> dict[str, Any]:
 def _migrate(args: argparse.Namespace) -> dict[str, Any]:
     if args.migrate_action == "plan":
         return migration_runtime.create_plan(
-            lifecycle(), args.instance, Path(args.identity_map).absolute(),
+            lifecycle(),
+            args.instance,
+            Path(args.identity_map).absolute(),
             docker=PROJECT_ROOT / "bin/docker",
         )
     return migration_runtime.apply_plan(
@@ -211,9 +221,25 @@ def _migrate(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def _exec_python(script: Path, arguments: list[str]) -> None:
-    python = sys.executable
+    current = bootstrap_toolchain.status(SOURCE_ROOT, lifecycle())
+    if current["status"] != "PASS":
+        raise EnvironmentRefusal("PROJECT_TOOLCHAIN_NOT_READY")
     environment = child_environment()
+    python = environment["V6_PYTHON"]
+    if python != current["python"]:
+        raise EnvironmentRefusal("PROJECT_TOOLCHAIN_NOT_READY")
     os.execve(python, [python, "-B", str(script), *arguments], environment)
+
+
+def _deps(args: argparse.Namespace) -> dict[str, Any]:
+    resolved = lifecycle()
+    if args.deps_action == "status":
+        return dependency_materializer.status(SOURCE_ROOT, resolved)
+    if args.deps_action == "materialize":
+        return dependency_materializer.materialize(
+            SOURCE_ROOT, resolved, set(args.scope)
+        )
+    return dependency_materializer.verify_scope(SOURCE_ROOT, resolved, args.scope)
 
 
 def _parse(argv: list[str]) -> argparse.Namespace:
@@ -222,6 +248,24 @@ def _parse(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog="gw", description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("doctor")
+    bootstrap = commands.add_parser("bootstrap")
+    bootstrap_modes = bootstrap.add_mutually_exclusive_group(required=True)
+    bootstrap_modes.add_argument("--status", action="store_true")
+    bootstrap_modes.add_argument("--sync", action="store_true")
+    deps = commands.add_parser("deps")
+    deps_commands = deps.add_subparsers(dest="deps_action", required=True)
+    deps_commands.add_parser("status")
+    materialize = deps_commands.add_parser("materialize")
+    materialize.add_argument(
+        "--scope",
+        action="append",
+        choices=sorted(dependency_materializer.SCOPES),
+        required=True,
+    )
+    verify = deps_commands.add_parser("verify")
+    verify.add_argument(
+        "--scope", choices=sorted(dependency_materializer.SCOPES), required=True
+    )
     dev = commands.add_parser("dev")
     dev.add_argument("arguments", nargs=argparse.REMAINDER)
     instance = commands.add_parser("instance")
@@ -245,9 +289,7 @@ def _parse(argv: list[str]) -> argparse.Namespace:
     config = commands.add_parser("config")
     config_commands = config.add_subparsers(dest="config_action", required=True)
     config_status = config_commands.add_parser("status")
-    config_status.add_argument(
-        "--profile", choices=("research",), default="research"
-    )
+    config_status.add_argument("--profile", choices=("research",), default="research")
     migrate_env = config_commands.add_parser("migrate-env")
     migrate_env.add_argument("--confirm")
 
@@ -267,7 +309,9 @@ def _parse(argv: list[str]) -> argparse.Namespace:
     archive_create = archive_commands.add_parser("create")
     archive_create.add_argument("--instance", required=True)
     archive_create.add_argument("--run", required=True)
-    archive_create.add_argument("--level", choices=("experiment", "benchmark"), required=True)
+    archive_create.add_argument(
+        "--level", choices=("experiment", "benchmark"), required=True
+    )
     archive_create.add_argument("--assessment")
     archive_verify = archive_commands.add_parser("verify")
     archive_verify.add_argument("--archive", required=True)
@@ -298,6 +342,13 @@ def main(argv: list[str] | None = None) -> None:
     try:
         if args.command == "doctor":
             payload = doctor()
+        elif args.command == "bootstrap":
+            action = (
+                bootstrap_toolchain.sync if args.sync else bootstrap_toolchain.status
+            )
+            payload = action(SOURCE_ROOT, lifecycle())
+        elif args.command == "deps":
+            payload = _deps(args)
         elif args.command == "dev":
             _exec_python(SOURCE_ROOT / "scripts/development/dev.py", args.arguments)
             return
@@ -344,7 +395,9 @@ def main(argv: list[str] | None = None) -> None:
             else:
                 if re.fullmatch(r"[a-z][a-z0-9-]{0,62}", args.product) is None:
                     raise ValueError("PRODUCT_INVALID")
-                product = SOURCE_ROOT / "products" / args.product / "product-manifest.json"
+                product = (
+                    SOURCE_ROOT / "products" / args.product / "product-manifest.json"
+                )
                 document = json.loads(product.read_text())
                 project_id = document["projectId"]
                 database = (
@@ -355,9 +408,9 @@ def main(argv: list[str] | None = None) -> None:
                 )
             initialize_database(database)
             username = args.username or input("Research admin username: ").strip()
-            display_name = args.display_name or input(
-                "Research admin display name: "
-            ).strip()
+            display_name = (
+                args.display_name or input("Research admin display name: ").strip()
+            )
             password = getpass.getpass("Research admin password: ")
             confirmation = getpass.getpass("Confirm password: ")
             if password != confirmation:
@@ -373,9 +426,11 @@ def main(argv: list[str] | None = None) -> None:
         else:  # pragma: no cover - argparse owns the command set
             raise ValueError("COMMAND_INVALID")
     except (
+        bootstrap_toolchain.BootstrapRefusal,
         ContractRefusal,
         config_runtime.ConfigRefusal,
         DaemonRefusal,
+        dependency_materializer.DependencyRefusal,
         EnvironmentRefusal,
         instance_runtime.InstanceRefusal,
         lifecycle_cleanup.CleanupRefusal,

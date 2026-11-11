@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "operator-implementation-source-overrides.v1",
+  "operators": {
+    "groundwater.drastic.evaluate@1.0.0": [
+      "src/moperators/operators/drastic.py",
+      "src/moperators/operators/groundwater.py"
+    ],
+    "points.interpolate.kriging@1.0.0": [
+      "src/moperators/operators/kriging.py"
+    ],
+    "table.classify@1.0.0": [
+      "src/moperators/operators/table_classify.py"
+    ]
+  }
+}

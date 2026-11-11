@@ -49,12 +49,26 @@
       "sha256": "sha256:dfd4a24bb10e18270a3d06587150196aac3b8183deb38e7260570bce71107fde",
       "sizeBytes": 402
     },
+    "groundwater.drastic.config": {
+      "format": "json",
+      "mediaType": "application/json",
+      "path": "data/groundwater-drastic-config.json",
+      "sha256": "sha256:5e4a966b4e8c2501d6bbe94db9ee439b60fd8af95779132f4d7986a4656a065e",
+      "sizeBytes": 3812
+    },
     "groundwater.direction": {
       "format": "geotiff",
       "mediaType": "image/tiff",
       "path": "data/groundwater-direction.tif",
       "sha256": "sha256:f73dcdd2dd26355b0760a6009caa1afe7f34b29622e3fbe0dd0bbfe234fbfbe9",
       "sizeBytes": 482
+    },
+    "groundwater.flow-field": {
+      "format": "csv",
+      "mediaType": "text/csv",
+      "path": "data/groundwater-flow-field.csv",
+      "sha256": "sha256:e58868c5bee509d0917088f069743876083ab7b852d83ebaa88e808c4fbc9749",
+      "sizeBytes": 287
     },
     "groundwater.gradient": {
       "format": "geotiff",
@@ -272,6 +286,20 @@
       "path": "data/document-blocks.parquet",
       "sha256": "sha256:ce33dbd460ba1ba68c56f683ef848ba3df45fd63b1724cf9e4fe2c1788fb6899",
       "sizeBytes": 1101
+    },
+    "table.document.classification.bindings": {
+      "format": "json",
+      "mediaType": "application/json",
+      "path": "data/table-classification-bindings.json",
+      "sha256": "sha256:03e9108c72fa175cbcb9748ea31e717956eb6199d4b6d34276f7de7b589369e6",
+      "sizeBytes": 201
+    },
+    "table.document.classification.rules": {
+      "format": "json",
+      "mediaType": "application/json",
+      "path": "data/table-classification-rules.json",
+      "sha256": "sha256:f75633ff139f09fb0982a42ac448046e9c36f9eeea21227a150dc8b3bce11d5f",
+      "sizeBytes": 1185
     },
     "table.document.deduplicate.rules": {
       "format": "json",

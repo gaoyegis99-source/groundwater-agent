@@ -27,6 +27,8 @@ def _runner(
     handler,
     *,
     operation_type: str = "sustainability.evaluate",
+    allowed_service_versions: list[str] | None = None,
+    allowed_model_versions: list[str] | None = None,
 ) -> tuple[RemoteOperationRunner, list[dict]]:
     source = tmp_path / "assessment.json"
     source.write_text('{"source":"case-1"}', encoding="utf-8")
@@ -57,8 +59,9 @@ def _runner(
                 "connectTimeoutSeconds": 5,
                 "pollIntervalSeconds": 1,
                 "apiVersion": "remote-operation.v1",
-                "allowedServiceVersions": ["0.7.0"],
-                "allowedModelVersions": ["sustainability-evaluation.v1.1"],
+                "allowedServiceVersions": allowed_service_versions or ["0.7.0"],
+                "allowedModelVersions": allowed_model_versions
+                or ["sustainability-evaluation.v1.1"],
                 "allowedOperations": ["sustainability.evaluate"],
             }
         }
@@ -88,16 +91,12 @@ def _runner(
             {
                 "name": "result_file",
                 "kind": "artifact",
-                "formatPairs": [
-                    {"mediaType": "application/json", "format": "json"}
-                ],
+                "formatPairs": [{"mediaType": "application/json", "format": "json"}],
             },
             {
                 "name": "run_receipt",
                 "kind": "artifact",
-                "formatPairs": [
-                    {"mediaType": "application/json", "format": "json"}
-                ],
+                "formatPairs": [{"mediaType": "application/json", "format": "json"}],
             },
         ],
     }
@@ -126,7 +125,14 @@ def test_operation_must_be_enabled_by_deployment_binding(
         )
 
 
-def _successful_handler(result_bytes: bytes, *, advertised_digest: str | None = None):
+def _successful_handler(
+    result_bytes: bytes,
+    *,
+    advertised_digest: str | None = None,
+    remote_receipt_status: str = "succeeded",
+    result_service_version: str = SERVICE_VERSION["serviceVersion"],
+    result_model_version: str = SERVICE_VERSION["modelVersion"],
+):
     digest = advertised_digest or "sha256:" + hashlib.sha256(result_bytes).hexdigest()
     requests: list[httpx.Request] = []
     uploaded = bytearray()
@@ -150,8 +156,12 @@ def _successful_handler(result_bytes: bytes, *, advertised_digest: str | None = 
         ):
             return httpx.Response(404, json={"code": "NOT_FOUND"})
         if request.method == "POST" and path == "/api/v1/uploads":
-            return httpx.Response(201, json={"uploadId": "upload-1", "partSizeBytes": 4})
-        if request.method == "PUT" and path.startswith("/api/v1/uploads/upload-1/parts/"):
+            return httpx.Response(
+                201, json={"uploadId": "upload-1", "partSizeBytes": 4}
+            )
+        if request.method == "PUT" and path.startswith(
+            "/api/v1/uploads/upload-1/parts/"
+        ):
             uploaded.extend(request.content)
             expected = "sha256:" + hashlib.sha256(request.content).hexdigest()
             assert request.headers["X-Content-SHA256"] == expected
@@ -173,14 +183,16 @@ def _successful_handler(result_bytes: bytes, *, advertised_digest: str | None = 
             assert payload["operationType"] == "sustainability.evaluate"
             assert len(payload["clientRequestId"]) == 64
             assert payload["inputs"]["assessment_input"]["artifactId"] == "artifact-1"
-            return httpx.Response(202, json={"operationId": "operation-1", "status": "succeeded"})
+            return httpx.Response(
+                202, json={"operationId": "operation-1", "status": "succeeded"}
+            )
         if request.method == "GET" and path == "/api/v1/operations/operation-1/results":
             return httpx.Response(
                 200,
                 json={
                     "operationId": "operation-1",
-                    "serviceVersion": SERVICE_VERSION["serviceVersion"],
-                    "modelVersion": SERVICE_VERSION["modelVersion"],
+                    "serviceVersion": result_service_version,
+                    "modelVersion": result_model_version,
                     "artifacts": [
                         {
                             "port": "result_file",
@@ -199,7 +211,7 @@ def _successful_handler(result_bytes: bytes, *, advertised_digest: str | None = 
         if request.method == "GET" and path == "/api/v1/operations/operation-1/receipt":
             return httpx.Response(
                 200,
-                json={"remoteTaskId": "operation-1", "status": "succeeded"},
+                json={"remoteTaskId": "operation-1", "status": remote_receipt_status},
             )
         raise AssertionError(f"unexpected request: {request.method} {path}")
 
@@ -220,15 +232,93 @@ def test_remote_operation_uploads_once_verifies_results_and_writes_receipt(
         "result_file",
         "run_receipt",
     }
-    assert sum(
-        request.method == "POST" and request.url.path == "/api/v1/operations"
-        for request in requests
-    ) == 1
+    assert (
+        sum(
+            request.method == "POST" and request.url.path == "/api/v1/operations"
+            for request in requests
+        )
+        == 1
+    )
     receipt = json.loads((tmp_path / "workspace/outputs/run_receipt.json").read_text())
     assert receipt["remoteTaskId"] == "operation-1"
     assert receipt["remoteTerminationConfirmed"] is True
     assert "apiKey" not in receipt and "credential" not in receipt
     assert states[-1]["remoteStatus"] == "succeeded"
+
+
+def test_receipt_pins_operation_inputs_values_and_artifact_identity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source_bytes = b'{"source":"case-1"}'
+    result_bytes = b'{"result":"accepted"}'
+    values = {"sustainability_result": {"status": "ok"}}
+    handler, _ = _successful_handler(result_bytes)
+    runner, _ = _runner(tmp_path, monkeypatch, handler)
+
+    asyncio.run(runner.run())
+
+    receipt = json.loads((tmp_path / "workspace/outputs/run_receipt.json").read_text())
+    assert receipt["operationType"] == "sustainability.evaluate"
+    assert receipt["inputs"] == {
+        "assessment_input": {
+            "mediaType": "application/json",
+            "format": "json",
+            "sizeBytes": len(source_bytes),
+            "sha256": "sha256:" + hashlib.sha256(source_bytes).hexdigest(),
+        }
+    }
+    assert (
+        receipt["valuesSha256"]
+        == "sha256:"
+        + hashlib.sha256(
+            json.dumps(values, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+    )
+    assert receipt["artifacts"] == [
+        {
+            "port": "result_file",
+            "mediaType": "application/json",
+            "format": "json",
+            "sizeBytes": len(result_bytes),
+            "sha256": "sha256:" + hashlib.sha256(result_bytes).hexdigest(),
+        }
+    ]
+
+
+def test_remote_receipt_must_confirm_success_before_outputs_are_materialized(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    handler, _ = _successful_handler(
+        b'{"result":"accepted"}', remote_receipt_status="failed"
+    )
+    runner, _ = _runner(tmp_path, monkeypatch, handler)
+
+    with pytest.raises(RemoteOperationError) as raised:
+        asyncio.run(runner.run())
+
+    assert raised.value.code == "REMOTE_PROTOCOL_INVALID"
+    assert not (tmp_path / "workspace/outputs/run_receipt.json").exists()
+    assert not (tmp_path / "workspace/outputs/result_file").exists()
+
+
+def test_result_versions_must_match_the_version_handshake(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    handler, _ = _successful_handler(
+        b'{"result":"accepted"}', result_service_version="0.8.0"
+    )
+    runner, _ = _runner(
+        tmp_path,
+        monkeypatch,
+        handler,
+        allowed_service_versions=["0.7.0", "0.8.0"],
+    )
+
+    with pytest.raises(RemoteOperationError) as raised:
+        asyncio.run(runner.run())
+
+    assert raised.value.code == "REMOTE_VERSION_MISMATCH"
+    assert not (tmp_path / "workspace/outputs/result_file").exists()
 
 
 def test_ambiguous_submit_reconciles_without_blind_resubmission(

@@ -1,0 +1,57 @@
+{
+  "description": "Apply independently sourced DRASTIC factor ratings and weights to seven exactly aligned rasters, propagating NoData and publishing a relative vulnerability index, class raster and audit summary without implicit alignment.",
+  "domain": "groundwater",
+  "errorCodes": [
+    "BAND_INVALID",
+    "CONFIG_INVALID",
+    "CRS_REQUIRED",
+    "GRID_MISMATCH",
+    "INPUT_CARDINALITY_INVALID",
+    "INPUT_FORMAT_UNSUPPORTED",
+    "PARAMETER_INVALID",
+    "SOURCE_NOT_VERIFIED",
+    "OUTPUT_VALIDATION_FAILED"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-groundwater-drastic-evaluate",
+      "inputs": {
+        "D": {"artifactId": "art_example_01"},
+        "R": {"artifactId": "art_example_02"},
+        "A": {"artifactId": "art_example_03"},
+        "S": {"artifactId": "art_example_04"},
+        "T": {"artifactId": "art_example_05"},
+        "I": {"artifactId": "art_example_06"},
+        "C": {"artifactId": "art_example_07"},
+        "config": {"artifactId": "art_example_08"}
+      },
+      "mode": "ASYNC",
+      "operator": {"id": "groundwater.drastic.evaluate", "version": "1.0.0"},
+      "parameters": {},
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "groundwater.drastic.evaluate",
+  "inputs": [
+    {"cardinality": "one", "formats": ["geotiff", "cog"], "mediaTypes": ["image/tiff"], "name": "D", "required": true},
+    {"cardinality": "one", "formats": ["geotiff", "cog"], "mediaTypes": ["image/tiff"], "name": "R", "required": true},
+    {"cardinality": "one", "formats": ["geotiff", "cog"], "mediaTypes": ["image/tiff"], "name": "A", "required": true},
+    {"cardinality": "one", "formats": ["geotiff", "cog"], "mediaTypes": ["image/tiff"], "name": "S", "required": true},
+    {"cardinality": "one", "formats": ["geotiff", "cog"], "mediaTypes": ["image/tiff"], "name": "T", "required": true},
+    {"cardinality": "one", "formats": ["geotiff", "cog"], "mediaTypes": ["image/tiff"], "name": "I", "required": true},
+    {"cardinality": "one", "formats": ["geotiff", "cog"], "mediaTypes": ["image/tiff"], "name": "C", "required": true},
+    {"cardinality": "one", "formats": ["json"], "mediaTypes": ["application/json"], "name": "config", "required": true}
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {"formats": ["geotiff"], "kind": "artifact", "mediaTypes": ["image/tiff"], "name": "index"},
+    {"formats": ["geotiff"], "kind": "artifact", "mediaTypes": ["image/tiff"], "name": "classification"},
+    {"kind": "value", "name": "summary", "schema": {"type": "object"}}
+  ],
+  "parametersSchema": {"additionalProperties": false, "properties": {}, "type": "object"},
+  "runtime": "native",
+  "tags": ["groundwater", "drastic", "vulnerability", "raster"],
+  "timeoutSeconds": 3600,
+  "title": "Evaluate DRASTIC relative vulnerability",
+  "version": "1.0.0"
+}

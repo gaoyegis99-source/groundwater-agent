@@ -103,7 +103,10 @@ def compile_product(
                 "modelId", "version", "modelChecksum", "workflowRef", "tool",
                 "defaultParameters", "executionService", "executorId",
                 "deadlineSeconds", "finalOutputs", "inputSchemaChecksum",
-            )}, "dataInputParameters": sorted(set(model["inputBindings"].values()))}
+            )},
+             "dataInputParameters": sorted(set(model["inputBindings"].values())),
+             "fieldRequirements": model.get("fieldRequirements", []),
+             "semanticRequirements": model.get("semanticRequirements", [])}
             for model in models
         ],
         "executionCases": list(domain.execution_cases),

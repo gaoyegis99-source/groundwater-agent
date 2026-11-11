@@ -3,12 +3,50 @@
 ## 快速反馈
 
 ```bash
+../bin/bootstrap --status
 ../bin/bootstrap --sync
 ../bin/dev compile --product groundwater
+../bin/dev operator-smoke --operator-id timeseries.gap_runs --operator-version 1.0.0
+../bin/dev workflow-golden --case monitoring-trend
+../bin/dev agent-replay --case all
+../bin/dev capability-inventory --verify
+../bin/dev interactive --product groundwater --dry-run
+../bin/dev interactive --product groundwater
 ../bin/dev check --scope all
 ```
 
 装配、Vite、Playwright、wheel 和 E2E 工作目录默认位于 `$XDG_CACHE_HOME/groundwater-v6/build/`，并按 linked worktree 摘要隔离。测试必须使用临时目录或该 cache，不得创建源码 `.generated`、`dist` 或 `build`。
+`bootstrap --status` 是只读检查；`--sync` 才会联网并写入摘要绑定工具链。所有 `dev` 子命令都会先
+验证该工具链并使用其中的锁定 Python，缺失时返回 `PROJECT_TOOLCHAIN_NOT_READY`。当前 checkout 的
+逐命令实测与 `NOT_RUN` 清单见 [Vibecoding 本地快速参考](../development/vibecoding-quick-reference.md)。
+
+需要连续开发时使用[交互式增量开发模式](../development/interactive-incremental-mode.md)。它在源码树外生成开发 Compose 覆盖和状态，前端使用宿主 Vite HMR，Python API 使用显式 `/workspace/.../src` 监视目录，worker 只做受影响服务重启；默认 Native/QGIS/root runtime 和产品装配不承载控制器代码。
+
+单算子反馈入口复用签入的 catalog smoke 与生产 task 子进程。它在 XDG build 临时目录中以锁定
+CPython 和 hash-pinned wheelhouse 离线构造 Native 环境，命令结束即删除；成功的 replay、摘要、
+artifact 与 SHA-256 只写入 `$XDG_CACHE_HOME/groundwater-v6/operator-runs/`。fixture 可用重复的
+`--fixture PORT=FIXTURE_ID` 覆盖，参数可用重复的 `--parameter NAME=JSON` 覆盖；非法 schema 参数
+返回稳定错误码且不发布半成品目录。
+
+Workflow 级反馈入口复用现有 compiler 和同一生产 task 子进程，按稳定拓扑运行签入 case，并将
+workflow/catalog/fixture/output identity 与关键值同签入 snapshot 比较。差异以 JSON Pointer
+定位到具体字段或数值，证据写入 `$XDG_CACHE_HOME/groundwater-v6/workflow-golden-runs/`。需要
+GDAL 的 case 可显式传入 `--runtime-image <local-image>`；CLI 只使用项目 rootless daemon 中已验证的
+本地 Linux/amd64 image，以 no-network、read-only、no-pull 边界提供系统工具，不使用其中的 Python
+或源码，也不修改默认 root/Native/QGIS runtime。完整命令、当前三条重复 PASS 和 NOT_RUN 边界见
+[Vibecoding 本地快速参考](../development/vibecoding-quick-reference.md)。
+
+Agent 级反馈入口复用真实 Kernel 状态机，以签入 `ScriptedModel` 步骤和进程内 `MockTransport` 回放
+六个关键边界；默认每个 case 重复三轮，核对逐项不变量、Confirmation/WorkflowRun 计数和稳定
+snapshot identity。运行证据原子写入 `$XDG_CACHE_HOME/groundwater-v6/agent-replay-runs/`。该入口完全
+离线，不把脚本结果冒充真实 Provider 准确率，也不替代 Compose、网络协议或浏览器验收。完整 case、
+命令、当前重复 PASS 与公共工具链 fail-closed 边界见
+[Vibecoding 本地快速参考](../development/vibecoding-quick-reference.md)。
+
+当前功能清单入口从产品、domain manifest、Operator Catalog index 和 Product UI 的真实声明重算
+[开发参考表](../development/current-capability-inventory.md)。`--verify` 要求动态生成内容与签入文件逐字节
+一致，因此新增模型、workflow、算子、UI 示例或 viewer 后，不需要也不允许维护另一套手写数量。该清单
+描述声明与使用关系，不代表 `remote_http` 服务可达，也不把 Pastas/MF6 独立 spike 纳入默认 runtime。
 
 ## Per-change checks
 
@@ -50,7 +88,7 @@ pytest 取自独立物化的测试 wheelhouse，不在检查时联网，也不�
 `../bin/dev check --scope executor|all` 和完整项目报告都包含这道独立门禁；缺少 wheelhouse
 时明确 `NOT_RUN`，不能把普通套件通过当作 Native 覆盖。
 
-完整项目报告默认写入 XDG state 的 validation audit；可用 `--output /absolute/path` 显式覆盖。隔离 Compose 检查只通过 `../bin/docker`，使用随机 project/network 和临时数据，不能接触活动实例。
+完整项目报告默认写入 XDG state 的 validation audit，并同时生成机器可读 JSON 与同名中文 Markdown；可用 `--output /absolute/path` 显式覆盖 JSON 位置。Markdown 只汇总阶段、计数、失败分类和结论边界，不复制命令 payload。隔离 Compose 检查只通过 `../bin/docker`，使用随机 project/network 和临时数据，不能接触活动实例。
 
 轻量 Agent 包另有独立、可安装交付门禁；它不依赖 v11 服务或前端构建：
 

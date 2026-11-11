@@ -147,9 +147,23 @@ export interface TaskPreparationEntry {
   inputs: Record<string, ResourceReference>; knowledgeRefs: KnowledgeReference[];
   parameters: Record<string, unknown>;
   parameterSources: Record<string, string>;
-  checks: { kind: string; input?: string; status: 'PASS' | 'UNKNOWN' | 'FAIL'; versionId?: string; semanticId?: string; currentVersion?: string }[];
+  checks: TaskPreparationCheck[];
   blockingReasons: string[];
   blockingIssues?: { code: string; kind: 'MISSING_DATA' | 'MISSING_PARAMETER' | 'INVALID_PARAMETER' | 'UNRESOLVED_ITEM' | 'DATA_VERSION_NOT_CURRENT' | 'UNKNOWN'; input?: string; parameter?: string; path?: string; validator?: string }[];
+}
+export interface TaskPreparationCheck {
+  kind: string; input?: string; parameter?: string;
+  status: 'PASS' | 'UNKNOWN' | 'FAIL';
+  versionId?: string; semanticId?: string; currentVersion?: string;
+  fieldId?: string; fieldName?: string; actualType?: string;
+  allowedTypes?: string[]; actualUnit?: string; expectedUnit?: string;
+  relationship?: 'DECLARED' | 'EQUIVALENT' | 'CONVERTIBLE' | 'NOT_COMPARABLE';
+  actualCrs?: string; expectedCrs?: string;
+  crsRequirement?: 'valid' | 'projectedMetric'; crsUnit?: string;
+  timezone?: string; timeRange?: string;
+  requestedStart?: string; requestedEnd?: string;
+  referenceField?: string; depthField?: string;
+  referenceMeaning?: string; depthMeaning?: string; verticalDatum?: string;
 }
 export interface Activity {
   contextUsage?: import('./ContextUsageDetails').ContextUsage;
@@ -190,6 +204,8 @@ export interface ExecutionTask {
   attempt?: number; retryOfWorkflowRunId?: string | null; isLatestAttempt?: boolean;
 }
 export interface KnowledgeReference { versionId: string; unitId: string; checksum: string }
+export type KnowledgeEvidence = PublicApiComponents['schemas']['knowledge_next__EvidenceItem'];
+export type KnowledgeEvidenceBundle = PublicApiComponents['schemas']['knowledge_next__EvidenceBundleV1'];
 export interface ResourceReference {
   kind: 'data_version'; service: 'data-primary'; datasetId: string; versionId: string;
   semanticId: string; objectId: string; checksum: string; outputName?: string;

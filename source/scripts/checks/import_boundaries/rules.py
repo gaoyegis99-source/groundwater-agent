@@ -320,6 +320,13 @@ KERNEL_FORBIDDEN_IMPORTS = {
             "platform_kernel.agent_runtime.persistence",
         }
     ),
+    "platform_kernel.agent_runtime.sdk_execution.usage_model_start": frozenset(
+        {
+            "sqlite3",
+            "platform_kernel.database",
+            "platform_kernel.agent_runtime.persistence",
+        }
+    ),
     "platform_kernel.agent_runtime.sdk_execution.types": frozenset(
         {
             "sqlite3",
@@ -434,6 +441,7 @@ SQL_FREE_KERNEL_MODULES = frozenset(
         "platform_kernel.agent_runtime.sdk_execution.context_envelope",
         "platform_kernel.agent_runtime.sdk_execution.usage",
         "platform_kernel.agent_runtime.sdk_execution.usage_capture",
+        "platform_kernel.agent_runtime.sdk_execution.usage_model_start",
         "platform_kernel.agent_runtime.sdk_execution.types",
         "platform_kernel.agent_runtime.reply",
         "platform_kernel.agent_runtime.tooling",

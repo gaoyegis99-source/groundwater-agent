@@ -1,4 +1,4 @@
-"""Generate the reviewed fixed-port groundwater remote operator manifests."""
+"""Generate the reviewed fixed-port Groundwater remote operator manifests."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 CATALOG = ROOT / "packages/operator-pack/catalog/operators"
 VERSION = "1.0.0"
 

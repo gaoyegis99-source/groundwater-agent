@@ -348,6 +348,9 @@ def test_geopackage_preview_returns_layers_table_and_wgs84_features(
     page = result["result"]
     assert page["metadata"]["selected_layer"] == "wells"
     assert page["metadata"]["feature_count"] == 2
+    assert page["metadata"]["geometry_types"] == ["Point"]
+    assert page["metadata"]["crs"] == "EPSG:4326"
+    assert page["metadata"]["bbox_wgs84"] == [116.2, 39.8, 116.4, 39.9]
     assert len(page["features"]) == 2
     assert page["features"][0]["geometry"]["coordinates"] == [116.2, 39.8]
     assert page["rows"][0][:3] == [1, "W01", 12.5]
@@ -634,6 +637,27 @@ def test_table_inspection_uses_query_worker_and_returns_bounded_sample(
     ]
     assert data["sampleLimit"] == 5
     assert data["sampleTruncated"] is True
+
+
+def test_version_inspection_exposes_physical_field_id_at_the_tool_boundary(
+    client, worker
+):
+    output = publish(client, worker)
+
+    response = client.post(
+        "/internal/tools/v4/inspect_data_version",
+        json={
+            "callId": "inspect-version-fields",
+            "projectId": "local-data",
+            "arguments": {"version_id": output["versionId"]},
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    fields = response.json()["data"]["descriptor"]["fields"]
+    assert fields[0]["fieldId"] == "f0"
+    assert fields[0]["name"] == "well"
+    assert "id" not in fields[0]
 
 
 def test_discovery_rejects_unknown_or_malformed_filters(client):

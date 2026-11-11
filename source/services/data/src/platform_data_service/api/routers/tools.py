@@ -7,7 +7,12 @@ from ...errors import DataProblemError
 from ...table_inspection import TableInspector
 from ..models import ToolRequest
 from ..responses import ToolResponse
-from ..wire import page_with_semantic_ids, to_wire, with_semantic_id
+from ..wire import (
+    fields_with_semantic_ids,
+    page_with_semantic_ids,
+    to_wire,
+    with_semantic_id,
+)
 
 
 def tool_arguments(body: dict, project: str) -> dict:
@@ -141,6 +146,7 @@ def register_tool_routes(app: FastAPI, settings, service: Application) -> None:
             })
         value = with_semantic_id(data, "version_id")
         value["objects"] = [with_semantic_id(item, "object_id") for item in value["objects"]]
+        value["descriptor"] = fields_with_semantic_ids(value["descriptor"])
         return to_wire({
             "data": {"status": "OK", **value},
             "outcome": {

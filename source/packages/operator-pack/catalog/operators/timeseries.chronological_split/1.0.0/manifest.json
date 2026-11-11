@@ -1,5 +1,5 @@
 {
-  "description": "按共有且排序的时间轴取 floor(月份数 × trainRatio)；fitRows 包含训练期最初的上下文行。 trainTargets 从 inputWindow 起到训练边界前；holdoutTargets 从边界起；同一分组同一时间必须唯一，各井时间轴须一致。 源域显式 trainRatio=1，允许空 holdoutTargets；目标域 0.8，必须有足够的训练窗口和留出样本。",
+  "description": "按共有且排序的时间轴取 floor(月份数 × trainRatio)；fitRows 包含训练期最初的上下文行。trainTargets 从 inputWindow 起到训练边界前；holdoutTargets 从边界起；同一分组同一时间必须唯一，各井时间轴须一致。split JSON 公开 trainingStart/trainingEnd、holdoutStart/holdoutEnd、fitScope=training-rows-only 与 evaluationMode；源域显式 trainRatio=1 时允许空 holdoutTargets，目标域 0.8 时必须有足够的训练窗口和留出样本。",
   "domain": "timeseries",
   "errorCodes": [
     "RULESET_INVALID",

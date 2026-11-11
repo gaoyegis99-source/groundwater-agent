@@ -502,6 +502,29 @@ with sqlite3.connect('/data/state/executor.sqlite3') as connection:
         .strip()
         .splitlines()
     )
+    before = json.loads(
+        _exec_python(
+            command,
+            "kernel-service",
+            f"""
+import httpx, json
+path='/internal/execution/v6/jobs/{job_id}'
+with httpx.Client(base_url='http://executor-control:8000',timeout=30) as client:
+ response=client.get(path)
+ response.raise_for_status()
+ body=response.json()
+print(json.dumps({{'status':body['status'],'outputs':body['outputs']}},sort_keys=True,separators=(',',':')))
+""",
+        )
+        .strip()
+        .splitlines()[-1]
+    )
+    if (
+        before.get("status") != "SUCCEEDED"
+        or not isinstance(before.get("outputs"), list)
+        or not before["outputs"]
+    ):
+        raise RuntimeError(f"EXECUTOR_RESTART_PRECONDITION_FAILED:{before}")
     _run(
         [
             *command,
@@ -521,20 +544,25 @@ with sqlite3.connect('/data/state/executor.sqlite3') as connection:
         command,
         "kernel-service",
         f"""
-import httpx
+import httpx, json
 path='/internal/execution/v6/jobs/{job_id}'
 with httpx.Client(base_url='http://executor-control:8000',timeout=30) as client:
  response=client.get(path)
  response.raise_for_status()
  body=response.json()
  stale=client.post('/internal/workers/v3/leases/{lease_id}:heartbeat',json={{'leaseToken':'invalid'}})
-print(body['status'])
-print(len(body['outputs']))
-print(stale.status_code)
-print(stale.json()['code'])
+print(json.dumps({{
+ 'job':{{'status':body['status'],'outputs':body['outputs']}},
+ 'stale':{{'status':stale.status_code,'code':stale.json()['code']}},
+}},sort_keys=True,separators=(',',':')))
 """,
     )
-    if output.strip().splitlines() != ["SUCCEEDED", "1", "409", "LEASE_STALE"]:
+    after = json.loads(output.strip().splitlines()[-1])
+    expected = {
+        "job": before,
+        "stale": {"status": 409, "code": "LEASE_STALE"},
+    }
+    if after != expected:
         raise RuntimeError(f"EXECUTOR_RESTART_CHECK_FAILED:{output}")
 
 

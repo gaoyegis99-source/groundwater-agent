@@ -21,9 +21,50 @@ export { PlatformUiError };
 export const dataDiagnostics: DiagnosticSink = createDiagnosticSink();
 export type Schema = components["schemas"];
 export type Dataset = Schema["DatasetSummary"];
-type Field = { fieldId: string; name: string; type: string; nullCount: number };
+type ProfileValue = string | number | boolean | null;
+export type NumericStringProfile = {
+  checkedCount: number;
+  parsedCount: number;
+  parseSuccessRate: number;
+  identifierLike: boolean;
+  suggestedType?: "int64" | "float64";
+};
+export type TemporalProfile = {
+  kind: "date" | "timestamp" | "time";
+  checkedCount: number;
+  parsedCount: number;
+  parseSuccessRate: number | null;
+  physicalTimezone?: string | null;
+};
+export type FieldProfileFacts = {
+  nonNullCount: number;
+  sampleValues: ProfileValue[];
+  valueRange?: { minimum: ProfileValue; maximum: ProfileValue };
+  nonFiniteCount?: number;
+  numericString?: NumericStringProfile;
+  temporal?: TemporalProfile;
+};
+export type FieldDescriptor = {
+  fieldId: string;
+  name: string;
+  type: string;
+  nullable?: boolean;
+  nullCount: number;
+  profile?: FieldProfileFacts;
+};
+export type DatasetProfile = {
+  schemaVersion: "field-profile.v1";
+  statisticsScope: "all_rows";
+  sampleScope: "first_non_null_values";
+  sampleLimitPerField: number;
+};
 export type Version = Omit<Schema["VersionResponse"], "descriptor"> & {
-  descriptor: { fields: Field[]; rowCount: number | null; quality: unknown };
+  descriptor: {
+    fields: FieldDescriptor[];
+    rowCount: number | null;
+    quality: unknown;
+    profile?: DatasetProfile;
+  };
 };
 export type QueryResult = Schema["QueryResponse"];
 export type Publication = Omit<Schema["PublicationResponse"], "manifest"> & {
@@ -44,15 +85,121 @@ function validDate(value: string): boolean {
   return Number.isFinite(Date.parse(value));
 }
 
+function record(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function count(value: unknown): value is number {
+  return Number.isInteger(value) && Number(value) >= 0;
+}
+
+function profileValue(value: unknown): value is ProfileValue {
+  return value === null
+    || typeof value === "string"
+    || typeof value === "boolean"
+    || (typeof value === "number" && Number.isFinite(value));
+}
+
+function validDatasetProfile(value: unknown): value is DatasetProfile {
+  return record(value)
+    && value.schemaVersion === "field-profile.v1"
+    && value.statisticsScope === "all_rows"
+    && value.sampleScope === "first_non_null_values"
+    && count(value.sampleLimitPerField)
+    && value.sampleLimitPerField > 0
+    && value.sampleLimitPerField <= 20;
+}
+
+function validRate(value: unknown, parsed: number, checked: number): boolean {
+  if (checked === 0) return value === null;
+  return typeof value === "number"
+    && Number.isFinite(value)
+    && value >= 0
+    && value <= 1
+    && Math.abs(value - parsed / checked) <= 0.000001;
+}
+
+function validNumericProfile(value: unknown): boolean {
+  if (!record(value)
+    || !count(value.checkedCount)
+    || !count(value.parsedCount)
+    || value.parsedCount > value.checkedCount
+    || typeof value.identifierLike !== "boolean"
+    || !validRate(value.parseSuccessRate, value.parsedCount, value.checkedCount)) return false;
+  return value.suggestedType === undefined
+    || value.suggestedType === "int64"
+    || value.suggestedType === "float64";
+}
+
+function validTemporalProfile(value: unknown): boolean {
+  if (!record(value)
+    || !["date", "timestamp", "time"].includes(String(value.kind))
+    || !count(value.checkedCount)
+    || !count(value.parsedCount)
+    || value.parsedCount > value.checkedCount
+    || !validRate(value.parseSuccessRate, value.parsedCount, value.checkedCount)) return false;
+  return value.physicalTimezone === undefined
+    || value.physicalTimezone === null
+    || typeof value.physicalTimezone === "string";
+}
+
+function validFieldProfile(
+  value: unknown,
+  sampleLimit: number,
+  rowCount: number | null,
+  nullCount: number,
+): boolean {
+  if (!record(value)
+    || !count(value.nonNullCount)
+    || !Array.isArray(value.sampleValues)
+    || value.sampleValues.length > sampleLimit
+    || !value.sampleValues.every(profileValue)
+    || (rowCount !== null && value.nonNullCount + nullCount !== rowCount)) return false;
+  if (value.valueRange !== undefined && (!record(value.valueRange)
+    || !profileValue(value.valueRange.minimum)
+    || !profileValue(value.valueRange.maximum))) return false;
+  if (value.nonFiniteCount !== undefined && !count(value.nonFiniteCount)) return false;
+  if (value.numericString !== undefined && !validNumericProfile(value.numericString)) return false;
+  return value.temporal === undefined || validTemporalProfile(value.temporal);
+}
+
+function validField(
+  value: unknown,
+  profile: DatasetProfile | undefined,
+  rowCount: number | null,
+): value is FieldDescriptor {
+  if (!record(value)
+    || typeof value.fieldId !== "string"
+    || !idPattern.test(value.fieldId)
+    || typeof value.name !== "string"
+    || !value.name
+    || typeof value.type !== "string"
+    || !value.type
+    || !count(value.nullCount)
+    || (rowCount !== null && value.nullCount > rowCount)
+    || (value.nullable !== undefined && typeof value.nullable !== "boolean")) return false;
+  if (value.profile === undefined) return profile === undefined;
+  return profile !== undefined
+    && validFieldProfile(value.profile, profile.sampleLimitPerField, rowCount, value.nullCount);
+}
+
 export function decodeVersion(value: Schema["VersionResponse"]): Version {
-  const descriptor = value.descriptor as { fields?: unknown; rowCount?: unknown; quality?: unknown };
+  const descriptor = value.descriptor as Record<string, unknown>;
+  const rowCount = descriptor?.rowCount;
+  const profile = descriptor?.profile;
+  const decodedProfile = profile === undefined
+    ? undefined
+    : validDatasetProfile(profile) ? profile : null;
   if (
     !idPattern.test(value.versionId)
     || !idPattern.test(value.datasetId)
     || !idPattern.test(value.semanticId)
     || !validDate(value.createdAt)
-    || !descriptor
+    || !record(descriptor)
+    || !(rowCount === null || count(rowCount))
+    || decodedProfile === null
     || !Array.isArray(descriptor.fields)
+    || !descriptor.fields.every(field => validField(field, decodedProfile, rowCount))
     || !value.objects.every(object => idPattern.test(object.objectId) && checksumPattern.test(object.checksum))
   ) {
     throw new PlatformUiError(0, "API_RESPONSE_INVALID");

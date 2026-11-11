@@ -120,6 +120,48 @@ class TaskPreparationCheckV1(TaskModel):
     current_version: str | None = None
     operator_catalog_digest: str | None = None
     count: int | None = Field(default=None, ge=0)
+    parameter: str | None = Field(default=None, exclude_if=lambda value: value is None)
+    identifier: Literal["fieldId", "name"] | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
+    value: str | None = Field(default=None, exclude_if=lambda value: value is None)
+    field_id: str | None = Field(default=None, exclude_if=lambda value: value is None)
+    field_name: str | None = Field(default=None, exclude_if=lambda value: value is None)
+    actual_type: str | None = Field(default=None, exclude_if=lambda value: value is None)
+    allowed_types: list[str] = Field(
+        default_factory=list, exclude_if=lambda value: not value
+    )
+    candidates: list[dict[str, str]] = Field(
+        default_factory=list, exclude_if=lambda value: not value
+    )
+    actual_unit: str | None = Field(default=None, exclude_if=lambda value: value is None)
+    expected_unit: str | None = Field(default=None, exclude_if=lambda value: value is None)
+    relationship: Literal[
+        "DECLARED", "EQUIVALENT", "CONVERTIBLE", "NOT_COMPARABLE"
+    ] | None = Field(default=None, exclude_if=lambda value: value is None)
+    actual_crs: str | None = Field(default=None, exclude_if=lambda value: value is None)
+    expected_crs: str | None = Field(default=None, exclude_if=lambda value: value is None)
+    crs_requirement: Literal["valid", "projectedMetric"] | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
+    crs_unit: str | None = Field(default=None, exclude_if=lambda value: value is None)
+    reference_field: str | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
+    depth_field: str | None = Field(default=None, exclude_if=lambda value: value is None)
+    reference_meaning: str | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
+    depth_meaning: str | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
+    vertical_datum: str | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
+    timezone: str | None = Field(default=None, exclude_if=lambda value: value is None)
+    time_range: str | None = Field(default=None, exclude_if=lambda value: value is None)
+    requested_start: str | None = Field(default=None, exclude_if=lambda value: value is None)
+    requested_end: str | None = Field(default=None, exclude_if=lambda value: value is None)
 
 
 class TaskPreparationIssueV1(TaskModel):
@@ -136,6 +178,17 @@ class TaskPreparationIssueV1(TaskModel):
     parameter: str | None = None
     path: str | None = None
     validator: str | None = None
+    identifier: Literal["fieldId", "name"] | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
+    value: str | None = Field(default=None, exclude_if=lambda value: value is None)
+    actual_type: str | None = Field(default=None, exclude_if=lambda value: value is None)
+    allowed_types: list[str] = Field(
+        default_factory=list, exclude_if=lambda value: not value
+    )
+    candidates: list[dict[str, str]] = Field(
+        default_factory=list, exclude_if=lambda value: not value
+    )
 
 
 class TaskPreparationEntryV1(TaskModel):

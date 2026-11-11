@@ -1,0 +1,75 @@
+{
+  "caseId": "render-map",
+  "fixtures": {
+    "data": [
+      {
+        "fixtureId": "cartography.points",
+        "format": "geojson",
+        "mediaType": "application/geo+json",
+        "sha256": "sha256:4af9986221817cfa63dbdae70ea8cc5b5045b2f5e183b62ce9bc9b1bd4c7032b",
+        "sizeBytes": 345
+      }
+    ]
+  },
+  "keyValues": {
+    "map-summary": {
+      "crs": "OGC:CRS84",
+      "data": {
+        "countBasis": "FEATURES",
+        "featureCount": 3,
+        "noDataCount": 0,
+        "validValueCount": 3
+      },
+      "extent": {
+        "maxX": 116.3,
+        "maxY": 40.0,
+        "minX": 116.1,
+        "minY": 39.8
+      },
+      "image": {
+        "height": 768,
+        "width": 1024
+      },
+      "interpretation": "Static rendering of one existing spatial data file in its source CRS.",
+      "limitations": [
+        "No reprojection is performed; coordinates and extent use the source CRS.",
+        "The image contains one source only and has no basemap, interactive layers, or publication service.",
+        "Colors visualize the selected values but do not establish data accuracy, provenance, or analytical validity."
+      ],
+      "sourceFormat": "geojson",
+      "sourceKind": "vector",
+      "style": {
+        "colorbarLabel": "value (m)",
+        "noDataColor": "#d9d9d9",
+        "noDataLabel": "No data",
+        "palette": "viridis",
+        "title": "Monitoring values",
+        "unit": "m",
+        "valueField": "value"
+      }
+    }
+  },
+  "operatorCatalogDigest": "sha256:2ca1c058884bc6d5bb17a71fd19aaa46bd44307a2c953edd7c67b6895ed5d901",
+  "outputs": {
+    "map-image": {
+      "format": "png",
+      "kind": "artifact",
+      "mediaType": "image/png",
+      "sha256": "sha256:2c43fc3496ad85ddca8a2179adc2ad711a776a8c90884731c71da4bcabc73145",
+      "sizeBytes": 42279
+    },
+    "map-summary": {
+      "kind": "value",
+      "sha256": "sha256:49ae184ffc9f4e67a376484a7757528a89d7f79ca6c514097a11ead0d617ec19",
+      "sizeBytes": 807
+    }
+  },
+  "parametersSha256": "sha256:6b0e97858cd5b8cc1abac325274f19888af53e1bd6c4721ea7e44094c1fa1a97",
+  "schemaVersion": "workflow-golden-snapshot.v1",
+  "workflow": {
+    "definitionChecksum": "sha256:5b463cdd0f6636f9b0aafad85df1809a1fdb9ebfea74ef96cb30fc4cfd33bd69",
+    "id": "groundwater.render-map",
+    "sourceSha256": "sha256:5b463cdd0f6636f9b0aafad85df1809a1fdb9ebfea74ef96cb30fc4cfd33bd69",
+    "version": "1.1.0"
+  }
+}

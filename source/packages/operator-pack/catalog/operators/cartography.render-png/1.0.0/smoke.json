@@ -4,6 +4,9 @@
       "format": "png",
       "kind": "artifact",
       "mediaType": "image/png"
+    },
+    "summary": {
+      "kind": "value"
     }
   },
   "inputs": {
@@ -16,8 +19,12 @@
     "version": "1.0.0"
   },
   "parameters": {
+    "height": 768,
+    "palette": "viridis",
     "title": "Monitoring values",
-    "valueField": "value"
+    "unit": "m",
+    "valueField": "value",
+    "width": 1024
   },
   "schemaVersion": "operator-smoke-test.v1"
 }

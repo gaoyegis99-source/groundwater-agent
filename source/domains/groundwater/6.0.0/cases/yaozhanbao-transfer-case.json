@@ -13,7 +13,7 @@
   ],
   "modelRef": {
     "modelId": "groundwater.transfer-learning-analysis",
-    "version": "3.0.0"
+    "version": "3.1.0"
   },
   "datasetTag": "case:yaozhanbao-transfer-case",
   "inputRoles": [

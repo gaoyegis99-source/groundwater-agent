@@ -14,6 +14,10 @@ def run_groundwater_operator(
     parameters: dict[str, Any],
     output_dir: Path,
 ) -> dict[str, Any] | None:
+    if operator_id == "groundwater.drastic.evaluate":
+        from moperators.operators import drastic
+
+        return drastic.run(inputs, parameters, output_dir)
     if operator_id == "groundwater.hydraulic_gradient":
         return hydraulic_gradient.run(inputs["head"][0], parameters, output_dir)
     if operator_id == "groundwater.darcy_velocity":

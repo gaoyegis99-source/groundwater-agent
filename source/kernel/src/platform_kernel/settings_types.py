@@ -45,6 +45,34 @@ class ObservationToolDefinition:
 
 
 @dataclass(frozen=True)
+class ExecutableModelFieldRequirement:
+    """One model argument that names a field in one exact Data input."""
+
+    parameter: str
+    input_parameter: str
+    identifier: str
+    allowed_types: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class ExecutableModelSemanticRequirement:
+    """One declared unit, CRS, or temporal fact required by a model input."""
+
+    kind: str
+    input_parameter: str | None = None
+    field_parameter: str | None = None
+    expected_parameter: str | None = None
+    start_parameter: str | None = None
+    end_parameter: str | None = None
+    parameter: str | None = None
+    crs_requirement: str | None = None
+    reference_field_parameter: str | None = None
+    depth_field_parameter: str | None = None
+    reference_meanings: tuple[str, ...] = ()
+    depth_meanings: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class ExecutableModelDefinition:
     """Kernel's callable model projection; the Workflow DAG belongs to Executor."""
 
@@ -64,6 +92,8 @@ class ExecutableModelDefinition:
     input_schema_checksum: str
     final_outputs: tuple[str, ...]
     data_input_parameters: tuple[str, ...]
+    field_requirements: tuple[ExecutableModelFieldRequirement, ...] = ()
+    semantic_requirements: tuple[ExecutableModelSemanticRequirement, ...] = ()
 
 
 @dataclass(frozen=True)

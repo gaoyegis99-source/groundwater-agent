@@ -1,0 +1,108 @@
+{
+  "caseId": "flow-field",
+  "fixtures": {
+    "observations": [
+      {
+        "fixtureId": "groundwater.flow-field",
+        "format": "csv",
+        "mediaType": "text/csv",
+        "sha256": "sha256:e58868c5bee509d0917088f069743876083ab7b852d83ebaa88e808c4fbc9749",
+        "sizeBytes": 287
+      }
+    ]
+  },
+  "keyValues": {
+    "summary": {
+      "darcyFluxFormula": "q = K * |grad h|",
+      "darcyFluxUnit": "m/day",
+      "directionConvention": "clockwise degrees from grid north toward decreasing hydraulic head",
+      "directionUnit": "degree",
+      "effectivePorosity": 0.25,
+      "horizontalCrs": "EPSG:3857",
+      "hydraulicConductivityMetersPerDay": 10.0,
+      "interpretation": "Darcy flux is specific discharge per bulk area; seepage velocity divides that flux by effective porosity. Both follow the derived downhill direction of the interpolated head surface.",
+      "limitations": [
+        "The calculation assumes a homogeneous, isotropic scalar hydraulic conductivity and spatially uniform effective porosity.",
+        "It is a two-dimensional, steady horizontal Darcy estimate that omits anisotropy, heterogeneity, transient storage, density effects, and vertical flow.",
+        "These rasters are model-derived estimates, not an observed groundwater velocity or a calibrated transport model."
+      ],
+      "resultKind": "MODEL_DERIVED_NOT_OBSERVED",
+      "seepageVelocityFormula": "v = q / n_e",
+      "seepageVelocityUnit": "m/day",
+      "validCellCount": 4,
+      "velocityUnit": "m/day"
+    }
+  },
+  "operatorCatalogDigest": "sha256:2ca1c058884bc6d5bb17a71fd19aaa46bd44307a2c953edd7c67b6895ed5d901",
+  "outputs": {
+    "darcy-flux": {
+      "fileName": "darcy-flux.tif",
+      "format": "geotiff",
+      "kind": "artifact",
+      "mediaType": "image/tiff",
+      "sha256": "sha256:b194d02ebec745424161d591608be251a4f0d864afdac2a5a5e11e834dcf4887",
+      "sizeBytes": 430
+    },
+    "flow-direction": {
+      "fileName": "groundwater-flow-direction.tif",
+      "format": "geotiff",
+      "kind": "artifact",
+      "mediaType": "image/tiff",
+      "sha256": "sha256:9b0af325edd2859b65d69d1a06365d6fde90e74239f11f55a72e5c4139bad375",
+      "sizeBytes": 428
+    },
+    "gradient": {
+      "fileName": "hydraulic-gradient.tif",
+      "format": "geotiff",
+      "kind": "artifact",
+      "mediaType": "image/tiff",
+      "sha256": "sha256:4716130ab06fc13c9d7bd6b8df51dd243beb94e45f7c05743a00f5892889bf5d",
+      "sizeBytes": 430
+    },
+    "head-raster": {
+      "fileName": "idw.tif",
+      "format": "geotiff",
+      "kind": "artifact",
+      "mediaType": "image/tiff",
+      "sha256": "sha256:69bc8b07ff232e77561a9b15fefc4e3ad437cc9b88192987c612f77fa5310f4c",
+      "sizeBytes": 665
+    },
+    "seepage-velocity": {
+      "fileName": "seepage-velocity.tif",
+      "format": "geotiff",
+      "kind": "artifact",
+      "mediaType": "image/tiff",
+      "sha256": "sha256:87eaa33273a3fa94244f2c59d98b15098ac5441d821e69d66feecbb78da97f3d",
+      "sizeBytes": 430
+    },
+    "snapshot": {
+      "fileName": "snapshot.parquet",
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet",
+      "sha256": "sha256:2dce6015e7929ab127b9f3870766f6168d075149fff44704404847e57490af3c",
+      "sizeBytes": 2162
+    },
+    "snapshot-diagnostics": {
+      "fileName": "snapshot-diagnostics.parquet",
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet",
+      "sha256": "sha256:fc361601f57c526cdeb8150d148fe07abe8f54216ddd560ec13e86ed447a69e8",
+      "sizeBytes": 2213
+    },
+    "summary": {
+      "kind": "value",
+      "sha256": "sha256:97d63bb27d3dda8b1de2f82f8e7666e8696fc022e5e2213e83d51ebc6ba36181",
+      "sizeBytes": 1035
+    }
+  },
+  "parametersSha256": "sha256:6f04f30f947a87494405a7e8284b0d1f018b3ed1ac0fc7543e5472d63263a913",
+  "schemaVersion": "workflow-golden-snapshot.v1",
+  "workflow": {
+    "definitionChecksum": "sha256:bda102fc7492dccae5e2fe60a9e56cc1d5a1028ed382fdf28ede10a673e8ff6b",
+    "id": "groundwater.flow-field",
+    "sourceSha256": "sha256:bda102fc7492dccae5e2fe60a9e56cc1d5a1028ed382fdf28ede10a673e8ff6b",
+    "version": "1.1.0"
+  }
+}

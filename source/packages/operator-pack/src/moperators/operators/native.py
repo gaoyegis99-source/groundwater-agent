@@ -6,6 +6,8 @@ import re
 import shutil
 import subprocess
 from dataclasses import dataclass
+from datetime import date, datetime
+from decimal import Decimal
 from math import ceil, isclose, isfinite, sqrt
 from pathlib import Path
 from typing import Any
@@ -76,12 +78,38 @@ def _inspect(item: StagedInput, layer: str | None = None) -> dict[str, Any]:
     return {"format": item.format_id, **metadata}
 
 
-def _describe(values: np.ndarray, null_count: int) -> dict[str, int | float]:
+SUMMARY_GROUP_LIMIT = 100
+
+
+def _describe(
+    values: np.ndarray,
+    *,
+    row_count: int,
+    null_count: int,
+    nonfinite_count: int,
+) -> dict[str, int | float | None]:
+    empty_metrics = {
+        "min": None,
+        "max": None,
+        "mean": None,
+        "stddev": None,
+        "q1": None,
+        "median": None,
+        "q3": None,
+    }
     if values.size == 0:
-        raise ValueError("NON_NUMERIC_VALUE")
+        return {
+            "rowCount": row_count,
+            "count": 0,
+            "nullCount": null_count,
+            "nonFiniteCount": nonfinite_count,
+            **empty_metrics,
+        }
     return {
+        "rowCount": row_count,
         "count": int(values.size),
         "nullCount": null_count,
+        "nonFiniteCount": nonfinite_count,
         "min": float(np.min(values)),
         "max": float(np.max(values)),
         "mean": float(np.mean(values)),
@@ -92,83 +120,296 @@ def _describe(values: np.ndarray, null_count: int) -> dict[str, int | float]:
     }
 
 
-def _csv_column(path: Path, column: str | None) -> tuple[str, np.ndarray, int]:
-    if not column:
-        raise ValueError("COLUMN_REQUIRED")
-    values: list[float] = []
-    null_count = 0
-    with path.open(encoding="utf-8", newline="") as stream:
-        reader = csv.DictReader(stream)
-        if column not in (reader.fieldnames or []):
-            raise ValueError("COLUMN_REQUIRED")
-        for row in reader:
-            raw = row[column].strip()
-            if raw == "":
-                null_count += 1
-                continue
-            try:
-                values.append(float(raw))
-            except ValueError as exc:
-                raise ValueError("NON_NUMERIC_VALUE") from exc
-    return column, np.asarray(values, dtype=np.float64), null_count
+def _declared_nulls(item: StagedInput) -> frozenset[str]:
+    metadata = item.metadata
+    if not isinstance(metadata, dict):
+        raise ValueError("INPUT_METADATA_INVALID")
+    contract = metadata.get("dataContract", {})
+    if not isinstance(contract, dict):
+        raise ValueError("INPUT_METADATA_INVALID")
+    values = contract.get("nullValues", [])
+    if not isinstance(values, list) or any(not isinstance(value, str) for value in values):
+        raise ValueError("INPUT_METADATA_INVALID")
+    return frozenset(values)
 
 
-def _numeric_values(name: str | None, values: list[Any]) -> tuple[str, np.ndarray, int]:
-    if not name:
-        raise ValueError("COLUMN_REQUIRED")
+def _is_declared_null(value: Any, null_values: frozenset[str]) -> bool:
+    return value is None or (
+        isinstance(value, str)
+        and (not value.strip() or value in null_values or value.strip() in null_values)
+    )
+
+
+def _numeric_values(
+    values: list[Any] | np.ndarray,
+    *,
+    null_values: frozenset[str] = frozenset(),
+    allow_numeric_strings: bool = False,
+) -> tuple[np.ndarray, int, int]:
     numbers: list[float] = []
     null_count = 0
+    nonfinite_count = 0
     for value in values:
-        if value is None:
+        if _is_declared_null(value, null_values):
             null_count += 1
-        elif isinstance(value, bool) or not isinstance(value, (int, float)):
-            raise ValueError("NON_NUMERIC_VALUE")
+            continue
+        if isinstance(value, str):
+            if not allow_numeric_strings:
+                raise ValueError("NON_NUMERIC_VALUE")
+            try:
+                number = float(value.strip())
+            except (TypeError, ValueError, OverflowError) as exc:
+                raise ValueError("NON_NUMERIC_VALUE") from exc
         else:
-            numbers.append(float(value))
-    return name, np.asarray(numbers, dtype=np.float64), null_count
+            if isinstance(value, bool) or not isinstance(
+                value,
+                (int, float, Decimal, np.integer, np.floating),
+            ):
+                raise ValueError("NON_NUMERIC_VALUE")
+            try:
+                number = float(value)
+            except (TypeError, ValueError, OverflowError) as exc:
+                raise ValueError("NON_NUMERIC_VALUE") from exc
+        if not isfinite(number):
+            nonfinite_count += 1
+        else:
+            numbers.append(number)
+    return np.asarray(numbers, dtype=np.float64), null_count, nonfinite_count
 
 
-def _statistics(item: StagedInput, parameters: dict[str, Any]) -> dict[str, Any]:
+def _statistics_values(
+    values: list[Any] | np.ndarray,
+    *,
+    null_values: frozenset[str] = frozenset(),
+    allow_numeric_strings: bool = False,
+) -> dict[str, int | float | None]:
+    numbers, null_count, nonfinite_count = _numeric_values(
+        values,
+        null_values=null_values,
+        allow_numeric_strings=allow_numeric_strings,
+    )
+    return _describe(
+        numbers,
+        row_count=len(values),
+        null_count=null_count,
+        nonfinite_count=nonfinite_count,
+    )
+
+
+def _table_rows(item: StagedInput) -> tuple[list[dict[str, Any]], list[str]]:
     if item.format_id == "csv":
-        name, values, null_count = _csv_column(item.path, parameters.get("column"))
-        return {name: _describe(values, null_count)}
-    if item.format_id == "npy":
-        array = np.load(item.path, mmap_mode="r", allow_pickle=False)
-        if not np.issubdtype(array.dtype, np.number):
-            raise ValueError("NON_NUMERIC_VALUE")
-        axis = parameters.get("axis", "columns")
-        if axis == "flatten" or array.ndim == 1:
-            return {"value": _describe(np.asarray(array).reshape(-1), 0)}
-        if array.ndim != 2:
-            raise ValueError("INPUT_INVALID")
-        return {
-            str(index): _describe(np.asarray(array[:, index]), 0) for index in range(array.shape[1])
-        }
-    column = parameters.get("column")
+        with item.path.open(encoding="utf-8", newline="") as stream:
+            reader = csv.DictReader(stream)
+            fields = reader.fieldnames or []
+            return [dict(row) for row in reader], fields
     if item.format_id == "json":
         rows = json.loads(item.path.read_text(encoding="utf-8"))
         if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
             raise ValueError("INPUT_INVALID")
-        if not column or any(column not in row for row in rows):
-            raise ValueError("COLUMN_REQUIRED")
-        name, values, null_count = _numeric_values(column, [row[column] for row in rows])
-        return {name: _describe(values, null_count)}
-    if item.format_id in {"parquet", "arrow-ipc-file"}:
+        fields = list(dict.fromkeys(key for row in rows for key in row))
+        return rows, fields
+    if item.format_id in {"parquet", "geoparquet", "arrow-ipc-file"}:
         try:
             import pyarrow.ipc as arrow_ipc
             import pyarrow.parquet as parquet
         except ImportError as exc:
             raise ValueError("BLOCKED_BY_ENVIRONMENT") from exc
-        if item.format_id == "parquet":
-            table = parquet.read_table(item.path, columns=[column] if column else None)
+        if item.format_id in {"parquet", "geoparquet"}:
+            table = parquet.read_table(item.path)
         else:
             with arrow_ipc.open_file(item.path) as reader:
                 table = reader.read_all()
-        if not column or column not in table.column_names:
-            raise ValueError("COLUMN_REQUIRED")
-        name, values, null_count = _numeric_values(column, table[column].to_pylist())
-        return {name: _describe(values, null_count)}
+        return table.to_pylist(), table.column_names
     raise ValueError("FORMAT_UNSUPPORTED")
+
+
+def _group_key(value: Any, null_values: frozenset[str]) -> tuple[tuple[str, Any], dict[str, Any]]:
+    if _is_declared_null(value, null_values):
+        return ("null", None), {"type": "null", "value": None}
+    if isinstance(value, np.generic):
+        value = value.item()
+    if isinstance(value, bool):
+        return ("boolean", value), {"type": "boolean", "value": value}
+    if isinstance(value, int):
+        return ("integer", value), {"type": "integer", "value": value}
+    if isinstance(value, (float, Decimal)):
+        number = float(value)
+        if not isfinite(number):
+            raise ValueError("GROUP_VALUE_INVALID")
+        return ("number", number), {"type": "number", "value": number}
+    if isinstance(value, str):
+        return ("string", value), {"type": "string", "value": value}
+    if isinstance(value, (date, datetime)):
+        normalized = value.isoformat()
+        return ("date-time", normalized), {"type": "date-time", "value": normalized}
+    raise ValueError("GROUP_VALUE_INVALID")
+
+
+def _summary_details(
+    item: StagedInput,
+    parameters: dict[str, Any],
+    *,
+    source_count: int,
+    source_count_kind: str,
+    series: list[dict[str, Any]],
+) -> dict[str, Any]:
+    unit = parameters.get("unit", "")
+    if not isinstance(unit, str) or len(unit) > 64:
+        raise ValueError("PARAMETER_INVALID")
+    normalized_unit = unit.strip() or None
+    return {
+        "schemaVersion": "statistics-describe-details.v1",
+        "scope": {
+            "basis": "FULL_STAGED_INPUT",
+            "inputFormat": item.format_id,
+            "sourceCount": source_count,
+            "sourceCountKind": source_count_kind,
+        },
+        "selection": {
+            "axis": parameters.get("axis", "columns"),
+            "column": parameters.get("column") or None,
+            "groupField": parameters.get("groupField") or None,
+            "unit": normalized_unit,
+        },
+        "series": series,
+        "conventions": {
+            "declaredNulls": "excluded-and-counted",
+            "nonFiniteValues": "excluded-and-counted",
+            "stddev": "population-ddof-0",
+            "quantiles": "linear-interpolation",
+        },
+        "interpretation": ("Descriptive statistics for the full staged input artifact."),
+        "limitations": [
+            (
+                "FULL_STAGED_INPUT describes the staged file or array, not a preview sample, "
+                "but it does not establish representativeness of a wider population."
+            ),
+            (
+                "The unit is an explicit label only; no unit conversion or field-meaning "
+                "inference is performed."
+            ),
+            (
+                "Grouped summaries are descriptive partitions and do not establish "
+                "statistical significance or causal differences."
+            ),
+        ],
+    }
+
+
+def _table_statistics(
+    item: StagedInput, parameters: dict[str, Any]
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    column = parameters.get("column")
+    if not isinstance(column, str) or not column:
+        raise ValueError("COLUMN_REQUIRED")
+    group_field = parameters.get("groupField")
+    if group_field is not None and (not isinstance(group_field, str) or not group_field):
+        raise ValueError("GROUP_COLUMN_REQUIRED")
+    rows, fields = _table_rows(item)
+    if column not in fields:
+        raise ValueError("COLUMN_REQUIRED")
+    if group_field is not None and group_field not in fields:
+        raise ValueError("GROUP_COLUMN_REQUIRED")
+    null_values = _declared_nulls(item)
+    allow_numeric_strings = item.format_id == "csv"
+    selected = [row.get(column) for row in rows]
+    statistics = _statistics_values(
+        selected,
+        null_values=null_values,
+        allow_numeric_strings=allow_numeric_strings,
+    )
+    if statistics["count"] == 0:
+        raise ValueError("NO_FINITE_VALUES")
+
+    groups: list[dict[str, Any]] = []
+    if group_field is not None:
+        group_values: dict[tuple[str, Any], tuple[dict[str, Any], list[Any]]] = {}
+        for row in rows:
+            identity, key = _group_key(row.get(group_field), null_values)
+            if identity not in group_values:
+                if len(group_values) >= SUMMARY_GROUP_LIMIT:
+                    raise ValueError("GROUP_LIMIT_EXCEEDED")
+                group_values[identity] = (key, [])
+            group_values[identity][1].append(row.get(column))
+        groups = [
+            {
+                "key": key,
+                "statistics": _statistics_values(
+                    values,
+                    null_values=null_values,
+                    allow_numeric_strings=allow_numeric_strings,
+                ),
+            }
+            for key, values in group_values.values()
+        ]
+
+    series = [
+        {
+            "field": {"kind": "table-column", "name": column},
+            "statistics": statistics,
+            "groups": groups,
+        }
+    ]
+    return {column: statistics}, _summary_details(
+        item,
+        parameters,
+        source_count=len(rows),
+        source_count_kind="rows",
+        series=series,
+    )
+
+
+def _array_statistics(
+    item: StagedInput, parameters: dict[str, Any]
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    if parameters.get("groupField"):
+        raise ValueError("GROUP_FIELD_UNSUPPORTED")
+    if parameters.get("column"):
+        raise ValueError("COLUMN_UNSUPPORTED")
+    array = np.load(item.path, mmap_mode="r", allow_pickle=False)
+    if not np.issubdtype(array.dtype, np.number) or np.issubdtype(array.dtype, np.complexfloating):
+        raise ValueError("NON_NUMERIC_VALUE")
+    axis = parameters.get("axis", "columns")
+    if axis not in {"columns", "flatten"}:
+        raise ValueError("PARAMETER_INVALID")
+    if axis == "flatten" or array.ndim == 1:
+        columns = [("value", "array-values", np.asarray(array).reshape(-1))]
+    elif array.ndim == 2:
+        columns = [
+            (str(index), "array-column", np.asarray(array[:, index]))
+            for index in range(array.shape[1])
+        ]
+    else:
+        raise ValueError("INPUT_INVALID")
+    summary: dict[str, Any] = {}
+    series: list[dict[str, Any]] = []
+    for name, kind, values in columns:
+        statistics = _statistics_values(values)
+        summary[name] = statistics
+        series.append(
+            {
+                "field": {"kind": kind, "name": name},
+                "statistics": statistics,
+                "groups": [],
+            }
+        )
+    if not series or not any(item["statistics"]["count"] for item in series):
+        raise ValueError("NO_FINITE_VALUES")
+    return summary, _summary_details(
+        item,
+        parameters,
+        source_count=int(array.size),
+        source_count_kind="elements",
+        series=series,
+    )
+
+
+def _statistics(
+    item: StagedInput, parameters: dict[str, Any]
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    if item.format_id == "npy":
+        return _array_statistics(item, parameters)
+    return _table_statistics(item, parameters)
 
 
 def _artifact(path: Path, media_type: str, format_id: str) -> dict[str, Any]:
@@ -292,8 +533,11 @@ def _table_convert(source: StagedInput, output_format: str, output: Path) -> Non
                             _json_lossless(row)
                             try:
                                 value = json.dumps(
-                                    row, ensure_ascii=False, sort_keys=True,
-                                    separators=(",", ":"), allow_nan=False,
+                                    row,
+                                    ensure_ascii=False,
+                                    sort_keys=True,
+                                    separators=(",", ":"),
+                                    allow_nan=False,
                                 )
                             except (TypeError, ValueError) as exc:
                                 raise ValueError("CONVERSION_NOT_ALLOWED") from exc
@@ -722,9 +966,7 @@ def _zonal_statistics(
     }
 
 
-def _resample(
-    raster: StagedInput, parameters: dict[str, Any], output_dir: Path
-) -> dict[str, Any]:
+def _resample(raster: StagedInput, parameters: dict[str, Any], output_dir: Path) -> dict[str, Any]:
     output = output_dir / "resampled.tif"
     _run(
         [
@@ -821,14 +1063,10 @@ def _reclass_rules(source: StagedInput) -> list[tuple[float, float, float]]:
             raise ValueError("RULES_INVALID")
         try:
             lower = (
-                float("-inf")
-                if row["minInclusive"] in {None, ""}
-                else float(row["minInclusive"])
+                float("-inf") if row["minInclusive"] in {None, ""} else float(row["minInclusive"])
             )
             upper = (
-                float("inf")
-                if row["maxExclusive"] in {None, ""}
-                else float(row["maxExclusive"])
+                float("inf") if row["maxExclusive"] in {None, ""} else float(row["maxExclusive"])
             )
             value = float(row["value"])
         except (TypeError, ValueError) as exc:
@@ -918,14 +1156,13 @@ def _polygonize(
     return _artifact(output, "application/geopackage+sqlite3", "geopackage")
 
 
-def _rasterize(
-    vector: StagedInput, parameters: dict[str, Any], output_dir: Path
-) -> dict[str, Any]:
+def _rasterize(vector: StagedInput, parameters: dict[str, Any], output_dir: Path) -> dict[str, Any]:
     if ("burnField" in parameters) == ("burnValue" in parameters):
         raise ValueError("PARAMETERS_INVALID")
-    if parameters["extentMinX"] >= parameters["extentMaxX"] or parameters[
-        "extentMinY"
-    ] >= parameters["extentMaxY"]:
+    if (
+        parameters["extentMinX"] >= parameters["extentMaxX"]
+        or parameters["extentMinY"] >= parameters["extentMaxY"]
+    ):
         raise ValueError("EXTENT_INVALID")
     output = output_dir / "rasterized.tif"
     command = ["gdal_rasterize"]
@@ -986,14 +1223,18 @@ def _raster_statistics(raster: StagedInput, parameters: dict[str, Any]) -> dict[
                 height = min(512, dataset.height - y_offset)
                 for x_offset in range(0, dataset.width, 512):
                     width = min(512, dataset.width - x_offset)
-                    values = dataset.read(
-                        band,
+                    values = (
+                        dataset.read(
+                            band,
                             window=Window.from_slices(
                                 (y_offset, y_offset + height),
                                 (x_offset, x_offset + width),
-                        ),
-                        masked=True,
-                    ).compressed().astype(np.float64, copy=False)
+                            ),
+                            masked=True,
+                        )
+                        .compressed()
+                        .astype(np.float64, copy=False)
+                    )
                     null_count += width * height - int(values.size)
                     if values.size == 0:
                         continue
@@ -1067,9 +1308,7 @@ def _terrain_derivative(
     return _artifact(output, "image/tiff", "geotiff")
 
 
-def _contour(
-    raster: StagedInput, parameters: dict[str, Any], output_dir: Path
-) -> dict[str, Any]:
+def _contour(raster: StagedInput, parameters: dict[str, Any], output_dir: Path) -> dict[str, Any]:
     output = output_dir / "contours.gpkg"
     _run(
         [
@@ -1093,12 +1332,11 @@ def _contour(
     return _artifact(output, "application/geopackage+sqlite3", "geopackage")
 
 
-def _proximity(
-    raster: StagedInput, parameters: dict[str, Any], output_dir: Path
-) -> dict[str, Any]:
-    if parameters.get("distanceUnit", "pixel") == "metre" and raster.metadata.get(
-        "crsUnit"
-    ) != "metre":
+def _proximity(raster: StagedInput, parameters: dict[str, Any], output_dir: Path) -> dict[str, Any]:
+    if (
+        parameters.get("distanceUnit", "pixel") == "metre"
+        and raster.metadata.get("crsUnit") != "metre"
+    ):
         raise ValueError("PROJECTED_CRS_REQUIRED")
     output = output_dir / "proximity.tif"
     command = [
@@ -1233,9 +1471,7 @@ def _native_gis_operator(
         return {"raster": _mosaic(inputs["rasters"], parameters, output_dir)}
     if operator_id == "raster.reclassify":
         return {
-            "raster": _reclassify(
-                inputs["raster"][0], inputs["rules"][0], parameters, output_dir
-            )
+            "raster": _reclassify(inputs["raster"][0], inputs["rules"][0], parameters, output_dir)
         }
     if operator_id == "raster.polygonize":
         return {"vector": _polygonize(inputs["raster"][0], parameters, output_dir)}
@@ -1250,9 +1486,7 @@ def _native_gis_operator(
         }
     if operator_id in {"raster.slope", "raster.aspect", "raster.hillshade"}:
         return {
-            "raster": _terrain_derivative(
-                operator_id, inputs["raster"][0], parameters, output_dir
-            )
+            "raster": _terrain_derivative(operator_id, inputs["raster"][0], parameters, output_dir)
         }
     if operator_id == "raster.contour":
         return {"vector": _contour(inputs["raster"][0], parameters, output_dir)}
@@ -1297,11 +1531,7 @@ def _native_gis_operator(
                 parameters.get("layer"),
                 float(parameters["maxDistanceMeters"]),
             )
-            return {
-                "points": _artifact(
-                    output, "application/geopackage+sqlite3", "geopackage"
-                )
-            }
+            return {"points": _artifact(output, "application/geopackage+sqlite3", "geopackage")}
         if operator_id == "hydrology.watershed":
             output = output_dir / "watershed.tif"
             hydrology.watershed(
@@ -1319,6 +1549,10 @@ def _native_gis_operator(
             return {"basins": _artifact(output, "image/tiff", "geotiff")}
     if operator_id == "points.interpolate.idw":
         return {"raster": _idw(inputs["points"][0], parameters, output_dir)}
+    if operator_id == "points.interpolate.kriging":
+        from moperators.operators.kriging import run_kriging
+
+        return run_kriging(inputs["points"][0], parameters, output_dir)
     raise ValueError(f"OPERATOR_NOT_IMPLEMENTED: {operator_id}")
 
 
@@ -1345,10 +1579,15 @@ def run_native_operator(
             }
         }
     if operator_id == "statistics.describe":
+        summary_value, details_value = _statistics(inputs["data"][0], parameters)
         return {
             "summary": {
                 "kind": "value",
-                "value": _statistics(inputs["data"][0], parameters),
-            }
+                "value": summary_value,
+            },
+            "details": {
+                "kind": "value",
+                "value": details_value,
+            },
         }
     return _native_gis_operator(operator_id, inputs, parameters, output_dir)

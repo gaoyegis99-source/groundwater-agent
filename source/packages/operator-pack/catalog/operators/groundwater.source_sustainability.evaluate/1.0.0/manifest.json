@@ -2,7 +2,7 @@
   "id": "groundwater.source_sustainability.evaluate",
   "version": "1.0.0",
   "title": "Sustainability Evaluate",
-  "description": "Execute fixed third-party operation sustainability.evaluate through deployment service binding groundwater-sustainability.",
+  "description": "Delegate the fixed sustainability.evaluate operation to the external deployment binding groundwater-sustainability. The executor enforces service/API/model/operation allowlists, verifies input and result integrity, and writes a secret-free provenance receipt; the platform does not reproduce the external scoring algorithm.",
   "domain": "groundwater",
   "tags": [
     "groundwater",
@@ -66,6 +66,7 @@
     }
   ],
   "errorCodes": [
+    "OPERATOR_TIMEOUT",
     "REMOTE_AUTHENTICATION_FAILED",
     "REMOTE_BINDING_INVALID",
     "REMOTE_INTEGRITY_FAILED",

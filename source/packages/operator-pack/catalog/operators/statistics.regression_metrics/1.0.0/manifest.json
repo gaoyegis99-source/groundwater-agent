@@ -1,5 +1,5 @@
 {
-  "description": "输出逐行 error=predicted-actual、absolute_error，以及总体/分井 MAE、RMSE、R²、样本数和持续性基线指标。 同一组数据上比较模型和基线；基线 RMSE 为零时改善率为 null 并声明原因，不伪造 0%。 样本少于 2 或 actual 为常量时 R² 为 null 并声明原因；不把 NaN/Infinity 写入 JSON。这些退化情形与旧 sklearn 默认强制有限值的差异须单独验收。",
+  "description": "输出逐行 error=predicted-actual、absolute_error，以及总体/分井 MAE、RMSE、R²、样本数和声明基线指标。同一组数据上比较模型和基线；perGroup 逐组保留 baseline_mae、baseline_rmse、baseline_r2、baseline_r2_reason、rmse_improvement_pct、improvement_reason 与 unit。基线 RMSE 为零时改善率为 null 并声明原因，不伪造 0%；样本少于 2 或 actual 为常量时 R² 为 null 并声明原因，不把 NaN/Infinity 写入 JSON。",
   "domain": "statistics",
   "errorCodes": [
     "RULESET_INVALID",

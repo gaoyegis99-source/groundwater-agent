@@ -1,0 +1,65 @@
+{
+  "cases": {
+    "dialogue-no-execution": {
+      "description": "A read-only DIALOGUE answer must not create execution authority.",
+      "expectedConfirmationCount": 0,
+      "expectedWorkflowRunCount": 0,
+      "invariants": [
+        "DIALOGUE_COMPLETES",
+        "DIALOGUE_NO_CONFIRMATION",
+        "DIALOGUE_NO_WORKFLOW_RUN"
+      ]
+    },
+    "execution-proposal-confirmation": {
+      "description": "An explicit execution proposal must stop at durable confirmation.",
+      "expectedConfirmationCount": 1,
+      "expectedWorkflowRunCount": 0,
+      "invariants": [
+        "EXECUTION_STOPS_AT_CONFIRMATION",
+        "CONFIRMATION_HAS_PREPARED_ACTION",
+        "CONFIRMATION_PRECEDES_WORKFLOW_RUN"
+      ]
+    },
+    "fan-out-draft": {
+      "description": "A workflow draft must preserve one upstream node feeding two sinks without execution.",
+      "expectedConfirmationCount": 0,
+      "expectedWorkflowRunCount": 0,
+      "invariants": [
+        "FAN_OUT_PRESERVED",
+        "FAN_OUT_HAS_TWO_OUTPUTS",
+        "WORKFLOW_DRAFT_NO_EXECUTION"
+      ]
+    },
+    "knowledge-read-citation": {
+      "description": "A citation must match an OK Knowledge unit fully read in the current turn.",
+      "expectedConfirmationCount": 0,
+      "expectedWorkflowRunCount": 0,
+      "invariants": [
+        "UNREAD_CITATION_REJECTED",
+        "CITATION_FROM_CURRENT_READ",
+        "KNOWLEDGE_REPLY_NO_EXECUTION"
+      ]
+    },
+    "minimax-noncase-terminal": {
+      "description": "A normal MiniMax execution must terminalize from authoritative workflow state without a synthetic-case disclaimer.",
+      "expectedConfirmationCount": 1,
+      "expectedWorkflowRunCount": 1,
+      "invariants": [
+        "MINIMAX_NONCASE_TERMINAL",
+        "MINIMAX_NO_PROVIDER_ACK_REPLAY",
+        "MINIMAX_NO_SYNTHETIC_DISCLAIMER"
+      ]
+    },
+    "missing-field-correction": {
+      "description": "A missing field must block execution and ask the user to correct the field binding.",
+      "expectedConfirmationCount": 0,
+      "expectedWorkflowRunCount": 0,
+      "invariants": [
+        "MISSING_FIELD_BLOCKS_EXECUTION",
+        "MISSING_FIELD_REQUESTS_CORRECTION",
+        "MISSING_FIELD_NO_CONFIRMATION"
+      ]
+    }
+  },
+  "schemaVersion": "agent-replay-cases.v1"
+}

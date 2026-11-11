@@ -286,11 +286,11 @@ def _has_nearby_log_line(
     positions = [position for position in range(start, stop) if position != index]
     if same_stream and " | " in lines[index]:
         stream = lines[index].split(" | ", 1)[0]
-        # Compose can interleave other services between adjacent lines from
-        # one container.  Keep both bounds: at most 24 physical lines and at
-        # most ``before``/``after`` lines from the matching container.
-        physical_start = max(0, index - 24)
-        physical_stop = min(len(lines), index + 25)
+        # Compose can interleave bursts of API traffic between adjacent lines
+        # from one container. Keep both bounds: at most 64 physical lines and
+        # at most ``before``/``after`` lines from the matching container.
+        physical_start = max(0, index - 64)
+        physical_stop = min(len(lines), index + 65)
         preceding = [
             position
             for position in range(physical_start, index)

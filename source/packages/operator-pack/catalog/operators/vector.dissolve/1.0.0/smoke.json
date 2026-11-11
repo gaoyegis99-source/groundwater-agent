@@ -4,6 +4,9 @@
       "format": "geopackage",
       "kind": "artifact",
       "mediaType": "application/geopackage+sqlite3"
+    },
+    "summary": {
+      "kind": "value"
     }
   },
   "inputs": {
@@ -18,6 +21,7 @@
   "parameters": {
     "field": "group_name",
     "layer": "dissolve",
+    "pointCoverageMode": false,
     "separateDisjoint": false
   },
   "schemaVersion": "operator-smoke-test.v1"

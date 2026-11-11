@@ -1,19 +1,25 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Iterator
+from contextlib import contextmanager
 import hashlib
 import json
 import os
 import re
-import stat
 import shutil
+import stat
 import subprocess
 import sys
+import tempfile
+import uuid
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "packages/workflow-compiler/src"))
 sys.path.insert(0, str(ROOT / "platform" / "assembler"))
+sys.path.insert(0, str(ROOT / "packages/operator-pack/src"))
 
 from assembler import available_products, compile_product  # noqa: E402
 from assembler_publication import (  # noqa: E402
@@ -21,15 +27,25 @@ from assembler_publication import (  # noqa: E402
     current_bundle,
     generated_root,
 )
+from moperators.smoke import SmokeRunRefusal, run_operator_smoke  # noqa: E402
+from scripts.development.capability_inventory import (  # noqa: E402
+    CapabilityInventoryRefusal,
+    generate_capability_inventory,
+)
+from scripts.development.workflow_golden import (  # noqa: E402
+    WorkflowGoldenRefusal,
+    run_workflow_golden,
+)
 
-sys.path.insert(0, str(ROOT))
 from scripts.maintenance.project_environment import (  # noqa: E402
     EnvironmentRefusal,
     activate,
     docker_arguments,
     lifecycle,
+    owned_path,
 )
 from scripts.maintenance import dependency_materializer  # noqa: E402
+from scripts.maintenance.xdg_layout import ensure_private_roots  # noqa: E402
 
 _CACHE_DIRECTORIES = frozenset(
     {
@@ -330,11 +346,7 @@ def _ensure_research_dependencies(root: Path = ROOT) -> Path:
 
     paths = lifecycle()
     current = dependency_materializer.status(root, paths)
-    missing = {
-        scope
-        for scope, status in current["scopes"].items()
-        if status != "PASS"
-    }
+    missing = {scope for scope, status in current["scopes"].items() if status != "PASS"}
     if missing:
         current = dependency_materializer.materialize(root, paths, missing)
     if current["status"] != "PASS":
@@ -352,8 +364,12 @@ def _research_runtime(product_id: str) -> tuple[Path, Path, Path, Path, str]:
     state = paths.state / "research-dev" / product_id
     data = paths.data / "research-dev" / product_id
     for relative in (
-        "kernel", "data/database", "data/objects", "knowledge/database",
-        "executor/state", "executor/work",
+        "kernel",
+        "data/database",
+        "data/objects",
+        "knowledge/database",
+        "executor/state",
+        "executor/work",
     ):
         bind_root = data / relative
         bind_root.mkdir(parents=True, exist_ok=True)
@@ -399,9 +415,16 @@ def _research_runtime(product_id: str) -> tuple[Path, Path, Path, Path, str]:
         )
     )
     source_services = (
-        "kernel-service", "data-migrate", "data-service", "data-worker",
-        "knowledge-next-migrate", "knowledge-next-service", "knowledge-next-worker",
-        "executor-control", "executor-native-worker", "executor-qgis-worker",
+        "kernel-service",
+        "data-migrate",
+        "data-service",
+        "data-worker",
+        "knowledge-next-migrate",
+        "knowledge-next-service",
+        "knowledge-next-worker",
+        "executor-control",
+        "executor-native-worker",
+        "executor-qgis-worker",
     )
     available = json.loads((output / "compose.json").read_text())["services"]
     override = state / "compose.source.json"
@@ -410,13 +433,18 @@ def _research_runtime(product_id: str) -> tuple[Path, Path, Path, Path, str]:
             {
                 "services": {
                     name: {
-                        "volumes": [{
-                            "type": "bind", "source": str(ROOT),
-                            "target": "/workspace", "read_only": True,
-                        }],
+                        "volumes": [
+                            {
+                                "type": "bind",
+                                "source": str(ROOT),
+                                "target": "/workspace",
+                                "read_only": True,
+                            }
+                        ],
                         "environment": {"PYTHONPATH": python_path},
                     }
-                    for name in source_services if name in available
+                    for name in source_services
+                    if name in available
                 }
             },
             indent=2,
@@ -426,7 +454,10 @@ def _research_runtime(product_id: str) -> tuple[Path, Path, Path, Path, str]:
     )
     override.chmod(0o600)
     return (
-        output / "compose.json", override, env_file, data,
+        output / "compose.json",
+        override,
+        env_file,
+        data,
         _compose_project(ROOT, product_id),
     )
 
@@ -435,14 +466,32 @@ def _run_compose(
     product_id: str,
     arguments: list[str],
     *,
+    extra_files: tuple[Path, ...] = (),
     check: bool = True,
 ) -> subprocess.CompletedProcess[str]:
     compose, override, env_file, _data, project = _research_runtime(product_id)
-    command = docker_arguments([
-        "compose", "--env-file", str(env_file),
-        "--project-name", project, "--file", str(compose),
-        "--file", str(override), *arguments,
-    ])
+    state_root = lifecycle().state.resolve()
+    extra_arguments: list[str] = []
+    for path in extra_files:
+        resolved = path.resolve()
+        if not resolved.is_file() or not resolved.is_relative_to(state_root):
+            raise ValueError(f"RESEARCH_COMPOSE_OVERRIDE_INVALID:{path}")
+        extra_arguments.extend(("--file", str(resolved)))
+    command = docker_arguments(
+        [
+            "compose",
+            "--env-file",
+            str(env_file),
+            "--project-name",
+            project,
+            "--file",
+            str(compose),
+            "--file",
+            str(override),
+            *extra_arguments,
+            *arguments,
+        ]
+    )
     environment = dict(os.environ)
     for line in env_file.read_text(encoding="utf-8").splitlines():
         name, separator, value = line.partition("=")
@@ -494,9 +543,7 @@ def _record_bootstrap_status(
             "assemblyDigest": assembly_digest,
         }
     else:
-        matches = re.findall(
-            r"KNOWLEDGE_BOOTSTRAP_[A-Z_]+(?::[A-Z0-9_]+)?", combined
-        )
+        matches = re.findall(r"KNOWLEDGE_BOOTSTRAP_[A-Z_]+(?::[A-Z0-9_]+)?", combined)
         status = {
             "status": "FAILED",
             "errorCode": matches[-1] if matches else "KNOWLEDGE_BOOTSTRAP_FAILED",
@@ -520,10 +567,7 @@ def _load_bootstrap_status(product_id: str) -> dict[str, object]:
             status = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             status = None
-        if (
-            isinstance(status, dict)
-            and status.get("assemblyDigest") == expected_digest
-        ):
+        if isinstance(status, dict) and status.get("assemblyDigest") == expected_digest:
             return status
     return {
         "status": "NOT_RUN",
@@ -576,14 +620,13 @@ def _status(product_id: str) -> dict[str, object]:
             "RESEARCH_PROFILE_NOT_READY",
             "RESEARCH_COMPOSE_FAILED",
         }:
-            return _unavailable_status(
-                revision, source_dirty, source_digest, code
-            )
+            return _unavailable_status(revision, source_dirty, source_digest, code)
         raise
     rows = _compose_json_rows(completed.stdout)
     services = {
         str(row.get("Service")): {
-            "state": row.get("State"), "health": row.get("Health"),
+            "state": row.get("State"),
+            "health": row.get("Health"),
             "image": row.get("Image"),
         }
         for row in rows
@@ -615,7 +658,12 @@ def _status(product_id: str) -> dict[str, object]:
             result = _run_compose(
                 product_id,
                 [
-                    "exec", "-T", service, "python", "-c", probe,
+                    "exec",
+                    "-T",
+                    service,
+                    "python",
+                    "-c",
+                    probe,
                     f"http://127.0.0.1:8000{path}",
                 ],
             )
@@ -638,7 +686,11 @@ def _status(product_id: str) -> dict[str, object]:
     for item in inspected:
         config = item.get("Config", {})
         labels = config.get("Labels", {}) if isinstance(config, dict) else {}
-        service = labels.get("com.docker.compose.service") if isinstance(labels, dict) else None
+        service = (
+            labels.get("com.docker.compose.service")
+            if isinstance(labels, dict)
+            else None
+        )
         if isinstance(service, str):
             images[service] = {
                 "reference": config.get("Image") if isinstance(config, dict) else None,
@@ -679,9 +731,7 @@ def _status(product_id: str) -> dict[str, object]:
         issues.append(
             {
                 "code": str(
-                    bootstrap_status.get(
-                        "errorCode", "KNOWLEDGE_BOOTSTRAP_NOT_RUN"
-                    )
+                    bootstrap_status.get("errorCode", "KNOWLEDGE_BOOTSTRAP_NOT_RUN")
                 ),
                 "summary": (
                     "知识目录初始化失败；常驻服务仍可诊断。"
@@ -726,9 +776,614 @@ def clean_workspace(root: Path = ROOT, *, dry_run: bool = False) -> list[str]:
     return removed
 
 
-def main() -> None:
+def _parameter_overrides(values: list[str]) -> dict[str, object]:
+    result: dict[str, object] = {}
+    for assignment in values:
+        name, separator, encoded = assignment.partition("=")
+        if (
+            not separator
+            or not name
+            or name.strip() != name
+            or name in result
+            or not encoded
+        ):
+            raise SmokeRunRefusal("OPERATOR_PARAMETER_OVERRIDE_INVALID")
+        try:
+            result[name] = json.loads(encoded)
+        except json.JSONDecodeError as error:
+            raise SmokeRunRefusal("OPERATOR_PARAMETER_OVERRIDE_INVALID") from error
+    return result
+
+
+def _fixture_overrides(values: list[str]) -> dict[str, tuple[str, ...]]:
+    collected: dict[str, list[str]] = {}
+    for assignment in values:
+        port, separator, fixture_id = assignment.partition("=")
+        if (
+            not separator
+            or not port
+            or port.strip() != port
+            or not fixture_id
+            or fixture_id.strip() != fixture_id
+        ):
+            raise SmokeRunRefusal("OPERATOR_FIXTURE_OVERRIDE_INVALID")
+        collected.setdefault(port, []).append(fixture_id)
+    return {port: tuple(fixture_ids) for port, fixture_ids in collected.items()}
+
+
+def _file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def _operator_native_lock() -> dict[str, str]:
+    try:
+        lock = json.loads((ROOT / "toolchain.lock.json").read_text(encoding="utf-8"))
+        python = lock["python"]
+        uv = lock["tools"]["uv"]
+    except (OSError, KeyError, TypeError, json.JSONDecodeError) as error:
+        raise SmokeRunRefusal("OPERATOR_NATIVE_LOCK_INVALID") from error
+    values = {
+        "platform": lock.get("platform"),
+        "pythonVersion": python.get("version"),
+        "pythonSha256": python.get("installed_binary_sha256"),
+        "uvVersion": uv.get("version"),
+        "uvSha256": uv.get("installed_binary_sha256"),
+    }
+    schema = lock.get("schema")
+    if (
+        not isinstance(schema, str)
+        or re.fullmatch(r"[a-z][a-z0-9-]*-toolchain-lock\.v1", schema) is None
+        or values["platform"] != "linux-amd64"
+        or sys.platform != "linux"
+        or os.uname().machine not in {"x86_64", "amd64"}
+        or not all(isinstance(value, str) and value for value in values.values())
+        or not values["pythonVersion"].startswith("3.12.")
+        or any(
+            len(values[name]) != 64
+            or any(character not in "0123456789abcdef" for character in values[name])
+            for name in ("pythonSha256", "uvSha256")
+        )
+    ):
+        raise SmokeRunRefusal("OPERATOR_NATIVE_LOCK_INVALID")
+    return values
+
+
+def _verified_uv(lock: dict[str, str]) -> str:
+    configured = shutil.which("uv")
+    if configured is None:
+        raise SmokeRunRefusal("OPERATOR_NATIVE_UV_MISSING")
+    try:
+        executable = Path(configured).resolve(strict=True)
+        digest = _file_sha256(executable)
+        completed = subprocess.run(
+            [str(executable), "--version"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError) as error:
+        raise SmokeRunRefusal("OPERATOR_NATIVE_UV_INVALID") from error
+    if (
+        not executable.is_file()
+        or digest != lock["uvSha256"]
+        or completed.stdout.strip() != f"uv {lock['uvVersion']}"
+    ):
+        raise SmokeRunRefusal("OPERATOR_NATIVE_UV_INVALID")
+    return str(executable)
+
+
+def _native_environment_commands(
+    uv: str,
+    environment: Path,
+    wheelhouse: Path,
+    python_version: str,
+) -> tuple[list[str], list[str], list[str]]:
+    python = environment / "bin/python"
+    return (
+        [
+            uv,
+            "venv",
+            "--python",
+            python_version,
+            "--offline",
+            "--no-python-downloads",
+            str(environment),
+        ],
+        [
+            uv,
+            "pip",
+            "install",
+            "--python",
+            str(python),
+            "--require-hashes",
+            "--offline",
+            "--no-index",
+            "--find-links",
+            str(wheelhouse / "native"),
+            "--link-mode",
+            "copy",
+            "--strict",
+            "-r",
+            str(ROOT / "environments/native/requirements.lock"),
+        ],
+        [
+            uv,
+            "pip",
+            "check",
+            "--python",
+            str(python),
+            "--offline",
+        ],
+    )
+
+
+@contextmanager
+def _native_runtime_python() -> Iterator[tuple[Path, dict[str, object]]]:
+    """Yield an ephemeral locked Native interpreter without changing defaults."""
+
+    paths = lifecycle()
+    ensure_private_roots(paths, ("cache",))
+    lock = _operator_native_lock()
+    uv = _verified_uv(lock)
+    try:
+        dependency = dependency_materializer.locate_compatible_scope(
+            ROOT, paths, "python"
+        )
+    except dependency_materializer.DependencyRefusal as error:
+        raise SmokeRunRefusal("OPERATOR_NATIVE_DEPENDENCIES_NOT_READY") from error
+    wheelhouse = Path(str(dependency["path"]))
+    native_wheelhouse = wheelhouse / "native"
+    requirements = ROOT / "environments/native/requirements.lock"
+    if (
+        wheelhouse.is_symlink()
+        or not native_wheelhouse.is_dir()
+        or native_wheelhouse.is_symlink()
+        or not requirements.is_file()
+        or requirements.is_symlink()
+    ):
+        raise SmokeRunRefusal("OPERATOR_NATIVE_WHEELHOUSE_INVALID")
+    runtime_root = owned_path("operator-smoke-runtime", paths.build)
+    runtime_root.mkdir(parents=True, mode=0o700, exist_ok=True)
+    runtime_root.chmod(0o700)
+    with tempfile.TemporaryDirectory(
+        prefix="native-", dir=runtime_root
+    ) as temporary_name:
+        temporary = Path(temporary_name)
+        environment = temporary / "venv"
+        python = environment / "bin/python"
+        command_environment = {
+            **os.environ,
+            "PYTHONPATH": "",
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "UV_CACHE_DIR": str(temporary / "uv-cache"),
+            "UV_LINK_MODE": "copy",
+            "UV_NO_CONFIG": "1",
+            "UV_NO_INDEX": "1",
+            "UV_OFFLINE": "1",
+            "UV_PYTHON_DOWNLOADS": "never",
+            "UV_PROJECT_ENVIRONMENT": str(environment),
+            "VIRTUAL_ENV": str(environment),
+        }
+        try:
+            for command in _native_environment_commands(
+                uv, environment, wheelhouse, lock["pythonVersion"]
+            ):
+                subprocess.run(
+                    command,
+                    cwd=ROOT,
+                    env=command_environment,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                    timeout=600,
+                )
+            completed = subprocess.run(
+                [
+                    str(python),
+                    "-c",
+                    "import platform; print(platform.python_version())",
+                ],
+                cwd=ROOT,
+                env=command_environment,
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            python_executable = python.resolve(strict=True)
+            python_sha256 = _file_sha256(python_executable)
+        except (OSError, subprocess.SubprocessError) as error:
+            raise SmokeRunRefusal("OPERATOR_NATIVE_ENVIRONMENT_FAILED") from error
+        if (
+            completed.stdout.strip() != lock["pythonVersion"]
+            or python_sha256 != lock["pythonSha256"]
+        ):
+            raise SmokeRunRefusal("OPERATOR_NATIVE_PYTHON_INVALID")
+        dependency_digest = str(dependency["dependencyDigest"])
+        if not dependency_digest.startswith("sha256:"):
+            dependency_digest = "sha256:" + dependency_digest
+        evidence: dict[str, object] = {
+            "schemaVersion": "operator-native-runtime.v1",
+            "isolation": "EPHEMERAL_XDG_BUILD",
+            "network": "OFFLINE",
+            "pythonVersion": lock["pythonVersion"],
+            "pythonSha256": "sha256:" + python_sha256,
+            "uvVersion": lock["uvVersion"],
+            "uvSha256": "sha256:" + lock["uvSha256"],
+            "dependencyScope": "python",
+            "dependencyDigest": dependency_digest,
+            "dependencyReused": bool(dependency.get("reused")),
+            "requirementsPath": "environments/native/requirements.lock",
+            "requirementsSha256": "sha256:" + _file_sha256(requirements),
+            "defaultRuntimeMutation": "NONE",
+        }
+        yield python, evidence
+
+
+def _operator_run_directory(configured: Path | None) -> Path:
+    paths = lifecycle()
+    ensure_private_roots(paths, ("cache",))
+    root = owned_path("operator-runs", paths.cache)
+    root.mkdir(parents=True, mode=0o700, exist_ok=True)
+    root.chmod(0o700)
+    try:
+        output = (
+            owned_path(configured, root)
+            if configured
+            else owned_path(uuid.uuid4().hex, root)
+        )
+    except EnvironmentRefusal as error:
+        raise SmokeRunRefusal("OPERATOR_RUN_OUTPUT_OUTSIDE_CACHE") from error
+    if output == root:
+        raise SmokeRunRefusal("OPERATOR_RUN_OUTPUT_INVALID")
+    output.parent.mkdir(parents=True, mode=0o700, exist_ok=True)
+    return output
+
+
+def _run_operator_smoke(args: argparse.Namespace) -> dict[str, object]:
+    fixtures = _fixture_overrides(args.fixture)
+    parameters = _parameter_overrides(args.parameter)
+    output = _operator_run_directory(args.output_dir)
+    with _native_runtime_python() as (python, runtime_evidence):
+        return run_operator_smoke(
+            ROOT / "packages/operator-pack/catalog/operators",
+            args.operator_id,
+            args.operator_version,
+            output,
+            fixture_overrides=fixtures,
+            parameter_overrides=parameters,
+            python_executable=python,
+            runtime_evidence=runtime_evidence,
+        )
+
+
+def _agent_replay_run_directory(configured: Path | None) -> Path:
+    from scripts.development.agent_replay import AgentReplayRefusal
+
+    paths = lifecycle()
+    ensure_private_roots(paths, ("cache",))
+    root = owned_path("agent-replay-runs", paths.cache)
+    root.mkdir(parents=True, mode=0o700, exist_ok=True)
+    root.chmod(0o700)
+    try:
+        output = (
+            owned_path(configured, root)
+            if configured
+            else owned_path(uuid.uuid4().hex, root)
+        )
+    except EnvironmentRefusal as error:
+        raise AgentReplayRefusal("AGENT_REPLAY_OUTPUT_OUTSIDE_CACHE") from error
+    if output == root:
+        raise AgentReplayRefusal("AGENT_REPLAY_OUTPUT_INVALID")
+    output.parent.mkdir(parents=True, mode=0o700, exist_ok=True)
+    return output
+
+
+def run_agent_replay(**kwargs: object) -> dict[str, object]:
+    """Load the Agent replay runtime only when that development command runs."""
+
+    from scripts.development.agent_replay import run_agent_replay as execute
+
+    return execute(**kwargs)
+
+
+def _run_agent_replay(args: argparse.Namespace) -> dict[str, object]:
+    output = _agent_replay_run_directory(args.output_dir)
+    repetitions = 3 if args.repetitions is None else args.repetitions
+    return run_agent_replay(
+        repository_root=ROOT,
+        case_file=ROOT / "scripts/development/agent-replay-cases.v1.json",
+        run_directory=output,
+        case_ids=None if args.case == "all" else (args.case,),
+        repetitions=repetitions,
+    )
+
+
+def _workflow_golden_run_directory(configured: Path | None) -> Path:
+    paths = lifecycle()
+    ensure_private_roots(paths, ("cache",))
+    root = owned_path("workflow-golden-runs", paths.cache)
+    root.mkdir(parents=True, mode=0o700, exist_ok=True)
+    root.chmod(0o700)
+    try:
+        output = (
+            owned_path(configured, root)
+            if configured
+            else owned_path(uuid.uuid4().hex, root)
+        )
+    except EnvironmentRefusal as error:
+        raise WorkflowGoldenRefusal("WORKFLOW_GOLDEN_OUTPUT_OUTSIDE_CACHE") from error
+    if output == root:
+        raise WorkflowGoldenRefusal("WORKFLOW_GOLDEN_OUTPUT_INVALID")
+    output.parent.mkdir(parents=True, mode=0o700, exist_ok=True)
+    return output
+
+
+def _workflow_native_system_lock() -> tuple[str, str]:
+    try:
+        lock = json.loads((ROOT / "system-deps.lock.json").read_text(encoding="utf-8"))
+        native = lock["aptProfiles"]["native"]
+        package = next(
+            item for item in native["packages"] if item["name"] == "gdal-bin"
+        )
+        version = package["version"]
+    except (OSError, KeyError, StopIteration, TypeError, json.JSONDecodeError) as error:
+        raise WorkflowGoldenRefusal("WORKFLOW_GOLDEN_SYSTEM_LOCK_INVALID") from error
+    if (
+        lock.get("schemaVersion") != "system-deps-lock.v1"
+        or native.get("baseImage") != "pdal"
+        or not isinstance(version, str)
+        or re.fullmatch(r"[0-9][A-Za-z0-9.+:~_-]*", version) is None
+    ):
+        raise WorkflowGoldenRefusal("WORKFLOW_GOLDEN_SYSTEM_LOCK_INVALID")
+    return version, version.split("+", 1)[0].split(":", 1)[-1]
+
+
+def _verified_workflow_runtime_image(
+    image_reference: str,
+) -> tuple[str, dict[str, object]]:
+    if not image_reference or image_reference.strip() != image_reference:
+        raise WorkflowGoldenRefusal("WORKFLOW_GOLDEN_RUNTIME_IMAGE_INVALID")
+    expected_package, expected_gdal = _workflow_native_system_lock()
+    try:
+        docker_info = subprocess.run(
+            docker_arguments(
+                ["info", "--format", "{{json .SecurityOptions}}|{{.DockerRootDir}}"]
+            ),
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        security_encoded, separator, docker_root_encoded = (
+            docker_info.stdout.strip().partition("|")
+        )
+        security = json.loads(security_encoded)
+        expected_docker_root = lifecycle().docker.resolve()
+        if (
+            not separator
+            or not isinstance(security, list)
+            or "name=rootless" not in security
+            or Path(docker_root_encoded).resolve() != expected_docker_root
+        ):
+            raise WorkflowGoldenRefusal("WORKFLOW_GOLDEN_RUNTIME_IMAGE_INVALID")
+        inspected = subprocess.run(
+            docker_arguments(
+                [
+                    "image",
+                    "inspect",
+                    "--format",
+                    "{{.Id}} {{.Os}} {{.Architecture}}",
+                    image_reference,
+                ]
+            ),
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        fields = inspected.stdout.strip().split()
+        if (
+            len(fields) != 3
+            or re.fullmatch(r"sha256:[0-9a-f]{64}", fields[0]) is None
+            or fields[1:] != ["linux", "amd64"]
+        ):
+            raise WorkflowGoldenRefusal("WORKFLOW_GOLDEN_RUNTIME_IMAGE_INVALID")
+        image_id = fields[0]
+        probe = subprocess.run(
+            docker_arguments(
+                [
+                    "run",
+                    "--rm",
+                    "--pull",
+                    "never",
+                    "--network",
+                    "none",
+                    "--entrypoint",
+                    "/bin/sh",
+                    image_id,
+                    "-c",
+                    (
+                        "set -eu; uname -m; dpkg-query -W gdal-bin; "
+                        "ogr2ogr --version; gdal_grid --version"
+                    ),
+                ]
+            ),
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+    except WorkflowGoldenRefusal:
+        raise
+    except (
+        EnvironmentRefusal,
+        OSError,
+        subprocess.SubprocessError,
+        json.JSONDecodeError,
+    ) as error:
+        raise WorkflowGoldenRefusal("WORKFLOW_GOLDEN_RUNTIME_IMAGE_INVALID") from error
+    lines = probe.stdout.splitlines()
+    expected_version_line = f"GDAL {expected_gdal},"
+    if (
+        len(lines) != 4
+        or lines[0] != "x86_64"
+        or lines[1] != f"gdal-bin\t{expected_package}"
+        or not lines[2].startswith(expected_version_line)
+        or not lines[3].startswith(expected_version_line)
+    ):
+        raise WorkflowGoldenRefusal("WORKFLOW_GOLDEN_RUNTIME_IMAGE_INVALID")
+    return image_id, {
+        "schemaVersion": "workflow-native-system-runtime.v1",
+        "isolation": "EPHEMERAL_READ_ONLY_CONTAINER",
+        "network": "OFF",
+        "imageReference": image_reference,
+        "imageId": image_id,
+        "platform": "linux/amd64",
+        "daemonMode": "ROOTLESS_PROJECT_SCOPED",
+        "gdalBinVersion": expected_package,
+        "gdalVersion": expected_gdal,
+        "purpose": "LOCKED_SYSTEM_TOOLS_ONLY",
+        "defaultRuntimeMutation": "NONE",
+    }
+
+
+def _workflow_container_task_command(
+    image_id: str,
+    python: Path,
+    output_parent: Path,
+) -> list[str]:
+    runtime_root = python.parents[2]
+    python_distribution = python.resolve(strict=True).parent.parent
+    roots = (ROOT, runtime_root, python_distribution, output_parent)
+    if any(
+        not path.is_dir()
+        or path.is_symlink()
+        or any(character in str(path) for character in (",", "\n", "\r"))
+        for path in roots
+    ):
+        raise WorkflowGoldenRefusal("WORKFLOW_GOLDEN_CONTAINER_MOUNT_INVALID")
+    pythonpath = os.pathsep.join(
+        (
+            str(ROOT / "packages/operator-pack/src"),
+            str(ROOT / "packages/workflow-compiler/src"),
+            str(ROOT),
+        )
+    )
+    try:
+        return docker_arguments(
+            [
+                "run",
+                "--rm",
+                "--pull",
+                "never",
+                "--network",
+                "none",
+                "--read-only",
+                "--cap-drop",
+                "ALL",
+                "--security-opt",
+                "no-new-privileges",
+                "--pids-limit",
+                "512",
+                "--memory",
+                "8589934592",
+                "--memory-swap",
+                "8589934592",
+                "--cpus",
+                "2",
+                "--user",
+                "0:0",
+                "--tmpfs",
+                "/tmp:rw,nosuid,nodev,noexec,size=536870912",
+                "--workdir",
+                str(ROOT),
+                "--mount",
+                f"type=bind,src={ROOT},dst={ROOT},readonly",
+                "--mount",
+                f"type=bind,src={runtime_root},dst={runtime_root},readonly",
+                "--mount",
+                (
+                    f"type=bind,src={python_distribution},"
+                    f"dst={python_distribution},readonly"
+                ),
+                "--mount",
+                f"type=bind,src={output_parent},dst={output_parent}",
+                "--env",
+                f"PYTHONPATH={pythonpath}",
+                "--env",
+                "PYTHONDONTWRITEBYTECODE=1",
+                "--env",
+                "HOME=/tmp",
+                "--env",
+                "MPLCONFIGDIR=/tmp/matplotlib",
+                "--env",
+                "XDG_CACHE_HOME=/tmp/xdg-cache",
+                image_id,
+                str(python),
+            ]
+        )
+    except EnvironmentRefusal as error:
+        raise WorkflowGoldenRefusal("WORKFLOW_GOLDEN_RUNTIME_IMAGE_INVALID") from error
+
+
+def _run_workflow_golden(
+    args: argparse.Namespace,
+    product_id: str,
+) -> dict[str, object]:
+    output = _workflow_golden_run_directory(args.output_dir)
+    product_development = ROOT / "products" / product_id / "development"
+    verified_image: tuple[str, dict[str, object]] | None = None
+    if args.runtime_image is not None:
+        verified_image = _verified_workflow_runtime_image(args.runtime_image)
+    with _native_runtime_python() as (python, runtime_evidence):
+        task_command = None
+        if verified_image is not None:
+            image_id, system_evidence = verified_image
+            task_command = _workflow_container_task_command(
+                image_id, python, output.parent
+            )
+            runtime_evidence = {
+                **runtime_evidence,
+                "systemRuntime": system_evidence,
+            }
+        return run_workflow_golden(
+            repository_root=ROOT,
+            catalog_directory=ROOT / "packages/operator-pack/catalog/operators",
+            case_file=product_development / "workflow-golden-cases.v1.json",
+            baseline_file=product_development / "workflow-golden-baselines.v1.json",
+            case_id=args.case,
+            run_directory=output,
+            python_executable=python,
+            runtime_evidence=runtime_evidence,
+            task_command=task_command,
+        )
+
+
+def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=("compile", "up", "down", "status", "clean", "check"))
+    parser.add_argument(
+        "command",
+        choices=(
+            "compile",
+            "up",
+            "down",
+            "status",
+            "clean",
+            "check",
+            "operator-smoke",
+            "workflow-golden",
+            "agent-replay",
+            "capability-inventory",
+            "interactive",
+            "interactive-status",
+        ),
+    )
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--product")
     parser.add_argument(
@@ -745,7 +1400,22 @@ def main() -> None:
             "all",
         ),
     )
-    args = parser.parse_args()
+    parser.add_argument("--operator-id")
+    parser.add_argument("--operator-version")
+    parser.add_argument("--fixture", action="append", default=[])
+    parser.add_argument("--parameter", action="append", default=[])
+    parser.add_argument("--output-dir", type=Path)
+    parser.add_argument("--case")
+    parser.add_argument("--repetitions", type=int)
+    parser.add_argument("--runtime-image")
+    parser.add_argument("--verify", action="store_true")
+    parser.add_argument("--dashboard-port", type=int, default=28185)
+    parser.add_argument("--poll-interval", type=float, default=0.75)
+    parser.add_argument("--debounce-ms", type=int, default=350)
+    parser.add_argument("--no-ui", action="store_true")
+    parser.add_argument("--no-validate", action="store_true")
+    parser.add_argument("--once", action="store_true")
+    args = parser.parse_args(argv)
     knowledge_test_database_url = (
         os.environ.get("TEST_KNOWLEDGE_DATABASE_URL")
         if args.command == "check" and args.scope in {"knowledge", "all"}
@@ -756,6 +1426,232 @@ def main() -> None:
     except EnvironmentRefusal as error:
         print(str(error), file=sys.stderr)
         raise SystemExit(75) from error
+    operator_specific_arguments = (
+        args.operator_id is not None
+        or args.operator_version is not None
+        or bool(args.fixture)
+        or bool(args.parameter)
+    )
+    if args.command == "capability-inventory":
+        if (
+            operator_specific_arguments
+            or args.case is not None
+            or args.repetitions is not None
+            or args.runtime_image is not None
+            or args.output_dir is not None
+            or args.scope is not None
+            or args.dry_run
+        ):
+            parser.error(
+                "capability-inventory accepts only --product and the optional "
+                "--verify flag"
+            )
+        product_id = _select_product(ROOT, args.product)
+        try:
+            result = generate_capability_inventory(
+                repository_root=ROOT,
+                product_manifest_path=(
+                    ROOT / "products" / product_id / "product-manifest.json"
+                ),
+                output_path=ROOT / "docs/development/current-capability-inventory.md",
+                check=args.verify,
+            )
+        except CapabilityInventoryRefusal as error:
+            print(
+                json.dumps(
+                    {"status": "FAILED", "code": error.code},
+                    ensure_ascii=False,
+                    sort_keys=True,
+                ),
+                file=sys.stderr,
+            )
+            raise SystemExit(2) from error
+        print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2))
+        return
+    if args.command == "operator-smoke":
+        if (
+            args.operator_id is None
+            or args.operator_version is None
+            or args.case is not None
+            or args.repetitions is not None
+            or args.runtime_image is not None
+            or args.verify
+            or args.scope is not None
+            or args.product is not None
+            or args.dry_run
+        ):
+            parser.error(
+                "operator-smoke requires --operator-id and --operator-version "
+                "and does not accept --scope, --product, or --dry-run"
+            )
+        try:
+            result = _run_operator_smoke(args)
+        except SmokeRunRefusal as error:
+            print(
+                json.dumps(
+                    {"status": "FAILED", "code": error.code},
+                    ensure_ascii=False,
+                    sort_keys=True,
+                ),
+                file=sys.stderr,
+            )
+            raise SystemExit(2) from error
+        print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2))
+        return
+    if args.command == "workflow-golden":
+        if (
+            args.case is None
+            or operator_specific_arguments
+            or args.repetitions is not None
+            or args.scope is not None
+            or args.dry_run
+            or args.verify
+        ):
+            parser.error(
+                "workflow-golden requires --case and does not accept operator, "
+                "--scope, or --dry-run arguments"
+            )
+        product_id = _select_product(ROOT, args.product)
+        try:
+            result = _run_workflow_golden(args, product_id)
+        except WorkflowGoldenRefusal as error:
+            print(
+                json.dumps(
+                    {"status": "FAILED", "code": error.code},
+                    ensure_ascii=False,
+                    sort_keys=True,
+                ),
+                file=sys.stderr,
+            )
+            raise SystemExit(2) from error
+        print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2))
+        if result.get("status") != "PASS":
+            raise SystemExit(1)
+        return
+    if args.command == "agent-replay":
+        from scripts.development.agent_replay import AgentReplayRefusal
+
+        if (
+            args.case is None
+            or operator_specific_arguments
+            or args.runtime_image is not None
+            or args.scope is not None
+            or args.product is not None
+            or args.dry_run
+            or args.verify
+        ):
+            parser.error(
+                "agent-replay requires --case and does not accept operator, "
+                "--runtime-image, --scope, --product, or --dry-run arguments"
+            )
+        try:
+            result = _run_agent_replay(args)
+        except AgentReplayRefusal as error:
+            print(
+                json.dumps(
+                    {"status": "FAILED", "code": error.code},
+                    ensure_ascii=False,
+                    sort_keys=True,
+                ),
+                file=sys.stderr,
+            )
+            raise SystemExit(2) from error
+        print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2))
+        if result.get("status") != "PASS":
+            raise SystemExit(1)
+        return
+    if (
+        operator_specific_arguments
+        or args.case is not None
+        or args.repetitions is not None
+        or args.output_dir is not None
+        or args.runtime_image is not None
+        or args.verify
+    ):
+        parser.error(
+            "operator arguments, --case, --repetitions, and --output-dir are "
+            "only valid with operator-smoke, workflow-golden, or agent-replay"
+        )
+    interactive_options_changed = (
+        args.dashboard_port != 28185
+        or args.poll_interval != 0.75
+        or args.debounce_ms != 350
+        or args.no_ui
+        or args.no_validate
+        or args.once
+    )
+    if args.command in {"interactive", "interactive-status"}:
+        if args.scope is not None:
+            parser.error("interactive commands do not accept --scope")
+        if args.command == "interactive-status" and (
+            args.dry_run or interactive_options_changed
+        ):
+            parser.error("interactive-status accepts only --product")
+        if not 0 <= args.dashboard_port <= 65535:
+            parser.error("--dashboard-port must be between 0 and 65535")
+        if args.poll_interval <= 0:
+            parser.error("--poll-interval must be greater than zero")
+        if args.debounce_ms < 0:
+            parser.error("--debounce-ms must be non-negative")
+        product_id = _select_product(ROOT, args.product)
+        from scripts.development.interactive.command import (
+            InteractiveCommand,
+            InteractiveHooks,
+            read_interactive_status,
+        )
+
+        state_directory = owned_path(
+            Path("research-dev") / product_id / "interactive",
+            lifecycle().state,
+        )
+        if args.command == "interactive-status":
+            print(
+                json.dumps(
+                    read_interactive_status(state_directory),
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
+            return
+        command = InteractiveCommand(
+            root=ROOT,
+            state_directory=state_directory,
+            product_id=product_id,
+            hooks=InteractiveHooks(
+                ensure_dependencies=_ensure_research_dependencies,
+                compile_product=lambda: compile_product(
+                    ROOT,
+                    ROOT / "products" / product_id / "product-manifest.json",
+                ),
+                run_compose=lambda arguments, extra_files, check: _run_compose(
+                    product_id,
+                    arguments,
+                    extra_files=extra_files,
+                    check=check,
+                ),
+                runtime_status=lambda: _status(product_id),
+                record_bootstrap=lambda completed: _record_bootstrap_status(
+                    product_id, completed
+                ),
+            ),
+        )
+        if args.dry_run:
+            result = command.describe()
+        else:
+            result = command.run(
+                dashboard_port=args.dashboard_port,
+                poll_interval=args.poll_interval,
+                debounce_seconds=args.debounce_ms / 1000,
+                ui_enabled=not args.no_ui,
+                validation_enabled=not args.no_validate,
+                once=args.once,
+            )
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return
+    if interactive_options_changed:
+        parser.error(
+            "interactive options are only valid with the interactive command"
+        )
     if args.command == "check":
         if args.scope is None or args.dry_run or args.product is not None:
             parser.error(

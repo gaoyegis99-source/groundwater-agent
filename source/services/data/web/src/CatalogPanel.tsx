@@ -1,5 +1,6 @@
 import type { RunAction } from "./api";
 import { errorText, pretty } from "./api";
+import { FieldProfile } from "./DataProfile";
 import { PreviewPanel } from "./PreviewPanel";
 import { SemanticEditor } from "./SemanticEditor";
 import type { useCatalog } from "./use-catalog";
@@ -219,21 +220,7 @@ export function CatalogPanel({ controller, run, canWriteSemantics, canPreview, p
               deadlineSeconds={previewDeadlineSeconds}
               run={run}
             />
-            <h4>字段检查</h4>
-            <div className="table-scroll">
-              <table>
-                <thead><tr><th>字段名称</th><th>数据类型</th><th>空值</th></tr></thead>
-                <tbody>
-                  {selected.descriptor.fields.map(field => (
-                    <tr key={field.fieldId}>
-                      <td>{field.name}<details className="inline-technical"><summary>技术标识</summary><code>{field.fieldId}</code></details></td>
-                      <td>{field.type}</td>
-                      <td>{field.nullCount}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <FieldProfile version={selected} />
             <details className="governance-details">
               <summary><span>治理字段含义</span><small>补充描述、单位、限制和字段语义</small></summary>
               <SemanticEditor

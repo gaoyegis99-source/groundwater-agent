@@ -1,0 +1,112 @@
+{
+  "schema_version": "groundwater-flopy-dependency-audit.v1",
+  "reviewed_on": "2026-11-10",
+  "decision": "ACCEPTED_FOR_INDEPENDENT_ADV_02_SPIKE_ONLY",
+  "default_runtime_changed": false,
+  "requested_extras": [],
+  "package": {
+    "name": "flopy",
+    "version": "3.12.0",
+    "requires_python": ">=3.12",
+    "license_expression": "CC0-1.0",
+    "wheel": {
+      "filename": "flopy-3.12.0-py3-none-any.whl",
+      "python_tag": "py3-none-any",
+      "sha256": "sha256:e3642d60ab9e94de8531200611c5c76e4d39e85416e0d81024d4b4d373ba0269",
+      "size_bytes": 1528814
+    }
+  },
+  "declared_runtime_requirements": [
+    "matplotlib>=1.4.0",
+    "numpy<3.0,>=2.2.0",
+    "pandas>=2.2.0"
+  ],
+  "resolved_environment": {
+    "python": "3.12.*",
+    "verified_interpreter": "CPython 3.12.8",
+    "platform": "linux-x86_64",
+    "direct_runtime_dependencies": [
+      "flopy==3.12.0"
+    ],
+    "runtime_distributions": [
+      {"name": "contourpy", "version": "1.4.0", "license": "BSD-3-Clause"},
+      {"name": "cycler", "version": "0.12.1", "license": "BSD-3-Clause"},
+      {"name": "flopy", "version": "3.12.0", "license": "CC0-1.0"},
+      {"name": "fonttools", "version": "4.68.0", "license": "MIT"},
+      {"name": "kiwisolver", "version": "1.5.1", "license": "BSD-3-Clause"},
+      {"name": "matplotlib", "version": "3.11.2", "license": "Matplotlib License"},
+      {"name": "numpy", "version": "2.5.4", "license": "BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0"},
+      {"name": "packaging", "version": "26.3", "license": "Apache-2.0 OR BSD-2-Clause"},
+      {"name": "pandas", "version": "3.1.1", "license": "BSD-3-Clause"},
+      {"name": "pillow", "version": "13.0.0", "license": "MIT-CMU"},
+      {"name": "pyparsing", "version": "3.3.3", "license": "MIT"},
+      {"name": "python-dateutil", "version": "4.0.0", "license": "BSD-3-Clause"},
+      {"name": "tzdata", "version": "2026.6", "license": "Apache-2.0"}
+    ],
+    "direct_test_dependencies": [
+      "pytest==8.4.2",
+      "ruff==0.15.16"
+    ],
+    "test_only_distributions": [
+      {"name": "iniconfig", "version": "2.3.1", "license": "MIT"},
+      {"name": "pluggy", "version": "1.7.0", "license": "MIT"},
+      {"name": "pygments", "version": "2.21.0", "license": "BSD-2-Clause"},
+      {"name": "pytest", "version": "8.4.2", "license": "MIT"},
+      {"name": "ruff", "version": "0.15.16", "license": "MIT"}
+    ],
+    "abi_result": "PASS_ON_LOCKED_CPYTHON_3.12_LINUX_X86_64_ENVIRONMENT",
+    "license_review": {
+      "status": "PASS_FOR_INDEPENDENT_SPIKE_REVIEW",
+      "basis": "Installed distribution metadata and bundled license files were inspected for every resolved runtime and test distribution; no copyleft runtime license was identified. This is dependency review evidence, not legal advice."
+    }
+  },
+  "excluded_optional_dependencies": [
+    "affine",
+    "boltons",
+    "descartes",
+    "fiona",
+    "geojson",
+    "geopandas",
+    "gitpython",
+    "h5py",
+    "imageio",
+    "jinja2",
+    "modflow-devtools",
+    "netcdf4",
+    "pooch",
+    "pymetis",
+    "pyproj",
+    "pyshp",
+    "pyvista",
+    "rasterio",
+    "rasterstats",
+    "scikit-learn",
+    "scipy",
+    "shapely",
+    "tomli",
+    "tomli-w",
+    "vtk",
+    "xmipy"
+  ],
+  "api_review": {
+    "simulation": "flopy.mf6.MFSimulation",
+    "flow_model": "flopy.mf6.ModflowGwf",
+    "discretization": "flopy.mf6.ModflowGwfdis",
+    "flow_properties": "flopy.mf6.ModflowGwfnpf",
+    "constant_head": "flopy.mf6.ModflowGwfchd",
+    "output_control": "flopy.mf6.ModflowGwfoc",
+    "head_reader": "flopy.utils.HeadFile",
+    "budget_reader": "flopy.utils.CellBudgetFile",
+    "modflowapi_used": false
+  },
+  "sources": [
+    "https://pypi.org/project/flopy/3.12.0/",
+    "https://flopy.readthedocs.io/en/latest/"
+  ],
+  "boundaries": [
+    "The lock is owned by products/groundwater/spikes/modflow6 and is not part of the root, Native, QGIS, build, or testing dependency domains.",
+    "No optional FloPy extra was requested; GIS export uses the already-required Pillow dependency and does not add Rasterio, Fiona, GDAL Python bindings, or GeoPandas.",
+    "No Operator Catalog, executable model, workflow, product UI, or default deployment manifest references FloPy or this spike.",
+    "The homogeneous confined steady model is a synthetic analytical benchmark, not a field-model recommendation or calibrated prediction."
+  ]
+}

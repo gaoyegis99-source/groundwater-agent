@@ -376,6 +376,8 @@ def _model_outputs_config(monkeypatch, tmp_path, outputs, *, missing=False):
         "deadlineSeconds": 60,
         "finalOutputs": [],
         "dataInputParameters": [],
+        "fieldRequirements": [],
+        "semanticRequirements": [],
         "inputSchemaChecksum": "",
     }
     if missing:
@@ -399,6 +401,123 @@ def test_compiled_final_output_names_are_preserved_in_exact_order(monkeypatch, t
     model, = KernelSettings.from_environment().models
     assert model.final_outputs == tuple(outputs)
     assert isinstance(model.final_outputs, tuple)
+
+
+def test_compiled_field_requirements_are_strictly_typed(monkeypatch, tmp_path):
+    _model_outputs_config(monkeypatch, tmp_path, ["summary"])
+    path = tmp_path / "kernel-config.json"
+    config = json.loads(path.read_text())
+    schema = {
+        "type": "object",
+        "properties": {
+            "versionId": {"type": "string"},
+            "valueField": {"type": "string"},
+        },
+        "required": ["versionId", "valueField"],
+        "additionalProperties": False,
+    }
+    model = config["models"][0]
+    model["tool"]["inputSchema"] = schema
+    model["inputSchemaChecksum"] = "sha256:" + hashlib.sha256(
+        json.dumps(schema, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    model["dataInputParameters"] = ["versionId"]
+    model["fieldRequirements"] = [
+        {
+            "parameter": "valueField",
+            "inputParameter": "versionId",
+            "identifier": "name",
+            "allowedTypes": ["string", "number"],
+        }
+    ]
+    path.write_text(json.dumps(config))
+
+    loaded, = KernelSettings.from_environment().models
+
+    requirement, = loaded.field_requirements
+    assert requirement.parameter == "valueField"
+    assert requirement.input_parameter == "versionId"
+    assert requirement.identifier == "name"
+    assert requirement.allowed_types == ("string", "number")
+
+
+def test_compiled_semantic_requirements_are_strictly_typed(monkeypatch, tmp_path):
+    _model_outputs_config(monkeypatch, tmp_path, ["summary"])
+    path = tmp_path / "kernel-config.json"
+    config = json.loads(path.read_text())
+    schema = {
+        "type": "object",
+        "properties": {
+            "versionId": {"type": "string"},
+            "valueField": {"type": "string"},
+            "depthField": {"type": "string"},
+            "valueUnit": {"type": "string"},
+            "targetCrs": {"type": "string"},
+        },
+        "required": [
+            "versionId", "valueField", "depthField", "valueUnit", "targetCrs"
+        ],
+        "additionalProperties": False,
+    }
+    model = config["models"][0]
+    model["tool"]["inputSchema"] = schema
+    model["inputSchemaChecksum"] = "sha256:" + hashlib.sha256(
+        json.dumps(schema, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    model["dataInputParameters"] = ["versionId"]
+    model["fieldRequirements"] = [
+        {
+            "parameter": "valueField",
+            "inputParameter": "versionId",
+            "identifier": "name",
+            "allowedTypes": ["number"],
+        },
+        {
+            "parameter": "depthField",
+            "inputParameter": "versionId",
+            "identifier": "name",
+            "allowedTypes": ["number"],
+        },
+    ]
+    model["semanticRequirements"] = [
+        {
+            "kind": "fieldUnit",
+            "inputParameter": "versionId",
+            "fieldParameter": "valueField",
+            "unitParameter": "valueUnit",
+        },
+        {
+            "kind": "crsParameter",
+            "parameter": "targetCrs",
+            "requirement": "projectedMetric",
+        },
+        {
+            "kind": "verticalBasis",
+            "inputParameter": "versionId",
+            "referenceFieldParameter": "valueField",
+            "depthFieldParameter": "depthField",
+            "referenceMeanings": ["reference_elevation"],
+            "depthMeanings": ["depth_to_water"],
+        },
+    ]
+    path.write_text(json.dumps(config))
+
+    loaded, = KernelSettings.from_environment().models
+
+    requirement, crs_requirement, vertical_requirement = loaded.semantic_requirements
+    assert requirement.kind == "fieldUnit"
+    assert requirement.input_parameter == "versionId"
+    assert requirement.field_parameter == "valueField"
+    assert requirement.expected_parameter == "valueUnit"
+    assert crs_requirement.kind == "crsParameter"
+    assert crs_requirement.input_parameter is None
+    assert crs_requirement.parameter == "targetCrs"
+    assert crs_requirement.crs_requirement == "projectedMetric"
+    assert vertical_requirement.kind == "verticalBasis"
+    assert vertical_requirement.reference_field_parameter == "valueField"
+    assert vertical_requirement.depth_field_parameter == "depthField"
+    assert vertical_requirement.reference_meanings == ("reference_elevation",)
+    assert vertical_requirement.depth_meanings == ("depth_to_water",)
 
 
 @pytest.mark.parametrize("outputs", [None, "coverage", {}, [None], [2], [""]])

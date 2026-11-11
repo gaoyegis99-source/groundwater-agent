@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 from pathlib import Path
 
 import pytest
@@ -81,6 +82,20 @@ def test_synthetic_input_remains_explicit(lifecycle) -> None:
     assert "SYNTHETIC_TEST_ONLY" in message
     assert "合成输入" in message
     assert output["semantics"]["limitations"] == ["SYNTHETIC_TEST_ONLY"]
+
+
+def test_six_model_coverage_fixture_can_form_a_non_collinear_hull(lifecycle) -> None:
+    fixture = json.loads(lifecycle._coverage_geojson())
+    coordinates = [
+        tuple(feature["geometry"]["coordinates"]) for feature in fixture["features"]
+    ]
+    first, second, third = coordinates[:3]
+    cross_product = (second[0] - first[0]) * (third[1] - first[1]) - (
+        second[1] - first[1]
+    ) * (third[0] - first[0])
+
+    assert len(set(coordinates)) >= 3
+    assert cross_product != 0
 
 
 @pytest.mark.parametrize("helper", ["message", "publication"])

@@ -27,6 +27,22 @@ def main():
     catalog_root = PACK / "catalog"
     lock_path = catalog_root / "implementation-lock.json"
     old = json.loads(lock_path.read_text())["operators"]
+    overrides_document = json.loads(
+        (catalog_root / "implementation-source-overrides.json").read_text()
+    )
+    overrides = overrides_document.get("operators")
+    if (
+        overrides_document.get("schemaVersion")
+        != "operator-implementation-source-overrides.v1"
+        or not isinstance(overrides, dict)
+        or any(
+            not isinstance(key, str)
+            or not isinstance(value, list)
+            or any(not isinstance(path, str) or not path for path in value)
+            for key, value in overrides.items()
+        )
+    ):
+        raise ValueError("OPERATOR_IMPLEMENTATION_SOURCE_OVERRIDES_INVALID")
     entries = {}
     for path in sorted((catalog_root / "operators").glob("*/*/manifest.json")):
         manifest = json.loads(path.read_text())
@@ -69,6 +85,7 @@ def main():
                     "table_document_common_v1",
                 )
             )
+        sources.update(overrides.get(key, ()))
         if manifest["runtime"] == "remote_http":
             sources = {
                 "src/moperators/static_implementations.py",
@@ -85,6 +102,9 @@ def main():
                 canonical(manifest) + source_digest.encode()
             ),
         }
+    unknown_overrides = set(overrides) - set(entries)
+    if unknown_overrides:
+        raise ValueError("OPERATOR_IMPLEMENTATION_SOURCE_OVERRIDE_UNKNOWN")
     lock_path.write_text(
         json.dumps(
             {"schemaVersion": "operator-implementation-lock.v1", "operators": entries},

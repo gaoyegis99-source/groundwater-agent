@@ -19,12 +19,16 @@ import pytest
 
 from assembler import _checksum, compile_product, load_domain
 from platform_kernel.agent_runtime.context_usage import context_tokens
+from platform_kernel.agent_runtime import preparation_tool as preparation_tool_module
+from platform_kernel.agent_runtime.observation_client import ObservationClient
+from platform_kernel.agent_runtime.preparation_tool import build_preparation_tool
 from platform_kernel.agent_runtime.sdk_execution import execution as sdk_execution
 from platform_kernel.agent_runtime.memory import ExecutionContextV1
 from platform_kernel.api import create_app
 from platform_kernel.composition import PlatformApplication
 from platform_kernel.database import connect_database, initialize_database
 from platform_kernel.settings import IntentRouterSettings, KernelSettings
+from platform_kernel.tasks.models import TaskPreparationEntryV1
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -404,7 +408,7 @@ def test_domain_packages_change_agent_surface_but_not_kernel_schema(
 ):
     schemas = []
     for product, observations, models in (
-        ("groundwater", 7, 6),
+        ("groundwater", 7, 10),
         ("air-quality", 4, 1),
     ):
         settings = _settings(assembly_root, product)
@@ -573,12 +577,151 @@ def test_prompt_only_changes_instructions_not_capabilities(assembly_root, applic
     assert first.manifest_checksum != second.manifest_checksum
     assert (
         executor_before
-        == (compiled_bundle(assembly_root, "air-quality") / "executor-config.json").read_bytes()
+        == (
+            compiled_bundle(assembly_root, "air-quality") / "executor-config.json"
+        ).read_bytes()
     )
     _, client, model = applications(second, [ModelStep(output=[_final()])], _no_http)
     assert _turn(client, dialogue_policy="READ_ONLY")[1].status_code == 200
     _assert_domain_instructions(model.calls[0].system_instructions, changed_prompt)
     _evidence("prompt_only", executor_unchanged=True, capabilities_unchanged=True)
+
+
+def _canonical_required_argument(name, schema, model_id):
+    if "enum" in schema:
+        return schema["enum"][0]
+    kind = schema.get("type")
+    if kind == "string":
+        if name.endswith("VersionId"):
+            return f"{model_id}-{name}"
+        if name.endswith("Field"):
+            return {
+                "wellField": "well",
+                "groupField": "well",
+                "timeField": "date",
+                "valueField": "head",
+                "xField": "x",
+                "yField": "y",
+                "referenceElevationField": "elevation",
+                "depthToWaterField": "depth",
+            }.get(name, name)
+        if name.endswith("Crs"):
+            return "EPSG:32650" if name.endswith("targetCrs") else "EPSG:4326"
+        if any(token in name for token in ("Time", "Start", "End")):
+            return "2025-01-01"
+        return "value"
+    if kind == "integer":
+        return max(1, schema.get("minimum", 1))
+    if kind == "number":
+        if "exclusiveMinimum" in schema:
+            return schema["exclusiveMinimum"] + 1
+        return max(1, schema.get("minimum", 1))
+    raise AssertionError(f"no canonical value for {model_id}.{name}: {schema}")
+
+
+def test_all_groundwater_models_accept_matching_field_contracts_without_false_block(
+    assembly_root, monkeypatch
+):
+    settings = _settings(assembly_root, "groundwater")
+
+    def save(_database, *, agent_run_id, tool_call_id, snapshot):
+        validated = TaskPreparationEntryV1.model_validate(snapshot).model_dump()
+        return {**validated, "preparation_id": tool_call_id, "revision": 1}
+
+    monkeypatch.setattr(preparation_tool_module, "save_preparation", save)
+    failures = []
+    for model in settings.models:
+        arguments = dict(model.default_parameters)
+        properties = model.input_schema["properties"]
+        for name in model.input_schema.get("required", []):
+            arguments.setdefault(
+                name,
+                _canonical_required_argument(name, properties[name], model.model_id),
+            )
+
+        fields_by_version = {
+            arguments[input_parameter]: []
+            for input_parameter in model.data_input_parameters
+        }
+        for index, requirement in enumerate(model.field_requirements):
+            value = arguments.get(requirement.parameter)
+            if not value:
+                continue
+            actual_type = (
+                "string"
+                if "string" in requirement.allowed_types
+                else "double"
+                if "number" in requirement.allowed_types
+                else "timestamp[us]"
+            )
+            fields_by_version[arguments[requirement.input_parameter]].append(
+                {
+                    "fieldId": f"f{index}",
+                    "name": value,
+                    "type": actual_type,
+                }
+            )
+
+        def inspect(request):
+            body = json.loads(request.content)
+            version_id = body["arguments"]["version_id"]
+            fields = fields_by_version[version_id]
+            return httpx.Response(
+                200,
+                json={
+                    "data": {
+                        "status": "OK",
+                        "versionId": version_id,
+                        "currentVersion": version_id,
+                        "datasetId": f"dataset-{version_id}",
+                        "semanticId": f"semantics-{version_id}",
+                        "descriptor": {"fields": fields} if fields else {},
+                        "objects": [
+                            {
+                                "objectId": f"object-{version_id}",
+                                "role": "raw",
+                                "mediaType": "text/csv",
+                                "format": "csv",
+                                "size": 8,
+                                "checksum": "sha256:" + "a" * 64,
+                            }
+                        ],
+                    },
+                    "outcome": {
+                        "outcomeCode": "version.inspected",
+                        "facts": {"objectCount": 1},
+                    },
+                },
+            )
+
+        http_client = httpx.AsyncClient(transport=httpx.MockTransport(inspect))
+        tool = build_preparation_tool(
+            settings.data_root / "kernel.sqlite3",
+            observations=settings.observation_tools,
+            services_by_name=settings.services_by_name,
+            models=(model,),
+            observation_client=ObservationClient(http_client),
+        )
+        result = asyncio.run(
+            tool.on_invoke_tool(
+                SimpleNamespace(
+                    context={
+                        "agent_run_id": "run",
+                        "project_id": settings.project_id,
+                        "trace_id": "trace",
+                        "governance": {"knowledge_evidence": []},
+                    },
+                    tool_call_id=f"prepare-{model.tool_name}",
+                ),
+                json.dumps({"target_tool": model.tool_name, "arguments": arguments}),
+            )
+        )
+        asyncio.run(http_client.aclose())
+        if result["status"] != "READY":
+            failures.append((model.model_id, result["blocking_reasons"]))
+
+    assert failures == []
+    assert len(settings.models) == 10
 
 
 @pytest.mark.parametrize("product", PACKAGES)
@@ -964,7 +1107,8 @@ def test_knowledge_can_be_added_to_air_package_without_kernel_changes(
                     ),
                     "facts": (
                         {"readableCount": 1, "rejectedCount": 0}
-                        if reading else {"candidateCount": 1}
+                        if reading
+                        else {"candidateCount": 1}
                     ),
                 },
             },

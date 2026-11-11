@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "table-classification-rules.v1",
+  "ruleSetId": "fixture-classification",
+  "title": "Fixture classification rules",
+  "version": "1.0.0",
+  "overallMethod": "worst-class-order",
+  "classes": [
+    {"code": "LOW", "label": "Low", "order": 1},
+    {"code": "HIGH", "label": "High", "order": 2}
+  ],
+  "indicators": [
+    {
+      "indicator": "value",
+      "unit": "1",
+      "basis": "fixture numeric value",
+      "source": {
+        "id": "fixture-source",
+        "title": "Operator Pack fixture",
+        "version": "1.0.0",
+        "locator": "table-document:value"
+      },
+      "verificationStatus": "VERIFIED",
+      "classifications": [
+        {
+          "classCode": "LOW",
+          "bounds": [
+            {
+              "minimum": 0,
+              "minimumInclusive": true,
+              "maximum": 2,
+              "maximumInclusive": true
+            }
+          ]
+        },
+        {
+          "classCode": "HIGH",
+          "bounds": [
+            {
+              "minimum": 2,
+              "minimumInclusive": false,
+              "maximum": 4,
+              "maximumInclusive": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

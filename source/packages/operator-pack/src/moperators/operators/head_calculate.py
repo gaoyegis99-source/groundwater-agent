@@ -30,6 +30,30 @@ def run(source: TableInput, parameters: dict[str, Any], output_dir: Path) -> dic
         "heads": write(converted, output_dir / "heads.parquet"),
         "summary": {
             "kind": "value",
-            "value": {"rowCount": len(converted), "outputUnit": "m"},
+            "value": {
+                "rowCount": len(converted),
+                "outputField": output_field,
+                "outputUnit": "m",
+                "referenceElevationField": reference_field,
+                "referenceElevationUnit": parameters["referenceElevationUnit"],
+                "depthToWaterField": depth_field,
+                "depthToWaterUnit": parameters["depthToWaterUnit"],
+                "calculation": (
+                    f"{output_field} = reference elevation - depth to water, after "
+                    "converting both inputs to metres"
+                ),
+                "depthPositiveDirection": "downward from the reference surface",
+                "resultKind": "COMPUTED_HEAD_ELEVATION",
+                "interpretation": (
+                    "Each output value is a computed hydraulic-head elevation in metres, "
+                    "not a direct flow-velocity observation."
+                ),
+                "limitations": [
+                    "Reference elevation and depth to water must use the same reference "
+                    "surface and same vertical datum.",
+                    "The calculation does not correct surveying, datum, casing-reference, "
+                    "or depth-measurement errors.",
+                ],
+            },
         },
     }

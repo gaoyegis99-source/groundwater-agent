@@ -23,6 +23,47 @@ from .replies import (
 )
 
 
+_SEQUENCE_PATTERNS = (
+    re.compile(
+        r"先\s*(?P<upstream>.+?)\s*(?:，|,|；|;)?\s*"
+        r"(?:再|然后)\s*(?P<downstream>.+)",
+        re.I | re.S,
+    ),
+    re.compile(
+        r"\bfirst\b\s+(?P<upstream>.+?)\s*(?:,\s*)?"
+        r"(?:and\s+)?\bthen\b\s+(?P<downstream>.+)",
+        re.I | re.S,
+    ),
+    re.compile(
+        r"(?P<upstream>[^,;，；]+?)\s*(?:->|→)\s*"
+        r"(?P<downstream>[^,;，；]+)",
+        re.I | re.S,
+    ),
+)
+_SEQUENCE_STOP_WORDS = frozenset({
+    "a", "an", "and", "analyses", "analysis", "analyze", "calculate",
+    "data", "do", "first", "for", "next", "observations", "operation",
+    "operations", "or", "perform", "run", "step", "steps", "the", "then",
+    "to", "use", "using",
+})
+
+
+def _explicit_sequence_relation(message: str) -> tuple[str, str] | None:
+    for pattern in _SEQUENCE_PATTERNS:
+        match = pattern.search(message)
+        if match is not None:
+            return match.group("upstream"), match.group("downstream")
+    return None
+
+
+def _sequence_terms(value: str) -> set[str]:
+    return {
+        term
+        for term in re.findall(r"[a-z0-9]+", value.casefold())
+        if term not in _SEQUENCE_STOP_WORDS
+    }
+
+
 class ReplySubmission:
     """Bind reply validation to one run's database, request policy and provider."""
 
@@ -340,15 +381,17 @@ class ReplySubmission:
                 elif issue["code"] == "WORKFLOW_DRAFT_SEQUENCE_INVALID":
                     instruction = (
                         "Call submit_reply once more. The user requested a sequence: "
-                        "connect each downstream operation to an upstream nodeOutput "
-                        "instead of reusing the external workflowInput, and expose "
-                        "only the final sink operation as the workflow output. Preserve "
-                        "the requested operation order and all explicit missing inputs."
+                        "connect each explicitly downstream operation to the requested "
+                        "upstream nodeOutput instead of reusing the external "
+                        "workflowInput. Expose every requested terminal operation as a "
+                        "workflow output; fan-out and multiple terminal outputs are "
+                        "valid. Preserve the requested operation order and all explicit "
+                        "missing inputs."
                     )
                 elif issue["code"] == "DRAFT_DATA_FORMAT_INCOMPATIBLE":
                     instruction = (
                         "Call submit_reply once more. For each data binding, copy the "
-                        "inspected Data media type and format into its graph input "
+                        "inspected Data media type and format, then bind them to its graph input "
                         "declaration while also satisfying the inspected target "
                         "operator port. Bind the source Data only to the source input; "
                         "leave the separate missing rules/configuration input unbound."
@@ -372,32 +415,92 @@ class ReplySubmission:
         self, draft,
     ) -> tuple[str, str] | None:
         message = (self.request_context or {}).get("current_message")
-        if (
-            not isinstance(message, str)
-            or re.search(r"先.+(?:再|然后)|\b(?:first|then|after)\b", message, re.I)
-            is None
-            or len(draft.graph.nodes) < 2
-        ):
+        if not isinstance(message, str) or len(draft.graph.nodes) < 2:
             return None
+        relation = _explicit_sequence_relation(message)
+        if relation is None:
+            return None
+
         node_ids = {node.node_id for node in draft.graph.nodes}
-        upstream_ids = {
-            binding.node_output.node_id
-            for node in draft.graph.nodes
-            for binding in node.inputs.values()
-            if hasattr(binding, "node_output")
-        }
-        sinks = node_ids - upstream_ids
-        edge_count = sum(
-            hasattr(binding, "node_output")
-            for node in draft.graph.nodes
-            for binding in node.inputs.values()
+        downstream_by_node = {node_id: set() for node_id in node_ids}
+        upstream_by_node = {node_id: set() for node_id in node_ids}
+        for node in draft.graph.nodes:
+            for binding in node.inputs.values():
+                node_output = getattr(binding, "node_output", None)
+                if node_output is None or node_output.node_id not in node_ids:
+                    continue
+                downstream_by_node[node_output.node_id].add(node.node_id)
+                upstream_by_node[node.node_id].add(node_output.node_id)
+
+        requested_upstream, requested_downstream = relation
+        upstream_matches = self._matching_sequence_nodes(
+            requested_upstream, draft.graph.nodes,
         )
-        if edge_count < len(node_ids) - 1 or len(sinks) != 1:
-            return "WORKFLOW_DRAFT_SEQUENCE_INVALID", "/graph/nodes"
-        sink = next(iter(sinks))
-        if any(output.node_output.node_id != sink for output in draft.graph.outputs):
+        downstream_matches = self._matching_sequence_nodes(
+            requested_downstream, draft.graph.nodes,
+        )
+        if upstream_matches and downstream_matches:
+            for downstream_id in downstream_matches:
+                ancestors = set()
+                pending = list(upstream_by_node[downstream_id])
+                while pending:
+                    upstream_id = pending.pop()
+                    if upstream_id in ancestors:
+                        continue
+                    ancestors.add(upstream_id)
+                    pending.extend(upstream_by_node[upstream_id])
+                if ancestors.isdisjoint(upstream_matches):
+                    return "WORKFLOW_DRAFT_SEQUENCE_INVALID", "/graph/nodes"
+        else:
+            connected = set()
+            pending = [next(iter(node_ids))]
+            while pending:
+                node_id = pending.pop()
+                if node_id in connected:
+                    continue
+                connected.add(node_id)
+                pending.extend(
+                    downstream_by_node[node_id] | upstream_by_node[node_id]
+                )
+            if connected != node_ids:
+                return "WORKFLOW_DRAFT_SEQUENCE_INVALID", "/graph/nodes"
+
+        sinks = {
+            node_id
+            for node_id, downstream_ids in downstream_by_node.items()
+            if not downstream_ids
+        }
+        if any(
+            output.node_output.node_id not in sinks
+            for output in draft.graph.outputs
+        ):
             return "WORKFLOW_DRAFT_SEQUENCE_INVALID", "/graph/outputs"
         return None
+
+    def _matching_sequence_nodes(self, text: str, nodes) -> set[str]:
+        requested_terms = _sequence_terms(text)
+        if not requested_terms:
+            return set()
+        scores = {}
+        for node in nodes:
+            aliases = [node.node_id, node.operator_id]
+            if self.operator_catalog is not None:
+                manifest = self.operator_catalog.get(
+                    (node.operator_id, node.operator_version),
+                )
+                if manifest is not None:
+                    aliases.extend([
+                        manifest.get("title", ""),
+                        *manifest.get("tags", []),
+                    ])
+            node_terms = set().union(*map(_sequence_terms, aliases))
+            scores[node.node_id] = len(requested_terms & node_terms)
+        best_score = max(scores.values(), default=0)
+        if best_score == 0:
+            return set()
+        return {
+            node_id for node_id, score in scores.items() if score == best_score
+        }
 
     def _retry_or_raise(self, context, diagnostics: dict, instruction: str, error: Exception) -> dict:
         if stage_protocol_retry(self.database, context):
@@ -448,8 +551,9 @@ class ReplySubmission:
                 "Use only the documented workflow_draft fields; never add explanatory "
                 "note fields beside parameter_values or other draft fields. "
                 "For sequential requests, "
-                "every graph output must reference the terminal requested operation, "
-                "never an intermediate node. Workflow-draft replies never include "
+                "each graph output must reference a requested terminal operation, "
+                "never an intermediate node; fan-out may have multiple terminal "
+                "outputs. Workflow-draft replies never include "
                 "interaction_options; the saved draft carries its own gaps. Keep "
                 "workflow_draft.summary to one sentence within 120 characters."
             )

@@ -4,6 +4,7 @@
   "errorCodes": [
     "DUPLICATE_TIMESTAMP",
     "FIELD_REQUIRED",
+    "FREQUENCY_UNSUPPORTED",
     "INSUFFICIENT_OBSERVATIONS",
     "NON_NUMERIC_VALUE",
     "OUTPUT_VALIDATION_FAILED",
@@ -78,6 +79,15 @@
         "exclusiveMaximum": 1,
         "exclusiveMinimum": 0,
         "type": "number"
+      },
+      "frequency": {
+        "enum": [
+          "day",
+          "month",
+          "quarter",
+          "year"
+        ],
+        "type": "string"
       },
       "groupField": {
         "minLength": 1,

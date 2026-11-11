@@ -297,8 +297,10 @@ def _geopackage(plan, path, settings):
         warnings = []
         transformer = None
         map_available = True
+        crs_label = f"srs_id:{layer['srs_id']} (unresolved)"
         try:
             source_crs = _crs(connection, layer["srs_id"])
+            crs_label = source_crs.to_string()
             if source_crs != CRS.from_epsg(4326):
                 projection = Transformer.from_crs(source_crs, 4326, always_xy=True)
                 transformer = projection.transform
@@ -357,7 +359,7 @@ def _geopackage(plan, path, settings):
                 "selected_layer": selected_name,
                 "feature_count": source_rows,
                 "geometry_types": sorted(geometry_types),
-                "crs": f"srs_id:{layer['srs_id']}",
+                "crs": crs_label,
                 "bbox_wgs84": list(bounds) if bounds else None,
                 "map_available": any(features),
             },

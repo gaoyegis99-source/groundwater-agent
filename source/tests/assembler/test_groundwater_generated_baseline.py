@@ -9,13 +9,13 @@ from assembler import compile_product  # noqa: E402
 
 
 GENERATED_ARTIFACT_DIGESTS = {
-    "kernel-config.json": "db225cfc57f1825a4759243b9cd347787987cdf20d7d4177f931ac01a7180e86",
-    "executor-config.json": "e05858577baccc8b4c35755fdd2635ef0e864c3dca2edc46e0613d8bad07bb31",
+    "kernel-config.json": "76d0b149a73bfb20e557e1ab4ae99fcf297e5ee11de295ab04adb5b57287b6be",
+    "executor-config.json": "3f5a8efee314045969d6a8378db3866c68dfbe77d8adacf557b71fdb6a292037",
     "compose.json": "654a44d54f0f79a73750e232a9b4546fb15b721e37ce7df36eafb6cd95b1d467",
     "nginx.conf": "301325455147fe4416b0031474f7512da574e5019932689e1e1008060726ba1b",
-    "product-ui.json": "e59518d38aa3de22a2381171b9b953b4d35097b426b2e63d2d6bc15445a2115f",
+    "product-ui.json": "abb88199e9e7be44bd9b9c30bda2a15889c435ea15648bea23fcb5c3f068eb0b",
     "product-icon.svg": "e484a9befc9ff8ccabff776babccdcb0f0c8cf6adebc6da25bb64fccf5a0dfab",
-    "assembly-lock.json": "640ffe3c83887e3b3c431dd8479ed62e296304a2cecde54d4a11a7d6376dafae",
+    "assembly-lock.json": "e231ae6e5f569d29a8b92acff8c0623a73bba054010f5c6f1395413ac4292219",
 }
 
 

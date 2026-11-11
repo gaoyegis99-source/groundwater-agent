@@ -1,0 +1,28 @@
+{
+  "expectedOutputs": {
+    "classified": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    },
+    "indicatorClassifications": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    },
+    "ruleSummary": {
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet"
+    },
+    "summary": {"kind": "value"}
+  },
+  "inputs": {
+    "data": {"fixtureId": "table.document.table"},
+    "rules": {"fixtureId": "table.document.classification.rules"},
+    "bindings": {"fixtureId": "table.document.classification.bindings"}
+  },
+  "operator": {"id": "table.classify", "version": "1.0.0"},
+  "parameters": {},
+  "schemaVersion": "operator-smoke-test.v1"
+}

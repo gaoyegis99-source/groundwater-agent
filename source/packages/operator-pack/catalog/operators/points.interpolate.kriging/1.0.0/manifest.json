@@ -1,0 +1,255 @@
+{
+  "id": "points.interpolate.kriging",
+  "version": "1.0.0",
+  "title": "Ordinary and Universal Kriging",
+  "description": "Interpolate projected point observations with Ordinary or linear-drift Universal Kriging, fitted or supplied variograms, kriging variance, leave-one-out diagnostics, and a same-grid IDW diagnostic boundary.",
+  "domain": "points",
+  "tags": [
+    "points",
+    "kriging",
+    "interpolation",
+    "variogram",
+    "uncertainty"
+  ],
+  "runtime": "native",
+  "timeoutSeconds": 3600,
+  "memoryLimitBytes": 8589934592,
+  "inputs": [
+    {
+      "name": "points",
+      "cardinality": "one",
+      "required": true,
+      "mediaTypes": [
+        "text/csv",
+        "application/json",
+        "application/vnd.apache.parquet",
+        "application/vnd.apache.arrow.file"
+      ],
+      "formats": [
+        "csv",
+        "json",
+        "parquet",
+        "arrow-ipc-file"
+      ]
+    }
+  ],
+  "parametersSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "valueField": {
+        "type": "string",
+        "minLength": 1
+      },
+      "xField": {
+        "type": "string",
+        "minLength": 1
+      },
+      "yField": {
+        "type": "string",
+        "minLength": 1
+      },
+      "sourceCrs": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9_]*:[A-Za-z0-9._-]+$"
+      },
+      "targetCrs": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9_]*:[A-Za-z0-9._-]+$"
+      },
+      "pixelSize": {
+        "type": "number",
+        "exclusiveMinimum": 0
+      },
+      "extentMinX": {
+        "type": "number"
+      },
+      "extentMinY": {
+        "type": "number"
+      },
+      "extentMaxX": {
+        "type": "number"
+      },
+      "extentMaxY": {
+        "type": "number"
+      },
+      "krigingType": {
+        "type": "string",
+        "enum": [
+          "ordinary",
+          "universal"
+        ],
+        "default": "ordinary"
+      },
+      "variogramModel": {
+        "type": "string",
+        "enum": [
+          "spherical",
+          "exponential",
+          "gaussian"
+        ],
+        "default": "spherical"
+      },
+      "variogramRange": {
+        "type": "number",
+        "exclusiveMinimum": 0
+      },
+      "variogramSill": {
+        "type": "number",
+        "exclusiveMinimum": 0
+      },
+      "variogramNugget": {
+        "type": "number",
+        "minimum": 0
+      },
+      "variogramBinCount": {
+        "type": "integer",
+        "minimum": 4,
+        "maximum": 30,
+        "default": 10
+      },
+      "neighborCount": {
+        "type": "integer",
+        "minimum": 1,
+        "default": 12
+      },
+      "minimumNeighbors": {
+        "type": "integer",
+        "minimum": 1,
+        "default": 4
+      },
+      "searchRadius": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "exclusiveMinimum": 0,
+        "default": null
+      },
+      "exact": {
+        "type": "boolean",
+        "default": true
+      },
+      "idwPower": {
+        "type": "number",
+        "exclusiveMinimum": 0,
+        "default": 2.0
+      },
+      "valueUnit": {
+        "type": "string",
+        "default": ""
+      }
+    },
+    "required": [
+      "valueField",
+      "xField",
+      "yField",
+      "sourceCrs",
+      "targetCrs",
+      "pixelSize"
+    ]
+  },
+  "outputs": [
+    {
+      "name": "prediction",
+      "kind": "artifact",
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "formats": [
+        "geotiff"
+      ]
+    },
+    {
+      "name": "variance",
+      "kind": "artifact",
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "formats": [
+        "geotiff"
+      ]
+    },
+    {
+      "name": "variogramDiagnostics",
+      "kind": "value",
+      "schema": {
+        "type": "object"
+      }
+    },
+    {
+      "name": "loo",
+      "kind": "artifact",
+      "mediaTypes": [
+        "text/csv"
+      ],
+      "formats": [
+        "csv"
+      ]
+    },
+    {
+      "name": "summary",
+      "kind": "value",
+      "schema": {
+        "type": "object"
+      }
+    }
+  ],
+  "errorCodes": [
+    "BLOCKED_BY_ENVIRONMENT",
+    "CRS_INVALID",
+    "CRS_TRANSFORM_FAILED",
+    "DRIFT_RANK_DEFICIENT",
+    "DUPLICATE_COORDINATES",
+    "EMPTY_INTERPOLATION_INPUT",
+    "EXTENT_INCOMPLETE",
+    "EXTENT_INVALID",
+    "FIELD_REQUIRED",
+    "GRID_TOO_LARGE",
+    "IDW_POWER_INVALID",
+    "INPUT_FORMAT_UNSUPPORTED",
+    "INPUT_INVALID",
+    "INPUT_METADATA_INVALID",
+    "INSUFFICIENT_INTERPOLATION_NEIGHBORS",
+    "INSUFFICIENT_INTERPOLATION_POINTS",
+    "KRIGING_NUMERICAL_FAILURE",
+    "KRIGING_TYPE_INVALID",
+    "NEIGHBOR_CONFIGURATION_INVALID",
+    "NON_NUMERIC_VALUE",
+    "PROJECTED_CRS_REQUIRED",
+    "VARIOGRAM_BIN_COUNT_INVALID",
+    "VARIOGRAM_MODEL_INVALID",
+    "VARIOGRAM_PARAMETERS_INCOMPLETE",
+    "VARIOGRAM_PARAMETERS_INVALID"
+  ],
+  "examples": [
+    {
+      "schemaVersion": "operator-execution-request.v1",
+      "clientRequestId": "example-points-interpolate-kriging",
+      "operator": {
+        "id": "points.interpolate.kriging",
+        "version": "1.0.0"
+      },
+      "mode": "ASYNC",
+      "inputs": {
+        "points": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "parameters": {
+        "valueField": "head_m",
+        "xField": "x",
+        "yField": "y",
+        "sourceCrs": "EPSG:32650",
+        "targetCrs": "EPSG:32650",
+        "pixelSize": 100.0,
+        "krigingType": "ordinary",
+        "variogramModel": "spherical",
+        "neighborCount": 12,
+        "minimumNeighbors": 4,
+        "exact": true,
+        "valueUnit": "m"
+      }
+    }
+  ]
+}

@@ -7,7 +7,6 @@ import argparse
 from dataclasses import replace
 from datetime import UTC, datetime
 import json
-import os
 from pathlib import Path
 import shutil
 import sqlite3

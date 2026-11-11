@@ -1,0 +1,63 @@
+{
+  "schema_version": "groundwater-modflow6-spike-config.v1",
+  "experiment_id": "mf6-681-flopy-312-steady-linear-v1",
+  "grid": {
+    "nlay": 1,
+    "nrow": 3,
+    "ncol": 11,
+    "delr_m": 100.0,
+    "delc_m": 100.0,
+    "top_m": 10.0,
+    "bottom_m": 0.0,
+    "x_origin_m": 500000.0,
+    "y_origin_m": 4000000.0,
+    "crs": "EPSG:32650",
+    "boundary_head_distance_m": 1000.0
+  },
+  "hydraulics": {
+    "cell_type": "confined",
+    "hydraulic_conductivity_m_per_day": 10.0
+  },
+  "boundaries": {
+    "left_head_m": 10.0,
+    "right_head_m": 9.0,
+    "left_and_right_constant_head_all_rows": true,
+    "other_boundaries": "no-flow"
+  },
+  "time": {
+    "mode": "steady",
+    "time_units": "DAYS",
+    "period_length_days": 1.0,
+    "time_steps": 1,
+    "time_step_multiplier": 1.0
+  },
+  "solver": {
+    "complexity": "SIMPLE",
+    "outer_maximum": 50,
+    "inner_maximum": 100,
+    "outer_dvclose_m": 1e-10,
+    "inner_dvclose_m": 1e-10,
+    "rclose_m3_per_day": 1e-8,
+    "linear_acceleration": "CG"
+  },
+  "outputs": {
+    "head_file": "linear-gwf.hds",
+    "budget_file": "linear-gwf.cbc",
+    "listing_file": "linear-gwf.lst",
+    "head_raster_file": "head.tif",
+    "head_unit": "m",
+    "raster_nodata": -9999.0,
+    "contour_interval_m": 0.1,
+    "contour_offset_m": 0.0
+  },
+  "acceptance": {
+    "maximum_head_absolute_error_m": 1e-8,
+    "maximum_darcy_relative_error": 1e-7,
+    "maximum_budget_percent_discrepancy": 1e-6
+  },
+  "provenance": {
+    "input_kind": "SYNTHETIC_ANALYTICAL_BENCHMARK",
+    "random_seed": null,
+    "calibration_status": "UNCALIBRATED_SYNTHETIC"
+  }
+}

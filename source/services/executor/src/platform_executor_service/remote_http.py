@@ -41,8 +41,10 @@ PersistState = Callable[[dict], Awaitable[None]]
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace(
-        "+00:00", "Z"
+    return (
+        datetime.now(timezone.utc)
+        .isoformat(timespec="milliseconds")
+        .replace("+00:00", "Z")
     )
 
 
@@ -57,15 +59,14 @@ def _file_identity(path: Path) -> tuple[str, int]:
 
 
 class RemoteOperationRunner:
-    def __init__(
-        self, config: dict, lease: dict, persist_state: PersistState
-    ) -> None:
+    def __init__(self, config: dict, lease: dict, persist_state: PersistState) -> None:
         self.config = config
         self.lease = lease
         self.persist_state = persist_state
         self.binding = lease.get("remoteBinding")
         if not isinstance(self.binding, dict) or set(self.binding) != {
-            "serviceId", "operationType"
+            "serviceId",
+            "operationType",
         }:
             raise RemoteOperationError("REMOTE_BINDING_INVALID")
         try:
@@ -151,23 +152,29 @@ class RemoteOperationRunner:
         self._validate_version(version)
         self.capabilities = await self._get_json(client, "/api/v1/capabilities")
         operations = self.capabilities.get("operations")
-        if not isinstance(operations, list) or self.binding["operationType"] not in operations:
+        if (
+            not isinstance(operations, list)
+            or self.binding["operationType"] not in operations
+        ):
             raise RemoteOperationError("REMOTE_VERSION_MISMATCH", self.state)
 
         inputs, stable_inputs = self._local_inputs()
         idempotency_key = hashlib.sha256(
             f"{self.lease['jobId']}:{self.lease['nodeId']}".encode()
         ).hexdigest()
-        request_digest = "sha256:" + hashlib.sha256(
-            canonical_json(
-                {
-                    "operationType": self.binding["operationType"],
-                    "clientRequestId": idempotency_key,
-                    "inputs": stable_inputs,
-                    "parameters": self.lease["parameters"],
-                }
-            )
-        ).hexdigest()
+        request_digest = (
+            "sha256:"
+            + hashlib.sha256(
+                canonical_json(
+                    {
+                        "operationType": self.binding["operationType"],
+                        "clientRequestId": idempotency_key,
+                        "inputs": stable_inputs,
+                        "parameters": self.lease["parameters"],
+                    }
+                )
+            ).hexdigest()
+        )
         if self.state and (
             self.state.get("requestSha256") != request_digest
             or self.state.get("idempotencyKey") != idempotency_key
@@ -179,9 +186,7 @@ class RemoteOperationRunner:
             "idempotencyKey": idempotency_key,
             "remoteStatus": self.state.get("remoteStatus", "coordinating"),
             "lastPolledAt": _now(),
-            "remoteTerminationConfirmed": self.state.get(
-                "remoteTerminationConfirmed"
-            ),
+            "remoteTerminationConfirmed": self.state.get("remoteTerminationConfirmed"),
         }
         await self.persist_state(self.state)
 
@@ -214,13 +219,14 @@ class RemoteOperationRunner:
         result = await self._get_json(
             client, f"/api/v1/operations/{quote(operation_id, safe='')}/results"
         )
-        return await self._materialize(client, operation_id, result, version)
+        return await self._materialize(
+            client, operation_id, result, version, stable_inputs
+        )
 
     def _validate_version(self, value: dict) -> None:
         if (
             value.get("apiVersion") != self.service["apiVersion"]
-            or value.get("serviceVersion")
-            not in self.service["allowedServiceVersions"]
+            or value.get("serviceVersion") not in self.service["allowedServiceVersions"]
             or value.get("modelVersion") not in self.service["allowedModelVersions"]
         ):
             raise RemoteOperationError("REMOTE_VERSION_MISMATCH", self.state)
@@ -229,7 +235,11 @@ class RemoteOperationRunner:
         local: dict[str, dict] = {}
         stable: dict[str, dict] = {}
         for port, values in self.lease["inputs"].items():
-            if not _PORT.fullmatch(port) or not isinstance(values, list) or len(values) != 1:
+            if (
+                not _PORT.fullmatch(port)
+                or not isinstance(values, list)
+                or len(values) != 1
+            ):
                 raise RemoteOperationError("REMOTE_PROTOCOL_INVALID", self.state)
             item = values[0]
             path = Path(item["path"])
@@ -292,8 +302,10 @@ class RemoteOperationRunner:
             expected={200},
         )
         expected = {
-            "mediaType": item["mediaType"], "format": item["format"],
-            "sizeBytes": item["sizeBytes"], "sha256": item["sha256"],
+            "mediaType": item["mediaType"],
+            "format": item["format"],
+            "sizeBytes": item["sizeBytes"],
+            "sha256": item["sha256"],
         }
         if any(completed.get(name) != value for name, value in expected.items()):
             raise RemoteOperationError("REMOTE_INTEGRITY_FAILED", self.state)
@@ -309,7 +321,9 @@ class RemoteOperationRunner:
                 response = await client.get(path)
             except httpx.TransportError:
                 if attempt == 2:
-                    raise RemoteOperationError("REMOTE_SUBMISSION_UNCERTAIN", self.state)
+                    raise RemoteOperationError(
+                        "REMOTE_SUBMISSION_UNCERTAIN", self.state
+                    )
                 await asyncio.sleep(0.25 * (attempt + 1))
                 continue
             if response.status_code == 404:
@@ -334,7 +348,9 @@ class RemoteOperationRunner:
                 return operation
         raise RemoteOperationError("REMOTE_SUBMISSION_UNCERTAIN", self.state)
 
-    async def _poll(self, client: httpx.AsyncClient, operation_id: str, current: dict) -> dict:
+    async def _poll(
+        self, client: httpx.AsyncClient, operation_id: str, current: dict
+    ) -> dict:
         while True:
             status = current.get("status")
             if status not in {"pending", "running", *_TERMINAL}:
@@ -349,20 +365,28 @@ class RemoteOperationRunner:
             )
 
     async def _materialize(
-        self, client: httpx.AsyncClient, operation_id: str, result: dict, version: dict
+        self,
+        client: httpx.AsyncClient,
+        operation_id: str,
+        result: dict,
+        version: dict,
+        stable_inputs: dict,
     ) -> RemoteExecutionResult:
         if (
             result.get("operationId") != operation_id
-            or result.get("serviceVersion") not in self.service["allowedServiceVersions"]
-            or result.get("modelVersion") not in self.service["allowedModelVersions"]
+            or result.get("serviceVersion") != version["serviceVersion"]
+            or result.get("modelVersion") != version["modelVersion"]
         ):
             raise RemoteOperationError("REMOTE_VERSION_MISMATCH", self.state)
         contracts = {item["name"]: item for item in self.lease["outputContracts"]}
         artifact_contracts = {
-            name: item for name, item in contracts.items()
+            name: item
+            for name, item in contracts.items()
             if item["kind"] == "artifact" and name != "run_receipt"
         }
-        value_ports = {name for name, item in contracts.items() if item["kind"] == "value"}
+        value_ports = {
+            name for name, item in contracts.items() if item["kind"] == "value"
+        }
         artifacts = result.get("artifacts")
         values = result.get("values")
         if (
@@ -372,6 +396,14 @@ class RemoteOperationRunner:
             or {item.get("port") for item in artifacts} != set(artifact_contracts)
             or not isinstance(values, dict)
             or set(values) != value_ports
+        ):
+            raise RemoteOperationError("REMOTE_PROTOCOL_INVALID", self.state)
+        remote_receipt = await self._get_json(
+            client, f"/api/v1/operations/{quote(operation_id, safe='')}/receipt"
+        )
+        if (
+            remote_receipt.get("remoteTaskId") != operation_id
+            or remote_receipt.get("status") != "succeeded"
         ):
             raise RemoteOperationError("REMOTE_PROTOCOL_INVALID", self.state)
         output_root = Path(self.lease["workspace"]) / "outputs"
@@ -391,8 +423,12 @@ class RemoteOperationRunner:
             relative = item.get("downloadUrl")
             parsed = urlsplit(relative) if isinstance(relative, str) else None
             if (
-                parsed is None or not relative.startswith("/") or parsed.scheme
-                or parsed.netloc or parsed.query or parsed.fragment
+                parsed is None
+                or not relative.startswith("/")
+                or parsed.scheme
+                or parsed.netloc
+                or parsed.query
+                or parsed.fragment
                 or ".." in Path(parsed.path).parts
             ):
                 raise RemoteOperationError("REMOTE_PROTOCOL_INVALID", self.state)
@@ -400,44 +436,49 @@ class RemoteOperationRunner:
             await self._download(
                 client, relative, target, item["sizeBytes"], item["sha256"]
             )
-            outputs.append({
-                "port": port,
-                "path": str(target.relative_to(Path(self.lease["workspace"]))),
-                "mediaType": item["mediaType"],
-                "format": item["format"],
-                "sizeBytes": item["sizeBytes"],
-                "checksum": item["sha256"],
-            })
-            receipt_artifacts.append({
-                "port": port, "sizeBytes": item["sizeBytes"],
-                "sha256": item["sha256"],
-            })
-
-        remote_receipt = await self._get_json(
-            client, f"/api/v1/operations/{quote(operation_id, safe='')}/receipt"
-        )
-        if remote_receipt.get("remoteTaskId") != operation_id:
-            raise RemoteOperationError("REMOTE_PROTOCOL_INVALID", self.state)
+            outputs.append(
+                {
+                    "port": port,
+                    "path": str(target.relative_to(Path(self.lease["workspace"]))),
+                    "mediaType": item["mediaType"],
+                    "format": item["format"],
+                    "sizeBytes": item["sizeBytes"],
+                    "checksum": item["sha256"],
+                }
+            )
+            receipt_artifacts.append(
+                {
+                    "port": port,
+                    "mediaType": item["mediaType"],
+                    "format": item["format"],
+                    "sizeBytes": item["sizeBytes"],
+                    "sha256": item["sha256"],
+                }
+            )
         self.state.update(
-            remoteStatus="succeeded", lastPolledAt=_now(),
+            remoteStatus="succeeded",
+            lastPolledAt=_now(),
             remoteTerminationConfirmed=True,
         )
         receipt = {
             "schemaVersion": "run-receipt.v1",
             "serviceId": self.binding["serviceId"],
+            "operationType": self.binding["operationType"],
             "serviceVersion": version["serviceVersion"],
             "apiVersion": version["apiVersion"],
             "modelVersion": version["modelVersion"],
             "remoteTaskId": operation_id,
             "requestSha256": self.state["requestSha256"],
             "idempotencyKey": self.state["idempotencyKey"],
+            "inputs": stable_inputs,
+            "valuesSha256": "sha256:"
+            + hashlib.sha256(canonical_json(values)).hexdigest(),
             "artifacts": receipt_artifacts,
             "finishedAt": _now(),
             "status": "succeeded",
             "remoteTerminationConfirmed": True,
-            "remoteReceiptSha256": "sha256:" + hashlib.sha256(
-                canonical_json(remote_receipt)
-            ).hexdigest(),
+            "remoteReceiptSha256": "sha256:"
+            + hashlib.sha256(canonical_json(remote_receipt)).hexdigest(),
         }
         receipt_path = output_root / "run_receipt.json"
         receipt_path.write_bytes(canonical_json(receipt))
@@ -452,20 +493,26 @@ class RemoteOperationRunner:
             not in contracts["run_receipt"]["formatPairs"]
         ):
             raise RemoteOperationError("REMOTE_PROTOCOL_INVALID", self.state)
-        outputs.append({
-            "port": "run_receipt",
-            "path": str(receipt_path.relative_to(Path(self.lease["workspace"]))),
-            "mediaType": "application/json",
-            "format": "json",
-            "sizeBytes": receipt_size,
-            "checksum": receipt_digest,
-        })
+        outputs.append(
+            {
+                "port": "run_receipt",
+                "path": str(receipt_path.relative_to(Path(self.lease["workspace"]))),
+                "mediaType": "application/json",
+                "format": "json",
+                "sizeBytes": receipt_size,
+                "checksum": receipt_digest,
+            }
+        )
         await self.persist_state(self.state)
         return RemoteExecutionResult(outputs=outputs, values=values, state=self.state)
 
     async def _download(
-        self, client: httpx.AsyncClient, url: str, target: Path,
-        expected_size: int, expected_digest: str,
+        self,
+        client: httpx.AsyncClient,
+        url: str,
+        target: Path,
+        expected_size: int,
+        expected_digest: str,
     ) -> None:
         temporary = target.with_suffix(".part")
         digest = hashlib.sha256()
@@ -477,7 +524,9 @@ class RemoteOperationRunner:
                     async for chunk in response.aiter_bytes():
                         size += len(chunk)
                         if size > expected_size:
-                            raise RemoteOperationError("REMOTE_INTEGRITY_FAILED", self.state)
+                            raise RemoteOperationError(
+                                "REMOTE_INTEGRITY_FAILED", self.state
+                            )
                         digest.update(chunk)
                         stream.write(chunk)
                     stream.flush()
@@ -522,18 +571,26 @@ class RemoteOperationRunner:
                 path, headers={} if not anonymous else {"Authorization": ""}
             )
         except httpx.TransportError as error:
-            raise RemoteOperationError("REMOTE_SUBMISSION_UNCERTAIN", self.state) from error
+            raise RemoteOperationError(
+                "REMOTE_SUBMISSION_UNCERTAIN", self.state
+            ) from error
         self._check_response(response, {200})
         return self._response_json(response)
 
     async def _post_json(
-        self, client: httpx.AsyncClient, path: str, payload: dict | None,
-        *, expected: set[int],
+        self,
+        client: httpx.AsyncClient,
+        path: str,
+        payload: dict | None,
+        *,
+        expected: set[int],
     ) -> dict:
         try:
             response = await client.post(path, json=payload)
         except httpx.TransportError as error:
-            raise RemoteOperationError("REMOTE_SUBMISSION_UNCERTAIN", self.state) from error
+            raise RemoteOperationError(
+                "REMOTE_SUBMISSION_UNCERTAIN", self.state
+            ) from error
         self._check_response(response, expected)
         return self._response_json(response)
 

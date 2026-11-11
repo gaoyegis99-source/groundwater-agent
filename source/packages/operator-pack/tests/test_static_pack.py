@@ -39,8 +39,8 @@ def test_catalog_lock_smokes_and_static_mapping_are_complete() -> None:
 
     assert ("cartography.render-png", "1.0.0") in identities
     assert not any(identity.startswith("mapfactory.") for identity, _ in identities)
-    assert len(identities) == 106
-    assert sum(item.runtime == "native" for item in catalog.operators) == 80
+    assert len(identities) == 109
+    assert sum(item.runtime == "native" for item in catalog.operators) == 83
     assert sum(item.runtime == "qgis" for item in catalog.operators) == 15
     assert sum(item.runtime == "remote_http" for item in catalog.operators) == 11
     assert set(catalog.smoke_cases) == identities

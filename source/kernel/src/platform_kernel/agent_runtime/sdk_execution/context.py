@@ -49,6 +49,14 @@ from .types import ExecutionUsage, SDKExecutionDependencies, SDKExecutionError
 
 _LOGGER = logging.getLogger(__name__)
 
+_EMPTY_MEMORY_SUMMARY = MemorySummaryV3(
+    goals=[],
+    constraints=[],
+    decisions=[],
+    unresolved_items=[],
+)
+_EMPTY_MEMORY_SUMMARY_TOKENS = token_count(_EMPTY_MEMORY_SUMMARY.model_dump())
+
 
 async def _prepare_initial_input(
     dependencies: SDKExecutionDependencies,
@@ -63,9 +71,7 @@ async def _prepare_initial_input(
     snapshot: ContextSourceSnapshotV1,
     projection: AgentContextProjectionV1,
     context_policy: ContextPolicyV1,
-) -> tuple[
-    list[dict[str, Any]], ExecutionUsage, MemoryUpdate | None, ContextViewV1
-]:
+) -> tuple[list[dict[str, Any]], ExecutionUsage, MemoryUpdate | None, ContextViewV1]:
     through = 0 if memory is None else memory.through_goal_revision
     previous = None if memory is None else memory.summary
     turns = _initial_turns(history, through=through)
@@ -73,9 +79,19 @@ async def _prepare_initial_input(
     available = _available_input_tokens(dependencies)
     total = _context_tokens(agent, agent.instructions, input_items)
     if total * 10 <= available * 8:
-        return input_items, _ZERO_USAGE, None, _context_view(
-            context_policy, snapshot, projection, input_items, total,
-            available=available, included=turns,
+        return (
+            input_items,
+            _ZERO_USAGE,
+            None,
+            _context_view(
+                context_policy,
+                snapshot,
+                projection,
+                input_items,
+                total,
+                available=available,
+                included=turns,
+            ),
         )
 
     recent = turns[-2:]
@@ -83,9 +99,13 @@ async def _prepare_initial_input(
     required_items = build_input_items(None, recent, message)
     if _context_tokens(agent, agent.instructions, required_items) > available:
         view = _context_view(
-            context_policy, snapshot, projection, required_items,
+            context_policy,
+            snapshot,
+            projection,
+            required_items,
             _context_tokens(agent, agent.instructions, required_items),
-            available=available, included=recent,
+            available=available,
+            included=recent,
         )
         activity_hooks.reject_context_view(
             view.manifest(), error_code="AGENT_CONTEXT_TOO_LARGE"
@@ -94,19 +114,36 @@ async def _prepare_initial_input(
     if not compactable:
         if total > available:
             view = _context_view(
-                context_policy, snapshot, projection, input_items, total,
-                available=available, included=turns,
+                context_policy,
+                snapshot,
+                projection,
+                input_items,
+                total,
+                available=available,
+                included=turns,
             )
             activity_hooks.reject_context_view(
                 view.manifest(), error_code="AGENT_CONTEXT_TOO_LARGE"
             )
             raise _context_limit_failure(agent, input_items, activity_hooks)
-        return input_items, _ZERO_USAGE, None, _context_view(
-            context_policy, snapshot, projection, input_items, total,
-            available=available, included=turns,
+        return (
+            input_items,
+            _ZERO_USAGE,
+            None,
+            _context_view(
+                context_policy,
+                snapshot,
+                projection,
+                input_items,
+                total,
+                available=available,
+                included=turns,
+            ),
         )
 
-    summary_maximum = 4096 if dependencies.settings.agent_provider == "deepseek" else 1024
+    summary_maximum = (
+        4096 if dependencies.settings.agent_provider == "deepseek" else 1024
+    )
     summary_limit = min(
         summary_maximum,
         max(128, available // 10),
@@ -145,7 +182,11 @@ async def _prepare_initial_input(
     )
     final_tokens = _context_tokens(agent, agent.instructions, input_items)
     view = _context_view(
-        context_policy, compiled_snapshot, projection, input_items, final_tokens,
+        context_policy,
+        compiled_snapshot,
+        projection,
+        input_items,
+        final_tokens,
         available=available,
         included=remaining_turns,
         compacted=compacted_turns,
@@ -178,33 +219,44 @@ def _context_view(
         estimated_input_tokens=estimated,
         messages=input_items,
         projection_blocks=projection.blocks,
-        included_turn_revisions=frozenset(
-            item.goal_revision for item in included
-        ),
-        compacted_turn_revisions=frozenset(
-            item.goal_revision for item in compacted
-        ),
+        included_turn_revisions=frozenset(item.goal_revision for item in included),
+        compacted_turn_revisions=frozenset(item.goal_revision for item in compacted),
     )
 
 
 def _initial_turns(
-    history: tuple[tuple[int, str, str], ...], *, through: int,
+    history: tuple[tuple[int, str, str], ...],
+    *,
+    through: int,
 ) -> tuple[ConversationTurn, ...]:
     """Retain unsummarized turns plus the latest two full turn pairs."""
     all_turns = completed_turns(history, after_revision=0)
     recent = {item.goal_revision for item in all_turns[-2:]}
     return tuple(
-        item for item in all_turns
+        item
+        for item in all_turns
         if item.goal_revision > through or item.goal_revision in recent
     )
 
 
-def _context_limit_failure(agent: Agent, inputs: list[dict], hooks: _RunUsageCapture) -> SDKExecutionError:
-    usage = context_usage(agent, agent.instructions, inputs, available=hooks.available_input_tokens,
-                          observation_names=hooks.observation_names)
-    hooks.record_activity({**hooks.segment, "status": "RUNNING", "context_usage": usage})
-    return SDKExecutionError("AGENT_CONTEXT_TOO_LARGE", upstream=False,
-                               diagnostics={"kind": "CONTEXT_LIMIT", **usage})
+def _context_limit_failure(
+    agent: Agent, inputs: list[dict], hooks: _RunUsageCapture
+) -> SDKExecutionError:
+    usage = context_usage(
+        agent,
+        agent.instructions,
+        inputs,
+        available=hooks.available_input_tokens,
+        observation_names=hooks.observation_names,
+    )
+    hooks.record_activity(
+        {**hooks.segment, "status": "RUNNING", "context_usage": usage}
+    )
+    return SDKExecutionError(
+        "AGENT_CONTEXT_TOO_LARGE",
+        upstream=False,
+        diagnostics={"kind": "CONTEXT_LIMIT", **usage},
+    )
 
 
 def _compaction_count(
@@ -218,10 +270,18 @@ def _compaction_count(
 ) -> int:
     for count in range(1, len(compactable) + 1):
         remaining = (*compactable[count:], *recent)
-        without_summary = _context_tokens(
-            agent, agent.instructions, build_input_items(None, remaining, message)
+        with_summary_envelope = _context_tokens(
+            agent,
+            agent.instructions,
+            build_input_items(_EMPTY_MEMORY_SUMMARY, remaining, message),
         )
-        if without_summary + summary_limit <= target:
+        # summary_limit bounds the serialized summary object, but the main
+        # request wraps that object in a labelled assistant message. Reserve
+        # the real empty message envelope, then add the remaining summary
+        # budget. The post-compaction complete-envelope check remains
+        # authoritative for JSON escaping and tokenizer boundary effects.
+        remaining_summary_budget = max(0, summary_limit - _EMPTY_MEMORY_SUMMARY_TOKENS)
+        if with_summary_envelope + remaining_summary_budget <= target:
             return count
     return len(compactable)
 
@@ -254,22 +314,31 @@ async def _compact(
             dependencies.model_settings,
             # Thinking tokens share the provider output budget with JSON text.
             # Keep the summary bound separate from DeepSeek's reasoning budget.
-            max_tokens=(dependencies.settings.agent_max_output_tokens
-                        if dependencies.settings.agent_provider == "deepseek" else summary_limit),
+            max_tokens=(
+                dependencies.settings.agent_max_output_tokens
+                if dependencies.settings.agent_provider == "deepseek"
+                else summary_limit
+            ),
             extra_body=(
-                {"response_format": {"type": "json_object"}, "thinking": {"type": "enabled"}}
+                {
+                    "response_format": {"type": "json_object"},
+                    "thinking": {"type": "enabled"},
+                }
                 if dependencies.settings.agent_protocol == "chat_completions"
                 else {"text": {"format": {"type": "json_object"}}}
-            ) if dependencies.settings.agent_provider == "deepseek"
+            )
+            if dependencies.settings.agent_provider == "deepseek"
             else dependencies.model_settings.extra_body,
         ),
         output_type=MemorySummaryV3,
     )
     usage_capture = _RunUsageCapture(
-        dependencies.settings.agent_context_window_tokens - compactor.model_settings.max_tokens,
+        dependencies.settings.agent_context_window_tokens
+        - compactor.model_settings.max_tokens,
         segment=activity_hooks.segment,
         activity_recorder=activity_hooks.activity_recorder,
-        observation_names=frozenset(), purpose="COMPACTION",
+        observation_names=frozenset(),
+        purpose="COMPACTION",
         request_agent_run_id=activity_hooks.segment["agent_run_id"],
         usage_ledger=dependencies.usage_ledger,
         context_purpose="COMPACTION",
@@ -300,7 +369,10 @@ async def _compact(
                 ) from error
             except AgentRunError as error:
                 raise SDKExecutionError(
-                    str(error), upstream=False, usage=usage_capture.delta(), diagnostics=error.diagnostics,
+                    str(error),
+                    upstream=False,
+                    usage=usage_capture.delta(),
+                    diagnostics=error.diagnostics,
                 ) from error
             except UserError as error:
                 cause = error.__cause__
@@ -311,8 +383,14 @@ async def _compact(
                 else:
                     code, upstream = "AGENT_SDK_CONFIGURATION_INVALID", False
                 raise SDKExecutionError(
-                    code, upstream=upstream, usage=usage_capture.delta(),
-                    diagnostics=(cause.diagnostics if isinstance(cause, (AgentRunError, UpstreamServiceError)) else None),
+                    code,
+                    upstream=upstream,
+                    usage=usage_capture.delta(),
+                    diagnostics=(
+                        cause.diagnostics
+                        if isinstance(cause, (AgentRunError, UpstreamServiceError))
+                        else None
+                    ),
                 ) from error
             except APIStatusError as error:
                 _LOGGER.warning(
@@ -358,7 +436,9 @@ async def _compact(
                     "AGENT_MEMORY_COMPACTION_INVALID", upstream=False, usage=usage
                 )
             assert usage_capture.model_activity is not None
-            _activity_status(usage_capture.record_activity, usage_capture.model_activity, "COMPLETE")
+            _activity_status(
+                usage_capture.record_activity, usage_capture.model_activity, "COMPLETE"
+            )
             usage_capture.model_activity = None
             diagnostics["status"] = "SUCCEEDED"
             return summary, usage
@@ -369,6 +449,7 @@ async def _compact(
             raise
         finally:
             diagnostics["usage"] = _usage_data(usage_capture.delta())
+
 
 def _available_input_tokens(dependencies: SDKExecutionDependencies) -> int:
     return (

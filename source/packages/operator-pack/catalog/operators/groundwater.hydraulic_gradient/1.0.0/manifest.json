@@ -70,6 +70,48 @@
       "kind": "value",
       "name": "summary",
       "schema": {
+        "properties": {
+          "directionConvention": {
+            "type": "string"
+          },
+          "directionUnit": {
+            "const": "degree",
+            "type": "string"
+          },
+          "directionValidCellCount": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "gradientUnit": {
+            "const": "dimensionless",
+            "type": "string"
+          },
+          "horizontalCrs": {
+            "type": "string"
+          },
+          "horizontalUnit": {
+            "const": "m",
+            "type": "string"
+          },
+          "interpretation": {
+            "type": "string"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "resultKind": {
+            "const": "DERIVED_FROM_INTERPOLATED_HEAD",
+            "type": "string"
+          },
+          "validCellCount": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
         "type": "object"
       }
     }

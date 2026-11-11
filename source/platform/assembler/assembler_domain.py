@@ -8,7 +8,8 @@ from platform_workflow_compiler import compile_workflow as _compile_workflow
 
 from assembler_common import (
     CHECKSUM_PATTERN, CURRENT_MODULE_API_VERSION, EXTERNAL_CAPABILITIES,
-    MODEL_FIELDS, NAME_PATTERN, TOOL_FIELDS, TOOL_PATTERN, VERSION_PATTERN,
+    MODEL_FIELDS, MODEL_FIELDS_V4, MODEL_FIELDS_V5, NAME_PATTERN, TOOL_FIELDS, TOOL_PATTERN,
+    VERSION_PATTERN,
     DomainPackage, ModuleContract, ServiceBinding, _canonical, _checksum, _string_set,
     _validate_schema, _validate_value, load_json, require_fields, require_string,
 )
@@ -161,7 +162,7 @@ def _load_operator_catalog(root: Path) -> tuple[dict[tuple[str, str], dict], str
             **raw,
             "implementationRevision": locked["implementationRevision"],
         }
-    if len(operators) != 106:
+    if len(operators) != 109:
         raise ValueError("OPERATOR_CATALOG_SIZE_INVALID")
     mapping_path = pack_root / "src" / "moperators" / "static_implementations.py"
     tree = ast.parse(
@@ -224,9 +225,20 @@ def _compile_models(
     identities: set[tuple[str, str]] = set()
     for relative in domain.manifest["executableModels"]:
         raw = domain.definitions[relative]
-        require_fields(raw, MODEL_FIELDS, "EXECUTABLE_MODEL_FIELDS_INVALID")
-        if raw["schemaVersion"] != "executable-model.v4":
+        version = raw.get("schemaVersion") if isinstance(raw, dict) else None
+        if version not in {
+            "executable-model.v4", "executable-model.v5", "executable-model.v6"
+        }:
             raise ValueError("EXECUTABLE_MODEL_VERSION_INVALID")
+        require_fields(
+            raw,
+            MODEL_FIELDS
+            if version == "executable-model.v6"
+            else MODEL_FIELDS_V5
+            if version == "executable-model.v5"
+            else MODEL_FIELDS_V4,
+            "EXECUTABLE_MODEL_FIELDS_INVALID",
+        )
         identity = (
             require_string(raw["modelId"], "EXECUTABLE_MODEL_ID_INVALID"),
             require_string(raw["version"], "EXECUTABLE_MODEL_ID_INVALID"),
@@ -309,6 +321,181 @@ def _compile_models(
             bindings[name] for name in required_workflow_parameters
         } <= available_arguments:
             raise ValueError("MODEL_PARAMETER_BINDING_INVALID")
+        field_requirements = raw.get("fieldRequirements", [])
+        allowed_field_types = {
+            "any", "boolean", "date-time", "integer", "number", "string"
+        }
+        if not isinstance(field_requirements, list):
+            raise ValueError("MODEL_FIELD_REQUIREMENT_INVALID")
+        seen_field_parameters = set()
+        for requirement in field_requirements:
+            if (
+                not isinstance(requirement, dict)
+                or set(requirement) != {
+                    "parameter", "inputParameter", "identifier", "allowedTypes"
+                }
+                or not isinstance(requirement["parameter"], str)
+                or requirement["parameter"] not in schema_properties
+                or requirement["parameter"] in seen_field_parameters
+                or not isinstance(requirement["inputParameter"], str)
+                or requirement["inputParameter"] not in input_bindings.values()
+                or not isinstance(requirement["identifier"], str)
+                or requirement["identifier"] not in {"fieldId", "name"}
+                or not isinstance(requirement["allowedTypes"], list)
+                or not requirement["allowedTypes"]
+                or any(not isinstance(item, str) for item in requirement["allowedTypes"])
+                or len(set(requirement["allowedTypes"]))
+                != len(requirement["allowedTypes"])
+                or not set(requirement["allowedTypes"]) <= allowed_field_types
+            ):
+                raise ValueError("MODEL_FIELD_REQUIREMENT_INVALID")
+            seen_field_parameters.add(requirement["parameter"])
+        semantic_requirements = raw.get("semanticRequirements", [])
+        if not isinstance(semantic_requirements, list):
+            raise ValueError("MODEL_SEMANTIC_REQUIREMENT_INVALID")
+        field_inputs = {
+            (requirement["parameter"], requirement["inputParameter"])
+            for requirement in field_requirements
+        }
+        seen_semantic_requirements = set()
+        for requirement in semantic_requirements:
+            if not isinstance(requirement, dict):
+                raise ValueError("MODEL_SEMANTIC_REQUIREMENT_INVALID")
+            kind = requirement.get("kind")
+            input_parameter = requirement.get("inputParameter")
+            if (
+                kind not in {
+                    "fieldUnit", "crs", "crsParameter", "timeField", "timeRange",
+                    "verticalBasis",
+                }
+                or (
+                    kind != "crsParameter"
+                    and (
+                        not isinstance(input_parameter, str)
+                        or input_parameter not in input_bindings.values()
+                    )
+                )
+            ):
+                raise ValueError("MODEL_SEMANTIC_REQUIREMENT_INVALID")
+            field_parameter = None
+            expected_parameter = None
+            start_parameter = None
+            end_parameter = None
+            parameter = None
+            crs_requirement = None
+            reference_field_parameter = None
+            depth_field_parameter = None
+            reference_meanings = None
+            depth_meanings = None
+            if kind == "fieldUnit":
+                if set(requirement) not in (
+                    {"kind", "inputParameter", "fieldParameter"},
+                    {"kind", "inputParameter", "fieldParameter", "unitParameter"},
+                ):
+                    raise ValueError("MODEL_SEMANTIC_REQUIREMENT_INVALID")
+                field_parameter = requirement.get("fieldParameter")
+                expected_parameter = requirement.get("unitParameter")
+            elif kind == "crs":
+                if set(requirement) not in (
+                    {"kind", "inputParameter"},
+                    {"kind", "inputParameter", "crsParameter"},
+                ):
+                    raise ValueError("MODEL_SEMANTIC_REQUIREMENT_INVALID")
+                expected_parameter = requirement.get("crsParameter")
+            elif kind == "crsParameter":
+                if set(requirement) != {"kind", "parameter", "requirement"}:
+                    raise ValueError("MODEL_SEMANTIC_REQUIREMENT_INVALID")
+                input_parameter = None
+                parameter = requirement.get("parameter")
+                crs_requirement = requirement.get("requirement")
+            elif kind == "verticalBasis":
+                if set(requirement) != {
+                    "kind", "inputParameter", "referenceFieldParameter",
+                    "depthFieldParameter", "referenceMeanings", "depthMeanings",
+                }:
+                    raise ValueError("MODEL_SEMANTIC_REQUIREMENT_INVALID")
+                reference_field_parameter = requirement.get(
+                    "referenceFieldParameter"
+                )
+                depth_field_parameter = requirement.get("depthFieldParameter")
+                reference_meanings = requirement.get("referenceMeanings")
+                depth_meanings = requirement.get("depthMeanings")
+            elif kind == "timeField":
+                if set(requirement) != {
+                    "kind", "inputParameter", "fieldParameter"
+                }:
+                    raise ValueError("MODEL_SEMANTIC_REQUIREMENT_INVALID")
+                field_parameter = requirement.get("fieldParameter")
+            else:
+                if set(requirement) != {
+                    "kind", "inputParameter", "fieldParameter",
+                    "startParameter", "endParameter",
+                }:
+                    raise ValueError("MODEL_SEMANTIC_REQUIREMENT_INVALID")
+                field_parameter = requirement.get("fieldParameter")
+                start_parameter = requirement.get("startParameter")
+                end_parameter = requirement.get("endParameter")
+            needs_field = kind in {"fieldUnit", "timeField", "timeRange"}
+            if (
+                (needs_field and (
+                    not isinstance(field_parameter, str)
+                    or (field_parameter, input_parameter) not in field_inputs
+                ))
+                or (expected_parameter is not None and (
+                    not isinstance(expected_parameter, str)
+                    or expected_parameter not in available_arguments
+                ))
+                or (kind == "timeRange" and (
+                    not isinstance(start_parameter, str)
+                    or start_parameter not in available_arguments
+                    or not isinstance(end_parameter, str)
+                    or end_parameter not in available_arguments
+                ))
+                or (kind == "crsParameter" and (
+                    not isinstance(parameter, str)
+                    or parameter not in available_arguments
+                    or crs_requirement not in {"valid", "projectedMetric"}
+                ))
+                or (kind == "verticalBasis" and (
+                    not isinstance(reference_field_parameter, str)
+                    or (reference_field_parameter, input_parameter)
+                    not in field_inputs
+                    or not isinstance(depth_field_parameter, str)
+                    or (depth_field_parameter, input_parameter) not in field_inputs
+                    or reference_field_parameter == depth_field_parameter
+                    or not isinstance(reference_meanings, list)
+                    or not reference_meanings
+                    or any(
+                        not isinstance(value, str) or not value
+                        for value in reference_meanings
+                    )
+                    or len(reference_meanings) != len(set(reference_meanings))
+                    or len(reference_meanings)
+                    != len({value.casefold() for value in reference_meanings})
+                    or not isinstance(depth_meanings, list)
+                    or not depth_meanings
+                    or any(
+                        not isinstance(value, str) or not value
+                        for value in depth_meanings
+                    )
+                    or len(depth_meanings) != len(set(depth_meanings))
+                    or len(depth_meanings)
+                    != len({value.casefold() for value in depth_meanings})
+                    or not {
+                        value.casefold() for value in reference_meanings
+                    }.isdisjoint({value.casefold() for value in depth_meanings})
+                ))
+            ):
+                raise ValueError("MODEL_SEMANTIC_REQUIREMENT_INVALID")
+            identity = (
+                kind, input_parameter, field_parameter, expected_parameter,
+                start_parameter, end_parameter, parameter, crs_requirement,
+                reference_field_parameter, depth_field_parameter,
+                tuple(reference_meanings or ()), tuple(depth_meanings or ()),
+            )
+            if identity in seen_semantic_requirements:
+                raise ValueError("MODEL_SEMANTIC_REQUIREMENT_INVALID")
+            seen_semantic_requirements.add(identity)
         deadline, parallel = raw["deadlineSeconds"], raw["maxParallelNodes"]
         if (
             isinstance(deadline, bool)

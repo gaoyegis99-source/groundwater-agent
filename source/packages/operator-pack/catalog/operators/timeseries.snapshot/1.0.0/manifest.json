@@ -1,5 +1,5 @@
 {
-  "description": "Select one record per group at an explicit target time using a fixed matching rule and maximum age.",
+  "description": "Select one record per group at an explicit target time using a fixed matching rule and maximum age. Diagnostics retain target_time, selected_time, selection, max_age_days, status and age_days for every group, including NO_MATCH and MAX_AGE_EXCEEDED rows.",
   "domain": "timeseries",
   "errorCodes": [
     "DUPLICATE_TIMESTAMP",

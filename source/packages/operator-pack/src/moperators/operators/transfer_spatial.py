@@ -187,9 +187,15 @@ def raster_window(_identity, inputs, parameters, output_dir):
         "raster": artifact(path, "geotiff"),
         "coverage": write_json(
             {
+                "schemaVersion": "raster-window-coverage.v1",
+                "basis": "first-selected-band-mask-within-requested-window",
+                "selectedBands": rules["bands"],
+                "maskBand": rules["bands"][0],
+                "minimumRequiredFraction": parameters["minimumCoverage"],
                 "validFraction": coverage,
                 "validPixels": int(valid.sum()),
                 "totalPixels": int(valid.size),
+                "meetsMinimumCoverage": True,
             },
             output_dir / "coverage.json",
         ),

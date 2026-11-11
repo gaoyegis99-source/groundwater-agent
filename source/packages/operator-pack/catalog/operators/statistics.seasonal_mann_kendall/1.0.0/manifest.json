@@ -75,12 +75,36 @@
   ],
   "parametersSchema": {
     "additionalProperties": false,
+    "allOf": [
+      {
+        "else": {
+          "required": [
+            "seasonFrequency"
+          ]
+        },
+        "if": {
+          "properties": {
+            "enabled": {
+              "const": false
+            }
+          },
+          "required": [
+            "enabled"
+          ]
+        },
+        "then": {}
+      }
+    ],
     "properties": {
       "alpha": {
         "default": 0.05,
         "exclusiveMaximum": 1,
         "exclusiveMinimum": 0,
         "type": "number"
+      },
+      "enabled": {
+        "default": true,
+        "type": "boolean"
       },
       "groupField": {
         "minLength": 1,
@@ -105,8 +129,7 @@
     "required": [
       "groupField",
       "timeField",
-      "valueField",
-      "seasonFrequency"
+      "valueField"
     ],
     "type": "object"
   },

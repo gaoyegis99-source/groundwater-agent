@@ -17,6 +17,7 @@ dependencies = [
     "jsonschema==4.26.0",
     "openai-agents==0.22.3",
     "pydantic==2.13.5",
+    "pyproj==3.7.2",
     "tiktoken==0.13.0",
     "uvicorn==0.32.1",
 ]

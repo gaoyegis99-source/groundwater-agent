@@ -55,6 +55,41 @@ def grouped_values(
     return result
 
 
+def grouped_values_with_missing(
+    source: Input,
+    *,
+    group_field: str,
+    time_field: str,
+    value_field: str,
+) -> tuple[dict[Any, list[tuple[datetime, float]]], dict[Any, int]]:
+    """Return ordered non-null observations while retaining declared missing counts."""
+    result: dict[Any, list[tuple[datetime, float]]] = defaultdict(list)
+    missing: dict[Any, int] = defaultdict(int)
+    seen: set[tuple[Any, datetime]] = set()
+    metadata = getattr(source, "metadata", {})
+    contract = metadata.get("dataContract", {}) if isinstance(metadata, Mapping) else {}
+    declared_nulls = {
+        str(value) for value in contract.get("nullValues", [])
+    } if isinstance(contract, Mapping) else set()
+    for row in rows(source):
+        group = field(row, group_field)
+        result[group]
+        moment = timestamp(field(row, time_field))
+        if (group, moment) in seen:
+            raise ValueError("DUPLICATE_TIMESTAMP")
+        seen.add((group, moment))
+        raw = field(row, value_field)
+        if raw is None or (
+            isinstance(raw, str) and (not raw.strip() or raw in declared_nulls)
+        ):
+            missing[group] += 1
+            continue
+        result[group].append((moment, number(raw)))
+    for series in result.values():
+        series.sort(key=lambda item: item[0])
+    return result, dict(missing)
+
+
 def period_values(
     source: Input,
     *,

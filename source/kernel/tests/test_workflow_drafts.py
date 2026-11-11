@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from dataclasses import replace
 import json
+from pathlib import Path
 import sqlite3
 
 from agents.testing import ModelStep, ScriptedModel, function_call
@@ -26,6 +27,8 @@ from kernel.tests.test_recommendations import (
 )
 from platform_kernel.api import create_app
 from platform_kernel.api.wire import to_wire
+from platform_kernel.agent_runtime.models import SubmittedReplyV6
+from platform_kernel.agent_runtime.tooling.reply_submission import ReplySubmission
 from platform_kernel.composition import PlatformApplication
 from platform_kernel.database import connect_database, read_session_events
 
@@ -117,6 +120,93 @@ def _draft():
         "unresolved_items": ["需要排序规则文件。"],
         "limitations": ["仅草稿，未执行计算。"],
     }
+
+
+def _fan_out_draft():
+    draft = deepcopy(_draft())
+    draft["title"] = "先整理再并行分析"
+    draft["summary"] = "排序后的数据分别进入两个最终分析节点。"
+    draft["graph"]["nodes"][1]["nodeId"] = "trend"
+    gap = deepcopy(draft["graph"]["nodes"][1])
+    gap["nodeId"] = "gaps"
+    draft["graph"]["nodes"].append(gap)
+    draft["graph"]["outputs"] = [
+        {
+            "name": "trend_summary",
+            "nodeOutput": {"nodeId": "trend", "port": "summary"},
+        },
+        {
+            "name": "gap_summary",
+            "nodeOutput": {"nodeId": "gaps", "port": "summary"},
+        },
+    ]
+    return draft
+
+
+def _parallel_draft():
+    draft = _fan_out_draft()
+    draft["title"] = "并行统计"
+    draft["summary"] = "同一时间范围的数据进入两个独立分析节点。"
+    draft["graph"]["inputs"] = draft["graph"]["inputs"][:1]
+    draft["graph"]["nodes"] = draft["graph"]["nodes"][1:]
+    for node in draft["graph"]["nodes"]:
+        node["inputs"]["data"] = {"workflowInput": "source"}
+    draft["unresolved_items"] = []
+    return draft
+
+
+def _fan_in_draft():
+    draft = deepcopy(_draft())
+    draft["title"] = "双路排序后连接"
+    draft["summary"] = "两路排序结果共同进入最终连接节点。"
+    draft["graph"]["inputs"].append({
+        "name": "join_rules",
+        "cardinality": "one",
+        "mediaTypes": ["application/json"],
+        "formats": ["json"],
+    })
+    draft["graph"]["parameters"] = [
+        "joinType", "cardinality", "maxOutputRows",
+    ]
+    left = draft["graph"]["nodes"][0]
+    left["nodeId"] = "sort_left"
+    right = deepcopy(left)
+    right["nodeId"] = "sort_right"
+    join = {
+        "nodeId": "join",
+        "operatorId": "table.join",
+        "operatorVersion": "1.0.0",
+        "inputs": {
+            "left": {"nodeOutput": {"nodeId": "sort_left", "port": "data"}},
+            "right": {"nodeOutput": {"nodeId": "sort_right", "port": "data"}},
+            "rules": {"workflowInput": "join_rules"},
+        },
+        "parameters": {
+            "joinType": {"workflowParameter": "joinType"},
+            "cardinality": {"workflowParameter": "cardinality"},
+            "maxOutputRows": {"workflowParameter": "maxOutputRows"},
+        },
+    }
+    draft["graph"]["nodes"] = [left, right, join]
+    draft["graph"]["outputs"] = [{
+        "name": "joined_summary",
+        "nodeOutput": {"nodeId": "join", "port": "summary"},
+    }]
+    draft["parameter_values"] = {
+        "joinType": "left",
+        "cardinality": "oneToOne",
+        "maxOutputRows": 1000,
+    }
+    draft["parameter_sources"] = [
+        {
+            "name": name,
+            "source": "USER",
+            "explanation": "采用用户指定的连接设置。",
+        }
+        for name in draft["parameter_values"]
+    ]
+    draft["unresolved_items"] = ["需要排序规则文件和连接规则文件。"]
+    return draft
 
 
 def _operator(operator_id, *, call_id=None):
@@ -677,9 +767,136 @@ def test_deepseek_draft_repairs_disconnected_sequence_and_intermediate_output(
     repair_input = json.dumps(model.calls[-1].input)
     assert "WORKFLOW_DRAFT_SEQUENCE_INVALID" in repair_input
     assert "upstream nodeOutput" in repair_input
-    assert "final sink operation" in repair_input
+    assert "every requested terminal operation" in repair_input
+    assert "multiple terminal outputs are valid" in repair_input
     assert model.calls[-1].model_settings.tool_choice == "submit_reply"
     _no_execution(app)
+
+
+def test_deepseek_draft_allows_explicit_sequence_fan_out_and_multiple_outputs(
+    kernel_settings,
+):
+    draft = _fan_out_draft()
+    app, client, model = _app(kernel_settings, _steps(draft))
+    sid, path, _ = _create(
+        client,
+        message="请先做数据 QA，再分别做趋势和缺测分析。",
+    )
+
+    _drain(app, sid)
+
+    resource = client.get(path).json()
+    assert resource["status"] == "COMPLETE", resource
+    assert resource["errorCode"] is None
+    assert {
+        output["nodeOutput"]["nodeId"]
+        for output in resource["payload"]["workflow"]["outputs"]
+    } == {"trend", "gaps"}
+    assert len(model.calls) == len(_steps(draft))
+    _no_execution(app)
+
+
+def test_deepseek_draft_allows_explicit_sequence_fan_in(kernel_settings):
+    draft = _fan_in_draft()
+    steps = [
+        _operator("table.sort"),
+        _operator("table.join"),
+        _read(),
+        _inspect(),
+        _reply(draft),
+    ]
+    app, client, model = _app(kernel_settings, steps)
+    sid, path, _ = _create(
+        client,
+        message="First sort the two copies, then join them.",
+    )
+
+    _drain(app, sid)
+
+    resource = client.get(path).json()
+    assert resource["status"] == "COMPLETE", resource
+    assert resource["errorCode"] is None
+    join = next(
+        node
+        for node in resource["payload"]["workflow"]["nodes"]
+        if node["nodeId"] == "join"
+    )
+    assert {
+        binding["nodeOutput"]["nodeId"]
+        for binding in join["inputs"].values()
+        if "nodeOutput" in binding
+    } == {"sort_left", "sort_right"}
+    assert len(model.calls) == len(steps)
+    _no_execution(app)
+
+
+def test_deepseek_draft_does_not_treat_temporal_after_as_sequence(
+    kernel_settings,
+):
+    draft = _parallel_draft()
+    steps = [
+        _operator("statistics.describe"),
+        _read(),
+        _inspect(),
+        _reply(draft),
+    ]
+    app, client, model = _app(kernel_settings, steps)
+    sid, path, _ = _create(
+        client,
+        message="Use observations after 2020 for two independent summaries.",
+    )
+
+    _drain(app, sid)
+
+    resource = client.get(path).json()
+    assert resource["status"] == "COMPLETE", resource
+    assert resource["errorCode"] is None
+    assert len(model.calls) == len(steps)
+    _no_execution(app)
+
+
+def test_deepseek_draft_repairs_disconnected_explicit_english_sequence(
+    kernel_settings,
+):
+    invalid = deepcopy(_draft())
+    invalid["graph"]["nodes"][1]["inputs"]["data"] = {
+        "workflowInput": "source",
+    }
+    app, client, model = _app(
+        kernel_settings,
+        [*_steps(invalid), _reply(_draft(), call_id="reply-repair")],
+    )
+    sid, path, _ = _create(
+        client,
+        message="First sort, then calculate statistics.",
+    )
+
+    _drain(app, sid)
+
+    resource = client.get(path).json()
+    assert resource["status"] == "COMPLETE", resource
+    repair_input = json.dumps(model.calls[-1].input)
+    assert "WORKFLOW_DRAFT_SEQUENCE_INVALID" in repair_input
+    assert "upstream nodeOutput" in repair_input
+    assert "only the final sink operation" not in repair_input
+    assert model.calls[-1].model_settings.tool_choice == "submit_reply"
+    _no_execution(app)
+
+
+def test_sequence_check_rejects_connected_graph_in_reverse_requested_order():
+    submitted = SubmittedReplyV6.model_validate_json(
+        _reply(_draft()).output[0].arguments,
+    )
+    submission = ReplySubmission(
+        Path("unused"),
+        {"current_message": "First calculate statistics, then sort."},
+        "deepseek",
+    )
+
+    assert submission._sequential_draft_issue(submitted.workflow_draft) == (
+        "WORKFLOW_DRAFT_SEQUENCE_INVALID",
+        "/graph/nodes",
+    )
 
 
 def test_deepseek_draft_repairs_untrusted_knowledge_reference(kernel_settings):

@@ -200,9 +200,11 @@ test('structured replies keep evidence folded, open the exact source, and reset 
   await expect(evidence).not.toHaveAttribute('open', '');
   await evidence.locator('summary').press('Enter');
   await expect(turn.getByText('折叠的证据说明')).toBeVisible();
-  await expect(turn.getByRole('button', { name: '打开依据：方法说明，单元 unit-2' })).toHaveCount(1);
+  const sourceButton = turn.getByRole('button', { name: '打开依据：方法说明' });
+  await expect(sourceButton).toHaveCount(1);
+  await expect(sourceButton).not.toContainText('unit-2');
   const exactRead = page.waitForRequest(request => new URL(request.url()).pathname.endsWith('/knowledge/evidence/read'));
-  await turn.getByRole('button', { name: '打开依据：方法说明，单元 unit-2' }).click();
+  await sourceButton.click();
   const read = await exactRead;
   expect(read.method()).toBe('POST');
   expect(read.postDataJSON()).toEqual({ refs: [{

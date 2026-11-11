@@ -90,22 +90,42 @@
     "allOf": [
       {
         "else": {
+          "allOf": [
+            {
+              "else": {
+                "required": [
+                  "thresholdField"
+                ]
+              },
+              "if": {
+                "properties": {
+                  "thresholdSource": {
+                    "const": "scalar"
+                  }
+                }
+              },
+              "then": {
+                "required": [
+                  "thresholdValue"
+                ]
+              }
+            }
+          ],
           "required": [
-            "thresholdField"
+            "comparison"
           ]
         },
         "if": {
           "properties": {
-            "thresholdSource": {
-              "const": "scalar"
+            "enabled": {
+              "const": false
             }
-          }
-        },
-        "then": {
+          },
           "required": [
-            "thresholdValue"
+            "enabled"
           ]
-        }
+        },
+        "then": {}
       }
     ],
     "properties": {
@@ -117,6 +137,10 @@
           "atOrBelow"
         ],
         "type": "string"
+      },
+      "enabled": {
+        "default": true,
+        "type": "boolean"
       },
       "frequency": {
         "enum": [
@@ -158,9 +182,7 @@
       "groupField",
       "timeField",
       "valueField",
-      "frequency",
-      "comparison",
-      "thresholdSource"
+      "frequency"
     ],
     "type": "object"
   },

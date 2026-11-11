@@ -32,6 +32,14 @@ Docker + Compose 科研产品，当前公共合同为 API v12。`V6` 仅是本�
 
 研究实例使用显式数据目录；Docker/BuildKit cache 可以重置而不触碰权威数据。
 
+连续开发可使用独立的[交互式增量开发模式](docs/development/interactive-incremental-mode.md)：
+
+```bash
+../bin/dev interactive --product groundwater
+```
+
+该入口提供前端 HMR、Python API reload、worker 定点重启和 loopback 可观测控制台；控制器代码不进入默认系统运行时，生成状态只写入 XDG。
+
 ## 目录职责
 
 | 位置 | 职责 |

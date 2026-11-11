@@ -7,13 +7,17 @@ import re
 
 
 from ..models import (
-    AgentPlanStepV2, InteractionOptionV1,
-    SubmittedReplyV6, WorkflowDraftInput,
+    AgentPlanStepV2,
+    InteractionOptionV1,
+    SubmittedReplyV6,
+    WorkflowDraftInput,
     Utf8String,
     normalize_reply_json,
 )
 from ..evidence import (
-    exact_retrieval_identities, knowledge_identity, trusted_read_identity,
+    exact_retrieval_identities,
+    knowledge_identity,
+    trusted_read_identity,
 )
 from ..reply_schema import reply_schema
 
@@ -25,20 +29,17 @@ _VISIBLE_TECHNICAL_IDENTIFIER = re.compile(
     r"(?:knowledge|workflow|resource|model|session|draft|agent[_-]?run|"
     r"tool[_-]?call)[ _-]?id|workflow[ _-]?run|chunk[ _-]?index|checksum|"
     r"/api/v\d+/knowledge|https?://[^\s)]+|"
-    r"\b(?:groundwater|knowledge|workflow)\.[a-z0-9._-]+@\d+(?:\.\d+)+\b|"
+    r"\b[a-z][a-z0-9_-]*(?:\.[a-z0-9_-]+)+@\d+(?:\.\d+)+\b|"
     r"\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b",
     re.IGNORECASE,
 )
 
 _DIRECT_RECOMMENDATION = re.compile(r"建议|优先|适合|recommend", re.IGNORECASE)
-_COMPARISON_META_LANGUAGE = re.compile(
-    r"当前项目|资料目录|能力边界|只能给出"
-)
+_COMPARISON_META_LANGUAGE = re.compile(r"当前项目|资料目录|能力边界|只能给出")
 
 
 _WORKFLOW_DRAFT_FIELDS = frozenset(
-    field.alias or name
-    for name, field in WorkflowDraftInput.model_fields.items()
+    field.alias or name for name, field in WorkflowDraftInput.model_fields.items()
 )
 
 
@@ -53,10 +54,7 @@ def _drop_unknown_complete_draft_fields(value: object) -> object:
     """
     if not isinstance(value, dict) or not _WORKFLOW_DRAFT_FIELDS <= set(value):
         return value
-    return {
-        key: child for key, child in value.items()
-        if key in _WORKFLOW_DRAFT_FIELDS
-    }
+    return {key: child for key, child in value.items() if key in _WORKFLOW_DRAFT_FIELDS}
 
 
 class _PlanStepInput(AgentPlanStepV2):
@@ -87,22 +85,29 @@ def _normalize_provider_reply_json(
         # truncate, or invent fields in this tiny forced tool call after a large
         # execution context. Persisted Kernel facts supply every user-visible
         # execution field below.
-        return json.dumps({
-            "conclusion": None,
-            "details": [],
-            "unresolved_items": [],
-            "referenced_workflow_runs": [],
-            "include_execution_status": False,
-            "interaction_options": [],
-            "workflow_draft": None,
-        }, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
+        return json.dumps(
+            {
+                "conclusion": None,
+                "details": [],
+                "unresolved_items": [],
+                "referenced_workflow_runs": [],
+                "include_execution_status": False,
+                "interaction_options": [],
+                "workflow_draft": None,
+            },
+            ensure_ascii=False,
+            allow_nan=False,
+            separators=(",", ":"),
+        )
     normalized = normalize_reply_json(value)
     parsed = json.loads(normalized)
     if not isinstance(parsed, dict):
         return normalized
     if provider == "minimax" or provider == "deepseek" and drafting:
         for field in (
-            "details", "unresolved_items", "referenced_workflow_runs",
+            "details",
+            "unresolved_items",
+            "referenced_workflow_runs",
             "interaction_options",
         ):
             parsed.setdefault(field, [])
@@ -135,15 +140,15 @@ def _normalize_provider_reply_json(
     for field in ("details", "unresolved_items"):
         items = parsed.get(field)
         if isinstance(items, list):
-            parsed[field] = [
-                segment(item)
-                for item in items
-            ]
+            parsed[field] = [segment(item) for item in items]
     for item in [
         parsed.get("conclusion"),
         *(parsed.get("details") if isinstance(parsed.get("details"), list) else []),
-        *(parsed.get("unresolved_items")
-          if isinstance(parsed.get("unresolved_items"), list) else []),
+        *(
+            parsed.get("unresolved_items")
+            if isinstance(parsed.get("unresolved_items"), list)
+            else []
+        ),
     ]:
         if not isinstance(item, dict):
             continue
@@ -177,8 +182,7 @@ def _normalize_provider_reply_json(
             item["citations"] = [citation]
         if provider == "deepseek" and isinstance(item.get("citations"), list):
             item["citations"] = [
-                _normalize_deepseek_citation(citation)
-                for citation in item["citations"]
+                _normalize_deepseek_citation(citation) for citation in item["citations"]
             ]
     options = parsed.get("interaction_options")
     if provider == "minimax" and isinstance(options, list):
@@ -238,9 +242,10 @@ def validate_clarification_reply(reply: SubmittedReplyV6) -> str:
     ):
         raise ValueError("CLARIFICATION_REPLY_INVALID")
     question = reply.unresolved_items[0].text
-    if question != question.strip() or re.fullmatch(
-        r"[^。！？.!?\r\n]+[?？]", question
-    ) is None:
+    if (
+        question != question.strip()
+        or re.fullmatch(r"[^。！？.!?\r\n]+[?？]", question) is None
+    ):
         raise ValueError("CLARIFICATION_REPLY_INVALID")
     return question
 
@@ -266,11 +271,14 @@ def validate_terminal_reply_context(
     if reply.conclusion is not None and len(reply.conclusion.text) > 160:
         raise ValueError("REPLY_CONCLUSION_TOO_LONG")
     visible_text = [
-        *(segment.text for segment in (
-            *(() if reply.conclusion is None else (reply.conclusion,)),
-            *reply.details,
-            *reply.unresolved_items,
-        )),
+        *(
+            segment.text
+            for segment in (
+                *(() if reply.conclusion is None else (reply.conclusion,)),
+                *reply.details,
+                *reply.unresolved_items,
+            )
+        ),
         *(
             text
             for option in reply.interaction_options
@@ -278,16 +286,18 @@ def validate_terminal_reply_context(
         ),
     ]
     if reply.workflow_draft is not None:
-        visible_text.extend((
-            reply.workflow_draft.title,
-            reply.workflow_draft.summary,
-            *reply.workflow_draft.unresolved_items,
-            *reply.workflow_draft.limitations,
-            *(
-                source.explanation
-                for source in reply.workflow_draft.parameter_sources
-            ),
-        ))
+        visible_text.extend(
+            (
+                reply.workflow_draft.title,
+                reply.workflow_draft.summary,
+                *reply.workflow_draft.unresolved_items,
+                *reply.workflow_draft.limitations,
+                *(
+                    source.explanation
+                    for source in reply.workflow_draft.parameter_sources
+                ),
+            )
+        )
     if any(_VISIBLE_TECHNICAL_IDENTIFIER.search(text) for text in visible_text):
         raise ValueError("REPLY_TECHNICAL_IDENTIFIER_VISIBLE")
     comparison_terms = context.get("comparison_terms", [])
@@ -308,12 +318,9 @@ def validate_terminal_reply_context(
     required_response_terms = context.get("required_response_terms", [])
     if required_response_terms:
         combined = "\n".join(visible_text).casefold()
-        if (
-            not isinstance(required_response_terms, list)
-            or any(
-                not isinstance(term, str) or term.casefold() not in combined
-                for term in required_response_terms
-            )
+        if not isinstance(required_response_terms, list) or any(
+            not isinstance(term, str) or term.casefold() not in combined
+            for term in required_response_terms
         ):
             raise ValueError("REPLY_REQUESTED_TERMS_INCOMPLETE")
     if clarification_only:
@@ -370,9 +377,7 @@ def _record_read_evidence(control: dict, result: object) -> None:
     if not isinstance(items, list):
         return
     evidence = [list(item) for item in control["knowledge_evidence"]]
-    candidates = [
-        list(item) for item in control.get("knowledge_exact_candidates", [])
-    ]
+    candidates = [list(item) for item in control.get("knowledge_exact_candidates", [])]
     for item in items:
         if not isinstance(item, dict):
             continue
@@ -381,15 +386,14 @@ def _record_read_evidence(control: dict, result: object) -> None:
             continue
         version_id, unit_id, _checksum = observed
         identity = trusted_read_identity(
-            item, {tuple(candidate) for candidate in candidates},
+            item,
+            {tuple(candidate) for candidate in candidates},
         )
         evidence = [
-            current for current in evidence
-            if current[:2] != [version_id, unit_id]
+            current for current in evidence if current[:2] != [version_id, unit_id]
         ]
         candidates = [
-            current for current in candidates
-            if current[:2] != [version_id, unit_id]
+            current for current in candidates if current[:2] != [version_id, unit_id]
         ]
         if identity is not None:
             evidence.append(list(identity))
@@ -399,13 +403,10 @@ def _record_read_evidence(control: dict, result: object) -> None:
 
 
 def _record_retrieved_evidence(control: dict, result: object) -> None:
-    candidates = [
-        list(item) for item in control.get("knowledge_exact_candidates", [])
-    ]
+    candidates = [list(item) for item in control.get("knowledge_exact_candidates", [])]
     for identity in exact_retrieval_identities(result):
         candidates = [
-            current for current in candidates
-            if current[:2] != list(identity[:2])
+            current for current in candidates if current[:2] != list(identity[:2])
         ]
         candidates.append(list(identity))
     if "knowledge_exact_candidates" in control:
@@ -431,16 +432,13 @@ def _clarification_reply_schema() -> dict:
     schema = reply_schema()
     schema["properties"]["conclusion"] = {"type": "null"}
     schema["properties"]["details"]["maxItems"] = 0
-    schema["properties"]["unresolved_items"].update(
-        {"minItems": 1, "maxItems": 1}
-    )
+    schema["properties"]["unresolved_items"].update({"minItems": 1, "maxItems": 1})
     schema["properties"]["referenced_workflow_runs"]["maxItems"] = 0
     schema["properties"]["include_execution_status"] = {
-        "type": "boolean", "const": False
+        "type": "boolean",
+        "const": False,
     }
-    schema["properties"]["interaction_options"].update(
-        {"minItems": 2, "maxItems": 3}
-    )
+    schema["properties"]["interaction_options"].update({"minItems": 2, "maxItems": 3})
     segment = schema["$defs"]["ReplySegmentV1"]
     segment["properties"]["text"]["pattern"] = r"^[^。！？.!?\r\n]+[?？]$"
     segment["properties"]["citations"]["maxItems"] = 0

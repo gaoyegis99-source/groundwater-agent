@@ -987,6 +987,7 @@ dependencies = [
     { name = "platform-protocol-contracts" },
     { name = "platform-workflow-compiler" },
     { name = "pydantic" },
+    { name = "pyproj" },
     { name = "tiktoken" },
     { name = "uvicorn" },
 ]
@@ -1003,6 +1004,7 @@ requires-dist = [
     { name = "platform-protocol-contracts", editable = "packages/protocol-contracts" },
     { name = "platform-workflow-compiler", editable = "packages/workflow-compiler" },
     { name = "pydantic", specifier = "==2.13.5" },
+    { name = "pyproj", specifier = "==3.7.2" },
     { name = "tiktoken", specifier = "==0.13.0" },
     { name = "uvicorn", specifier = "==0.32.1" },
 ]

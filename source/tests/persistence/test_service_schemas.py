@@ -6,6 +6,7 @@ import sqlite3
 import pytest
 
 from platform_executor_service.database import (
+    SCHEMA_VERSION as EXECUTOR_SCHEMA_VERSION,
     initialize_database as initialize_executor,
 )
 from platform_kernel.database import initialize_database as initialize_kernel
@@ -14,7 +15,7 @@ from platform_kernel.schema import SCHEMA_VERSION as KERNEL_SCHEMA_VERSION
 
 INITIALIZERS = {
     "kernel": (initialize_kernel, KERNEL_SCHEMA_VERSION),
-    "executor": (initialize_executor, 8),
+    "executor": (initialize_executor, EXECUTOR_SCHEMA_VERSION),
 }
 TABLES = {
     "kernel": (

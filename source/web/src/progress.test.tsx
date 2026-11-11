@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import App from './App';
-import { activityFixture, capabilitiesFixture, historyFixture, messageReceiptFixture, sessionResponseFixture, sessionResultsFixture, taskFixture, type HistoryFixture } from './test-fixtures';
+import { activityFixture, capabilitiesFixture, dataRef, historyFixture, messageReceiptFixture, sessionResponseFixture, sessionResultsFixture, taskFixture, type HistoryFixture } from './test-fixtures';
 import { identityStorageScope, scopedStorageKey } from './browser-scope';
 
 const storageScope = identityStorageScope('groundwater', 'demo', 'test-user');
@@ -96,6 +96,77 @@ it('a business event already covered by history still refreshes its details and 
   expect(reads).toBe(2);
   act(() => Events.instances[0].emit('agent.activity', 21));
   await waitFor(() => expect(reads).toBe(3));
+});
+
+it('replaces results with each authoritative response, including retry removal and output correction', async () => {
+  let messageReads = 0;
+  let resultReads = 0;
+  const resultPages = [
+    [{ goalRevision: 1, agentRunId: 'agent-1', toolCallId: 'tool-1', modelId: 'groundwater.summary', status: 'COMPLETE', workflowRunId: 'workflow-old', attempt: 1,
+      remoteOutputs: [dataRef({ versionId: 'old-output', outputName: '旧成果' })] }],
+    [{ goalRevision: 1, agentRunId: 'agent-1', toolCallId: 'tool-1', modelId: 'groundwater.summary', status: 'COMPLETE', workflowRunId: 'workflow-new', attempt: 2,
+      remoteOutputs: [dataRef({ versionId: 'new-output', outputName: '新成果' })] }],
+    [{ goalRevision: 1, agentRunId: 'agent-1', toolCallId: 'tool-1', modelId: 'groundwater.summary', status: 'COMPLETE', workflowRunId: 'workflow-new', attempt: 2,
+      remoteOutputs: [dataRef({ versionId: 'corrected-output', outputName: '更正成果' })] }],
+  ];
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    if (url.endsWith('/messages')) {
+      const cursors = [10, 20, 21];
+      return json(snapshot({ eventCursor: cursors[messageReads++] ?? 21, turns: [{ status: 'RUNNING' }] }));
+    }
+    if (url.includes('/results')) return json(sessionResultsFixture(resultPages[resultReads++] ?? resultPages.at(-1)!));
+    return basics(url);
+  }));
+
+  render(<App />);
+  await screen.findByText('旧成果');
+
+  act(() => Events.instances[0].emit('workflow.succeeded', 20));
+  await screen.findByText('新成果');
+  expect(screen.queryByText('旧成果')).not.toBeInTheDocument();
+
+  act(() => Events.instances[0].emit('workflow.succeeded', 21));
+  await screen.findByText('更正成果');
+  expect(screen.queryByText('新成果')).not.toBeInTheDocument();
+  expect(resultReads).toBe(3);
+});
+
+it('ignores an older result response that finishes after a newer authoritative read', async () => {
+  const staleRead = delayed();
+  let messageReads = 0;
+  let resultReads = 0;
+  const result = (workflowRunId: string, versionId: string, outputName: string) => ({
+    goalRevision: 1, agentRunId: 'agent-1', toolCallId: 'tool-1', modelId: 'groundwater.summary',
+    status: 'COMPLETE', workflowRunId, remoteOutputs: [dataRef({ versionId, outputName })],
+  });
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    if (url.endsWith('/messages')) {
+      const cursors = [10, 20, 21];
+      return json(snapshot({ eventCursor: cursors[messageReads++] ?? 21, turns: [{ status: 'RUNNING' }] }));
+    }
+    if (url.includes('/results')) {
+      resultReads += 1;
+      if (resultReads === 1) return json(sessionResultsFixture([result('workflow-initial', 'initial-output', '初始成果')]));
+      if (resultReads === 2) return staleRead.promise;
+      return json(sessionResultsFixture([result('workflow-current', 'current-output', '当前成果')]));
+    }
+    return basics(url);
+  }));
+
+  render(<App />);
+  await screen.findByText('初始成果');
+  act(() => Events.instances[0].emit('workflow.succeeded', 20));
+  await waitFor(() => expect(resultReads).toBe(2));
+  act(() => Events.instances[0].emit('workflow.succeeded', 21));
+  await screen.findByText('当前成果');
+
+  await act(async () => staleRead.finish(json(sessionResultsFixture([
+    result('workflow-stale', 'stale-output', '过时成果'),
+  ]))));
+
+  expect(screen.getByText('当前成果')).toBeInTheDocument();
+  expect(screen.queryByText('初始成果')).not.toBeInTheDocument();
+  expect(screen.queryByText('过时成果')).not.toBeInTheDocument();
 });
 
 it('publishes result files without a recommendation detail request', async () => {

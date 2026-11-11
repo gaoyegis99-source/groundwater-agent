@@ -1,7 +1,7 @@
 {
-  "schemaVersion": "executable-model.v4",
+  "schemaVersion": "executable-model.v6",
   "modelId": "groundwater.transfer-learning-analysis",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "workflowRef": {
     "workflowId": "groundwater.transfer-learning-analysis",
     "version": "1.0.0",
@@ -9,7 +9,7 @@
   },
   "tool": {
     "name": "run_transfer_learning_analysis",
-    "description": "执行地下水迁移学习单步留出回测；腰站堡迁移学习案例、腰站堡工作流和 Y01 均使用此工具。它在源井上预训练 CPU GRU/attention，在目标域时间训练片段上微调，并整理地下水空间成果。调用前必须逐项核验工作簿、规则、边界、影像和六类背景的 19 个精确 Data version ID。发布 25 项命名结果；开发调试可使用明确标记为 SYNTHETIC_TEST_ONLY、seed 20260928 的固定模拟案例，并在结果中说明限制。默认参数为 12 步窗口和 80/100 轮训练，案例准备回执可以显式覆盖。",
+    "description": "执行地下水迁移学习单步留出回测；腰站堡迁移学习案例、腰站堡工作流和 Y01 均使用此工具。它在源井上预训练 CPU GRU/attention，在目标域时间训练片段上微调；标准化器只拟合各自训练行，留出窗口使用此前已观测历史而不是递归预测。调用前必须逐项核验工作簿、规则、边界、影像和六类背景的 19 个精确 Data version ID。发布 25 项命名结果，其中 target-split、metrics、imagery-coverage 与 map-month-diagnostics 是关键审计结果；开发调试可使用明确标记为 SYNTHETIC_TEST_ONLY、seed 20260928 的固定模拟案例，并在结果中说明限制。默认参数为 12 步窗口和 80/100 轮训练，案例准备回执可以显式覆盖。",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -801,6 +801,41 @@
     "inverse-rules": "inverse-rulesVersionId",
     "imagery-rules": "imagery-rulesVersionId"
   },
+  "fieldRequirements": [],
+  "semanticRequirements": [
+    {
+      "kind": "crs",
+      "inputParameter": "boundaryVersionId"
+    },
+    {
+      "kind": "crs",
+      "inputParameter": "imageryVersionId"
+    },
+    {
+      "kind": "crs",
+      "inputParameter": "countiesVersionId"
+    },
+    {
+      "kind": "crs",
+      "inputParameter": "townshipsVersionId"
+    },
+    {
+      "kind": "crs",
+      "inputParameter": "riversVersionId"
+    },
+    {
+      "kind": "crs",
+      "inputParameter": "groundwater_systemsVersionId"
+    },
+    {
+      "kind": "crs",
+      "inputParameter": "railwaysVersionId"
+    },
+    {
+      "kind": "crs",
+      "inputParameter": "basin_boundaryVersionId"
+    }
+  ],
   "defaultParameters": {
     "unpivot.timeField": "month",
     "source-split.groupField": "Well_ID",
@@ -1107,14 +1142,16 @@
       "format": "json",
       "policy": "FILE_ONLY",
       "semantics": {
-        "description": "groundwater.transfer-learning-analysis output source-scaler.",
+        "description": "Standard-scaler means, variances, scales and counts fitted only from filtered source-domain training rows; the configured source split normally uses all source months for pretraining.",
         "fields": {},
         "grain": null,
         "time_range": null,
         "timezone": null,
         "crs": null,
         "vertical_datum": null,
-        "limitations": [],
+        "limitations": [
+          "Scaler fields and filtering are defined by the pinned source rules; the scaler does not establish transferability to the target domain."
+        ],
         "source": "workflow-declared"
       }
     },
@@ -1124,14 +1161,16 @@
       "format": "json",
       "policy": "FILE_ONLY",
       "semantics": {
-        "description": "groundwater.transfer-learning-analysis output target-scaler.",
+        "description": "Standard-scaler state fitted from target-domain training rows only, before transforming the complete target sequence; target holdout rows do not contribute to fitted means, variances or scales.",
         "fields": {},
         "grain": null,
         "time_range": null,
         "timezone": null,
         "crs": null,
         "vertical_datum": null,
-        "limitations": [],
+        "limitations": [
+          "Using training-only fit statistics prevents holdout leakage but does not make the holdout independent of the wells or wider study design."
+        ],
         "source": "workflow-declared"
       }
     },
@@ -1141,14 +1180,16 @@
       "format": "json",
       "policy": "FILE_ONLY",
       "semantics": {
-        "description": "groundwater.transfer-learning-analysis output target-split.",
+        "description": "Auditable shared-time-axis chronological target split with training and holdout counts, boundary dates, train ratio, input window, training-row fit scope and single-step evaluation mode.",
         "fields": {},
         "grain": null,
         "time_range": null,
         "timezone": null,
         "crs": null,
         "vertical_datum": null,
-        "limitations": [],
+        "limitations": [
+          "This is a chronological within-well holdout, not a random split, leave-well-out validation or independent external validation."
+        ],
         "source": "workflow-declared"
       }
     },
@@ -1158,7 +1199,7 @@
       "format": "pytorch-state-dict",
       "policy": "FILE_ONLY",
       "semantics": {
-        "description": "groundwater.transfer-learning-analysis output pretrained-weights.",
+        "description": "CPU GRU/attention state_dict learned from source-domain training windows using the declared pretraining seed and hyperparameters.",
         "fields": {},
         "grain": null,
         "time_range": null,
@@ -1175,7 +1216,7 @@
       "format": "json",
       "policy": "FILE_ONLY",
       "semantics": {
-        "description": "groundwater.transfer-learning-analysis output pretrained-model-spec.",
+        "description": "Architecture specification paired with the pretrained state_dict, including input window, feature count, hidden size, layer count, attention heads and dropout.",
         "fields": {},
         "grain": null,
         "time_range": null,
@@ -1192,14 +1233,16 @@
       "format": "parquet",
       "policy": "FILE_QUERYABLE",
       "semantics": {
-        "description": "groundwater.transfer-learning-analysis output pretrain-loss.",
+        "description": "Per-epoch mean source-domain training MSE recorded during pretraining.",
         "fields": {},
         "grain": null,
         "time_range": null,
         "timezone": null,
         "crs": null,
         "vertical_datum": null,
-        "limitations": [],
+        "limitations": [
+          "Training loss is not validation performance, calibration evidence or uncertainty."
+        ],
         "source": "workflow-declared"
       }
     },
@@ -1209,7 +1252,7 @@
       "format": "pytorch-state-dict",
       "policy": "FILE_ONLY",
       "semantics": {
-        "description": "groundwater.transfer-learning-analysis output finetuned-weights.",
+        "description": "Pretrained GRU/attention state_dict after all parameters are fine-tuned on target-domain training windows only.",
         "fields": {},
         "grain": null,
         "time_range": null,
@@ -1226,7 +1269,7 @@
       "format": "json",
       "policy": "FILE_ONLY",
       "semantics": {
-        "description": "groundwater.transfer-learning-analysis output finetuned-model-spec.",
+        "description": "Architecture specification paired with the fine-tuned state_dict; it preserves the pretrained architecture while target training updates weights.",
         "fields": {},
         "grain": null,
         "time_range": null,
@@ -1243,14 +1286,16 @@
       "format": "parquet",
       "policy": "FILE_QUERYABLE",
       "semantics": {
-        "description": "groundwater.transfer-learning-analysis output finetune-loss.",
+        "description": "Per-epoch mean target-training MSE recorded while fine-tuning the pretrained model.",
         "fields": {},
         "grain": null,
         "time_range": null,
         "timezone": null,
         "crs": null,
         "vertical_datum": null,
-        "limitations": [],
+        "limitations": [
+          "Training loss is not validation performance, holdout error or uncertainty."
+        ],
         "source": "workflow-declared"
       }
     },
@@ -1260,14 +1305,17 @@
       "format": "parquet",
       "policy": "FILE_QUERYABLE",
       "semantics": {
-        "description": "groundwater.transfer-learning-analysis output predictions.",
+        "description": "Inverse-scaled single-step predictions and errors for chronological target holdout rows; every window uses the preceding observed history, including earlier observed holdout values.",
         "fields": {},
         "grain": null,
         "time_range": null,
         "timezone": null,
         "crs": null,
         "vertical_datum": null,
-        "limitations": [],
+        "limitations": [
+          "This is observed-history single-step backtesting, not recursive future forecasting.",
+          "No prediction interval, epistemic uncertainty or future covariate scenario is produced."
+        ],
         "source": "workflow-declared"
       }
     },
@@ -1277,14 +1325,17 @@
       "format": "json",
       "policy": "FILE_ONLY",
       "semantics": {
-        "description": "groundwater.transfer-learning-analysis output metrics.",
+        "description": "Overall held-out MAE, RMSE, R², r2_reason, sample count, unit and model-versus-persistence baseline comparison on identical rows.",
         "fields": {},
         "grain": null,
         "time_range": null,
         "timezone": null,
         "crs": null,
         "vertical_datum": null,
-        "limitations": [],
+        "limitations": [
+          "R² is null with r2_reason when observations are constant or fewer than two; improvement is null with improvement_reason when baseline RMSE is zero.",
+          "A temporal holdout on the same wells is not leave-well-out or independent external validation."
+        ],
         "source": "workflow-declared"
       }
     },
@@ -1294,14 +1345,16 @@
       "format": "parquet",
       "policy": "FILE_QUERYABLE",
       "semantics": {
-        "description": "groundwater.transfer-learning-analysis output per-well-metrics.",
+        "description": "Per well held-out MAE, RMSE, R² and r2_reason together with baseline MAE/RMSE/R², baseline null reason, improvement percentage/reason and unit.",
         "fields": {},
         "grain": null,
         "time_range": null,
         "timezone": null,
         "crs": null,
         "vertical_datum": null,
-        "limitations": [],
+        "limitations": [
+          "Per-well metrics can be unstable for short holdouts; null reasons must be retained instead of replacing undefined statistics with zero."
+        ],
         "source": "workflow-declared"
       }
     },
@@ -1311,7 +1364,7 @@
       "format": "geojson",
       "policy": "FILE_ONLY",
       "semantics": {
-        "description": "groundwater.transfer-learning-analysis output prediction-points.",
+        "description": "All evaluated holdout prediction rows as WGS84 points, retaining actual, predicted, persistence, error and protection-boundary covers membership.",
         "fields": {},
         "grain": null,
         "time_range": null,
@@ -1328,14 +1381,16 @@
       "format": "geojson",
       "policy": "FILE_ONLY",
       "semantics": {
-        "description": "groundwater.transfer-learning-analysis output map-points.",
+        "description": "WGS84 point subset selected for the requested map target time, retaining predicted values and protection-boundary covers membership.",
         "fields": {},
         "grain": null,
         "time_range": null,
         "timezone": null,
         "crs": null,
         "vertical_datum": null,
-        "limitations": [],
+        "limitations": [
+          "These are selected point predictions, not a continuous groundwater surface or spatial interpolation."
+        ],
         "source": "workflow-declared"
       }
     },
@@ -1345,7 +1400,7 @@
       "format": "geojson",
       "policy": "FILE_ONLY",
       "semantics": {
-        "description": "groundwater.transfer-learning-analysis output boundary.",
+        "description": "Input protection boundary reprojected to WGS84 GeoJSON for result inspection.",
         "fields": {},
         "grain": null,
         "time_range": null,
@@ -1362,7 +1417,7 @@
       "format": "geopackage",
       "policy": "FILE_ONLY",
       "semantics": {
-        "description": "groundwater.transfer-learning-analysis output extent.",
+        "description": "Metric projected rectangular analysis extent derived from the protection boundary, configured padding and aspect ratio.",
         "fields": {},
         "grain": null,
         "time_range": null,
@@ -1379,7 +1434,7 @@
       "format": "cog",
       "policy": "FILE_ONLY",
       "semantics": {
-        "description": "groundwater.transfer-learning-analysis output imagery.",
+        "description": "Selected-band imagery window for the requested extent, converted to WGS84 COG after passing the declared coverage threshold.",
         "fields": {},
         "grain": null,
         "time_range": null,
@@ -1396,14 +1451,16 @@
       "format": "json",
       "policy": "FILE_ONLY",
       "semantics": {
-        "description": "groundwater.transfer-learning-analysis output imagery-coverage.",
+        "description": "Requested-window valid-mask coverage based on the first selected band, including selected bands, mask band, valid/total pixels, observed fraction and minimum required fraction.",
         "fields": {},
         "grain": null,
         "time_range": null,
         "timezone": null,
         "crs": null,
         "vertical_datum": null,
-        "limitations": [],
+        "limitations": [
+          "Passing the mask-coverage threshold does not establish imagery date suitability, classification quality or scientific relevance."
+        ],
         "source": "workflow-declared"
       }
     },
@@ -1413,14 +1470,16 @@
       "format": "parquet",
       "policy": "FILE_QUERYABLE",
       "semantics": {
-        "description": "groundwater.transfer-learning-analysis output map-month-diagnostics.",
+        "description": "Per-well map target time diagnostics with requested selection rule, selected time, maximum age, effective age and status such as SELECTED, NO_MATCH or MAX_AGE_EXCEEDED.",
         "fields": {},
         "grain": null,
         "time_range": null,
         "timezone": null,
         "crs": null,
         "vertical_datum": null,
-        "limitations": [],
+        "limitations": [
+          "Diagnostics report selection outcomes only; they do not interpolate missing wells or create new prediction times."
+        ],
         "source": "workflow-declared"
       }
     },
@@ -1430,7 +1489,7 @@
       "format": "geojson",
       "policy": "FILE_ONLY",
       "semantics": {
-        "description": "groundwater.transfer-learning-analysis output counties.",
+        "description": "County background features clipped to the analysis extent and exported as WGS84 GeoJSON for contextual display.",
         "fields": {},
         "grain": null,
         "time_range": null,
@@ -1447,7 +1506,7 @@
       "format": "geojson",
       "policy": "FILE_ONLY",
       "semantics": {
-        "description": "groundwater.transfer-learning-analysis output townships.",
+        "description": "Township background features clipped to the analysis extent and exported as WGS84 GeoJSON for contextual display.",
         "fields": {},
         "grain": null,
         "time_range": null,
@@ -1464,7 +1523,7 @@
       "format": "geojson",
       "policy": "FILE_ONLY",
       "semantics": {
-        "description": "groundwater.transfer-learning-analysis output rivers.",
+        "description": "River background features clipped to the analysis extent and exported as WGS84 GeoJSON for contextual display.",
         "fields": {},
         "grain": null,
         "time_range": null,
@@ -1481,7 +1540,7 @@
       "format": "geojson",
       "policy": "FILE_ONLY",
       "semantics": {
-        "description": "groundwater.transfer-learning-analysis output groundwater_systems.",
+        "description": "Groundwater-system background features clipped to the analysis extent and exported as WGS84 GeoJSON for contextual display.",
         "fields": {},
         "grain": null,
         "time_range": null,
@@ -1498,7 +1557,7 @@
       "format": "geojson",
       "policy": "FILE_ONLY",
       "semantics": {
-        "description": "groundwater.transfer-learning-analysis output railways.",
+        "description": "Railway background features clipped to the analysis extent and exported as WGS84 GeoJSON for contextual display.",
         "fields": {},
         "grain": null,
         "time_range": null,
@@ -1515,7 +1574,7 @@
       "format": "geojson",
       "policy": "FILE_ONLY",
       "semantics": {
-        "description": "groundwater.transfer-learning-analysis output basin_boundary.",
+        "description": "Basin-boundary background features clipped to the analysis extent and exported as WGS84 GeoJSON for contextual display.",
         "fields": {},
         "grain": null,
         "time_range": null,

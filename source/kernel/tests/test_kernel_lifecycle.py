@@ -19,6 +19,9 @@ from platform_kernel.api import create_app
 from platform_kernel.composition import PlatformApplication
 from platform_kernel.database import connect_database
 from platform_kernel.errors import AgentRunError
+from platform_kernel.agent_runtime.models import AgentPlanStepV2
+from platform_kernel.agent_runtime.persistence import save_plan
+from platform_kernel.settings_types import ExecutableModelFieldRequirement
 from platform_kernel.workflow_execution.models import WorkflowTickResult
 
 
@@ -590,6 +593,103 @@ def test_current_required_preparation_blocks_a_superseded_data_version(
             "operatorCatalogDigest": None,
         "count": None,
     }
+    with connect_database(application.database) as connection:
+        assert connection.execute(
+            "SELECT COUNT(*) FROM confirmations"
+        ).fetchone()[0] == 0
+
+
+def test_field_metadata_block_is_persisted_before_confirmation(
+    tmp_path, kernel_settings
+) -> None:
+    def field_contract(settings):
+        base = settings.models[0]
+        schema = {
+            "type": "object",
+            "properties": {
+                "resource_id": {"type": "string"},
+                "axis": {"type": "string"},
+                "column": {"type": "string"},
+            },
+            "required": ["resource_id", "column"],
+            "additionalProperties": False,
+        }
+        checksum = "sha256:" + hashlib.sha256(
+            json.dumps(schema, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+        return replace(
+            settings,
+            models=(
+                replace(
+                    base,
+                    input_schema=schema,
+                    input_schema_checksum=checksum,
+                    field_requirements=(
+                        ExecutableModelFieldRequirement(
+                            parameter="column",
+                            input_parameter="resource_id",
+                            identifier="name",
+                            allowed_types=("any",),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+    model = ScriptedModel(
+        [
+            _inspect(),
+            ModelStep(
+                output=[
+                    function_call(
+                        "prepare_task_inputs",
+                        {
+                            "target_tool": "run_summary",
+                            "arguments": {
+                                "resource_id": "resource-1",
+                                "column": "level",
+                            },
+                        },
+                        call_id="prepare-field",
+                    )
+                ]
+            ),
+            ModelStep(output=[_plan(["run_summary"])]),
+            ModelStep(
+                output=[
+                    function_call(
+                        "run_summary",
+                        {"resource_id": "resource-1", "column": "level"},
+                        call_id="run-field",
+                    )
+                ]
+            ),
+        ]
+    )
+    application, app = _application(
+        tmp_path,
+        kernel_settings,
+        model,
+        lambda request: (_ for _ in ()).throw(
+            AssertionError(f"unexpected executor request: {request.url}")
+        ),
+        settings_transform=field_contract,
+    )
+    client = TestClient(app)
+    session_id = client.post(
+        "/api/v12/sessions", json={"projectId": "p"}
+    ).json()["sessionId"]
+
+    _, response = _turn(client, application, session_id, "run")
+
+    payload = response.json()
+    assert payload["agentSteps"][-1] == "FAILED"
+    entry, = payload["preparation"]["entries"]
+    assert entry["blockingReasons"] == ["FIELD_METADATA_UNAVAILABLE"]
+    assert any(
+        check["kind"] == "FIELD_EXISTS" and check["status"] == "UNKNOWN"
+        for check in entry["checks"]
+    )
     with connect_database(application.database) as connection:
         assert connection.execute(
             "SELECT COUNT(*) FROM confirmations"
@@ -1517,8 +1617,9 @@ def test_token_usage_counts_only_new_responses_after_execution_resume(
     ) == (11, 14, 25)
 
 
-def test_minimax_terminalizes_completed_execution_without_provider_acknowledgement(
-    tmp_path, kernel_settings,
+@pytest.mark.parametrize("job_status", ["SUCCEEDED", "FAILED"])
+def test_minimax_terminalizes_execution_without_provider_acknowledgement(
+    tmp_path, kernel_settings, job_status,
 ) -> None:
     model = ScriptedModel([
         _inspect(),
@@ -1534,7 +1635,11 @@ def test_minimax_terminalizes_completed_execution_without_provider_acknowledgeme
         if request.method == "POST":
             request_id = json.loads(request.content)["requestId"]
             return httpx.Response(202, json=_job(request_id, "QUEUED"))
-        return httpx.Response(200, json=_job(request_id, "SUCCEEDED"))
+        return httpx.Response(200, json=_job(
+            request_id,
+            job_status,
+            error="OPERATOR_FAILED" if job_status == "FAILED" else None,
+        ))
 
     application, app = _application(
         tmp_path,
@@ -1554,11 +1659,106 @@ def test_minimax_terminalizes_completed_execution_without_provider_acknowledgeme
 
     completed = application.agent_runtime.get(agent_run_id)
     session = client.get(f"/api/v12/sessions/{session_id}").json()
-    assert completed.status == "COMPLETE"
+    expected_status = "COMPLETE" if job_status == "SUCCEEDED" else "FAILED"
+    assert completed.status == expected_status
     assert len(model.calls) == 3
-    assert session["agentSteps"][-1] == "COMPLETE"
+    assert session["agentSteps"][-1] == expected_status
     assert session["workflowRunIds"] == [completed.actions[0].workflow_run_id]
-    assert "已完成" in session["agentOutput"]["message"]
+    if job_status == "SUCCEEDED":
+        assert "已完成" in session["agentOutput"]["message"]
+    else:
+        assert completed.error == "OPERATOR_FAILED"
+        assert "执行未完成" in session["agentOutput"]["message"]
+    assert "开发调试案例" not in session["agentOutput"]["message"]
+
+
+def test_minimax_terminal_summary_deduplicates_inputs_and_uses_action_plans(
+    tmp_path, kernel_settings,
+) -> None:
+    model = ScriptedModel([
+        _inspect(),
+        ModelStep(output=[_plan(["run_summary"] * 3)]),
+        ModelStep(output=[
+            function_call(
+                "run_summary",
+                {"resource_id": "a", "axis": "columns"},
+                call_id="call-a",
+            ),
+            function_call(
+                "run_summary",
+                {"resource_id": "b", "axis": "rows"},
+                call_id="call-b",
+            ),
+            function_call(
+                "run_summary",
+                {"resource_id": "a", "axis": "flatten"},
+                call_id="call-a-again",
+            ),
+        ]),
+    ])
+    jobs = {}
+
+    def handler(request):
+        if request.method == "POST":
+            request_id = json.loads(request.content)["requestId"]
+            job_id = f"job-{len(jobs) + 1}"
+            jobs[job_id] = request_id
+            return httpx.Response(202, json={
+                **_job(request_id, "QUEUED"),
+                "jobId": job_id,
+            })
+        job_id = request.url.path.rsplit("/", 1)[-1]
+        return httpx.Response(200, json={
+            **_job(jobs[job_id], "SUCCEEDED"),
+            "jobId": job_id,
+        })
+
+    application, app = _application(
+        tmp_path,
+        kernel_settings,
+        model,
+        handler,
+        settings_transform=lambda settings: replace(
+            settings,
+            agent_provider="minimax",
+            agent_protocol="chat_completions",
+        ),
+    )
+    client = TestClient(app)
+    session_id, agent_run_id, _ = _start_workflow(
+        client, application, calls=3,
+    )
+    second_revision = save_plan(
+        application.database,
+        agent_run_id,
+        "second execution",
+        [AgentPlanStepV2(
+            step_id="later",
+            tool="run_summary",
+            purpose="execute later step",
+        )],
+        "persisted second plan",
+    )
+    with connect_database(application.database) as connection:
+        connection.execute(
+            "UPDATE agent_actions SET plan_revision=? "
+            "WHERE agent_run_id=? AND tool_call_id='call-a-again'",
+            (second_revision, agent_run_id),
+        )
+
+    for _ in range(4):
+        _tick(application)
+        completed = application.agent_runtime.get(agent_run_id)
+        if completed.status in {"COMPLETE", "FAILED"}:
+            break
+    assert completed.status == "COMPLETE"
+    message = client.get(
+        f"/api/v12/sessions/{session_id}"
+    ).json()["agentOutput"]["message"]
+    assert "已使用 2 项冻结输入" in message
+    assert "execute" in message
+    assert "second execution" in message
+    assert "开发调试案例" not in message
 
 
 def test_invalid_final_keeps_usage_and_forms_failed_terminal(

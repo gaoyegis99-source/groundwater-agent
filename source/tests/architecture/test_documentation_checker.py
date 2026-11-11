@@ -7,12 +7,19 @@ import pytest
 from scripts.checks import check_documentation as module_under_test
 
 
-@pytest.mark.parametrize("fragment,missing", [
-    ("current-checks", False), ("current-checks-1", False),
-    ("%E5%BD%93%E5%89%8D%E6%A3%80%E6%9F%A5", False),
-    ("development-checks", True), ("code-example", True),
-])
-def test_heading_links_include_local_unicode_and_duplicate_headings(tmp_path, monkeypatch, fragment, missing):
+@pytest.mark.parametrize(
+    "fragment,missing",
+    [
+        ("current-checks", False),
+        ("current-checks-1", False),
+        ("%E5%BD%93%E5%89%8D%E6%A3%80%E6%9F%A5", False),
+        ("development-checks", True),
+        ("code-example", True),
+    ],
+)
+def test_heading_links_include_local_unicode_and_duplicate_headings(
+    tmp_path, monkeypatch, fragment, missing
+):
     document = tmp_path / "checks.md"
     document.write_text(
         "# Current checks\n## Current checks\n## 当前检查\n"
@@ -99,3 +106,11 @@ def test_missing_history_link_is_not_masked_by_an_export_manifest(
     module_under_test.check_links(errors)
 
     assert errors == ["missing source link: docs/current.md -> history/old.md"]
+
+
+def test_current_product_documentation_matches_authoritative_manifests() -> None:
+    errors: list[str] = []
+
+    module_under_test.check_current_product_docs(errors)
+
+    assert errors == []

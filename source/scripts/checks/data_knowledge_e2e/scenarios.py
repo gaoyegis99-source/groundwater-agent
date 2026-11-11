@@ -3,9 +3,7 @@
 from __future__ import annotations
 import json
 import os
-from pathlib import Path
 import re
-import shutil
 import sys
 import traceback
 import uuid
@@ -35,36 +33,15 @@ from .environment import (
     _write_overrides,
 )
 from .identity import _check_gateway_pages, _start_identity_kernel
-from .report import _playwright_passed, _pytest_report, _write_report
+from .pytest_support import _pytest_command, _remove_pytest_basetemp
+from .report import _pytest_report, _write_report
+from .ui_checks import (
+    _run_live_data_ui,
+    _run_live_knowledge_ui,
+    _run_mocked_ui_checks,
+)
 
 RUN_ID = re.compile(r"^[a-z0-9]{8,24}$")
-
-
-def _pytest_command(
-    tests: tuple[str, ...],
-    *,
-    junit: Path,
-    basetemp: Path,
-    clear_repository_addopts: bool = False,
-) -> list[str]:
-    command = [
-        sys.executable,
-        "-m",
-        "pytest",
-        "-q",
-        "--basetemp",
-        str(basetemp),
-    ]
-    if clear_repository_addopts:
-        command.extend(("-o", "addopts="))
-    return [*command, *tests, "--junitxml", str(junit)]
-
-
-def _remove_pytest_basetemp(path: Path) -> None:
-    """Fail explicitly if a test leaves a temp tree the runner cannot own."""
-
-    if path.exists():
-        shutil.rmtree(path)
 
 
 def run(args) -> int:
@@ -176,9 +153,7 @@ def run(args) -> int:
                 "tests/e2e/compose-stub",
             ),
         ):
-            recorder.run(
-                _frozen_image_build_command(image, dockerfile, context)
-            )
+            recorder.run(_frozen_image_build_command(image, dockerfile, context))
             images_built.append(image)
         report["images"] = {
             image: recorder.run(
@@ -263,27 +238,7 @@ def run(args) -> int:
         if report["checks"]["knowledgeBackend"]["status"] != "PASS":
             raise RuntimeError("KNOWLEDGE_BACKEND_TESTS_FAILED")
 
-        ui_counts = {}
-        for package, script in (
-            ("services/data/web", "test"),
-            ("services/data/web", "typecheck"),
-            ("services/data/web", "build"),
-            ("services/data/web", "test:ui"),
-            ("services/knowledge-next/ui", "test"),
-            ("services/knowledge-next/ui", "typecheck"),
-            ("services/knowledge-next/ui", "build"),
-            ("services/knowledge-next/ui", "test:ui"),
-        ):
-            command = ["npm", "--prefix", package, "run", script]
-            if script == "test:ui":
-                ui_report = work / f"{package.replace('/', '-')}-playwright.json"
-                recorder.run(
-                    [*command, "--", "--reporter=line,json"],
-                    env={**os.environ, "PLAYWRIGHT_JSON_OUTPUT_NAME": str(ui_report)},
-                )
-                ui_counts[package] = _playwright_passed(ui_report)
-            else:
-                recorder.run(command)
+        ui_counts = _run_mocked_ui_checks(recorder, work)
 
         network_command = [docker_executable(), "network", "create"]
         if args.network_subnet:
@@ -319,8 +274,12 @@ def run(args) -> int:
         )
         _wait_stub(recorder, stub_container)
         identity_check, compiled_bundle, api_token = _start_identity_kernel(
-            recorder, work, image=kernel_image, container=kernel_container,
-            network=network, project_id=project_id,
+            recorder,
+            work,
+            image=kernel_image,
+            container=kernel_container,
+            network=network,
+            project_id=project_id,
         )
         report["checks"]["gatewayIdentity"] = identity_check
 
@@ -363,12 +322,8 @@ def run(args) -> int:
             ]
         )
         gateway_url = f"http://127.0.0.1:{gateway_host_port}"
-        with httpx.Client(
-            base_url=gateway_url, timeout=5, trust_env=False
-        ) as gateway:
-            report["checks"].update(
-                _check_gateway_pages(gateway, api_token=api_token)
-            )
+        with httpx.Client(base_url=gateway_url, timeout=5, trust_env=False) as gateway:
+            report["checks"].update(_check_gateway_pages(gateway, api_token=api_token))
         report["isolation"].update(
             {
                 "dataUrl": data_url,
@@ -377,23 +332,13 @@ def run(args) -> int:
             }
         )
 
-        live_data_env = {
-            **os.environ,
-            "DATA_E2E_URL": gateway_url,
-            "PLATFORM_E2E_API_TOKEN": api_token,
-            "DATA_E2E_SCREENSHOT": str(work / "data-browser.png"),
-            "PLAYWRIGHT_JSON_OUTPUT_NAME": str(work / "data-live-playwright.json"),
-        }
-        recorder.run(
-            ["npm", "--prefix", "services/data/web", "run", "test:e2e", "--", "--reporter=line,json"],
-            env=live_data_env,
-            output_log=work / "data-ui-e2e.log",
+        report["checks"]["dataUi"] = _run_live_data_ui(
+            recorder,
+            work,
+            gateway_url=gateway_url,
+            api_token=api_token,
+            mocked_count=ui_counts["services/data/web"],
         )
-        report["checks"]["dataUi"] = {
-            "status": "PASS",
-            "mockedPlaywright": ui_counts["services/data/web"],
-            "livePlaywright": _playwright_passed(work / "data-live-playwright.json"),
-        }
         joint = _joint_http_checks(
             recorder,
             data_url=data_url,
@@ -405,32 +350,14 @@ def run(args) -> int:
         )
         report["checks"]["jointHttp"] = joint
 
-        knowledge_ui_env = {
-            **knowledge_env,
-            "DATA_E2E_URL": gateway_url,
-            "KNOWLEDGE_UI_URL": gateway_url,
-            "OPERATOR_E2E_URL": gateway_url,
-            "PLATFORM_E2E_API_TOKEN": api_token,
-            "PLAYWRIGHT_JSON_OUTPUT_NAME": str(work / "knowledge-live-playwright.json"),
-        }
-        recorder.run(
-            [
-                "npm",
-                "--prefix",
-                "services/knowledge-next/ui",
-                "run",
-                "test:e2e",
-                "--",
-                "--reporter=line,json",
-            ],
-            env=knowledge_ui_env,
-            output_log=work / "knowledge-ui-e2e.log",
+        report["checks"]["knowledgeUi"] = _run_live_knowledge_ui(
+            recorder,
+            work,
+            gateway_url=gateway_url,
+            api_token=api_token,
+            mocked_count=ui_counts["services/knowledge-next/ui"],
+            knowledge_env=knowledge_env,
         )
-        report["checks"]["knowledgeUi"] = {
-            "status": "PASS",
-            "mockedPlaywright": ui_counts["services/knowledge-next/ui"],
-            "livePlaywright": _playwright_passed(work / "knowledge-live-playwright.json"),
-        }
 
         backup = work / "knowledge.dump"
         restore_report = work / "knowledge-restore.json"
@@ -460,9 +387,7 @@ def run(args) -> int:
         restored_compose = _compose(
             restored_project, KNOWLEDGE_COMPOSE, restore_override
         )
-        restored_knowledge_env["KNOWLEDGE_COMPOSE_OVERRIDE"] = str(
-            restore_override
-        )
+        restored_knowledge_env["KNOWLEDGE_COMPOSE_OVERRIDE"] = str(restore_override)
         report["checks"]["knowledgeRestore"] = json.loads(
             restore_report.read_text(encoding="utf-8")
         )
@@ -475,9 +400,7 @@ def run(args) -> int:
             restored_compose = _compose(
                 restored_project, KNOWLEDGE_COMPOSE, restore_override
             )
-            restored_knowledge_env["KNOWLEDGE_COMPOSE_OVERRIDE"] = str(
-                restore_override
-            )
+            restored_knowledge_env["KNOWLEDGE_COMPOSE_OVERRIDE"] = str(restore_override)
         for name, compose, env in (
             ("data", data_compose, data_env),
             ("knowledge", knowledge_compose, knowledge_env),
@@ -489,7 +412,9 @@ def run(args) -> int:
         # lets the report distinguish expected startup/teardown noise from an
         # application error instead of only preserving logs after failure.
         report["logs"] = {
-            name: _capture_logs(recorder, work, name, [*compose, "logs", "--no-color"], env)
+            name: _capture_logs(
+                recorder, work, name, [*compose, "logs", "--no-color"], env
+            )
             for name, compose, env in (
                 ("data", data_compose, data_env),
                 ("knowledge", knowledge_compose, knowledge_env),
@@ -501,7 +426,10 @@ def run(args) -> int:
                 name: _capture_logs(
                     recorder, work, name, [docker_executable(), "logs", container]
                 )
-                for name, container in (("kernel", kernel_container), ("gateway", gateway_container))
+                for name, container in (
+                    ("kernel", kernel_container),
+                    ("gateway", gateway_container),
+                )
             }
         )
         logs = report["logs"]
@@ -538,7 +466,12 @@ def run(args) -> int:
         )
         cleanup_commands.extend(
             _cleanup(recorder, [docker_executable(), "rm", "-f", container])
-            for container in (gateway_container, kernel_container, stub_container, test_db_container)
+            for container in (
+                gateway_container,
+                kernel_container,
+                stub_container,
+                test_db_container,
+            )
         )
         if network_created:
             cleanup_commands.append(
@@ -595,11 +528,26 @@ def run(args) -> int:
             "volumes": [],
             "images": [],
         }
-        for container in (gateway_container, kernel_container, stub_container, test_db_container):
+        for container in (
+            gateway_container,
+            kernel_container,
+            stub_container,
+            test_db_container,
+        ):
             remaining_containers.extend(
                 recorder.run(
-                    [docker_executable(), "ps", "-a", "--filter", f"name=^/{container}$", "--format", "{{.Names}}"],
-                    capture=True, check=False, phase="teardown",
+                    [
+                        docker_executable(),
+                        "ps",
+                        "-a",
+                        "--filter",
+                        f"name=^/{container}$",
+                        "--format",
+                        "{{.Names}}",
+                    ],
+                    capture=True,
+                    check=False,
+                    phase="teardown",
                 ).stdout.splitlines()
             )
         for project in (data_project, knowledge_project, restored_project):

@@ -104,6 +104,38 @@ def sql_tables(path: Path) -> set[str]:
     }
 
 
+def declared_schema_tables(path: Path) -> set[str]:
+    """Return tables from the module's literal top-level ``SCHEMA`` contract.
+
+    A service database module can also contain stopped-version migrations. Those
+    migrations legitimately create short-lived backup tables, which are not
+    persistent ownership declarations and must not expand the current schema.
+    """
+
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    schema_literals: list[str] = []
+    for node in tree.body:
+        value: ast.expr | None = None
+        if isinstance(node, ast.Assign) and any(
+            isinstance(target, ast.Name) and target.id == "SCHEMA"
+            for target in node.targets
+        ):
+            value = node.value
+        elif (
+            isinstance(node, ast.AnnAssign)
+            and isinstance(node.target, ast.Name)
+            and node.target.id == "SCHEMA"
+        ):
+            value = node.value
+        if isinstance(value, ast.Constant) and isinstance(value.value, str):
+            schema_literals.append(value.value)
+    return {
+        match.group(1).lower()
+        for literal in schema_literals
+        for match in SQL_TABLE_PATTERN.finditer(literal)
+    }
+
+
 READ_ONLY_TABLES = {
     "platform_kernel.agent_runtime.persistence.run_lifecycle": frozenset(
         {"run_controls"}

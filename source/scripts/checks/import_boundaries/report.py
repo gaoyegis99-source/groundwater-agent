@@ -11,6 +11,7 @@ from .ast_scan import (
     READ_ONLY_TABLES,
     api_workflow_executions,
     contains_raw_sql,
+    declared_schema_tables,
     declared_imports,
     imports,
     module_name,
@@ -99,12 +100,16 @@ def _control_proposal_layer_problems(root: Path) -> list[str]:
     facade = interaction_root / "control_proposals.py"
     problems: list[str] = []
     if not facade.is_file():
-        return ["kernel/src/platform_kernel/interaction/control_proposals.py: CONTROL_PROPOSAL_FACADE_MISSING"]
+        return [
+            "kernel/src/platform_kernel/interaction/control_proposals.py: CONTROL_PROPOSAL_FACADE_MISSING"
+        ]
     layers: dict[str, Path] = {}
     for role, filename in _CONTROL_PROPOSAL_LAYERS.items():
         path = interaction_root / filename
         if not path.is_file():
-            problems.append(f"{path.relative_to(root)}: CONTROL_PROPOSAL_LAYER_MISSING: {role}")
+            problems.append(
+                f"{path.relative_to(root)}: CONTROL_PROPOSAL_LAYER_MISSING: {role}"
+            )
         else:
             layers[role] = path
 
@@ -113,7 +118,9 @@ def _control_proposal_layer_problems(root: Path) -> list[str]:
         isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
         for node in facade_tree.body
     ):
-        problems.append(f"{facade.relative_to(root)}: CONTROL_PROPOSAL_FACADE_IMPLEMENTATION_INVALID")
+        problems.append(
+            f"{facade.relative_to(root)}: CONTROL_PROPOSAL_FACADE_IMPLEMENTATION_INVALID"
+        )
 
     for role, path in layers.items():
         for line, target in imports(path, source_root):
@@ -134,8 +141,7 @@ def _control_proposal_layer_problems(root: Path) -> list[str]:
             forbidden = {
                 target
                 for _, target in imports(path, source_root)
-                if target == "sqlite3"
-                or target.startswith("platform_kernel.database")
+                if target == "sqlite3" or target.startswith("platform_kernel.database")
             }
             if forbidden:
                 problems.append(
@@ -146,7 +152,9 @@ def _control_proposal_layer_problems(root: Path) -> list[str]:
     layer_modules = {module_name(path, source_root) for path in layers.values()}
     layer_edges = {
         module_name(path, source_root): {
-            target for _, target in imports(path, source_root) if target in layer_modules
+            target
+            for _, target in imports(path, source_root)
+            if target in layer_modules
         }
         for path in layers.values()
     }
@@ -241,17 +249,15 @@ def check(root: Path = ROOT) -> list[str]:
             # a transient rename target (for example a v29 upgrade table), and
             # treating that as a product table turns the ownership gate into a
             # path-text allowlist again.
-            schema_paths = (
-                sorted(schema_package.rglob("*.py"))
-                if schema_package.is_dir()
-                else [database_module]
-            )
-            schema_tables = {
-                table
-                for schema_path in schema_paths
-                for table in sql_tables(schema_path)
-                if table != "sqlite_master"
-            }
+            if schema_package.is_dir():
+                schema_tables = {
+                    table
+                    for schema_path in sorted(schema_package.rglob("*.py"))
+                    for table in sql_tables(schema_path)
+                    if table != "sqlite_master"
+                }
+            else:
+                schema_tables = declared_schema_tables(database_module)
             if schema_tables != set(owners):
                 problems.append(
                     f"{database_module.relative_to(root)}: TABLE_CLASSIFICATION_INVALID: "
@@ -320,8 +326,12 @@ def check(root: Path = ROOT) -> list[str]:
     router_files = [
         *(root / "kernel/src/platform_kernel/api/routes").rglob("*.py"),
         *(root / "services/data/src/platform_data_service/api").rglob("*.py"),
-        *(root / "services/knowledge-next/src/platform_knowledge_next/routers").rglob("*.py"),
-        *(root / "services/executor/src/platform_executor_service/routers").rglob("*.py"),
+        *(root / "services/knowledge-next/src/platform_knowledge_next/routers").rglob(
+            "*.py"
+        ),
+        *(root / "services/executor/src/platform_executor_service/routers").rglob(
+            "*.py"
+        ),
         root / "services/knowledge-next/src/platform_knowledge_next/api.py",
         root / "services/executor/src/platform_executor_service/app.py",
     ]
@@ -356,7 +366,10 @@ def check(root: Path = ROOT) -> list[str]:
     for path in sorted(assembler.glob("*.py")):
         for line, target in declared_imports(path):
             target_root = target.split(".", 1)[0]
-            if target_root in INTERNAL_PACKAGES and target_root != "platform_workflow_compiler":
+            if (
+                target_root in INTERNAL_PACKAGES
+                and target_root != "platform_workflow_compiler"
+            ):
                 problems.append(
                     f"{path.relative_to(root)}:{line}: ASSEMBLER_RUNTIME_IMPORT_INVALID: "
                     f"{target}"

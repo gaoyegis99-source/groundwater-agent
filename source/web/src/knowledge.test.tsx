@@ -13,16 +13,73 @@ const evidenceBundle = (items: Record<string, unknown>[]) => ({
 });
 
 it('reads an exact Knowledge Next evidence identity and exposes its binding status', async () => {
-  const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(json(evidenceBundle([{
-    status: 'OK', versionId: 'knowledge-version-1', unitId: 'unit-3', checksum,
-    content: '以观测井口作为测量基准。', scope: 'DATA_BOUND', bindingMatch: 'EXACT',
-    sources: [{ sourceId: 'manual', kind: 'manual', title: '监测手册', publisher: '监测部门', reviewAfter: '2027-10-01', url: 'https://example.org/manual' }],
-  }])));
+  const contextChecksum = `sha256:${'b'.repeat(64)}`;
+  const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(json(evidenceBundle([
+    {
+      status: 'OK', versionId: 'knowledge-version-1', unitId: 'unit-context', checksum: contextChecksum,
+      documentTitle: '地下水监测技术手册', content: '所有水位值均应注明统一的高程基准。',
+      locator: { section: '2.1' }, scope: 'DATA_BOUND', bindingMatch: 'EXACT',
+    },
+    {
+      status: 'OK', versionId: 'knowledge-version-1', unitId: 'unit-3', checksum,
+      documentTitle: '地下水监测技术手册', content: '以观测井口作为测量基准。',
+      locator: { section: '3.2', page: 18 }, scope: 'DATA_BOUND', bindingMatch: 'EXACT',
+      bindingsVerifiedAt: 'not-a-date',
+      bindings: [{ serviceBinding: 'data-primary', projectId: 'project', datasetId: 'dataset-1', versionId: 'data-version-7', semanticId: 'semantic-3', fieldId: 'f2' }],
+      sources: [{
+        sourceId: 'manual', kind: 'OFFICIAL_GUIDANCE', title: '监测手册', publisher: '监测部门',
+        version: '2025', publishedAt: '2025-01-10', accessedAt: '2026-09-30',
+        reviewAfter: '2027-10-01', lifecycleStatus: 'ACTIVE', url: 'https://example.org/manual',
+      }],
+    },
+  ])));
   render(<KnowledgeDrawer project="project" reference={{ versionId: 'knowledge-version-1', unitId: 'unit-3', checksum }} onClose={vi.fn()} />);
   expect(await screen.findByText('以观测井口作为测量基准。')).toBeVisible();
-  expect(screen.getByText('数据绑定知识 · 精确匹配')).toBeVisible();
-  expect(screen.getAllByText('unit-3')).toHaveLength(2);
+  expect(screen.getAllByText('地下水监测技术手册')[0]).toBeVisible();
+  expect(screen.getByText('引用片段原文')).toBeVisible();
+  expect(screen.getByText('必需上下文')).toBeVisible();
+  expect(screen.getByText('所有水位值均应注明统一的高程基准。')).toBeVisible();
+  expect(screen.getByText(/章节 3.2/)).toBeVisible();
+  expect(screen.getByText(/页码 18/)).toBeVisible();
+  expect(screen.getAllByText('数据绑定知识 · 精确匹配')).toHaveLength(2);
+  for (const value of ['project', 'dataset-1', 'data-version-7', 'semantic-3', 'f2']) {
+    expect(screen.getByText(value)).toBeVisible();
+  }
+  expect(screen.getByRole('link', { name: '监测手册' })).toHaveAttribute('href', 'https://example.org/manual');
+  expect(screen.getByText(/监测部门/)).toBeVisible();
+  expect(screen.getByText(/版本 2025/)).toBeVisible();
+  expect(screen.getByText(/发布 2025-01-10/)).toBeVisible();
+  expect(screen.getByText(/访问 2026-09-30/)).toBeVisible();
+  expect(screen.queryByText(/绑定核对时间|Invalid Date/)).not.toBeInTheDocument();
+  expect(screen.getAllByText('unit-3')[0]).not.toBeVisible();
+  expect(screen.getByText(checksum)).not.toBeVisible();
+  fireEvent.click(screen.getAllByText('技术身份')[0]);
+  expect(screen.getAllByText('unit-3')[0]).toBeVisible();
+  expect(screen.getByText(checksum)).toBeVisible();
   expect(fetchMock).toHaveBeenCalledWith('/api/v12/knowledge/evidence/read', expect.objectContaining({ method: 'POST' }));
+  const request = fetchMock.mock.calls[0][1] as RequestInit;
+  expect(JSON.parse(String(request.body))).toEqual({
+    refs: [{ versionId: 'knowledge-version-1', unitId: 'unit-3', checksum }],
+  });
+});
+
+it('does not present non-OK evidence content as a valid basis', async () => {
+  vi.spyOn(globalThis, 'fetch').mockResolvedValue(json(evidenceBundle([{
+    status: 'STALE', versionId: 'knowledge-version-1', unitId: 'unit-3', checksum,
+    documentTitle: '已更新的监测手册', content: '这段旧内容不得继续显示。',
+    sources: [{
+      sourceId: 'old', kind: 'OFFICIAL_GUIDANCE', title: '旧来源', publisher: '旧发布方',
+      reviewAfter: '2025-01-01', lifecycleStatus: 'WITHDRAWN', url: 'https://example.org/old',
+    }],
+  }])));
+
+  const { container } = render(<KnowledgeDrawer project="project" reference={{ versionId: 'knowledge-version-1', unitId: 'unit-3', checksum }} onClose={vi.fn()} />);
+
+  expect(await screen.findByText('该引用已失效，不能作为当前回答依据。')).toBeVisible();
+  expect(screen.getByText('已失效')).toBeVisible();
+  expect(screen.queryByText('这段旧内容不得继续显示。')).not.toBeInTheDocument();
+  expect(screen.queryByRole('link', { name: '旧来源' })).not.toBeInTheDocument();
+  expect(container.querySelector('.status-badge.status-active')).toBeNull();
 });
 
 it('lists Knowledge Next documents and looks up the selected identity', async () => {

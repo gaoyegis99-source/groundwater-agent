@@ -55,6 +55,7 @@ from platform_kernel.contracts import JobRequestV6
 from platform_kernel.composition import PlatformApplication
 from platform_kernel.errors import AgentRunError, UpstreamServiceError
 from platform_kernel.runtime import KernelRuntime
+from platform_kernel.tasks.models import TaskPreparationEntryV1
 from platform_kernel.workflow_execution.execution_client import (
     ExecutionClient,
     ExecutionClientError,
@@ -1218,6 +1219,641 @@ def test_explicit_structured_request_arguments_bind_preparation() -> None:
         )
         == request["arguments"]
     )
+
+
+def _field_preparation_result(
+    kernel_settings,
+    monkeypatch,
+    *,
+    primary_fields,
+    other_fields=(),
+    field_value="level",
+    identifier="name",
+    allowed_types=("number",),
+    primary_has_descriptor=True,
+    primary_semantics=None,
+    semantic_requirements=(),
+    additional_field_requirements=(),
+    extra_schema_properties=None,
+    extra_arguments=None,
+):
+    settings = kernel_settings()
+    extra_schema_properties = extra_schema_properties or {}
+    extra_arguments = extra_arguments or {}
+    schema = {
+        "type": "object",
+        "properties": {
+            "primaryVersionId": {"type": "string"},
+            "otherVersionId": {"type": "string"},
+            "valueField": {"type": "string"},
+            **extra_schema_properties,
+        },
+        "required": [
+            "primaryVersionId", "otherVersionId", "valueField",
+            *extra_schema_properties,
+        ],
+        "additionalProperties": False,
+    }
+    model = replace(
+        settings.models[0],
+        input_schema=schema,
+        default_parameters={},
+        data_input_parameters=("primaryVersionId", "otherVersionId"),
+        field_requirements=(
+            SimpleNamespace(
+                parameter="valueField",
+                input_parameter="primaryVersionId",
+                identifier=identifier,
+                allowed_types=allowed_types,
+            ),
+            *additional_field_requirements,
+        ),
+        semantic_requirements=tuple(semantic_requirements),
+    )
+
+    def save(_database, *, agent_run_id, tool_call_id, snapshot):
+        validated = TaskPreparationEntryV1.model_validate(snapshot).model_dump()
+        return {**validated, "preparation_id": "preparation", "revision": 1}
+
+    monkeypatch.setattr(preparation_tool_module, "save_preparation", save)
+
+    def inspect(request):
+        body = json.loads(request.content)
+        version_id = body["arguments"]["version_id"]
+        data = {
+            "status": "OK",
+            "versionId": version_id,
+            "currentVersion": version_id,
+            "datasetId": f"dataset-{version_id}",
+            "semanticId": f"semantics-{version_id}",
+            "objects": [
+                {
+                    "objectId": f"object-{version_id}",
+                    "role": "raw",
+                    "mediaType": "text/csv",
+                    "format": "csv",
+                    "size": 8,
+                    "checksum": "sha256:" + "a" * 64,
+                }
+            ],
+        }
+        if version_id == "primary" and primary_has_descriptor:
+            data["descriptor"] = {"fields": list(primary_fields)}
+            if primary_semantics is not None:
+                data["semantics"] = primary_semantics
+        elif version_id == "other":
+            data["descriptor"] = {"fields": list(other_fields)}
+        return httpx.Response(200, json={"data": data})
+
+    http_client = httpx.AsyncClient(transport=httpx.MockTransport(inspect))
+    tool = build_preparation_tool(
+        settings.data_root / "kernel.sqlite3",
+        observations=settings.observation_tools,
+        services_by_name=settings.services_by_name,
+        models=(model,),
+        observation_client=ObservationClient(http_client),
+    )
+    context = SimpleNamespace(
+        context={
+            "agent_run_id": "run",
+            "project_id": "p",
+            "trace_id": "trace",
+            "governance": {"knowledge_evidence": []},
+        },
+        tool_call_id="call",
+    )
+    result = asyncio.run(
+        tool.on_invoke_tool(
+            context,
+            json.dumps(
+                {
+                    "target_tool": model.tool_name,
+                    "arguments": {
+                        "primaryVersionId": "primary",
+                        "otherVersionId": "other",
+                        "valueField": field_value,
+                        **extra_arguments,
+                    },
+                }
+            ),
+        )
+    )
+    asyncio.run(http_client.aclose())
+    return result
+
+
+def test_preparation_field_lookup_is_isolated_to_its_exact_data_version(
+    kernel_settings, monkeypatch
+) -> None:
+    result = _field_preparation_result(
+        kernel_settings,
+        monkeypatch,
+        primary_fields=(
+            {"fieldId": "f0", "name": "levl", "type": "double"},
+        ),
+        other_fields=(
+            {"fieldId": "f0", "name": "level", "type": "double"},
+        ),
+    )
+
+    assert result["status"] == "BLOCKED"
+    assert result["blocking_reasons"] == ["FIELD_NOT_FOUND"]
+    issue, = result["blocking_issues"]
+    assert issue["code"] == "FIELD_NOT_FOUND"
+    assert issue["input"] == "primaryVersionId"
+    assert issue["parameter"] == "valueField"
+    assert issue["candidates"] == [
+        {"field_id": "f0", "name": "levl", "type": "double"}
+    ]
+
+
+def test_preparation_honors_declared_field_identifier_without_id_fallback(
+    kernel_settings, monkeypatch
+) -> None:
+    result = _field_preparation_result(
+        kernel_settings,
+        monkeypatch,
+        primary_fields=(
+            {"fieldId": "f0", "name": "level", "type": "double"},
+        ),
+        field_value="f0",
+        identifier="name",
+    )
+
+    assert result["status"] == "BLOCKED"
+    assert result["blocking_reasons"] == ["FIELD_NOT_FOUND"]
+
+
+def test_preparation_blocks_incompatible_field_type(
+    kernel_settings, monkeypatch
+) -> None:
+    result = _field_preparation_result(
+        kernel_settings,
+        monkeypatch,
+        primary_fields=(
+            {"fieldId": "f0", "name": "level", "type": "bool"},
+        ),
+    )
+
+    assert result["status"] == "BLOCKED"
+    assert result["blocking_reasons"] == ["FIELD_TYPE_MISMATCH"]
+    issue, = result["blocking_issues"]
+    assert issue["code"] == "FIELD_TYPE_MISMATCH"
+    assert issue["actual_type"] == "bool"
+    assert issue["allowed_types"] == ["number"]
+
+
+def test_preparation_marks_missing_field_descriptor_unknown_and_blocks(
+    kernel_settings, monkeypatch
+) -> None:
+    result = _field_preparation_result(
+        kernel_settings,
+        monkeypatch,
+        primary_fields=(),
+        primary_has_descriptor=False,
+    )
+
+    assert result["status"] == "BLOCKED"
+    assert result["blocking_reasons"] == ["FIELD_METADATA_UNAVAILABLE"]
+    assert any(
+        check["kind"] == "FIELD_EXISTS" and check["status"] == "UNKNOWN"
+        for check in result["checks"]
+    )
+
+
+def test_preparation_accepts_matching_field_and_preserves_snapshot_sections(
+    kernel_settings, monkeypatch
+) -> None:
+    result = _field_preparation_result(
+        kernel_settings,
+        monkeypatch,
+        primary_fields=(
+            {"fieldId": "f7", "name": "level", "type": "double"},
+        ),
+    )
+
+    assert result["status"] == "READY"
+    assert set(result["data_references"]) == {
+        "primaryVersionId",
+        "otherVersionId",
+    }
+    assert result["parameters"] == {"valueField": "level"}
+    assert result["parameter_sources"] == {"valueField": "PROPOSED"}
+    assert result["knowledge_references"] == []
+    assert any(
+        check["kind"] == "FIELD_TYPE" and check["status"] == "PASS"
+        for check in result["checks"]
+    )
+
+
+def test_preparation_distinguishes_equivalent_convertible_and_missing_field_units(
+    kernel_settings, monkeypatch
+) -> None:
+    requirement = SimpleNamespace(
+        kind="fieldUnit",
+        input_parameter="primaryVersionId",
+        field_parameter="valueField",
+        expected_parameter="valueUnit",
+        start_parameter=None,
+        end_parameter=None,
+    )
+    equivalent = _field_preparation_result(
+        kernel_settings,
+        monkeypatch,
+        primary_fields=(
+            {"fieldId": "f7", "name": "level", "type": "double"},
+        ),
+        primary_semantics={"fields": {"f7": {"unit": "metres"}}},
+        semantic_requirements=(requirement,),
+        extra_schema_properties={"valueUnit": {"type": "string"}},
+        extra_arguments={"valueUnit": "m"},
+    )
+    assert equivalent["status"] == "READY"
+    assert any(
+        check["kind"] == "FIELD_UNIT"
+        and check["status"] == "PASS"
+        and check["actual_unit"] == "metres"
+        and check["expected_unit"] == "m"
+        and check["relationship"] == "EQUIVALENT"
+        for check in equivalent["checks"]
+    )
+
+    conversion_required = _field_preparation_result(
+        kernel_settings,
+        monkeypatch,
+        primary_fields=(
+            {"fieldId": "f7", "name": "level", "type": "double"},
+        ),
+        primary_semantics={"fields": {"f7": {"unit": "ft"}}},
+        semantic_requirements=(requirement,),
+        extra_schema_properties={"valueUnit": {"type": "string"}},
+        extra_arguments={"valueUnit": "m"},
+    )
+    assert conversion_required["status"] == "BLOCKED"
+    assert conversion_required["blocking_reasons"] == [
+        "UNIT_CONVERSION_REQUIRED"
+    ]
+    assert any(
+        check["kind"] == "FIELD_UNIT"
+        and check["status"] == "FAIL"
+        and check["relationship"] == "CONVERTIBLE"
+        for check in conversion_required["checks"]
+    )
+
+    missing = _field_preparation_result(
+        kernel_settings,
+        monkeypatch,
+        primary_fields=(
+            {"fieldId": "f7", "name": "level", "type": "double"},
+        ),
+        primary_semantics={"fields": {"f7": {"meaning": "groundwater level"}}},
+        semantic_requirements=(requirement,),
+        extra_schema_properties={"valueUnit": {"type": "string"}},
+        extra_arguments={"valueUnit": "m"},
+    )
+    assert missing["status"] == "READY"
+    assert missing["blocking_reasons"] == []
+    assert any(
+        check["kind"] == "FIELD_UNIT" and check["status"] == "UNKNOWN"
+        for check in missing["checks"]
+    )
+
+
+def test_preparation_blocks_known_unit_and_crs_mismatches(
+    kernel_settings, monkeypatch
+) -> None:
+    requirements = (
+        SimpleNamespace(
+            kind="fieldUnit",
+            input_parameter="primaryVersionId",
+            field_parameter="valueField",
+            expected_parameter="valueUnit",
+            start_parameter=None,
+            end_parameter=None,
+        ),
+        SimpleNamespace(
+            kind="crs",
+            input_parameter="primaryVersionId",
+            field_parameter=None,
+            expected_parameter="sourceCrs",
+            start_parameter=None,
+            end_parameter=None,
+        ),
+    )
+    result = _field_preparation_result(
+        kernel_settings,
+        monkeypatch,
+        primary_fields=(
+            {"fieldId": "f7", "name": "level", "type": "double"},
+        ),
+        primary_semantics={
+            "fields": {"f7": {"unit": "s"}},
+            "crs": "EPSG:4326",
+        },
+        semantic_requirements=requirements,
+        extra_schema_properties={
+            "valueUnit": {"type": "string"},
+            "sourceCrs": {"type": "string"},
+        },
+        extra_arguments={"valueUnit": "m", "sourceCrs": "EPSG:32650"},
+    )
+
+    assert result["status"] == "BLOCKED"
+    assert result["blocking_reasons"] == ["UNIT_NOT_COMPARABLE", "CRS_MISMATCH"]
+    assert [issue["code"] for issue in result["blocking_issues"]] == [
+        "UNIT_NOT_COMPARABLE",
+        "CRS_MISMATCH",
+    ]
+
+
+def test_preparation_validates_crs_identity_and_projected_metric_parameters(
+    kernel_settings, monkeypatch
+) -> None:
+    requirements = (
+        SimpleNamespace(
+            kind="crs",
+            input_parameter="primaryVersionId",
+            field_parameter=None,
+            expected_parameter="sourceCrs",
+            parameter=None,
+            crs_requirement=None,
+            start_parameter=None,
+            end_parameter=None,
+        ),
+        SimpleNamespace(
+            kind="crsParameter",
+            input_parameter=None,
+            field_parameter=None,
+            expected_parameter=None,
+            parameter="targetCrs",
+            crs_requirement="projectedMetric",
+            start_parameter=None,
+            end_parameter=None,
+        ),
+    )
+    ready = _field_preparation_result(
+        kernel_settings,
+        monkeypatch,
+        primary_fields=(
+            {"fieldId": "f7", "name": "level", "type": "double"},
+        ),
+        primary_semantics={
+            "fields": {"f7": {"unit": "m"}},
+            "crs": "urn:ogc:def:crs:EPSG::4326",
+        },
+        semantic_requirements=requirements,
+        extra_schema_properties={
+            "sourceCrs": {"type": "string"},
+            "targetCrs": {"type": "string"},
+        },
+        extra_arguments={
+            "sourceCrs": "EPSG:4326",
+            "targetCrs": "EPSG:32650",
+        },
+    )
+
+    assert ready["status"] == "READY"
+    assert any(
+        check["kind"] == "CRS" and check["status"] == "PASS"
+        for check in ready["checks"]
+    )
+    assert any(
+        check["kind"] == "CRS_PARAMETER" and check["status"] == "PASS"
+        for check in ready["checks"]
+    )
+
+    invalid = _field_preparation_result(
+        kernel_settings,
+        monkeypatch,
+        primary_fields=(
+            {"fieldId": "f7", "name": "level", "type": "double"},
+        ),
+        primary_semantics={
+            "fields": {"f7": {"unit": "m"}},
+            "crs": "not-a-crs",
+        },
+        semantic_requirements=requirements,
+        extra_schema_properties={
+            "sourceCrs": {"type": "string"},
+            "targetCrs": {"type": "string"},
+        },
+        extra_arguments={
+            "sourceCrs": "EPSG:4326",
+            "targetCrs": "EPSG:4326",
+        },
+    )
+
+    assert invalid["status"] == "BLOCKED"
+    assert invalid["blocking_reasons"] == [
+        "CRS_INVALID",
+        "PROJECTED_METRIC_CRS_REQUIRED",
+    ]
+
+
+def test_preparation_checks_declared_vertical_basis_without_inferring_missing_facts(
+    kernel_settings, monkeypatch
+) -> None:
+    requirement = SimpleNamespace(
+        kind="verticalBasis",
+        input_parameter="primaryVersionId",
+        field_parameter=None,
+        expected_parameter=None,
+        parameter=None,
+        crs_requirement=None,
+        start_parameter=None,
+        end_parameter=None,
+        reference_field_parameter="valueField",
+        depth_field_parameter="depthField",
+        reference_meanings=("reference_elevation", "land_surface_elevation"),
+        depth_meanings=("depth_to_water", "depth_below_reference_surface"),
+    )
+    depth_requirement = SimpleNamespace(
+        parameter="depthField",
+        input_parameter="primaryVersionId",
+        identifier="name",
+        allowed_types=("number",),
+    )
+    common = {
+        "primary_fields": (
+            {"fieldId": "elevation", "name": "level", "type": "double"},
+            {"fieldId": "depth", "name": "depth", "type": "double"},
+        ),
+        "semantic_requirements": (requirement,),
+        "additional_field_requirements": (depth_requirement,),
+        "extra_schema_properties": {"depthField": {"type": "string"}},
+        "extra_arguments": {"depthField": "depth"},
+    }
+    ready = _field_preparation_result(
+        kernel_settings,
+        monkeypatch,
+        primary_semantics={
+            "fields": {
+                "elevation": {"meaning": "reference_elevation", "unit": "m"},
+                "depth": {"meaning": "depth_to_water", "unit": "m"},
+            },
+            "verticalDatum": "CGCS2000 height datum",
+        },
+        **common,
+    )
+    assert ready["status"] == "READY"
+    assert any(
+        check["kind"] == "VERTICAL_BASIS" and check["status"] == "PASS"
+        for check in ready["checks"]
+    )
+
+    swapped = _field_preparation_result(
+        kernel_settings,
+        monkeypatch,
+        primary_semantics={
+            "fields": {
+                "elevation": {"meaning": "depth_to_water", "unit": "m"},
+                "depth": {"meaning": "reference_elevation", "unit": "m"},
+            },
+            "verticalDatum": "CGCS2000 height datum",
+        },
+        **common,
+    )
+    assert swapped["status"] == "BLOCKED"
+    assert swapped["blocking_reasons"] == ["VERTICAL_BASIS_MISMATCH"]
+
+    unknown = _field_preparation_result(
+        kernel_settings,
+        monkeypatch,
+        primary_semantics={
+            "fields": {
+                "elevation": {"meaning": "ground level", "unit": "m"},
+                "depth": {"unit": "m"},
+            }
+        },
+        **common,
+    )
+    assert unknown["status"] == "READY"
+    assert any(
+        check["kind"] == "VERTICAL_BASIS" and check["status"] == "UNKNOWN"
+        for check in unknown["checks"]
+    )
+
+
+def test_preparation_checks_time_type_timezone_and_requested_range(
+    kernel_settings, monkeypatch
+) -> None:
+    requirements = (
+        SimpleNamespace(
+            kind="timeField",
+            input_parameter="primaryVersionId",
+            field_parameter="valueField",
+            expected_parameter=None,
+            start_parameter=None,
+            end_parameter=None,
+        ),
+        SimpleNamespace(
+            kind="timeRange",
+            input_parameter="primaryVersionId",
+            field_parameter="valueField",
+            expected_parameter=None,
+            start_parameter="expectedStart",
+            end_parameter="expectedEnd",
+        ),
+    )
+    result = _field_preparation_result(
+        kernel_settings,
+        monkeypatch,
+        primary_fields=(
+            {"fieldId": "time", "name": "level", "type": "timestamp[ms]"},
+        ),
+        allowed_types=("date-time",),
+        primary_semantics={
+            "fields": {"time": {"meaning": "observation time"}},
+            "timezone": "Asia/Shanghai",
+            "timeRange": "2020-01-01/2020-12-31",
+        },
+        semantic_requirements=requirements,
+        extra_schema_properties={
+            "expectedStart": {"type": "string"},
+            "expectedEnd": {"type": "string"},
+        },
+        extra_arguments={
+            "expectedStart": "2019-12-31",
+            "expectedEnd": "2020-06-30",
+        },
+    )
+
+    assert result["status"] == "BLOCKED"
+    assert result["blocking_reasons"] == ["TIME_RANGE_NOT_COVERED"]
+    assert any(
+        check["kind"] == "TIME_FIELD_PARSEABILITY" and check["status"] == "PASS"
+        for check in result["checks"]
+    )
+    assert any(
+        check["kind"] == "TIMEZONE" and check["status"] == "PASS"
+        for check in result["checks"]
+    )
+    assert any(
+        check["kind"] == "TIME_RANGE" and check["status"] == "FAIL"
+        for check in result["checks"]
+    )
+
+
+def test_preparation_keeps_missing_crs_timezone_and_range_unknown(
+    kernel_settings, monkeypatch
+) -> None:
+    requirements = (
+        SimpleNamespace(
+            kind="crs",
+            input_parameter="primaryVersionId",
+            field_parameter=None,
+            expected_parameter=None,
+            start_parameter=None,
+            end_parameter=None,
+        ),
+        SimpleNamespace(
+            kind="timeField",
+            input_parameter="primaryVersionId",
+            field_parameter="valueField",
+            expected_parameter=None,
+            start_parameter=None,
+            end_parameter=None,
+        ),
+        SimpleNamespace(
+            kind="timeRange",
+            input_parameter="primaryVersionId",
+            field_parameter="valueField",
+            expected_parameter=None,
+            start_parameter="expectedStart",
+            end_parameter="expectedEnd",
+        ),
+    )
+    result = _field_preparation_result(
+        kernel_settings,
+        monkeypatch,
+        primary_fields=(
+            {"fieldId": "time", "name": "level", "type": "timestamp[ms]"},
+        ),
+        allowed_types=("date-time",),
+        primary_semantics={"fields": {"time": {"meaning": "observation_time"}}},
+        semantic_requirements=requirements,
+        extra_schema_properties={
+            "expectedStart": {"type": "string"},
+            "expectedEnd": {"type": "string"},
+        },
+        extra_arguments={
+            "expectedStart": "2020-01-01",
+            "expectedEnd": "2020-12-31",
+        },
+    )
+
+    assert result["status"] == "READY"
+    assert result["blocking_reasons"] == []
+    statuses = {
+        check["kind"]: check["status"]
+        for check in result["checks"]
+        if check["kind"] in {"CRS", "TIMEZONE", "TIME_RANGE"}
+    }
+    assert statuses == {
+        "CRS": "UNKNOWN",
+        "TIMEZONE": "UNKNOWN",
+        "TIME_RANGE": "UNKNOWN",
+    }
 
 
 def test_preparation_tool_returns_path_diagnostics_for_extra_model_argument(

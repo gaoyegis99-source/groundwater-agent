@@ -1,0 +1,81 @@
+{
+  "schemaVersion": "groundwater-drastic-config.v1",
+  "configId": "drastic-smoke-demo",
+  "title": "DRASTIC smoke-test configuration",
+  "version": "1.0.0",
+  "method": "weighted-sum",
+  "weights": {
+    "source": {
+      "id": "drastic-smoke-weights",
+      "title": "Smoke-test weights",
+      "version": "1.0.0",
+      "locator": "fixture:weights",
+      "verificationStatus": "VERIFIED"
+    },
+    "values": {"D": 5, "R": 4, "A": 3, "S": 2, "T": 1, "I": 5, "C": 3}
+  },
+  "ratings": {
+    "D": {
+      "band": 1,
+      "unit": "fixture unit",
+      "basis": "smoke-test D factor",
+      "source": {"id": "rating-D", "title": "D rating", "version": "1.0.0", "locator": "fixture:D", "verificationStatus": "VERIFIED"},
+      "rules": [{"ruleId": "D-all", "rating": 1, "minimum": -1000000000000, "maximum": 1000000000000, "minimumInclusive": true, "maximumInclusive": true}]
+    },
+    "R": {
+      "band": 1,
+      "unit": "fixture unit",
+      "basis": "smoke-test R factor",
+      "source": {"id": "rating-R", "title": "R rating", "version": "1.0.0", "locator": "fixture:R", "verificationStatus": "VERIFIED"},
+      "rules": [{"ruleId": "R-all", "rating": 1, "minimum": -1000000000000, "maximum": 1000000000000, "minimumInclusive": true, "maximumInclusive": true}]
+    },
+    "A": {
+      "band": 1,
+      "unit": "fixture unit",
+      "basis": "smoke-test A factor",
+      "source": {"id": "rating-A", "title": "A rating", "version": "1.0.0", "locator": "fixture:A", "verificationStatus": "VERIFIED"},
+      "rules": [{"ruleId": "A-all", "rating": 1, "minimum": -1000000000000, "maximum": 1000000000000, "minimumInclusive": true, "maximumInclusive": true}]
+    },
+    "S": {
+      "band": 1,
+      "unit": "fixture unit",
+      "basis": "smoke-test S factor",
+      "source": {"id": "rating-S", "title": "S rating", "version": "1.0.0", "locator": "fixture:S", "verificationStatus": "VERIFIED"},
+      "rules": [{"ruleId": "S-all", "rating": 1, "minimum": -1000000000000, "maximum": 1000000000000, "minimumInclusive": true, "maximumInclusive": true}]
+    },
+    "T": {
+      "band": 1,
+      "unit": "fixture unit",
+      "basis": "smoke-test T factor",
+      "source": {"id": "rating-T", "title": "T rating", "version": "1.0.0", "locator": "fixture:T", "verificationStatus": "VERIFIED"},
+      "rules": [{"ruleId": "T-all", "rating": 1, "minimum": -1000000000000, "maximum": 1000000000000, "minimumInclusive": true, "maximumInclusive": true}]
+    },
+    "I": {
+      "band": 1,
+      "unit": "fixture unit",
+      "basis": "smoke-test I factor",
+      "source": {"id": "rating-I", "title": "I rating", "version": "1.0.0", "locator": "fixture:I", "verificationStatus": "VERIFIED"},
+      "rules": [{"ruleId": "I-all", "rating": 1, "minimum": -1000000000000, "maximum": 1000000000000, "minimumInclusive": true, "maximumInclusive": true}]
+    },
+    "C": {
+      "band": 1,
+      "unit": "fixture unit",
+      "basis": "smoke-test C factor",
+      "source": {"id": "rating-C", "title": "C rating", "version": "1.0.0", "locator": "fixture:C", "verificationStatus": "VERIFIED"},
+      "rules": [{"ruleId": "C-all", "rating": 1, "minimum": -1000000000000, "maximum": 1000000000000, "minimumInclusive": true, "maximumInclusive": true}]
+    }
+  },
+  "classification": {
+    "source": {
+      "id": "drastic-smoke-classes",
+      "title": "Smoke-test index classes",
+      "version": "1.0.0",
+      "locator": "fixture:classes",
+      "verificationStatus": "VERIFIED"
+    },
+    "classes": [
+      {"code": 1, "label": "Lower relative vulnerability", "order": 1, "minimum": 0, "maximum": 100, "minimumInclusive": true, "maximumInclusive": true},
+      {"code": 2, "label": "Higher relative vulnerability", "order": 2, "minimum": 100, "maximum": 230, "minimumInclusive": false, "maximumInclusive": true}
+    ]
+  }
+}

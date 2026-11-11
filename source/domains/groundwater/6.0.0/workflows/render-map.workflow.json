@@ -1,7 +1,7 @@
 {
   "schemaVersion": "workflow.v6",
   "workflowId": "groundwater.render-map",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "inputs": [
     {
       "name": "data",
@@ -19,7 +19,11 @@
   ],
   "parameters": [
     "title",
-    "valueField"
+    "valueField",
+    "palette",
+    "width",
+    "height",
+    "unit"
   ],
   "nodes": [
     {
@@ -37,6 +41,18 @@
         },
         "valueField": {
           "workflowParameter": "valueField"
+        },
+        "palette": {
+          "workflowParameter": "palette"
+        },
+        "width": {
+          "workflowParameter": "width"
+        },
+        "height": {
+          "workflowParameter": "height"
+        },
+        "unit": {
+          "workflowParameter": "unit"
         }
       }
     }
@@ -47,6 +63,13 @@
       "nodeOutput": {
         "nodeId": "render",
         "port": "image"
+      }
+    },
+    {
+      "name": "map-summary",
+      "nodeOutput": {
+        "nodeId": "render",
+        "port": "summary"
       }
     }
   ]

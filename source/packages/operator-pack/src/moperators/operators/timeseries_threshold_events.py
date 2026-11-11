@@ -22,17 +22,40 @@ from moperators.operators.advanced_timeseries_common import (
 
 
 def run(inputs: dict[str, Any], parameters: dict[str, Any], output_dir: Path) -> dict[str, Any]:
-    comparison = parameters["comparison"]
-    source = parameters["thresholdSource"]
-    if comparison not in {"above", "atOrAbove", "below", "atOrBelow"}:
-        raise ValueError("THRESHOLD_INVALID")
-    if source not in {"scalar", "field"}:
+    enabled = parameters.get("enabled", True)
+    if not isinstance(enabled, bool):
         raise ValueError("THRESHOLD_INVALID")
     group_field = parameters["groupField"]
     time_field = parameters["timeField"]
     value_field = parameters["valueField"]
-    frequency = parameters["frequency"]
     table = read_table(one(inputs))
+    event_schema, classified_schema = _output_schemas(
+        table, group_field, time_field, value_field
+    )
+    if not enabled:
+        return {
+            "classified": write_rows(
+                [], output_dir / "threshold-classification.parquet", classified_schema
+            ),
+            "events": write_rows([], output_dir / "threshold-events.parquet", event_schema),
+            "summary": value_summary(
+                {
+                    "status": "NOT_REQUESTED",
+                    "interpretation": "Threshold-event detection was not requested.",
+                    "limitations": [
+                        "No threshold was assumed; enable this branch with an explicit "
+                        "threshold and comparison direction."
+                    ],
+                }
+            ),
+        }
+    comparison = parameters.get("comparison")
+    source = parameters.get("thresholdSource", "scalar")
+    if comparison not in {"above", "atOrAbove", "below", "atOrBelow"}:
+        raise ValueError("THRESHOLD_INVALID")
+    if source not in {"scalar", "field"}:
+        raise ValueError("THRESHOLD_INVALID")
+    frequency = parameters["frequency"]
     groups = column(table, group_field).to_pylist()
     periods = [bucket(value, frequency) for value in timestamps(table, time_field)]
     values = numbers(table, value_field)
@@ -95,6 +118,37 @@ def run(inputs: dict[str, Any], parameters: dict[str, Any], output_dir: Path) ->
                     "status": "QUALIFYING" if event_id is not None else "NOT_QUALIFYING",
                 }
 
+    return {
+        "classified": write_rows(
+            classified_rows(), output_dir / "threshold-classification.parquet", classified_schema
+        ),
+        "events": write_rows(event_rows, output_dir / "threshold-events.parquet", event_schema),
+        "summary": value_summary(
+            {
+                "groupCount": len(grouped),
+                "rowCount": len(periods),
+                "eventCount": len(event_rows),
+                "status": "COMPLETE",
+                "frequency": frequency,
+                "comparison": comparison,
+                "thresholdSource": source,
+                "thresholdValue": threshold if source == "scalar" else None,
+                "interpretation": (
+                    "Events are consecutive calendar periods that satisfy the explicit "
+                    "comparison against the supplied threshold."
+                ),
+                "limitations": [
+                    "The supplied threshold is a user decision, not a platform standard "
+                    "or inferred regulatory limit."
+                ],
+            }
+        ),
+    }
+
+
+def _output_schemas(
+    table: pa.Table, group_field: str, time_field: str, value_field: str
+) -> tuple[pa.Schema, pa.Schema]:
     group_type = table.schema.field(group_field).type
     event_schema = pa.schema(
         [
@@ -122,19 +176,7 @@ def run(inputs: dict[str, Any], parameters: dict[str, Any], output_dir: Path) ->
             pa.field("status", pa.string(), nullable=False),
         ]
     )
-    return {
-        "classified": write_rows(
-            classified_rows(), output_dir / "threshold-classification.parquet", classified_schema
-        ),
-        "events": write_rows(event_rows, output_dir / "threshold-events.parquet", event_schema),
-        "summary": value_summary(
-            {
-                "groupCount": len(grouped),
-                "rowCount": len(periods),
-                "eventCount": len(event_rows),
-            }
-        ),
-    }
+    return event_schema, classified_schema
 
 
 def _threshold(value: Any) -> float:

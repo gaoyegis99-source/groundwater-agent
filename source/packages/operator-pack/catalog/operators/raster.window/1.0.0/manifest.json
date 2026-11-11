@@ -1,5 +1,5 @@
 {
-  "description": "输入范围和栅格必须同 CRS；像素窗口向外 floor/ceil，允许越界并用 0 填充，输出完整请求窗口。 用第一选定波段的有效掩膜统计整个请求窗口覆盖率，低于阈值失败；保存选定波段、掩膜及来源信息。 原案例 bands=[1,2,3]、minimumCoverage=0.98；普通 raster.clip 不承诺这些完整窗口和覆盖率语义。",
+  "description": "输入范围和栅格必须同 CRS；像素窗口向外 floor/ceil，允许越界并用 0 填充，输出完整请求窗口。用第一选定波段的有效掩膜统计整个请求窗口覆盖率，低于阈值失败；coverage JSON 公开 selectedBands、maskBand、minimumRequiredFraction、validFraction、validPixels 与 totalPixels。原案例 bands=[1,2,3]、minimumCoverage=0.98；普通 raster.clip 不承诺这些完整窗口和覆盖率语义。",
   "domain": "raster",
   "errorCodes": [
     "RULESET_INVALID",

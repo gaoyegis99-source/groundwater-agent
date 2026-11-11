@@ -1,17 +1,41 @@
 {
-  "schemaVersion": "executable-model.v4",
+  "schemaVersion": "executable-model.v6",
   "modelId": "groundwater.monitoring-trend",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "workflowRef": {
     "workflowId": "groundwater.monitoring-trend",
-    "version": "1.0.0",
-    "checksum": "sha256:42babe3078ecfec7f43c40f59a2e6c874f0c4ea84b3721e51213df13a87ab9b6"
+    "version": "1.1.0",
+    "checksum": "sha256:156c558d24d5495124cb1735d9b1c2ba0baffafa42a2dc296425891150a5b07e"
   },
   "tool": {
     "name": "run_monitoring_trend",
     "description": "Analyze grouped groundwater monitoring trends from one exact Data version.",
     "inputSchema": {
       "type": "object",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "seasonalTrendEnabled": {"const": true}
+            },
+            "required": ["seasonalTrendEnabled"]
+          },
+          "then": {
+            "required": ["seasonFrequency"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "thresholdEventsEnabled": {"const": true}
+            },
+            "required": ["thresholdEventsEnabled"]
+          },
+          "then": {
+            "required": ["eventComparison", "eventThreshold"]
+          }
+        }
+      ],
       "properties": {
         "versionId": {
           "type": "string",
@@ -79,6 +103,23 @@
         "threshold": {
           "type": "number",
           "exclusiveMinimum": 0
+        },
+        "seasonalTrendEnabled": {
+          "type": "boolean"
+        },
+        "seasonFrequency": {
+          "type": "string",
+          "enum": ["month", "quarter"]
+        },
+        "thresholdEventsEnabled": {
+          "type": "boolean"
+        },
+        "eventComparison": {
+          "type": "string",
+          "enum": ["above", "atOrAbove", "below", "atOrBelow"]
+        },
+        "eventThreshold": {
+          "type": "number"
         }
       },
       "required": [
@@ -101,9 +142,64 @@
   "inputBindings": {
     "observations": "versionId"
   },
+  "fieldRequirements": [
+    {
+      "parameter": "groupField",
+      "inputParameter": "versionId",
+      "identifier": "name",
+      "allowedTypes": ["string", "number"]
+    },
+    {
+      "parameter": "timeField",
+      "inputParameter": "versionId",
+      "identifier": "name",
+      "allowedTypes": ["string", "date-time"]
+    },
+    {
+      "parameter": "valueField",
+      "inputParameter": "versionId",
+      "identifier": "name",
+      "allowedTypes": ["string", "number"]
+    }
+  ],
+  "semanticRequirements": [
+    {
+      "kind": "fieldUnit",
+      "inputParameter": "versionId",
+      "fieldParameter": "valueField"
+    },
+    {
+      "kind": "timeField",
+      "inputParameter": "versionId",
+      "fieldParameter": "timeField"
+    },
+    {
+      "kind": "timeRange",
+      "inputParameter": "versionId",
+      "fieldParameter": "timeField",
+      "startParameter": "expectedStart",
+      "endParameter": "expectedEnd"
+    },
+    {
+      "kind": "timeRange",
+      "inputParameter": "versionId",
+      "fieldParameter": "timeField",
+      "startParameter": "baselineStart",
+      "endParameter": "baselineEnd"
+    },
+    {
+      "kind": "timeRange",
+      "inputParameter": "versionId",
+      "fieldParameter": "timeField",
+      "startParameter": "comparisonStart",
+      "endParameter": "comparisonEnd"
+    }
+  ],
   "defaultParameters": {
     "alpha": 0.05,
-    "threshold": 3.5
+    "threshold": 3.5,
+    "seasonalTrendEnabled": false,
+    "thresholdEventsEnabled": false
   },
   "parameterBindings": {
     "groupField": "groupField",
@@ -118,7 +214,12 @@
     "comparisonEnd": "comparisonEnd",
     "aggregation": "aggregation",
     "alpha": "alpha",
-    "threshold": "threshold"
+    "threshold": "threshold",
+    "seasonalTrendEnabled": "seasonalTrendEnabled",
+    "seasonFrequency": "seasonFrequency",
+    "thresholdEventsEnabled": "thresholdEventsEnabled",
+    "eventComparison": "eventComparison",
+    "eventThreshold": "eventThreshold"
   },
   "deadlineSeconds": 3600,
   "maxParallelNodes": 4,
@@ -134,7 +235,16 @@
     "outlier-observations",
     "outlier-summary",
     "period-changes",
-    "period-change-summary"
+    "period-change-summary",
+    "change-points",
+    "change-point-summary",
+    "seasonal-trends",
+    "seasonal-trend-summary",
+    "gap-runs",
+    "gap-run-summary",
+    "threshold-classification",
+    "threshold-events",
+    "threshold-event-summary"
   ],
   "executionService": "executor",
   "executorId": "workflow-dag",
@@ -340,6 +450,159 @@
         "crs": null,
         "vertical_datum": null,
         "limitations": [],
+        "source": "workflow-declared"
+      }
+    },
+    "change-points": {
+      "title": "Pettitt Change Points",
+      "mediaType": "application/vnd.apache.parquet",
+      "format": "parquet",
+      "policy": "FILE_QUERYABLE",
+      "semantics": {
+        "description": "One candidate Pettitt location shift per group, with non-null observation and missing-value counts.",
+        "fields": {},
+        "grain": "one row per monitoring group",
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": ["Detects at most one shift and does not establish a cause; interpret with completeness and gap-run outputs."],
+        "source": "workflow-declared"
+      }
+    },
+    "change-point-summary": {
+      "title": "Pettitt Change Point Summary",
+      "mediaType": "application/json",
+      "format": "json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "Pettitt evaluation counts, alpha, minimum observations, interpretation, and limitations.",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": ["A significant test identifies a candidate location shift, not its physical cause."],
+        "source": "workflow-declared"
+      }
+    },
+    "seasonal-trends": {
+      "title": "Seasonal Mann Kendall Trends",
+      "mediaType": "application/vnd.apache.parquet",
+      "format": "parquet",
+      "policy": "FILE_QUERYABLE",
+      "semantics": {
+        "description": "Opt-in Seasonal Mann-Kendall statistics and seasonal Sen slope for the explicitly selected season frequency.",
+        "fields": {},
+        "grain": "one row per monitoring group",
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": ["Requires comparable observations across at least two cycles; missing seasonal periods reduce power."],
+        "source": "workflow-declared"
+      }
+    },
+    "seasonal-trend-summary": {
+      "title": "Seasonal Trend Summary",
+      "mediaType": "application/json",
+      "format": "json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "Seasonal-trend request status, selected season frequency, evaluation counts, interpretation, and limitations.",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": ["NOT_REQUESTED is an explicit opt-out and must not be presented as a zero trend."],
+        "source": "workflow-declared"
+      }
+    },
+    "gap-runs": {
+      "title": "Contiguous Missing Period Runs",
+      "mediaType": "application/vnd.apache.parquet",
+      "format": "parquet",
+      "policy": "FILE_QUERYABLE",
+      "semantics": {
+        "description": "Contiguous runs of expected calendar periods without a non-null value, using the explicit frequency and expected range.",
+        "fields": {},
+        "grain": "one row per monitoring group and contiguous missing run",
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": ["Gap-run continuity is not overall completeness; use completeness-profiles for expected/observed ratios."],
+        "source": "workflow-declared"
+      }
+    },
+    "gap-run-summary": {
+      "title": "Gap Run Summary",
+      "mediaType": "application/json",
+      "format": "json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "Total missing periods, contiguous run count, longest run, expected range, frequency, interpretation, and limitations.",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": ["A short run count can coexist with poor overall completeness when individual runs are long."],
+        "source": "workflow-declared"
+      }
+    },
+    "threshold-classification": {
+      "title": "Threshold Classification",
+      "mediaType": "application/vnd.apache.parquet",
+      "format": "parquet",
+      "policy": "FILE_QUERYABLE",
+      "semantics": {
+        "description": "Per-period classification against an explicitly user-supplied scalar threshold and comparison direction.",
+        "fields": {},
+        "grain": "one row per monitoring group and calendar period",
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": ["The supplied threshold is not inferred and must not be represented as a platform or regulatory standard."],
+        "source": "workflow-declared"
+      }
+    },
+    "threshold-events": {
+      "title": "Threshold Events",
+      "mediaType": "application/vnd.apache.parquet",
+      "format": "parquet",
+      "policy": "FILE_QUERYABLE",
+      "semantics": {
+        "description": "Consecutive calendar-period events satisfying an explicitly user-supplied threshold comparison.",
+        "fields": {},
+        "grain": "one row per monitoring group and threshold event",
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": ["Events describe threshold exceedance runs only and do not imply impacts, causes, or compliance."],
+        "source": "workflow-declared"
+      }
+    },
+    "threshold-event-summary": {
+      "title": "Threshold Event Summary",
+      "mediaType": "application/json",
+      "format": "json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "Threshold-event request status, explicit threshold, comparison, event counts, interpretation, and limitations.",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": ["NOT_REQUESTED means no threshold was assumed and must not be shown as zero events."],
         "source": "workflow-declared"
       }
     }

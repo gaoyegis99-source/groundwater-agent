@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import subprocess
 
 import pytest
 
 from scripts.operations import test_full_project
+from scripts.operations.render_full_project_report import (
+    render_full_project_report,
+    write_markdown_report,
+)
 
 
 def test_full_project_declares_all_release_wheels() -> None:
@@ -183,6 +188,40 @@ def test_full_project_selects_an_available_wheel_builder() -> None:
     assert test_full_project._build_check_command()
 
 
+def test_full_project_builds_wheels_from_clean_source_snapshot(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    (project / "pyproject.toml").write_text("[build-system]\n", encoding="utf-8")
+    (project / "current.py").write_text("CURRENT = True\n", encoding="utf-8")
+    generated = {
+        project / "build/lib/deleted.py": "DELETED = True\n",
+        project / "dist/stale.whl": "stale\n",
+        project / "__pycache__/current.cpython-313.pyc": "stale\n",
+        project / "current.egg-info/SOURCES.txt": "stale\n",
+        project / "node_modules/package/index.js": "stale\n",
+    }
+    for path, content in generated.items():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+
+    snapshot = test_full_project._prepare_wheel_build_input(
+        project, tmp_path / "snapshot"
+    )
+
+    assert (snapshot / "pyproject.toml").is_file()
+    assert (snapshot / "current.py").is_file()
+    assert not any(
+        (snapshot / relative).exists()
+        for relative in (
+            "build",
+            "dist",
+            "__pycache__",
+            "current.egg-info",
+            "node_modules",
+        )
+    )
+
+
 def test_full_project_keeps_failed_stage_history_before_resume(tmp_path: Path) -> None:
     runner = test_full_project.Runner(
         product="groundwater",
@@ -212,3 +251,49 @@ def test_full_project_keeps_failed_stage_history_before_resume(tmp_path: Path) -
     assert runner.history[0]["commands"][0]["diagnosticCodes"] == [
         "RELEASE_PYTHON_3_12_REQUIRED"
     ]
+
+
+def test_full_project_markdown_report_summarizes_without_command_payloads(
+    tmp_path: Path,
+) -> None:
+    report = {
+        "schemaVersion": "full-project-test-report.v1",
+        "status": "PASS",
+        "product": "groundwater",
+        "runId": "report123",
+        "startedAt": "2026-01-01T00:00:00Z",
+        "finishedAt": "2026-01-01T00:01:00Z",
+        "engineeringStatus": "PASS",
+        "scientificStatus": "NOT_ASSESSED",
+        "agentExperienceStatus": "NOT_ASSESSED",
+        "baseline": {"versions": {"python": "Python 3.12.8"}},
+        "stages": [
+            {
+                "name": "python_kernel",
+                "status": "PASS",
+                "commands": [
+                    {
+                        "command": ["pytest", "--password=must-not-render"],
+                        "returnCode": 0,
+                        "durationSeconds": 1.25,
+                        "testSummary": {"passed": 10},
+                    }
+                ],
+            }
+        ],
+        "isolation": {
+            "policy": "FRESH_VOLUMES",
+            "existingDeploymentMutation": False,
+        },
+        "evidenceSnapshot": {"status": "PASS", "files": {"a": {}}},
+    }
+    markdown = render_full_project_report(report)
+    assert "总状态：`PASS`" in markdown
+    assert "passed=10" in markdown
+    assert "must-not-render" not in markdown
+
+    source = tmp_path / "report.json"
+    source.write_text(json.dumps(report), encoding="utf-8")
+    destination = write_markdown_report(source)
+    assert destination == tmp_path / "report.md"
+    assert destination.stat().st_mode & 0o777 == 0o600

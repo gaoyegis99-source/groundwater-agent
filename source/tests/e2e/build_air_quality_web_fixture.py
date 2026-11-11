@@ -175,7 +175,11 @@ def _create_air_quality_product(root: Path) -> Path:
         }
     )
     profile["parameterStages"] = {}
-    profile["outputs"] = {"summary": {"label": "颗粒物统计摘要", "viewer": "table"}}
+    profile["outputs"] = {
+        name: profile["outputs"][name] for name in model["finalOutputs"]
+    }
+    profile["outputs"]["summary"]["label"] = "颗粒物统计摘要"
+    profile["outputs"]["summary-details"]["label"] = "颗粒物统计范围与语义"
     profile["cases"] = {
         "city-stations": {
             "label": "城市站点对比",

@@ -46,12 +46,12 @@ it('renders business steps, missing items and evidence without exposing raw grap
   render(<WorkflowDraftCard draft={draft} onKnowledge={readKnowledge} onResource={readResource} />);
   expect(screen.getByTestId('workflow-draft-card')).toHaveAttribute('data-draft-id', 'draft-1');
   expect(within(screen.getByTestId('draft-nodes')).getAllByRole('listitem')).toHaveLength(2);
-  expect(screen.getByText('空间插值')).toBeVisible();
+  expect(within(screen.getByTestId('draft-nodes')).getByText('空间插值')).toBeVisible();
   expect(within(screen.getByTestId('draft-nodes')).getByText('静态地图')).toBeVisible();
   expect(screen.getByText(/第 1 步 · 空间插值的输出/)).toBeVisible();
   expect(screen.queryByText(/interpolate\.raster|map\.data|map\.image|spatial\.interpolate/)).not.toBeInTheDocument();
-  expect(screen.getByText('缺少数据：boundary')).toBeVisible();
-  expect(screen.getByText('缺少参数：field')).toBeVisible();
+  expect(within(screen.getByTestId('draft-missing')).getByText('缺少数据：boundary')).toBeVisible();
+  expect(within(screen.getByTestId('draft-missing')).getByText('缺少参数：field')).toBeVisible();
   expect(screen.getAllByText('用于 第 1 步 · 空间插值')).toHaveLength(2);
   expect(screen.getByText('空间分布')).toBeVisible();
   expect(screen.getByText('用户说明 · 用户指定图名')).toBeVisible();
@@ -69,6 +69,94 @@ it('renders business steps, missing items and evidence without exposing raw grap
   expect(screen.queryByText('冻结身份与原始 JSON')).not.toBeInTheDocument();
   expect(screen.queryByText('sha256:workflow')).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: '确认执行' })).not.toBeInTheDocument();
+});
+
+it('renders an accessible DAG with external inputs, missing callouts and expandable node facts', () => {
+  const { container } = render(<WorkflowDraftCard draft={draft} onKnowledge={vi.fn()} onResource={vi.fn()} />);
+  const graph = screen.getByRole('group', { name: '工作流依赖图' });
+
+  expect(graph.querySelectorAll('[data-workflow-input]')).toHaveLength(2);
+  expect(graph.querySelector('[data-workflow-input="wells"]')).toHaveTextContent('wells');
+  expect(graph.querySelector('[data-workflow-input="boundary"]')).toHaveTextContent('boundary');
+  expect(graph.querySelector('[data-edge-source="workflow:wells"][data-edge-target="interpolate:data"]')).toBeInTheDocument();
+  expect(graph.querySelector('[data-edge-source="workflow:boundary"][data-edge-target="interpolate:boundary"]')).toBeInTheDocument();
+  expect(graph.querySelector('[data-edge-source="interpolate:raster"][data-edge-target="map:data"]')).toBeInTheDocument();
+  expect(within(graph).getByText('缺少数据：boundary')).toBeVisible();
+  expect(within(graph).getByText('缺少参数：field')).toBeVisible();
+
+  const interpolation = graph.querySelector('[data-node-id="interpolate"]')!;
+  const map = graph.querySelector('[data-node-id="map"]')!;
+  expect(interpolation).toHaveTextContent('空间插值');
+  expect(interpolation).toHaveTextContent('interpolate');
+  expect(interpolation).toHaveTextContent('2 入 · 1 出');
+  expect(map).toHaveTextContent('1 入 · 1 出');
+  expect(container.querySelectorAll('[data-dag-edge-kind="node-output"]')).toHaveLength(1);
+
+  fireEvent.click(screen.getByRole('button', { name: '查看空间插值节点详情' }));
+  let detail = screen.getByTestId('draft-node-detail');
+  expect(detail).toHaveTextContent('节点 interpolate');
+  expect(detail).toHaveTextContent('data');
+  expect(detail).toHaveTextContent('boundary');
+  expect(detail).toHaveTextContent('valueField');
+  expect(detail).toHaveTextContent('缺少参数');
+  expect(detail).toHaveTextContent('数据 · 根据已核对字段整理的嵌套规则。');
+  expect(detail).toHaveTextContent('静态图不表示预测置信区间');
+
+  fireEvent.click(screen.getByRole('button', { name: '查看静态地图节点详情' }));
+  detail = screen.getByTestId('draft-node-detail');
+  expect(detail).toHaveTextContent('节点 map');
+  expect(detail).toHaveTextContent('title');
+  expect(detail).toHaveTextContent('用户说明 · 用户指定图名');
+});
+
+it('lays out fan-out and multiple terminal sinks as distinct DAG nodes', () => {
+  const fanout: WorkflowDraft = {
+    ...draft,
+    draftId: 'draft-fanout',
+    payload: {
+      ...draft.payload!,
+      title: '质量检查与并行分析',
+      summary: '检查数据后并行生成趋势与缺测结果。',
+      workflow: {
+        ...draft.payload!.workflow,
+        inputs: [{ name: 'observations', cardinality: 'one', mediaTypes: ['text/csv'], formats: ['csv'] }],
+        parameters: [],
+        nodes: [
+          { nodeId: 'quality', operatorId: 'table.validate', operatorVersion: '1.0.0', inputs: { data: { workflowInput: 'observations' } }, parameters: {} },
+          { nodeId: 'trend', operatorId: 'timeseries.trend', operatorVersion: '1.0.0', inputs: { data: { nodeOutput: { nodeId: 'quality', port: 'clean' } } }, parameters: {} },
+          { nodeId: 'gaps', operatorId: 'timeseries.missing', operatorVersion: '1.0.0', inputs: { data: { nodeOutput: { nodeId: 'quality', port: 'clean' } } }, parameters: {} },
+        ],
+        outputs: [
+          { name: 'trend-report', nodeOutput: { nodeId: 'trend', port: 'report' } },
+          { name: 'missing-table', nodeOutput: { nodeId: 'gaps', port: 'table' } },
+        ],
+      },
+      operators: [
+        { nodeId: 'quality', operatorId: 'table.validate', operatorVersion: '1.0.0', implementationRevision: 'rev-quality', runtime: 'native', title: '数据质量检查' },
+        { nodeId: 'trend', operatorId: 'timeseries.trend', operatorVersion: '1.0.0', implementationRevision: 'rev-trend', runtime: 'native', title: '趋势分析' },
+        { nodeId: 'gaps', operatorId: 'timeseries.missing', operatorVersion: '1.0.0', implementationRevision: 'rev-gaps', runtime: 'native', title: '缺测分析' },
+      ],
+      parameterValues: {}, parameterSources: [], dataBindings: [], missingInputs: [],
+      knowledgeRefs: [], unresolvedItems: [], limitations: ['并行结果使用同一份质量检查输出。'],
+    },
+  };
+
+  render(<WorkflowDraftCard draft={fanout} onKnowledge={vi.fn()} onResource={vi.fn()} />);
+  const graph = screen.getByRole('group', { name: '工作流依赖图' });
+  const trend = graph.querySelector('[data-node-id="trend"]')!;
+  const gaps = graph.querySelector('[data-node-id="gaps"]')!;
+
+  expect(graph.querySelectorAll('[data-dag-edge-kind="node-output"]')).toHaveLength(2);
+  expect(graph.querySelector('[data-edge-source="quality:clean"][data-edge-target="trend:data"]')).toBeInTheDocument();
+  expect(graph.querySelector('[data-edge-source="quality:clean"][data-edge-target="gaps:data"]')).toBeInTheDocument();
+  expect(trend).toHaveAttribute('data-terminal-output-count', '1');
+  expect(gaps).toHaveAttribute('data-terminal-output-count', '1');
+  expect(trend.getAttribute('transform')).not.toBe(gaps.getAttribute('transform'));
+  expect(within(graph).getByText('2 个最终节点')).toBeVisible();
+  expect(graph.querySelector('[data-missing-input]')).not.toBeInTheDocument();
+
+  fireEvent.keyDown(screen.getByRole('button', { name: '查看缺测分析节点详情' }), { key: 'Enter' });
+  expect(screen.getByTestId('draft-node-detail')).toHaveTextContent('并行结果使用同一份质量检查输出。');
 });
 
 it('dispatches known preparation blockers and leaves an unknown blocker read-only', () => {
@@ -104,6 +192,35 @@ it('dispatches known preparation blockers and leaves an unknown blocker read-onl
   expect(onParameter).toHaveBeenNthCalledWith(2, '未解决事项');
   expect(screen.getByText('阻塞：FUTURE_UNKNOWN_BLOCKER')).toBeVisible();
   expect(screen.getAllByRole('button')).toHaveLength(5);
+});
+
+it('shows semantic preflight facts and routes unknown metadata to the exact version', () => {
+  const onVersion = vi.fn();
+  const input = dataRef({ versionId: 'semantic-version' });
+  const history = historyFixture({ preparation: {
+    schemaVersion: 'task-preparation.v1', preparationId: 'preparation-semantic', revision: 2,
+    sessionId: 'session-1', agentRunId: 'agent-1', goalRevision: 1,
+    taskId: null, baseTaskRevision: null, status: 'READY', freshForCurrentTurn: true, disposition: 'ACTIVE',
+    entries: [{ targetKind: 'EXECUTABLE_MODEL', targetId: 'groundwater.flow-field', targetVersion: '3.0.0',
+      selectionPolicy: 'PINNED', status: 'READY', inputs: { versionId: input }, knowledgeRefs: [], parameters: {}, parameterSources: {},
+      checks: [
+        { kind: 'FIELD_UNIT', input: 'versionId', status: 'PASS', actualUnit: 'metres', expectedUnit: 'm', relationship: 'EQUIVALENT' },
+        { kind: 'CRS', input: 'versionId', status: 'UNKNOWN', expectedCrs: 'EPSG:4326' },
+        { kind: 'TIME_RANGE', input: 'versionId', status: 'UNKNOWN', requestedStart: '2020-01-01', requestedEnd: '2020-12-31' },
+        { kind: 'VERTICAL_BASIS', input: 'versionId', status: 'UNKNOWN', referenceField: 'elevation', depthField: 'depth' },
+      ],
+      blockingReasons: [] }],
+  } });
+
+  render(<PreparationDetails history={history} onData={vi.fn()} onVersion={onVersion} onParameter={vi.fn()} />);
+
+  expect(screen.getByText(/已声明 metres；执行参数 m；EQUIVALENT/)).toBeVisible();
+  expect(screen.getByText(/期望 EPSG:4326/)).toBeVisible();
+  expect(screen.getByText(/请求 2020-01-01 至 2020-12-31/)).toBeVisible();
+  expect(screen.getByText(/高程字段 elevation；埋深字段 depth/)).toBeVisible();
+  expect(screen.getAllByRole('button', { name: '查看数据详情' })).toHaveLength(3);
+  fireEvent.click(screen.getAllByRole('button', { name: '查看数据详情' })[0]);
+  expect(onVersion).toHaveBeenCalledExactlyOnceWith('semantic-version');
 });
 
 it.each([
@@ -156,7 +273,7 @@ class TestEvents {
 }
 const json = (data: unknown) => new Response(JSON.stringify(data && typeof data === 'object' && 'turns' in data ? historyFixture({ eventCursor: TestEvents.cursor, ...data as HistoryFixture }) : data), { status: 200, headers: { 'Content-Type': 'application/json' } });
 
-it('keeps cache and UI terminal when an older-page publication overtakes a delayed generating read', async () => {
+it('revalidates a terminal draft after publication without allowing an older generating read to regress it', async () => {
   window.location.hash = '#/sessions/session-1';
   vi.stubGlobal('EventSource', TestEvents);
   let finishInitial!: (value: Response) => void;
@@ -170,7 +287,8 @@ it('keeps cache and UI terminal when an older-page publication overtakes a delay
       turns: [{ goalRevision: 2, agentRunId: 'agent-2', status: 'RUNNING', requestMode: 'WORKFLOW_DRAFT', workflowDraftId: 'draft-1' }] });
     if (url.includes('/workflow-drafts/')) {
       draftReads++;
-      return draftReads === 1 ? new Promise<Response>(resolve => { finishInitial = resolve; }) : json(draft);
+      if (draftReads === 1) return new Promise<Response>(resolve => { finishInitial = resolve; });
+      return json(draftReads === 2 ? draft : { ...draft, payload: { ...draft.payload!, title: '复核后的草稿' } });
     }
     throw new Error(`unexpected endpoint ${url}`);
   });
@@ -182,8 +300,35 @@ it('keeps cache and UI terminal when an older-page publication overtakes a delay
   await act(async () => finishInitial(json({ ...draft, status: 'GENERATING', payload: null })));
   expect(screen.getByRole('link', { name: '导出草稿 JSON' })).toBeVisible();
   await act(async () => { TestEvents.latest.emit('workflow_draft.published', 10); await new Promise(resolve => setTimeout(resolve, 150)); });
-  expect(draftReads).toBe(2);
+  expect(draftReads).toBe(3);
+  expect(screen.getByText('复核后的草稿')).toBeVisible();
   expect(screen.getByRole('link', { name: '导出草稿 JSON' })).toBeVisible();
+});
+
+it('revalidates a cached terminal draft after SSE reconnect', async () => {
+  window.location.hash = '#/sessions/session-1';
+  vi.stubGlobal('EventSource', TestEvents);
+  let draftReads = 0;
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    if (url.endsWith('/capabilities')) return json(capabilitiesFixture());
+    if (url.endsWith('/sessions')) return json({ items: [], nextCursor: null });
+    if (url.includes('/results')) return json({ items: [], nextCursor: null });
+    if (url.includes('/workflow-drafts/')) {
+      draftReads += 1;
+      return json(draftReads === 1 ? draft : { ...draft, payload: { ...draft.payload!, title: '重连后的草稿' } });
+    }
+    if (url.includes('/messages')) return json({ sessionId: 'session-1', goalRevision: 2,
+      items: [{ messageId: 2, goalRevision: 2, role: 'user', content: '重连草稿' }],
+      turns: [{ goalRevision: 2, agentRunId: 'agent-2', status: 'COMPLETE', requestMode: 'WORKFLOW_DRAFT', workflowDraftId: 'draft-1' }], nextCursor: null });
+    throw new Error(`unexpected endpoint ${url}`);
+  }));
+
+  render(<App />);
+  await screen.findByText('插值与制图草稿');
+  act(() => { TestEvents.latest.onopen?.(); TestEvents.latest.onopen?.(); });
+
+  expect(await screen.findByText('重连后的草稿')).toBeVisible();
+  expect(draftReads).toBe(2);
 });
 
 it('a delayed draft read from an older page cannot replace a newly published immutable draft', async () => {

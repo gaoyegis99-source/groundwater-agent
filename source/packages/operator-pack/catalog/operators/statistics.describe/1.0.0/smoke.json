@@ -1,5 +1,8 @@
 {
   "expectedOutputs": {
+    "details": {
+      "kind": "value"
+    },
     "summary": {
       "kind": "value"
     }
@@ -14,7 +17,9 @@
     "version": "1.0.0"
   },
   "parameters": {
-    "column": "value"
+    "axis": "columns",
+    "column": "value",
+    "unit": ""
   },
   "schemaVersion": "operator-smoke-test.v1"
 }

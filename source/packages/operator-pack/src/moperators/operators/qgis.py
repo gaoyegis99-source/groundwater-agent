@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from math import isclose
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +29,130 @@ def _run_algorithm(algorithm: str, parameters: dict[str, Any]) -> dict[str, Any]
 
 def _vector_output(path: Path) -> dict[str, dict[str, Any]]:
     return {"vector": _artifact(path, "application/geopackage+sqlite3", "geopackage")}
+
+
+def _read_vector_geometries(item: StagedInput, layer: str | None) -> tuple[str, list[Any]]:
+    try:
+        import pyogrio
+        import shapely
+    except ImportError as exc:
+        raise ValueError("BLOCKED_BY_ENVIRONMENT") from exc
+    metadata, data = pyogrio.read_arrow(item.path, layer=layer)
+    geometry_name = _geometry_column_name(metadata, data)
+    values = data[geometry_name].to_numpy(zero_copy_only=False)
+    geometries = shapely.from_wkb(values)
+    if (
+        shapely.is_missing(geometries).any()
+        or shapely.is_empty(geometries).any()
+        or not shapely.is_valid(geometries).all()
+    ):
+        raise ValueError("INVALID_GEOMETRY")
+    crs = str(metadata.get("crs") or item.metadata.get("crs") or "")
+    if not crs:
+        raise ValueError("CRS_REQUIRED")
+    return crs, list(geometries)
+
+
+def _geometry_column_name(metadata: dict[str, Any], data: Any) -> str:
+    """Resolve pyogrio's geometry column across named and GeoArrow forms."""
+    declared = metadata.get("geometry_name")
+    if isinstance(declared, str) and declared in data.column_names:
+        return declared
+    candidates = []
+    for field in data.schema:
+        field_metadata = field.metadata or {}
+        extension_name = field_metadata.get(b"ARROW:extension:name", b"")
+        if extension_name in {b"geoarrow.wkb", b"ogc.wkb"}:
+            candidates.append(field.name)
+    if len(candidates) != 1:
+        raise ValueError("INVALID_GEOMETRY")
+    return candidates[0]
+
+
+def _monitoring_coverage_summary(geometries: list[Any], crs_value: str) -> dict[str, Any]:
+    try:
+        import numpy as np
+        import shapely
+        from pyproj import CRS
+        from pyproj.exceptions import CRSError
+        from shapely.geometry import MultiPoint
+    except ImportError as exc:
+        raise ValueError("BLOCKED_BY_ENVIRONMENT") from exc
+    if not np.isin(shapely.get_type_id(geometries), [0, 4]).all():
+        raise ValueError("POINT_GEOMETRY_REQUIRED")
+    coordinates = shapely.get_coordinates(geometries, include_z=False)
+    points = [(float(x), float(y)) for x, y in coordinates[:, :2]]
+    unique_points = list(dict.fromkeys(points))
+    if len(unique_points) < 3:
+        raise ValueError("INSUFFICIENT_UNIQUE_POINTS")
+    hull = MultiPoint(unique_points).convex_hull
+    if hull.geom_type != "Polygon" or hull.is_empty or hull.area <= 0:
+        raise ValueError("COLLINEAR_POINTS")
+    try:
+        crs = CRS.from_user_input(crs_value)
+    except CRSError as exc:
+        raise ValueError("CRS_UNSUPPORTED") from exc
+    if crs.is_geographic:
+        area, perimeter = crs.get_geod().geometry_area_perimeter(hull)
+        area_square_metres = abs(float(area))
+        perimeter_metres = float(perimeter)
+        crs_kind = "GEOGRAPHIC"
+        measurement_method = "GEODESIC_ELLIPSOID"
+    elif crs.is_projected:
+        factors = [
+            float(axis.unit_conversion_factor)
+            for axis in crs.axis_info[:2]
+            if axis.unit_conversion_factor is not None
+        ]
+        if (
+            len(factors) != 2
+            or min(factors) <= 0
+            or not isclose(factors[0], factors[1], rel_tol=1e-12, abs_tol=0)
+        ):
+            raise ValueError("CRS_UNSUPPORTED")
+        area_square_metres = float(hull.area) * factors[0] ** 2
+        perimeter_metres = float(hull.length) * factors[0]
+        crs_kind = "PROJECTED"
+        measurement_method = "PLANAR_PROJECTED_TO_METRES"
+    else:
+        raise ValueError("CRS_UNSUPPORTED")
+    return {
+        "inputFeatureCount": len(geometries),
+        "inputPointCount": len(points),
+        "uniquePointCount": len(unique_points),
+        "duplicatePointCount": len(points) - len(unique_points),
+        "hullGeometryType": hull.geom_type,
+        "crs": crs.to_string(),
+        "crsKind": crs_kind,
+        "measurementMethod": measurement_method,
+        "areaSquareMeters": area_square_metres,
+        "perimeterMeters": perimeter_metres,
+        "areaUnit": "m2",
+        "perimeterUnit": "m",
+        "resultKind": "GEOMETRIC_CONVEX_HULL",
+        "interpretation": (
+            "Convex hull of unique monitoring-well point coordinates; exact duplicate "
+            "coordinates are counted but do not alter the hull."
+        ),
+        "limitations": [
+            "This geometric hull is not an aquifer boundary, groundwater influence area, "
+            "or pumping capture zone.",
+            "The hull interior does not demonstrate monitoring completeness or hydraulic "
+            "connection.",
+            "Area and perimeter are sensitive to the outermost wells and ignore vertical "
+            "separation.",
+        ],
+    }
+
+
+def _generic_dissolve_summary() -> dict[str, Any]:
+    return {
+        "resultKind": "DISSOLVED_VECTOR",
+        "interpretation": "Vector features dissolved with the requested QGIS parameters.",
+        "limitations": [
+            "This generic dissolve summary does not infer scientific coverage or topology."
+        ],
+    }
 
 
 def _reject_dimensions(item: StagedInput) -> None:
@@ -111,12 +236,8 @@ def run_qgis_operator(
                 "BAND": parameters.get("band", 1),
                 "MIN_SLOPE": parameters.get("minimumSlopeDegrees", 0.1),
                 "OUTPUT_FILLED_DEM": str(output),
-                "OUTPUT_FLOW_DIRECTIONS": str(
-                    output_dir / "temporary-flow-directions.tif"
-                ),
-                "OUTPUT_WATERSHED_BASINS": str(
-                    output_dir / "temporary-watershed-basins.tif"
-                ),
+                "OUTPUT_FLOW_DIRECTIONS": str(output_dir / "temporary-flow-directions.tif"),
+                "OUTPUT_WATERSHED_BASINS": str(output_dir / "temporary-watershed-basins.tif"),
             },
         )
         return {"dem": _artifact(output, "image/tiff", "geotiff")}
@@ -194,6 +315,10 @@ def run_qgis_operator(
             "OUTPUT": str(output_dir / output_names[operator_id]),
         }
         if operator_id == "vector.dissolve":
+            summary = _generic_dissolve_summary()
+            if parameters.get("pointCoverageMode", False):
+                crs, geometries = _read_vector_geometries(source, parameters.get("layer"))
+                summary = _monitoring_coverage_summary(geometries, crs)
             values.update(
                 {
                     "FIELD": [parameters["field"]] if parameters.get("field") else [],
@@ -207,7 +332,10 @@ def run_qgis_operator(
         elif operator_id == "vector.centroid":
             values["ALL_PARTS"] = parameters.get("allParts", False)
         _run_algorithm(algorithms[operator_id], values)
-        return _vector_output(output_dir / output_names[operator_id])
+        result = _vector_output(output_dir / output_names[operator_id])
+        if operator_id == "vector.dissolve":
+            result["summary"] = {"kind": "value", "value": summary}
+        return result
     if operator_id == "vector.spatial_join":
         target, join = inputs["target"][0], inputs["join"][0]
         if target.metadata.get("crs") != join.metadata.get("crs"):
@@ -285,8 +413,8 @@ def run_qgis_operator(
             values.update(
                 {
                     "EXTENT": (
-                        f'{parameters["extentMinX"]},{parameters["extentMaxX"]},'
-                        f'{parameters["extentMinY"]},{parameters["extentMaxY"]} [{crs}]'
+                        f"{parameters['extentMinX']},{parameters['extentMaxX']},"
+                        f"{parameters['extentMinY']},{parameters['extentMaxY']} [{crs}]"
                     ),
                     "CLIP": False,
                 }

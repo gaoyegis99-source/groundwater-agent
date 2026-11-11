@@ -8,7 +8,13 @@ from zipfile import ZipFile
 
 import pytest
 
-from assembler import _canonical, available_products, compile_product, load_domain, pack_domain
+from assembler import (
+    _canonical,
+    available_products,
+    compile_product,
+    load_domain,
+    pack_domain,
+)
 from platform_kernel.agent_runtime.prompts import build_instructions
 from platform_knowledge_next.package_conversion import convert_domain_package
 
@@ -22,21 +28,33 @@ def write(path, value):
 
 @pytest.fixture
 def source(tmp_path):
-    for path in (ROOT / "kernel/module.yaml", *sorted((ROOT / "services").glob("*/module.yaml"))):
+    for path in (
+        ROOT / "kernel/module.yaml",
+        *sorted((ROOT / "services").glob("*/module.yaml")),
+    ):
         destination = tmp_path / path.relative_to(ROOT)
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(path, destination)
         contracts = path.parent / "contracts"
         if contracts.is_dir():
             shutil.copytree(contracts, destination.parent / "contracts")
-        packaged_contracts = path.parent / "src" / "platform_knowledge_next" / "contracts"
+        packaged_contracts = (
+            path.parent / "src" / "platform_knowledge_next" / "contracts"
+        )
         if packaged_contracts.is_dir():
             shutil.copytree(
                 packaged_contracts,
                 destination.parent / "src" / "platform_knowledge_next" / "contracts",
             )
-    for name in ("domains", "products", "packages/operator-pack/catalog", "packages/operator-pack/src"):
-        shutil.copytree(ROOT / name, tmp_path / name, ignore=shutil.ignore_patterns("__pycache__"))
+    for name in (
+        "domains",
+        "products",
+        "packages/operator-pack/catalog",
+        "packages/operator-pack/src",
+    ):
+        shutil.copytree(
+            ROOT / name, tmp_path / name, ignore=shutil.ignore_patterns("__pycache__")
+        )
     shutil.copy2(ROOT / "system-deps.lock.json", tmp_path / "system-deps.lock.json")
     return tmp_path
 
@@ -45,12 +63,16 @@ def pin(source, name):
     path = source / f"products/{name}/product-manifest.json"
     product = json.loads(path.read_text())
     ref = product["domainPackage"]
-    product["domainPackage"] = load_domain(source / "domains" / ref["domainId"] / ref["version"]).identity
+    product["domainPackage"] = load_domain(
+        source / "domains" / ref["domainId"] / ref["version"]
+    ).identity
     write(path, product)
     return path
 
 
-def test_release_is_deterministic_portable_and_contains_only_declared_files(source, tmp_path):
+def test_release_is_deterministic_portable_and_contains_only_declared_files(
+    source, tmp_path
+):
     directory = source / "domains/groundwater/6.0.0"
     (directory / "unlisted.py").write_text("raise RuntimeError('never packaged')")
     domain = load_domain(directory)
@@ -78,10 +100,15 @@ def test_two_products_reuse_one_package_without_copying_definitions(source):
     ui = json.loads(ui_path.read_text())
     ui["productId"] = "second-product"
     write(ui_path, ui)
-    product["uiProfile"]["checksum"] = "sha256:" + hashlib.sha256(ui_path.read_bytes()).hexdigest()
+    product["uiProfile"]["checksum"] = (
+        "sha256:" + hashlib.sha256(ui_path.read_bytes()).hexdigest()
+    )
     write(target / "product-manifest.json", product)
     assert available_products(source) == ("groundwater", "second-product")
-    outputs = [compile_product(source, f"{name}/product-manifest.json") for name in ("groundwater", "second-product")]
+    outputs = [
+        compile_product(source, f"{name}/product-manifest.json")
+        for name in ("groundwater", "second-product")
+    ]
     configs = [json.loads((out / "kernel-config.json").read_text()) for out in outputs]
     locks = [json.loads((out / "assembly-lock.json").read_text()) for out in outputs]
     assert configs[0]["productId"] != configs[1]["productId"]
@@ -92,7 +119,10 @@ def test_two_products_reuse_one_package_without_copying_definitions(source):
     assert {path.name for path in target.iterdir()} == {"product-manifest.json", "ui"}
 
 
-@pytest.mark.parametrize("file", ["instructions.md", "models/summary.model.json", "workflows/summary.workflow.json"])
+@pytest.mark.parametrize(
+    "file",
+    ["instructions.md", "models/summary.model.json", "workflows/summary.workflow.json"],
+)
 def test_pinned_package_rejects_any_changed_file_before_output(source, file):
     path = source / "domains/groundwater/6.0.0" / file
     path.write_bytes(path.read_bytes() + b"\n")
@@ -114,7 +144,10 @@ def test_model_default_respects_exclusive_schema_bounds_before_output(source, al
 
 
 def test_model_default_respects_pattern_before_output(source):
-    path = source / "domains/groundwater/6.0.0/models/transfer-learning-analysis.model.json"
+    path = (
+        source
+        / "domains/groundwater/6.0.0/models/transfer-learning-analysis.model.json"
+    )
     model = json.loads(path.read_text())
     model["defaultParameters"]["boundary-projected.targetCrs"] = "EPSG 32650"
     write(path, model)
@@ -124,10 +157,13 @@ def test_model_default_respects_pattern_before_output(source):
     assert not (source / ".generated").exists()
 
 
-@pytest.mark.parametrize("value,schema", [
-    (7, {"type": "integer"}),
-    ("unsupported", {"type": "string"}),
-])
+@pytest.mark.parametrize(
+    "value,schema",
+    [
+        (7, {"type": "integer"}),
+        ("unsupported", {"type": "string"}),
+    ],
+)
 def test_model_default_must_satisfy_bound_operator_schema(source, value, schema):
     path = source / "domains/groundwater/6.0.0/models/summary.model.json"
     model = json.loads(path.read_text())
@@ -150,9 +186,9 @@ def test_model_default_must_satisfy_every_downstream_parameter(source):
     model_path = directory / "models/summary.model.json"
     model = json.loads(model_path.read_text())
     model["defaultParameters"]["column"] = "measurement"
-    model["workflowRef"]["checksum"] = "sha256:" + hashlib.sha256(
-        _canonical(workflow)
-    ).hexdigest()
+    model["workflowRef"]["checksum"] = (
+        "sha256:" + hashlib.sha256(_canonical(workflow)).hexdigest()
+    )
     write(model_path, model)
     pin(source, "groundwater")
 
@@ -172,8 +208,108 @@ def test_invalid_model_json_schema_fails_before_output(source):
     assert not (source / ".generated").exists()
 
 
+@pytest.mark.parametrize(
+    "requirement",
+    [
+        {
+            "parameter": "missingField",
+            "inputParameter": "versionId",
+            "identifier": "name",
+            "allowedTypes": ["string"],
+        },
+        {
+            "parameter": "groupField",
+            "inputParameter": "otherVersionId",
+            "identifier": "name",
+            "allowedTypes": ["string"],
+        },
+        {
+            "parameter": "groupField",
+            "inputParameter": "versionId",
+            "identifier": "displayName",
+            "allowedTypes": ["string"],
+        },
+        {
+            "parameter": "groupField",
+            "inputParameter": "versionId",
+            "identifier": "name",
+            "allowedTypes": ["numeric"],
+        },
+    ],
+)
+def test_model_field_requirement_is_validated_at_assembly(source, requirement):
+    path = source / "domains/groundwater/6.0.0/models/monitoring-trend.model.json"
+    model = json.loads(path.read_text())
+    model["fieldRequirements"] = [requirement]
+    write(path, model)
+    pin(source, "groundwater")
+
+    with pytest.raises(ValueError, match="MODEL_FIELD_REQUIREMENT_INVALID"):
+        compile_product(source, "groundwater/product-manifest.json")
+    assert not (source / ".generated").exists()
+
+
+@pytest.mark.parametrize(
+    "requirement",
+    [
+        {"kind": "unknown", "inputParameter": "versionId"},
+        {
+            "kind": "fieldUnit",
+            "inputParameter": "versionId",
+            "fieldParameter": "missingField",
+        },
+        {
+            "kind": "crs",
+            "inputParameter": "versionId",
+            "crsParameter": "missingCrs",
+        },
+        {
+            "kind": "timeRange",
+            "inputParameter": "versionId",
+            "fieldParameter": "timeField",
+            "startParameter": "expectedStart",
+        },
+        {
+            "kind": "crsParameter",
+            "parameter": "missingCrs",
+            "requirement": "projectedMetric",
+        },
+        {
+            "kind": "verticalBasis",
+            "inputParameter": "versionId",
+            "referenceFieldParameter": "missingField",
+            "depthFieldParameter": "timeField",
+            "referenceMeanings": ["reference_elevation"],
+            "depthMeanings": ["depth_to_water"],
+        },
+        {
+            "kind": "verticalBasis",
+            "inputParameter": "versionId",
+            "referenceFieldParameter": "valueField",
+            "depthFieldParameter": "timeField",
+            "referenceMeanings": ["level"],
+            "depthMeanings": ["LEVEL"],
+        },
+    ],
+)
+def test_model_semantic_requirement_is_validated_at_assembly(source, requirement):
+    path = source / "domains/groundwater/6.0.0/models/monitoring-trend.model.json"
+    model = json.loads(path.read_text())
+    model["schemaVersion"] = "executable-model.v6"
+    model["semanticRequirements"] = [requirement]
+    write(path, model)
+    pin(source, "groundwater")
+
+    with pytest.raises(ValueError, match="MODEL_SEMANTIC_REQUIREMENT_INVALID"):
+        compile_product(source, "groundwater/product-manifest.json")
+    assert not (source / ".generated").exists()
+
+
 def test_operator_revision_covers_manifest_and_source_digest(source):
-    path = source / "packages/operator-pack/catalog/operators/statistics.describe/1.0.0/manifest.json"
+    path = (
+        source
+        / "packages/operator-pack/catalog/operators/statistics.describe/1.0.0/manifest.json"
+    )
     manifest = json.loads(path.read_text())
     manifest["timeoutSeconds"] += 1
     write(path, manifest)
@@ -184,14 +320,20 @@ def test_operator_revision_covers_manifest_and_source_digest(source):
     lock_path = source / "packages/operator-pack/catalog/implementation-lock.json"
     lock = json.loads(lock_path.read_text())
     entry = lock["operators"]["statistics.describe@1.0.0"]
-    entry["implementationRevision"] = "sha256:" + hashlib.sha256(
-        _canonical(manifest) + entry["sourceDigest"].encode("ascii")
-    ).hexdigest()
+    entry["implementationRevision"] = (
+        "sha256:"
+        + hashlib.sha256(
+            _canonical(manifest) + entry["sourceDigest"].encode("ascii")
+        ).hexdigest()
+    )
     write(lock_path, lock)
     compile_product(source, "groundwater/product-manifest.json")
 
 
-@pytest.mark.parametrize("path", ["../outside.json", "/tmp/outside.json", "./instructions.md", "instructions.md"])
+@pytest.mark.parametrize(
+    "path",
+    ["../outside.json", "/tmp/outside.json", "./instructions.md", "instructions.md"],
+)
 def test_domain_paths_cannot_escape_or_alias(source, path):
     manifest_path = source / "domains/groundwater/6.0.0/domain-manifest.json"
     manifest = json.loads(manifest_path.read_text())
@@ -212,15 +354,18 @@ def test_symlink_escape_is_rejected(source):
         compile_product(source, "groundwater/product-manifest.json")
 
 
-@pytest.mark.parametrize("mutation,error", [
-    ("old_product", "PRODUCT_MANIFEST_VERSION_INVALID"),
-    ("old_domain", "DOMAIN_MANIFEST_VERSION_INVALID"),
-    ("projects", "KNOWLEDGE_PROJECTS_INVALID"),
-    ("blank_project", "KNOWLEDGE_PROJECTS_INVALID"),
-    ("knowledge_service", "DOMAIN_KNOWLEDGE_SERVICE_MISSING"),
-    ("retired_model_field", "EXECUTABLE_MODEL_FIELDS_INVALID"),
-    ("duplicate_model", "EXECUTABLE_MODEL_ID_INVALID"),
-])
+@pytest.mark.parametrize(
+    "mutation,error",
+    [
+        ("old_product", "PRODUCT_MANIFEST_VERSION_INVALID"),
+        ("old_domain", "DOMAIN_MANIFEST_VERSION_INVALID"),
+        ("projects", "KNOWLEDGE_PROJECTS_INVALID"),
+        ("blank_project", "KNOWLEDGE_PROJECTS_INVALID"),
+        ("knowledge_service", "DOMAIN_KNOWLEDGE_SERVICE_MISSING"),
+        ("retired_model_field", "EXECUTABLE_MODEL_FIELDS_INVALID"),
+        ("duplicate_model", "EXECUTABLE_MODEL_ID_INVALID"),
+    ],
+)
 def test_contract_failures_never_publish_output(source, mutation, error):
     product_path = source / "products/groundwater/product-manifest.json"
     product = json.loads(product_path.read_text())
@@ -243,7 +388,10 @@ def test_contract_failures_never_publish_output(source, mutation, error):
         model["mapFactoryAction"] = None
         write(model_path, model)
     else:
-        shutil.copy2(directory / manifest["executableModels"][0], directory / "duplicate.model.json")
+        shutil.copy2(
+            directory / manifest["executableModels"][0],
+            directory / "duplicate.model.json",
+        )
         manifest["executableModels"].append("duplicate.model.json")
     write(product_path, product)
     write(domain_path, manifest)
@@ -259,7 +407,7 @@ def test_bootstrap_is_independent_and_does_not_expose_domain_to_runtime(source):
     compose = json.loads((out / "compose.json").read_text())["services"]
     lock = json.loads((out / "assembly-lock.json").read_text())
     assert lock["schemaVersion"] == "assembly-lock.v8"
-    assert len(lock["knowledgeBootstrap"]["documents"]) == 99
+    assert len(lock["knowledgeBootstrap"]["documents"]) == 103
     domain_version = lock["domainPackage"]["version"]
     domain_root = source / "domains/groundwater" / domain_version
     manifest = json.loads((domain_root / "domain-manifest.json").read_text())
@@ -267,23 +415,29 @@ def test_bootstrap_is_independent_and_does_not_expose_domain_to_runtime(source):
     for index, relative in enumerate(manifest["knowledgeDocuments"]):
         package = convert_domain_package(
             json.loads((domain_root / relative).read_text()),
-            project="groundwater-demo", idempotency_key=f"part-{index}",
+            project="groundwater-demo",
+            idempotency_key=f"part-{index}",
         )
         documents.extend(package.documents)
-    assert len(documents) == lock["knowledgeBootstrap"]["documentCount"] == 99
-    assert sum(len(document.units) for document in documents) == 291
-    assert lock["knowledgeBootstrap"]["chunkCount"] == 291
+    assert len(documents) == lock["knowledgeBootstrap"]["documentCount"] == 103
+    assert sum(len(document.units) for document in documents) == 303
+    assert lock["knowledgeBootstrap"]["chunkCount"] == 303
     assert compose["knowledge-bootstrap"]["restart"] == "no"
     assert compose["knowledge-bootstrap"]["profiles"] == ["bootstrap"]
-    assert all(volume.endswith(":ro") for volume in compose["knowledge-bootstrap"]["volumes"])
-    assert "knowledge-bootstrap" not in compose["kernel-service"].get(
-        "depends_on", {}
+    assert all(
+        volume.endswith(":ro") for volume in compose["knowledge-bootstrap"]["volumes"]
     )
+    assert "knowledge-bootstrap" not in compose["kernel-service"].get("depends_on", {})
     assert compose["knowledge-bootstrap"]["depends_on"] == {
         "knowledge-next-service": {"condition": "service_healthy"},
         "knowledge-next-worker": {"condition": "service_started"},
     }
-    for name in ("kernel-service", "executor-control", "executor-native-worker", "executor-qgis-worker"):
+    for name in (
+        "kernel-service",
+        "executor-control",
+        "executor-native-worker",
+        "executor-qgis-worker",
+    ):
         assert all("/domain" not in volume for volume in compose[name]["volumes"])
 
 
@@ -300,21 +454,28 @@ def test_native_only_declarations_select_only_required_services(source):
     product_path = source / "products/groundwater/product-manifest.json"
     product = json.loads(product_path.read_text())
     product["services"] = ["data", "executor"]
-    product["publicRoutes"] = [route for route in product["publicRoutes"] if route["service"] in product["services"]]
+    product["publicRoutes"] = [
+        route
+        for route in product["publicRoutes"]
+        if route["service"] in product["services"]
+    ]
     product["knowledgeProjects"] = []
     ui_path = source / "products/groundwater/ui/product-ui.json"
     ui = json.loads(ui_path.read_text())
     ui["models"] = {"groundwater.summary": ui["models"]["groundwater.summary"]}
     ui["parameterNames"] = {
-        name: ui["parameterNames"][name]
-        for name in ("versionId", "axis", "column")
+        name: ui["parameterNames"][name] for name in ("versionId", "axis", "column")
     }
     ui["parameterStages"] = {}
     summary_model = json.loads((directory / "models/summary.model.json").read_text())
-    ui["outputs"] = {name: ui["outputs"][name] for name in summary_model["finalOutputs"]}
+    ui["outputs"] = {
+        name: ui["outputs"][name] for name in summary_model["finalOutputs"]
+    }
     ui["cases"] = {}
     write(ui_path, ui)
-    product["uiProfile"]["checksum"] = "sha256:" + hashlib.sha256(ui_path.read_bytes()).hexdigest()
+    product["uiProfile"]["checksum"] = (
+        "sha256:" + hashlib.sha256(ui_path.read_bytes()).hexdigest()
+    )
     write(product_path, product)
     pin(source, "groundwater")
 
@@ -322,9 +483,14 @@ def test_native_only_declarations_select_only_required_services(source):
     compose = json.loads((out / "compose.json").read_text())
     executor = json.loads((out / "executor-config.json").read_text())
     assert set(compose["services"]) == {
-        "gateway", "kernel-service", "data-db", "data-migrate", "data-service",
+        "gateway",
+        "kernel-service",
+        "data-db",
+        "data-migrate",
+        "data-service",
         "data-worker",
-        "executor-control", "executor-native-worker",
+        "executor-control",
+        "executor-native-worker",
     }
     assert set(executor["workerRuntimes"]) == {"native"}
     assert "PLATFORM_EMBEDDING_BASE_URL" not in json.dumps(compose)
@@ -348,7 +514,9 @@ def test_retired_domain_profile_field_is_rejected(source):
     assert not (source / ".generated").exists()
 
 
-@pytest.mark.parametrize("field,value", [("mapFactoryAction", None), ("outputPolicy", "namedResources")])
+@pytest.mark.parametrize(
+    "field,value", [("mapFactoryAction", None), ("outputPolicy", "namedResources")]
+)
 def test_retired_model_fields_are_rejected(source, field, value):
     path = source / "domains/groundwater/6.0.0/models/summary.model.json"
     model = json.loads(path.read_text())

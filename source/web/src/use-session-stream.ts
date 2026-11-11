@@ -97,6 +97,10 @@ export function useSessionStream(activeId: string, project: string, log: (entry:
     let latestMessages: History | null = null;
     let olderBefore: number | null = null;
     const draftCache = new Map<string, WorkflowDraft>();
+    const draftReadSequences = new Map<string, number>();
+    const draftValidatedEpochs = new Map<string, number>();
+    let draftRefreshEpoch = 0;
+    let resultReadSequence = 0;
     const current = () => !cancelled && viewGeneration.current === generation && activeRef.current === activeId;
     const reportError = (caught: unknown) => {
       if (caught instanceof DOMException && caught.name === 'AbortError') return;
@@ -104,23 +108,42 @@ export function useSessionStream(activeId: string, project: string, log: (entry:
     };
     const loadDetails = (messages: History, scope: DetailScope) => {
       const draftIds = [...new Set(messages.turns.map(turn => turn.workflowDraftId).filter((id): id is string => !!id))]
-        .filter(id => !draftCache.has(id) || draftCache.get(id)!.status === 'GENERATING');
+        .filter(id => {
+          const cached = draftCache.get(id);
+          return !cached || cached.status === 'GENERATING'
+            || (draftValidatedEpochs.get(id) ?? -1) < draftRefreshEpoch;
+        });
       if (scope.drafts && draftIds.length) {
-        void Promise.all(draftIds.map(id => callApi('kernel_get_workflow_draft', `/sessions/${activeId}/workflow-drafts/${id}`, undefined, controller.signal) as Promise<WorkflowDraft>)).then(items => {
+        const epoch = draftRefreshEpoch;
+        const reads = draftIds.map(id => {
+          const sequence = (draftReadSequences.get(id) ?? 0) + 1;
+          draftReadSequences.set(id, sequence);
+          return { id, sequence };
+        });
+        void Promise.all(reads.map(({ id }) => callApi('kernel_get_workflow_draft', `/sessions/${activeId}/workflow-drafts/${id}`, undefined, controller.signal) as Promise<WorkflowDraft>)).then(items => {
           if (!current()) return;
-          items.forEach(item => { if (!draftCache.has(item.draftId) || draftCache.get(item.draftId)!.status === 'GENERATING') draftCache.set(item.draftId, item); });
-          const loaded = Object.fromEntries(items.map(item => [item.draftId, draftCache.get(item.draftId)!]));
-          setWorkflowDrafts(previous => ({ ...previous, ...loaded }));
+          const loaded: [string, WorkflowDraft][] = [];
+          items.forEach((item, index) => {
+            const read = reads[index];
+            if (draftReadSequences.get(read.id) !== read.sequence) return;
+            const cached = draftCache.get(read.id);
+            const next = cached && cached.status !== 'GENERATING' && item.status === 'GENERATING'
+              ? cached
+              : item;
+            draftCache.set(read.id, next);
+            draftValidatedEpochs.set(read.id, Math.max(draftValidatedEpochs.get(read.id) ?? -1, epoch));
+            loaded.push([read.id, next]);
+          });
+          if (loaded.length) setWorkflowDrafts(previous => ({ ...previous, ...Object.fromEntries(loaded) }));
         }).catch(reportError);
       }
-      if (scope.results) void allResults(activeId, controller.signal).then(outcomes => {
-        if (!current()) return;
-        setResults(previous => {
-          const byRun = new Map(previous.map(item => [item.workflowRunId, item]));
-          outcomes.forEach(item => { if (!byRun.get(item.workflowRunId)?.remoteOutputs.length) byRun.set(item.workflowRunId, item); });
-          return [...byRun.values()];
-        });
-      }).catch(reportError);
+      if (scope.results) {
+        const sequence = ++resultReadSequence;
+        void allResults(activeId, controller.signal).then(outcomes => {
+          if (!current() || sequence !== resultReadSequence) return;
+          setResults(outcomes);
+        }).catch(reportError);
+      }
     };
     const scheduleRefresh = (immediate = false) => {
       if (inFlight !== null) return;
@@ -161,12 +184,13 @@ export function useSessionStream(activeId: string, project: string, log: (entry:
             interactionTiming.current = null;
           }
         }
+        if (event.type.startsWith('workflow_draft.')) draftRefreshEpoch += 1;
         detailsDirty = detailsAfterEvent(detailsDirty, event.type);
         if (progress.dirty || hasDetails(detailsDirty)) scheduleRefresh(!isMetadataEvent(event.type));
       };
       eventTypes.forEach(type => source!.addEventListener(type, receive as EventListener));
       let opened = false;
-      source.onopen = () => { if (current()) { setConnection('connected'); log({ kind: 'STATE', time: new Date().toLocaleTimeString(), name: opened ? 'sse.reconnected' : 'sse.connected' }); if (opened) { progress = forceStreamRefresh(progress); detailsDirty = allDetails(); scheduleRefresh(); } opened = true; } };
+      source.onopen = () => { if (current()) { setConnection('connected'); log({ kind: 'STATE', time: new Date().toLocaleTimeString(), name: opened ? 'sse.reconnected' : 'sse.connected' }); if (opened) { progress = forceStreamRefresh(progress); detailsDirty = allDetails(); draftRefreshEpoch += 1; scheduleRefresh(); } opened = true; } };
       source.onerror = () => { if (current()) { setConnection('disconnected'); log({ kind: 'STATE', time: new Date().toLocaleTimeString(), name: 'sse.disconnected' }); } };
     };
     const readMessages = (): Promise<void> => {
@@ -221,7 +245,7 @@ export function useSessionStream(activeId: string, project: string, log: (entry:
       return inFlight;
     };
     refreshRequest.current = () => {
-      progress = forceStreamRefresh(progress); detailsDirty = allDetails();
+      progress = forceStreamRefresh(progress); detailsDirty = allDetails(); draftRefreshEpoch += 1;
       if (timer !== undefined && inFlight === null) { clearTimeout(timer); timer = undefined; }
       return readMessages();
     };

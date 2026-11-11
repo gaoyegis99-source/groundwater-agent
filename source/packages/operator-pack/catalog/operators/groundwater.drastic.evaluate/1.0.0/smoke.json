@@ -1,0 +1,20 @@
+{
+  "expectedOutputs": {
+    "classification": {"format": "geotiff", "kind": "artifact", "mediaType": "image/tiff"},
+    "index": {"format": "geotiff", "kind": "artifact", "mediaType": "image/tiff"},
+    "summary": {"kind": "value"}
+  },
+  "inputs": {
+    "D": {"fixtureId": "raster"},
+    "R": {"fixtureId": "raster"},
+    "A": {"fixtureId": "raster"},
+    "S": {"fixtureId": "raster"},
+    "T": {"fixtureId": "raster"},
+    "I": {"fixtureId": "raster"},
+    "C": {"fixtureId": "raster"},
+    "config": {"fixtureId": "groundwater.drastic.config"}
+  },
+  "operator": {"id": "groundwater.drastic.evaluate", "version": "1.0.0"},
+  "parameters": {},
+  "schemaVersion": "operator-smoke-test.v1"
+}

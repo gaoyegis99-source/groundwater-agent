@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from kernel.tests.task_testing import preserve_context_headroom, task_overhead
+from kernel.tests.task_testing import preserve_context_headroom
 
 
 import asyncio
@@ -19,12 +19,25 @@ from platform_kernel.composition import PlatformApplication
 from platform_kernel.database import connect_database
 from platform_kernel.errors import AgentRunError, UpstreamServiceError
 from platform_kernel.agent_runtime.context_usage import context_tokens
-from platform_kernel.agent_runtime.memory import token_count
+from platform_kernel.agent_runtime.memory import (
+    ConversationTurn,
+    ExecutionContextV1,
+    build_input_items,
+    completed_turns,
+    token_count,
+)
 from platform_kernel.agent_runtime.models import MemorySummaryV3
 from platform_kernel.agent_runtime import sdk_execution
 from platform_kernel.agent_runtime.sdk_execution.activity import _RunUsageCapture
-from platform_kernel.agent_runtime.sdk_execution.context import _compact, _initial_turns
-from platform_kernel.agent_runtime.sdk_execution.usage_ports import ScopedActivityRecorder
+from platform_kernel.agent_runtime.sdk_execution.context import (
+    _compact,
+    _compaction_count,
+    _initial_turns,
+)
+from platform_kernel.agent_runtime.sdk_execution.usage_ports import (
+    ScopedActivityRecorder,
+)
+from platform_kernel.agent_runtime.sdk_execution.execution import _build_agent
 
 
 def test_recent_two_full_turns_survive_a_newer_memory_watermark():
@@ -40,6 +53,35 @@ def test_recent_two_full_turns_survive_a_newer_memory_watermark():
     turns = _initial_turns(history, through=5)
 
     assert [item.goal_revision for item in turns] == [4, 5]
+
+
+def test_compaction_planning_reserves_memory_message_envelope():
+    agent = Agent(name="compaction planning")
+    compactable = (
+        ConversationTurn(1, "user one " * 80, "assistant one " * 80),
+        ConversationTurn(2, "user two " * 80, "assistant two " * 80),
+    )
+    summary_limit = 64
+    target = (
+        context_tokens(
+            agent,
+            agent.instructions,
+            build_input_items(None, compactable[1:], "current"),
+        )
+        + summary_limit
+    )
+
+    assert (
+        _compaction_count(
+            agent,
+            compactable,
+            (),
+            "current",
+            target=target,
+            summary_limit=summary_limit,
+        )
+        == 2
+    )
 
 
 def _final(message: str):
@@ -67,7 +109,10 @@ def _history(count: int = 9):
 
 
 def _application(
-    kernel_settings, model, *, constrained: bool = False,
+    kernel_settings,
+    model,
+    *,
+    constrained: bool = False,
     context_window_tokens: int = 3800,
 ):
     settings = kernel_settings("knowledge")
@@ -136,10 +181,14 @@ def _seed_action(application, *, resource_id: str = "resource-1") -> None:
                    'workflow-id', '3.0.0', 'sha256:1111111111111111111111111111111111111111111111111111111111111111',
                    1, ?, '{}', 'sha256:schema', 'fingerprint', 'APPROVED', NULL
                )""",
-            (json.dumps({
-                "resource_id": "argument-must-not-project",
-                "observation": "observation-must-not-project",
-            }),),
+            (
+                json.dumps(
+                    {
+                        "resource_id": "argument-must-not-project",
+                        "observation": "observation-must-not-project",
+                    }
+                ),
+            ),
         )
         connection.execute(
             """INSERT INTO workflow_runs(
@@ -157,6 +206,8 @@ def _seed_action(application, *, resource_id: str = "resource-1") -> None:
                )""",
             (json.dumps([output]),),
         )
+
+
 def test_small_context_preserves_structured_roles_without_compaction(
     kernel_settings,
 ) -> None:
@@ -192,11 +243,12 @@ def test_high_water_compacts_oldest_turns_and_reuses_summary(kernel_settings) ->
     compact_call, main_call = model.calls
     assert compact_call.tools == []
     assert compact_call.model_settings.max_tokens == 500
-    assert f"within {(application.settings.agent_context_window_tokens - 500) // 10} tokens" in compact_call.system_instructions
+    assert (
+        f"within {(application.settings.agent_context_window_tokens - 500) // 10} tokens"
+        in compact_call.system_instructions
+    )
     compact_payload = json.loads(compact_call.input[0]["content"])
-    compacted_revisions = [
-        item["goal_revision"] for item in compact_payload["turns"]
-    ]
+    compacted_revisions = [item["goal_revision"] for item in compact_payload["turns"]]
     assert compacted_revisions == list(range(1, 8))
     assert [item["role"] for item in main_call.input] == [
         "assistant",
@@ -249,11 +301,7 @@ def test_compaction_provider_failure_maps_to_existing_upstream_error(
     kernel_settings,
 ) -> None:
     model = ScriptedModel(
-        [
-            APIConnectionError(
-                request=httpx2.Request("POST", "http://agent.test/v1")
-            )
-        ]
+        [APIConnectionError(request=httpx2.Request("POST", "http://agent.test/v1"))]
     )
     application = _application(kernel_settings, model, constrained=True)
 
@@ -271,14 +319,23 @@ def test_compaction_provider_failure_maps_to_existing_upstream_error(
     ("cause", "error_type", "code"),
     [
         (None, AgentRunError, "AGENT_SDK_CONFIGURATION_INVALID"),
-        (UpstreamServiceError("AGENT_PROVIDER_UNAVAILABLE"), UpstreamServiceError,
-         "AGENT_PROVIDER_UNAVAILABLE"),
-        (AgentRunError("AGENT_CONTEXT_TOO_LARGE"), AgentRunError,
-         "AGENT_CONTEXT_TOO_LARGE"),
+        (
+            UpstreamServiceError("AGENT_PROVIDER_UNAVAILABLE"),
+            UpstreamServiceError,
+            "AGENT_PROVIDER_UNAVAILABLE",
+        ),
+        (
+            AgentRunError("AGENT_CONTEXT_TOO_LARGE"),
+            AgentRunError,
+            "AGENT_CONTEXT_TOO_LARGE",
+        ),
     ],
 )
 def test_compaction_sdk_user_error_terminalizes_with_original_cause(
-    kernel_settings, cause, error_type, code,
+    kernel_settings,
+    cause,
+    error_type,
+    code,
 ) -> None:
     error = UserError("private SDK detail")
     error.__cause__ = cause
@@ -319,7 +376,10 @@ def test_successful_compaction_and_main_failure_commit_memory_with_usage(
         ]
     )
     application = _application(
-        kernel_settings, model, constrained=True, context_window_tokens=4200,
+        kernel_settings,
+        model,
+        constrained=True,
+        context_window_tokens=4200,
     )
 
     with pytest.raises(AgentRunError, match="AGENT_MODEL_OUTPUT_INVALID") as failure:
@@ -348,7 +408,9 @@ def test_oversized_compaction_is_rejected_without_persisting_memory(
     )
     application = _application(kernel_settings, model, constrained=True)
 
-    with pytest.raises(AgentRunError, match="AGENT_MEMORY_COMPACTION_INVALID") as failure:
+    with pytest.raises(
+        AgentRunError, match="AGENT_MEMORY_COMPACTION_INVALID"
+    ) as failure:
         _run(application, model, "still-too-large")
 
     run = application.agent_runtime.get(failure.value.agent_run_id)
@@ -366,15 +428,20 @@ def test_oversized_compaction_is_rejected_without_persisting_memory(
     [("deepseek", 1600, True), ("deepseek", 4096, False), ("minimax", 1600, False)],
 )
 def test_large_context_summary_bound_preserves_provider_policy(
-    kernel_settings, provider, summary_words, accepted,
+    kernel_settings,
+    provider,
+    summary_words,
+    accepted,
 ) -> None:
     summary = {**_summary(), "goals": ["context " * summary_words]}
     assert token_count(summary) > 1024
     assert (token_count(summary) <= 4096) == (summary_words == 1600)
-    model = ScriptedModel([
-        ModelStep(output=[assistant_message(json.dumps(summary))]),
-        ModelStep(output=[_final("done")]),
-    ])
+    model = ScriptedModel(
+        [
+            ModelStep(output=[assistant_message(json.dumps(summary))]),
+            ModelStep(output=[_final("done")]),
+        ]
+    )
     settings = replace(
         kernel_settings("knowledge"),
         agent_provider=provider,
@@ -407,7 +474,11 @@ def test_large_context_summary_bound_preserves_provider_policy(
         assert len(model.calls) == 2
         recent_input = model.calls[1].input[-5:]
         assert [item["role"] for item in recent_input] == [
-            "user", "assistant", "user", "assistant", "user",
+            "user",
+            "assistant",
+            "user",
+            "assistant",
+            "user",
         ]
         assert [
             item["content"] if item["role"] == "user" else item["content"][0]["text"]
@@ -422,7 +493,9 @@ def test_large_context_summary_bound_preserves_provider_policy(
     compact_call = model.calls[0]
     limit = 4096 if provider == "deepseek" else 1024
     assert f"within {limit} tokens" in compact_call.system_instructions
-    assert compact_call.model_settings.max_tokens == (8192 if provider == "deepseek" else 1024)
+    assert compact_call.model_settings.max_tokens == (
+        8192 if provider == "deepseek" else 1024
+    )
     with connect_database(application.database) as connection:
         stored = connection.execute(
             "SELECT summary_json FROM agent_memory WHERE session_id = 'session'"
@@ -442,30 +515,73 @@ def test_small_context_summary_remains_bounded_below_deepseek_maximum(kernel_set
         _run(application, model)
 
     assert len(model.calls) == 1
-    assert f"within {(application.settings.agent_context_window_tokens - 500) // 10} tokens" in model.calls[0].system_instructions
+    assert (
+        f"within {(application.settings.agent_context_window_tokens - 500) // 10} tokens"
+        in model.calls[0].system_instructions
+    )
     with connect_database(application.database) as connection:
-        assert connection.execute("SELECT COUNT(*) FROM agent_memory").fetchone()[0] == 0
+        assert (
+            connection.execute("SELECT COUNT(*) FROM agent_memory").fetchone()[0] == 0
+        )
 
 
 @pytest.mark.parametrize("provider", ["deepseek", "minimax"])
 @pytest.mark.parametrize("output_limit", [16, 64])
 def test_compaction_respects_small_configured_output_limit(
-    kernel_settings, provider, output_limit,
+    kernel_settings,
+    provider,
+    output_limit,
 ):
     summary = _summary()
     assert 16 < token_count(summary) < 64
-    model = ScriptedModel([
-        ModelStep(output=[assistant_message(json.dumps(summary))]),
-        ModelStep(output=[_final("done")]),
-    ])
+    model = ScriptedModel(
+        [
+            ModelStep(output=[assistant_message(json.dumps(summary))]),
+            ModelStep(output=[_final("done")]),
+        ]
+    )
     application = _application(kernel_settings, model, constrained=True)
-    settings = replace(application.settings, agent_provider=provider,
-                       agent_context_window_tokens=3400 + task_overhead(application),
-                       agent_max_output_tokens=output_limit)
+    settings = replace(
+        application.settings,
+        agent_provider=provider,
+        agent_max_output_tokens=output_limit,
+    )
+    dependencies = replace(
+        application.agent_runtime.sdk_execution,
+        settings=settings,
+        model_settings=replace(
+            application.agent_runtime.sdk_execution.model_settings,
+            max_tokens=output_limit,
+        ),
+    )
+    agent = _build_agent(
+        dependencies,
+        ExecutionContextV1(()),
+    )
+    turns = completed_turns(_history(), after_revision=0)
+    required_tokens = context_tokens(
+        agent,
+        agent.instructions,
+        build_input_items(
+            MemorySummaryV3.model_validate(summary), turns[-2:], "current"
+        ),
+    )
+    assert (
+        context_tokens(
+            agent,
+            agent.instructions,
+            build_input_items(None, turns, "current"),
+        )
+        * 10
+        > required_tokens * 8
+    )
+    settings = replace(
+        settings,
+        agent_context_window_tokens=required_tokens + output_limit,
+    )
     application.agent_runtime.sdk_execution = replace(
-        application.agent_runtime.sdk_execution, settings=settings,
-        model_settings=replace(application.agent_runtime.sdk_execution.model_settings,
-                               max_tokens=output_limit),
+        dependencies,
+        settings=settings,
     )
     if output_limit == 16:
         with pytest.raises(AgentRunError, match="AGENT_MEMORY_COMPACTION_INVALID"):
@@ -478,51 +594,74 @@ def test_compaction_respects_small_configured_output_limit(
     assert f"within {output_limit} tokens" in model.calls[0].system_instructions
     assert all(call.model_settings.max_tokens == output_limit for call in model.calls)
     with connect_database(application.database) as connection:
-        assert connection.execute("SELECT COUNT(*) FROM agent_memory").fetchone()[0] == (
-            1 if output_limit == 64 else 0
-        )
+        assert connection.execute("SELECT COUNT(*) FROM agent_memory").fetchone()[
+            0
+        ] == (1 if output_limit == 64 else 0)
 
 
 @pytest.mark.parametrize("overflow", [False, True])
 def test_compactor_input_guard_reserves_its_actual_output(kernel_settings, overflow):
-    model = ScriptedModel([
-        ModelStep(output=[assistant_message(json.dumps(_summary()))]),
-        ModelStep(output=[assistant_message(json.dumps(_summary()))]),
-    ])
+    model = ScriptedModel(
+        [
+            ModelStep(output=[assistant_message(json.dumps(_summary()))]),
+            ModelStep(output=[assistant_message(json.dumps(_summary()))]),
+        ]
+    )
     application = _application(kernel_settings, model)
     dependencies = application.agent_runtime.sdk_execution
     dependencies = replace(
         dependencies,
-        settings=replace(dependencies.settings, agent_provider="minimax",
-                         agent_context_window_tokens=10000, agent_max_output_tokens=500),
+        settings=replace(
+            dependencies.settings,
+            agent_provider="minimax",
+            agent_context_window_tokens=10000,
+            agent_max_output_tokens=500,
+        ),
     )
     inputs = [{"role": "user", "content": "history " * 500}]
 
     async def compact(current):
         hooks = _RunUsageCapture(
-            10000, segment={"agent_run_id": "compactor", "goal_revision": 10,
-                            "segment_id": "compactor-segment"},
+            10000,
+            segment={
+                "agent_run_id": "compactor",
+                "goal_revision": 10,
+                "segment_id": "compactor-segment",
+            },
             activity_recorder=ScopedActivityRecorder(current.activity_log, "session"),
-            observation_names=frozenset(), purpose="COMPACTION",
+            observation_names=frozenset(),
+            purpose="COMPACTION",
         )
         return await _compact(
-            current, RunConfig(tracing_disabled=True), inputs, summary_limit=64,
+            current,
+            RunConfig(tracing_disabled=True),
+            inputs,
+            summary_limit=64,
             deadline_at=asyncio.get_running_loop().time() + 10,
             activity_hooks=hooks,
         )
 
     asyncio.run(compact(dependencies))
     call = model.calls[0]
-    compactor = Agent(name="Memory Compactor", instructions=call.system_instructions,
-                      output_type=MemorySummaryV3)
+    compactor = Agent(
+        name="Memory Compactor",
+        instructions=call.system_instructions,
+        output_type=MemorySummaryV3,
+    )
     input_tokens = context_tokens(compactor, compactor.instructions, inputs)
     window = input_tokens + 64 - int(overflow)
     assert input_tokens > window - dependencies.settings.agent_max_output_tokens
-    dependencies = replace(dependencies, settings=replace(
-        dependencies.settings, agent_context_window_tokens=window,
-    ))
+    dependencies = replace(
+        dependencies,
+        settings=replace(
+            dependencies.settings,
+            agent_context_window_tokens=window,
+        ),
+    )
     if overflow:
-        with pytest.raises(sdk_execution.SDKExecutionError, match="AGENT_CONTEXT_TOO_LARGE") as failure:
+        with pytest.raises(
+            sdk_execution.SDKExecutionError, match="AGENT_CONTEXT_TOO_LARGE"
+        ) as failure:
             asyncio.run(compact(dependencies))
         assert failure.value.diagnostics["available_input_tokens"] == window - 64
         assert failure.value.diagnostics["excess_tokens"] == 1
@@ -585,9 +724,13 @@ def test_execution_context_projects_authoritative_facts_without_arguments(
     assert '"workflow-id"' not in instructions
     assert '"workflow-run-1"' in instructions
     assert '"count":1' in instructions
-    assert '"retrieval_tools":["list_execution_facts","get_execution_fact"]' in instructions
+    assert (
+        '"retrieval_tools":["list_execution_facts","get_execution_fact"]'
+        in instructions
+    )
     assert {tool.name for tool in model.calls[0].tools} >= {
-        "list_execution_facts", "get_execution_fact",
+        "list_execution_facts",
+        "get_execution_fact",
     }
     assert '"resource_id":"resource-1"' not in instructions
     assert "argument-must-not-project" not in instructions

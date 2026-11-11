@@ -1,4 +1,5 @@
 """Frozen constants and digest primitives for reply-quality evaluation."""
+
 from __future__ import annotations
 
 import hashlib
@@ -75,7 +76,7 @@ OPTION_FORBIDDEN = re.compile(
 EXPECTED_DOMAIN_PACKAGE = {
     "domainId": "groundwater",
     "version": "6.0.0",
-    "checksum": "sha256:577ce573b7e67fad7367323bce87967c713c44c63d243467aaf47137fc7c53e6",
+    "checksum": "sha256:e5e8702c14a8ac0298b91f88399faa91154c107ccc7fc283fba34fffbf21eb09",
 }
 EXPECTED_DATA_FIXTURE_CHECKSUM = (
     "sha256:86c257568bc21eda70434b523f13670da614a8444e01a968058bab96d3f4bf6a"
@@ -88,12 +89,18 @@ EXPECTED_MODEL_IDS = {
     "groundwater.transfer-learning-analysis",
     "groundwater.render-map",
     "groundwater.source-sustainability",
+    "groundwater.kriging",
+    "groundwater.rule-classification",
+    "groundwater.drastic",
 }
 
 
 def _canonical_json(value: object) -> bytes:
     return json.dumps(
-        value, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
     ).encode("utf-8")
 
 

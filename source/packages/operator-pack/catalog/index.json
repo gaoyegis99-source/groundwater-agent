@@ -1,12 +1,12 @@
 {
-  "catalogDigest": "sha256:106079138c9c4d6e40ae81655496df7f6cf6fdbe0ed19f25a7e9366f7e87a635",
+  "catalogDigest": "sha256:c1a1e52cdf6d4f50e866585766746b8f4429377254ae9c2baa21e1e95187272f",
   "operators": [
     {
       "domain": "cartography",
       "id": "cartography.render-png",
-      "manifestDigest": "sha256:8c4a0444da1bb6652ee21e934c6368e8ba58db6c85b3e91063d7dc5ae68cb90b",
+      "manifestDigest": "sha256:fca3770ce3153a93a2f3a0398243c601246e9939e8c3ee98f501b85e5e68d7b4",
       "runtime": "native",
-      "smokeDigest": "sha256:4c74485db3b4ceb2015601e4df9ed076e29103cd7af7649268eb029341e04cf7",
+      "smokeDigest": "sha256:dd5ad8f9f7d2045c84aaf9ba9828bb811aed97be3921faeee85c7227d082d025",
       "version": "1.0.0"
     },
     {
@@ -68,9 +68,17 @@
     {
       "domain": "groundwater",
       "id": "groundwater.darcy_velocity",
-      "manifestDigest": "sha256:b0fe4e41f68440bd6dabf4b8194bbdfaf78a8b4b7dba3c7ac8bdb0d35c190288",
+      "manifestDigest": "sha256:3584443210b1a7b6197fb58e7a2a09c1d918088d90846826c1582541a4b76796",
       "runtime": "native",
       "smokeDigest": "sha256:651a5ee2b863ad43a95d14977cc4cf71451cfdd76142e6ce347b3e6bb309abca",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "groundwater",
+      "id": "groundwater.drastic.evaluate",
+      "manifestDigest": "sha256:e57e7b5bad8c53c9d1bc2726b51e6ea3c81a5976b0f4fb9b1a1a726d8d1df5a1",
+      "runtime": "native",
+      "smokeDigest": "sha256:671d8fff58e4c9cb4f1bc6f2a41e8ca548873732a4de2fdafd4653749b5e8489",
       "version": "1.0.0"
     },
     {
@@ -84,7 +92,7 @@
     {
       "domain": "groundwater",
       "id": "groundwater.head.calculate",
-      "manifestDigest": "sha256:b3b2ad96b4217b05854fb5e513b0f76194777651742f9799ee819c05cf2e64a1",
+      "manifestDigest": "sha256:83aa5a64c3295bfaf4ff3188c301ef0c88618b11476bb4f6cb580b239a93d271",
       "runtime": "native",
       "smokeDigest": "sha256:e8ce870766a3c2330de50dbc0df72fd2ebb245c36dec8ab60042f91bfcf025fd",
       "version": "1.0.0"
@@ -92,7 +100,7 @@
     {
       "domain": "groundwater",
       "id": "groundwater.hydraulic_gradient",
-      "manifestDigest": "sha256:1819aedfced7cb3c3446207c5ead69cd1ff586db4e96c45b7012c014efdbc842",
+      "manifestDigest": "sha256:6d7359df03d2ee69fc724009a56600c836939992ddff6033832e572f5ce893de",
       "runtime": "native",
       "smokeDigest": "sha256:c2d087bf38cca7364d7cf45b3c36511291a9cda8363ae82c743cb3b24a78b087",
       "version": "1.0.0"
@@ -180,7 +188,7 @@
     {
       "domain": "groundwater",
       "id": "groundwater.source_sustainability.evaluate",
-      "manifestDigest": "sha256:d56eb4a9863546cb418f3497403b34673707ebdc055f164bb20d0d323ea90b7a",
+      "manifestDigest": "sha256:da0860a45248500a6f73fa93f1611f00a26d2f376e1ce9a881b3899e716103fb",
       "runtime": "remote_http",
       "smokeDigest": "sha256:a860c183f45a307ba396de8e03d42015e9d77dd8842af4521e4606f116d7e760",
       "version": "1.0.0"
@@ -279,6 +287,14 @@
       "manifestDigest": "sha256:0544375793a3cab08fe2d9d8acfcd55466e8c9ddb7faf5ccbc1912d9fb400625",
       "runtime": "native",
       "smokeDigest": "sha256:352d5002ebf33e3ce0768c64138150478d5c45537721467059a51cb7c6d489ac",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "points",
+      "id": "points.interpolate.kriging",
+      "manifestDigest": "sha256:75daa64e1d9d2de6450924661e37603ec9ee9cbd6ed750a941569ca7d55ba00a",
+      "runtime": "native",
+      "smokeDigest": "sha256:ccc42e7a0b1afba33845c21dc43efb283b76aa123d300c7328081d9f2b86fd2b",
       "version": "1.0.0"
     },
     {
@@ -444,7 +460,7 @@
     {
       "domain": "raster",
       "id": "raster.window",
-      "manifestDigest": "sha256:489f13a3f107e11720d30f2def47fffdcbb47374b99b140f0b343c56ade8c9bf",
+      "manifestDigest": "sha256:16bdece60cecacf672036a04b428de85f281f12d2ae55e2be77b1eec5c87d1b2",
       "runtime": "native",
       "smokeDigest": "sha256:b68fdc8a7bed61f65a8b2a00383ebce284590bf1297e3b3a7fd8965ad6ce6c2f",
       "version": "1.0.0"
@@ -468,9 +484,9 @@
     {
       "domain": "statistics",
       "id": "statistics.describe",
-      "manifestDigest": "sha256:69d32681118719904fc54d158fb4b9384741c2a1d1440f013ebe13b694df3e98",
+      "manifestDigest": "sha256:040d0c2021c34aacbe96ff31bec0c4d2ff7f755904ca08bff379c246b5a5589f",
       "runtime": "native",
-      "smokeDigest": "sha256:a2bdaa4cfe63630c268bfc41caa69c170d5cbe251adde3adba708f6c7b5a3ffe",
+      "smokeDigest": "sha256:e8e1567016234739a921635643c46b5e129693a0b30ebff38817a7a2f5169e81",
       "version": "1.0.0"
     },
     {
@@ -500,7 +516,7 @@
     {
       "domain": "statistics",
       "id": "statistics.pettitt_change_point",
-      "manifestDigest": "sha256:87f576ac538818994e1922bc49926c62ebbc44d622afb6fc0db6fa095e52eb2e",
+      "manifestDigest": "sha256:24be63d4eb9058afd3a308c4698b08ddb7feb6a1b0fdd75615e401df39c5bf8b",
       "runtime": "native",
       "smokeDigest": "sha256:303d6ea42592cc1bc7237ada64e6a68304c017f8f20dc864ef5ca93d998c5957",
       "version": "1.0.0"
@@ -508,7 +524,7 @@
     {
       "domain": "statistics",
       "id": "statistics.regression_metrics",
-      "manifestDigest": "sha256:83ce03a69987ac66522c78310c46f7ca5511285f99c0942b9b0d0a30365f5d27",
+      "manifestDigest": "sha256:89c3711d2eab7e4841a66b67bc2403da315ff7e869c8230799df4ca9d722cdcb",
       "runtime": "native",
       "smokeDigest": "sha256:ad641ef0fe17a99efe1a093b4f6f72c1438c11cc9f410336078bd04586e102b8",
       "version": "1.0.0"
@@ -516,9 +532,17 @@
     {
       "domain": "statistics",
       "id": "statistics.seasonal_mann_kendall",
-      "manifestDigest": "sha256:fdfb0f88a7527697e97d059a5a77f41c94f1d623795302caf04218a46af4a4cc",
+      "manifestDigest": "sha256:b0ca9f9e500ef0d874dbbec09d514ecc015ddd7a35d050d837b00afb5f420974",
       "runtime": "native",
       "smokeDigest": "sha256:f1b7899378c946bf11e15b206350eba59c2a667dd2ee05130a71e6fa1d5ed3e1",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "table",
+      "id": "table.classify",
+      "manifestDigest": "sha256:45fd35f3adec1220eba2c5461692b195f52f15a781df1eba822b120d8c41b0cc",
+      "runtime": "native",
+      "smokeDigest": "sha256:8203242d94b4d29e0d8f94470f8c6ae53f5a61626b0c0b1ad7729f4e9d6234fc",
       "version": "1.0.0"
     },
     {
@@ -612,7 +636,7 @@
     {
       "domain": "timeseries",
       "id": "timeseries.chronological_split",
-      "manifestDigest": "sha256:f15218bf31634d78939c928939e2f074aa61cc0634f43e81c2b1eb50106c621a",
+      "manifestDigest": "sha256:2fa279672298ca5a37e03c24bb580678587bf720363f68c6172c4dca3114af0d",
       "runtime": "native",
       "smokeDigest": "sha256:c12b06fdf8d8bbab55b1fc251ca3b1c273af3b62f38ce2934fc94fc0934381a9",
       "version": "1.0.0"
@@ -700,7 +724,7 @@
     {
       "domain": "timeseries",
       "id": "timeseries.snapshot",
-      "manifestDigest": "sha256:574ba199c432947f317539b527bd7b762478d8da80558a5bc01071a5e0a645b0",
+      "manifestDigest": "sha256:a2be03a86243f2a94ffd2af67840957d62edf4c6b96d0a46322763a75cc00820",
       "runtime": "native",
       "smokeDigest": "sha256:cbcaccaa89913a17c372126d516030282bab63016f0fdfd9cc84eb9ec5acc048",
       "version": "1.0.0"
@@ -716,7 +740,7 @@
     {
       "domain": "timeseries",
       "id": "timeseries.threshold_events",
-      "manifestDigest": "sha256:dbc9dc0ae991324b6965b5fb232b580210cc518e8a33d438818482151064eb04",
+      "manifestDigest": "sha256:5a5bc232306648d69dae0ed11ed85ef8b183fc321a53f834bb5b5494fdeb4975",
       "runtime": "native",
       "smokeDigest": "sha256:f4c90c9bc71091eda29a0ea8e3e22ce29540038a129271f2bd4fd079df0bcda2",
       "version": "1.0.0"
@@ -756,9 +780,9 @@
     {
       "domain": "vector",
       "id": "vector.dissolve",
-      "manifestDigest": "sha256:c97982818f467dd18fb5bd9089fc7d3dd530929ab0d9a4d6c86320bc01f441e7",
+      "manifestDigest": "sha256:78e0b4f531aa52435bebf8f0800a446883e9b85847025eec4a2a855f89d7bb76",
       "runtime": "qgis",
-      "smokeDigest": "sha256:6faf6e352318e754741cddb4c89ba70fdac666224285e80ef1b25c1211b1011d",
+      "smokeDigest": "sha256:f7d250ed53e3a1e9afae73380e4c1a35cce39a56319ebeec51324e7b52c5534a",
       "version": "1.0.0"
     },
     {

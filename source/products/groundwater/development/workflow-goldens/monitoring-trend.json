@@ -1,0 +1,244 @@
+{
+  "caseId": "monitoring-trend",
+  "fixtures": {
+    "observations": [
+      {
+        "fixtureId": "monitoring.timeseries",
+        "format": "parquet",
+        "mediaType": "application/vnd.apache.parquet",
+        "sha256": "sha256:e26d0e609d0dff73b74bce9eb58f9d23b8d90d084b64a22c5daad399806fd101",
+        "sizeBytes": 2150
+      }
+    ]
+  },
+  "keyValues": {
+    "aggregate-summary": {
+      "groupPeriodCount": 12,
+      "notEvaluableGroupCount": 0
+    },
+    "change-point-summary": {
+      "alpha": 0.05,
+      "analysisFrequency": "month",
+      "evaluatedGroupCount": 1,
+      "groupCount": 1,
+      "interpretation": "Each evaluated row identifies the earliest maximum absolute Pettitt statistic as one candidate location shift.",
+      "limitations": [
+        "Pettitt detects at most one location shift per group and does not establish its cause.",
+        "The test uses non-null observations in timestamp order; inspect completeness and gap-run outputs before interpreting a change."
+      ],
+      "minimumObservations": 4,
+      "notEvaluableGroupCount": 0
+    },
+    "completeness-summary": {
+      "groupCount": 1
+    },
+    "gap-run-summary": {
+      "expectedEnd": "2025-12-31",
+      "expectedStart": "2020-01-01",
+      "frequency": "month",
+      "gapRunCount": 12,
+      "groupCount": 1,
+      "interpretation": "Each row is one contiguous run of expected calendar periods without a non-null value.",
+      "limitations": [
+        "Gap-run length describes continuity of missing periods, not overall completeness; use the completeness output for ratios."
+      ],
+      "longestGapPeriods": 5,
+      "missingPeriodCount": 60
+    },
+    "linear-summary": {
+      "groupCount": 1
+    },
+    "mann-kendall-summary": {
+      "alpha": 0.05,
+      "groupCount": 1
+    },
+    "outlier-summary": {
+      "missingValueCount": 0,
+      "notEvaluableGroupCount": 0,
+      "outlierCount": 0,
+      "rowCount": 12,
+      "threshold": 3.5
+    },
+    "period-change-summary": {
+      "aggregation": "mean",
+      "groupCount": 1
+    },
+    "seasonal-trend-summary": {
+      "alpha": 0.05,
+      "evaluatedGroupCount": 1,
+      "groupCount": 1,
+      "interpretation": "Each evaluated row combines within-season Mann-Kendall scores and reports a seasonal Sen slope per year.",
+      "limitations": [
+        "At least two cycles with comparable observations in one or more seasons are required for evaluation.",
+        "Missing seasonal periods reduce power; inspect completeness and gap-run outputs before interpreting significance."
+      ],
+      "minimumCycles": 2,
+      "notEvaluableGroupCount": 0,
+      "seasonFrequency": "month",
+      "status": "COMPLETE"
+    },
+    "threshold-event-summary": {
+      "comparison": "above",
+      "eventCount": 3,
+      "frequency": "month",
+      "groupCount": 1,
+      "interpretation": "Events are consecutive calendar periods that satisfy the explicit comparison against the supplied threshold.",
+      "limitations": [
+        "The supplied threshold is a user decision, not a platform standard or inferred regulatory limit."
+      ],
+      "rowCount": 12,
+      "status": "COMPLETE",
+      "thresholdSource": "scalar",
+      "thresholdValue": 10.0
+    }
+  },
+  "operatorCatalogDigest": "sha256:2ca1c058884bc6d5bb17a71fd19aaa46bd44307a2c953edd7c67b6895ed5d901",
+  "outputs": {
+    "aggregate-summary": {
+      "kind": "value",
+      "sha256": "sha256:5221ab2821319271e900be6a86f498b2a8576c2735b0670b9c02a4b24f72acde",
+      "sizeBytes": 50
+    },
+    "aggregated-series": {
+      "fileName": "aggregate.parquet",
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet",
+      "sha256": "sha256:c0604eeeed97fa6caac7af10b718dc85914cf54bde63e2e819f78a610938cc99",
+      "sizeBytes": 3052
+    },
+    "change-point-summary": {
+      "kind": "value",
+      "sha256": "sha256:e2da9cfd8a0d6e9946d4637c48dc69814ada2652cdcff391d0d78230d4d1cc10",
+      "sizeBytes": 496
+    },
+    "change-points": {
+      "fileName": "pettitt-change-points.parquet",
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet",
+      "sha256": "sha256:4a695a08cd913442502ec1cd9cc099098b089c503f00738efbe6991c8302e6a4",
+      "sizeBytes": 3631
+    },
+    "completeness-profiles": {
+      "fileName": "completeness.parquet",
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet",
+      "sha256": "sha256:30793e3a4d95564173a8ef47aa30a2e28420a421ab302325b2af7e4d46587788",
+      "sizeBytes": 3381
+    },
+    "completeness-summary": {
+      "kind": "value",
+      "sha256": "sha256:6627acb5a801b7c4b1b2f2d6ddd351c38898ca3077289294e0a1a4c22b75dc25",
+      "sizeBytes": 16
+    },
+    "gap-run-summary": {
+      "kind": "value",
+      "sha256": "sha256:0fe5c6bf8be5a08a98a345b8a4bf7a355a61fbc3b2dc2b0286f025e0c57bbc75",
+      "sizeBytes": 400
+    },
+    "gap-runs": {
+      "fileName": "gap-runs.parquet",
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet",
+      "sha256": "sha256:b0e590b6a9419fc6e27d573c90507c596457b179a39a94f663a0a48b622a411d",
+      "sizeBytes": 1580
+    },
+    "linear-summary": {
+      "kind": "value",
+      "sha256": "sha256:6627acb5a801b7c4b1b2f2d6ddd351c38898ca3077289294e0a1a4c22b75dc25",
+      "sizeBytes": 16
+    },
+    "linear-trends": {
+      "fileName": "linear-trends.parquet",
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet",
+      "sha256": "sha256:a360df6600e8a24f87f8fa268b14d110f177263ed48436e05e4a75746e70cbb4",
+      "sizeBytes": 3194
+    },
+    "mann-kendall-summary": {
+      "kind": "value",
+      "sha256": "sha256:3d0cf1481f4fe6792d0418758308919092929a1a59184026d9234e0b2cdc2d27",
+      "sizeBytes": 29
+    },
+    "mann-kendall-trends": {
+      "fileName": "mann-kendall.parquet",
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet",
+      "sha256": "sha256:30772ee638daf40f3a2f5525571ecf46ded7713d498a496facd10de12840b53e",
+      "sizeBytes": 3305
+    },
+    "outlier-observations": {
+      "fileName": "mad-outliers.parquet",
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet",
+      "sha256": "sha256:d863e627278b8a74798e1e7068891758298469917ce66e757cc4067f29e02416",
+      "sizeBytes": 3847
+    },
+    "outlier-summary": {
+      "kind": "value",
+      "sha256": "sha256:ad035275098c666302aeb9edffb77319a0dba8c29e86288ab8bc9e2eccea25da",
+      "sizeBytes": 97
+    },
+    "period-change-summary": {
+      "kind": "value",
+      "sha256": "sha256:ee50162a21f79f63181522401eca72f8ae5ae58872c801d1ec2189cebd04ed34",
+      "sizeBytes": 37
+    },
+    "period-changes": {
+      "fileName": "period-change.parquet",
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet",
+      "sha256": "sha256:634dd0238b3c7d4554983eda6be661adc795a83cb38b3a56ef426f9161ddad45",
+      "sizeBytes": 1942
+    },
+    "seasonal-trend-summary": {
+      "kind": "value",
+      "sha256": "sha256:3d13ec4380889837759013a06b23a851e95077d10b7d0fdaab83a4a5d542506a",
+      "sizeBytes": 503
+    },
+    "seasonal-trends": {
+      "fileName": "seasonal-mann-kendall.parquet",
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet",
+      "sha256": "sha256:5dc25b0389fa8e3acf47b4db19d02d727649e9259610ff7172298c52b1b123fe",
+      "sizeBytes": 3915
+    },
+    "threshold-classification": {
+      "fileName": "threshold-classification.parquet",
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet",
+      "sha256": "sha256:9a1e640c194d909d59e8aa89ef12e4d0f3904fa5bdd0d1edbda9bde9dc981a90",
+      "sizeBytes": 2207
+    },
+    "threshold-event-summary": {
+      "kind": "value",
+      "sha256": "sha256:acf7ba6d9cd3f644dae94929fe6bd6be0bf82aa515e400dd7e52796160e50779",
+      "sizeBytes": 398
+    },
+    "threshold-events": {
+      "fileName": "threshold-events.parquet",
+      "format": "parquet",
+      "kind": "artifact",
+      "mediaType": "application/vnd.apache.parquet",
+      "sha256": "sha256:65eb6651ebae1384a93f6b2e49923def0cc77c687a394bedf1d9d51ca1e47a4b",
+      "sizeBytes": 3566
+    }
+  },
+  "parametersSha256": "sha256:91b511c7c23584b84ef4af17ce7cd16dd40c7663adcf89594d030f1739e7708c",
+  "schemaVersion": "workflow-golden-snapshot.v1",
+  "workflow": {
+    "definitionChecksum": "sha256:156c558d24d5495124cb1735d9b1c2ba0baffafa42a2dc296425891150a5b07e",
+    "id": "groundwater.monitoring-trend",
+    "sourceSha256": "sha256:156c558d24d5495124cb1735d9b1c2ba0baffafa42a2dc296425891150a5b07e",
+    "version": "1.1.0"
+  }
+}

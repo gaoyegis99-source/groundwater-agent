@@ -188,21 +188,23 @@ Agent 可看到对应限制，不能把不支持的连线导出为合法草稿�
 
 ### 编排模拟数据与方法知识
 
-v11 开发候选使用 seed `20260928` 的确定性模拟数据。Data 保存精确 Dataset、Version、
+当前 v12 开发候选使用 seed `20260928` 的确定性模拟数据。Data 保存精确 Dataset、Version、
 Semantics、Object 和 checksum；Knowledge Next 保存绑定到这些不可变版本的 Evidence。
 质量负例单独发布，不进入默认选择或数据绑定知识。固定样本可按需要补充 CSV、Parquet、
 XLSX、JSON、GeoJSON、GeoPackage、GeoTIFF/COG、PNG 和 PyTorch 权重，以验证工作台和
 工作流，不把模拟结果声明为现实业务事实。
 
-当前 v11 数据准备使用 `python -m scripts.migration.import_yaozhanbao_case` 和 v11 Compose
+当前 v12 数据准备使用 `python -m scripts.migration.import_yaozhanbao_case` 和 v12 Compose
 流程。导入回执记录源 checksum、数据身份、行数、字段、单位、时区、CRS 与限制；相同清单
 重放必须返回相同发布回执。
 
-## 演示资料与八个场景
+## 演示资料与当前场景
 
 使用固定种子生成开发数据，经 Data 原子发布后再向 Knowledge Next 发布精确版本绑定。
 Knowledge 导入命令只在 Compose 私有网络运行。
 重复准备沿用回执；上传结果不明时先核对，不盲目重传。
+页面示例以 Product UI 声明和[当前功能清单](../development/current-capability-inventory.md)为准，
+本页只记录各类示例需要核对的科学与数据条件，不维护平行数量。
 
 页面示例只填写可编辑问题，不预选答案或自动批准：
 
@@ -211,17 +213,20 @@ Knowledge 导入命令只在 Compose 私有网络运行。
 | 描述统计 | 数值列含义及无量纲声明 |
 | 监测趋势 | 井号、日期、水位、单位、周期及比较区间 |
 | 流场分析 | 高程与埋深含义、共同基准、CRS、时点及演示参数 |
+| 克里金插值 | 数值与坐标字段、米制目标 CRS、变异函数、邻域、方差及留一法诊断 |
 | 监测覆盖 | 井点几何与覆盖范围的解释限制 |
 | 静态制图 | 已有空间资源、制图字段与输出要求 |
 | 迁移学习 | 方法适用性及十九项输入缺口 |
 | 流场后制图 | 使用真实水头栅格结果，分别确认两批 |
 | 覆盖后制图 | 使用真实几何覆盖结果，分别确认两批 |
+| 规则分类 | 已核验规则来源、版本、单位、口径、开闭区间及字段语义绑定 |
+| 水源地综合评价 | 外部服务版本、输入合同、部署可用性、运行凭据及科学限制 |
 
 测试 Provider 只处理验收器声明的有限案例，不能替代真实 LLM 的自由问答。
 
 ## 前端开发与检查
 
-Web 使用从 Kernel、Data、Knowledge OpenAPI 汇编的公共 v11 合同。合同位于
+Web 使用从 Kernel、Data、Knowledge OpenAPI 汇编的公共 v12 合同。合同位于
 `products/groundwater/contracts/`，生成类型位于 `web/src/generated/`，不得手工编辑；合同变更运行
 `npm --prefix web run contracts:generate`，常规检查运行
 `npm --prefix web run contracts:check`。页面专用的展示模型可以留在 `types.ts`，直接对应
@@ -257,24 +262,24 @@ npx playwright install chromium
 cd ..
 ```
 
-对已经运行的 v11 开发候选执行当前浏览器套件：
+对已经运行的 v12 开发候选执行当前浏览器套件：
 
 ```bash
-PLATFORM_BASE_URL=http://127.0.0.1:28087 \
-PLATFORM_WEBUI_REPORT=/tmp/groundwater-v11-webui \
+PLATFORM_BASE_URL=http://127.0.0.1:28186 \
+PLATFORM_WEBUI_REPORT=/tmp/groundwater-v12-webui \
 npm --prefix web run test:e2e
 ```
 
 `npm --prefix web run test:e2e` 默认执行同一套 v12 用例，包括浏览器呈现与发送恢复、
-真实 v11 数据和知识抽屉、上传、确认执行、下载、拒绝，以及逐题咨询和证据读取。
+真实 v12 数据和知识抽屉、上传、确认执行、下载、拒绝，以及逐题咨询和证据读取。
 默认命令执行 4 个文件中的 16 个用例。腰站堡完整案例需要额外准备 19 项精确 Data 输入
 和绑定知识，使用独立命令：
 
 ```bash
 python -m scripts.migration.import_yaozhanbao_case \
-  --gateway http://127.0.0.1:28087 \
+  --gateway http://127.0.0.1:28186 \
   --receipt /tmp/yaozhanbao-import-receipt.json
-PLATFORM_BASE_URL=http://127.0.0.1:28087 npm --prefix web run test:e2e:yaozhanbao
+PLATFORM_BASE_URL=http://127.0.0.1:28186 npm --prefix web run test:e2e:yaozhanbao
 ```
 
 该命令默认使用 V6 内部固定案例载荷；先执行
@@ -295,18 +300,18 @@ python scripts/checks/check_compose_e2e.py --product groundwater --webui-only --
 python scripts/checks/check_compose_e2e.py --product groundwater --webui-report /tmp/groundwater-full-webui-report
 ```
 
-`scripts/checks/check_compose_e2e.py` 通过真实 Data v3 HTTP 准备 CSV、Parquet、XLSX、
+`scripts/checks/check_compose_e2e.py` 通过真实 Data HTTP v3 准备 CSV、Parquet、XLSX、
 JSON、模型权重、GeoJSON、GeoPackage、GeoTIFF、COG 和 PNG 最小夹具，通过隔离网络
 Knowledge Next HTTP 发布知识，再启动 Playwright 点击页面。仅外部 Provider 和
 Embedding 使用确定性替身；Kernel、Data、Knowledge Next、Executor 和 Workers 均为
 实际服务，拓扑中不包含 Resource、旧 Knowledge 或 Qdrant。
-浏览器门禁覆盖 v11 消息路由、数据库格式预览、真实会话上传、显式确认、执行结果下载、
-拒绝执行、问题矩阵以及刷新恢复。完整 Compose 入口在后端、固定 Agent 场景、六模型和
+浏览器门禁覆盖 v12 消息路由、数据库格式预览、真实会话上传、显式确认、执行结果下载、
+拒绝执行、问题矩阵以及刷新恢复。完整 Compose 入口在后端、固定 Agent 场景、当前装配模型和
 任务协作通过后运行同一套浏览器门禁。
 `results.json` 保存结果，失败截图和 trace 位于报告的 `artifacts` 中。
 没有重试配置，不将失败后的自动重跑计作首次通过。
 
-实时 Provider 的六模型语义质量和真实 Embedding 检索门禁分别执行；缺配置时
+实时 Provider 的当前装配模型语义质量和真实 Embedding 检索门禁分别执行；缺配置时
 记录 `NOT_RUN`，不能用浏览器固定 Provider 的结果替代。
 
 ## 主任务、排队与停止

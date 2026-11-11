@@ -7,20 +7,49 @@ from typing import Any
 
 import numpy as np
 
-from moperators.operators.extension_common import grouped_values, one, summary, write_rows
+from moperators.operators.extension_common import (
+    grouped_values_with_missing,
+    one,
+    summary,
+    write_rows,
+)
+
+INTERPRETATION = (
+    "Each evaluated row combines within-season Mann-Kendall scores and reports a "
+    "seasonal Sen slope per year."
+)
+LIMITATIONS = [
+    "At least two cycles with comparable observations in one or more seasons are "
+    "required for evaluation.",
+    "Missing seasonal periods reduce power; inspect completeness and gap-run outputs "
+    "before interpreting significance.",
+]
 
 
 def run(inputs: dict[str, Any], parameters: dict[str, Any], output_dir: Path) -> dict[str, Any]:
-    from scipy.stats import norm
-
     alpha = float(parameters.get("alpha", 0.05))
     if not 0 < alpha < 1:
         raise ValueError("PARAMETER_INVALID")
-    season_frequency = parameters["seasonFrequency"]
+    enabled = parameters.get("enabled", True)
+    if not isinstance(enabled, bool):
+        raise ValueError("PARAMETER_INVALID")
+    if not enabled:
+        return {
+            "trends": write_rows([], output_dir / "seasonal-mann-kendall.parquet"),
+            "summary": summary(
+                {
+                    "status": "NOT_REQUESTED",
+                    "groupCount": 0,
+                    "interpretation": "Seasonal trend analysis was not requested.",
+                    "limitations": LIMITATIONS,
+                }
+            ),
+        }
+    season_frequency = parameters.get("seasonFrequency")
     if season_frequency not in {"month", "quarter"}:
         raise ValueError("FREQUENCY_UNSUPPORTED")
     group_field = parameters["groupField"]
-    grouped = grouped_values(
+    grouped, missing = grouped_values_with_missing(
         one(inputs, "observations"),
         group_field=group_field,
         time_field=parameters["timeField"],
@@ -57,14 +86,16 @@ def run(inputs: dict[str, Any], parameters: dict[str, Any], output_dir: Path) ->
             z = (s_total - 1) / math.sqrt(variance_total) if s_total > 0 else (
                 (s_total + 1) / math.sqrt(variance_total) if s_total < 0 else 0.0
             )
-            p_value = float(2 * norm.sf(abs(z)))
+            p_value = math.erfc(abs(z) / math.sqrt(2))
             slope = float(np.median(np.asarray(slopes, dtype=np.float64)))
             status = "OK"
         output.append(
             {
                 group_field: group,
                 "observation_count": len(grouped[group]),
+                "missing_value_count": missing.get(group, 0),
                 "season_count": len(seasons),
+                "cycle_count": len({item[0].year for item in grouped[group]}),
                 "s": s_total,
                 "variance_s": variance_total,
                 "z": z,
@@ -77,7 +108,21 @@ def run(inputs: dict[str, Any], parameters: dict[str, Any], output_dir: Path) ->
         )
     return {
         "trends": write_rows(output, output_dir / "seasonal-mann-kendall.parquet"),
-        "summary": summary({"groupCount": len(output)}),
+        "summary": summary(
+            {
+                "status": "COMPLETE",
+                "groupCount": len(output),
+                "evaluatedGroupCount": sum(item["status"] == "OK" for item in output),
+                "notEvaluableGroupCount": sum(
+                    item["status"] == "NOT_EVALUABLE" for item in output
+                ),
+                "seasonFrequency": season_frequency,
+                "minimumCycles": 2,
+                "alpha": alpha,
+                "interpretation": INTERPRETATION,
+                "limitations": LIMITATIONS,
+            }
+        ),
     }
 
 

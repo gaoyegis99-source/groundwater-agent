@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "table-classification-bindings.v1",
+  "bindings": [
+    {
+      "indicator": "value",
+      "field": "value",
+      "unit": "1",
+      "basis": "fixture numeric value"
+    }
+  ]
+}

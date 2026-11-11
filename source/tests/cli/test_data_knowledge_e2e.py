@@ -234,7 +234,7 @@ def test_service_log_controlled_shutdown_allows_bounded_compose_interleaving() -
             "knowledge-db-1 | aborting any active transactions\n"
             "knowledge-db-1 | shutting down\n"
             "knowledge-db-1 | checkpoint starting: shutdown immediate\n"
-            + api_poll * 10
+            + api_poll * 30
             + "knowledge-db-1 | FATAL:  the database system is shutting down\n"
             + api_poll
             + "knowledge-db-1 | checkpoint complete\n"

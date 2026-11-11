@@ -22,7 +22,7 @@
   "domainPackage": {
     "domainId": "groundwater",
     "version": "6.0.0",
-    "checksum": "sha256:577ce573b7e67fad7367323bce87967c713c44c63d243467aaf47137fc7c53e6"
+      "checksum": "sha256:e5e8702c14a8ac0298b91f88399faa91154c107ccc7fc283fba34fffbf21eb09"
   },
   "knowledgeProjects": [
     "groundwater-demo"
@@ -45,6 +45,6 @@
   ],
   "uiProfile": {
     "path": "ui/product-ui.json",
-    "checksum": "sha256:5a507594a33b5ccd44460f11ff4f38829e597f4ecf5f4372bc7ff8042243a1f1"
+      "checksum": "sha256:1d8bc1e3db2182548965ad8c7398c642836a605b9b03855d25521d9d7a19849d"
   }
 }

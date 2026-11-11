@@ -1,0 +1,53 @@
+{
+  "schema_version": "groundwater-pastas-spike-config.v1",
+  "experiment_id": "pastas-exponential-synthetic-v1",
+  "columns": {
+    "time": "time",
+    "observation": "head",
+    "precipitation": "precipitation",
+    "evaporation": "evaporation"
+  },
+  "units": {
+    "observation": "m",
+    "precipitation": "mm/day",
+    "evaporation": "mm/day"
+  },
+  "time_series": {
+    "frequency": "D",
+    "observation_missing_policy": "drop",
+    "stress_missing_policy": "reject",
+    "stress_value_policy": "nonnegative",
+    "duplicate_timestamp_policy": "reject"
+  },
+  "model": {
+    "observation_semantics": "hydraulic_head",
+    "recharge_model": "Linear",
+    "response_function": "Exponential",
+    "stress_lag_days": 0,
+    "warmup_days": 365
+  },
+  "periods": {
+    "calibration_start": "2001-01-01",
+    "calibration_end": "2002-06-30",
+    "validation_start": "2002-07-01",
+    "validation_end": "2002-12-30"
+  },
+  "solver": {
+    "name": "scipy-least_squares-trf",
+    "max_nfev": 500,
+    "ftol": 1e-08,
+    "xtol": 1e-08,
+    "gtol": 1e-08
+  },
+  "comparison": {
+    "metric_contract": "regression-metrics.v1",
+    "split_id": "synthetic-daily-v1",
+    "evaluation_mode": "chronological-holdout"
+  },
+  "provenance": {
+    "input_kind": "SYNTHETIC_TEST_ONLY",
+    "generator_id": "independent-exponential-convolution.v1",
+    "generator_seed": 20261110,
+    "noise_standard_deviation": 0.006
+  }
+}

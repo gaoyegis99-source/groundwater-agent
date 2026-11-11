@@ -17,6 +17,7 @@ from scripts.evaluation.reply_quality import (
     scenarios,
 )
 
+
 def _environment(monkeypatch, provider: str = "minimax") -> None:
     values = {
         "PLATFORM_AGENT_PROVIDER": provider,
@@ -59,16 +60,25 @@ def _release_identity() -> dict:
             "groundwater.source-sustainability",
             "run_source_sustainability",
         ),
+        ("groundwater.kriging", "run_kriging"),
+        ("groundwater.rule-classification", "run_rule_classification"),
+        ("groundwater.drastic", "run_drastic"),
     )
-    models = sorted(({
-        "modelId": model_id,
-        "modelVersion": "1.0.0",
-        "modelChecksum": "sha256:" + f"{index:064x}",
-        "workflowId": model_id,
-        "workflowVersion": "1.0.0",
-        "workflowChecksum": "sha256:" + f"{index + 10:064x}",
-        "tool": tool,
-    } for index, (model_id, tool) in enumerate(identities, 1)), key=lambda x: x["modelId"])
+    models = sorted(
+        (
+            {
+                "modelId": model_id,
+                "modelVersion": "1.0.0",
+                "modelChecksum": "sha256:" + f"{index:064x}",
+                "workflowId": model_id,
+                "workflowVersion": "1.0.0",
+                "workflowChecksum": "sha256:" + f"{index + 10:064x}",
+                "tool": tool,
+            }
+            for index, (model_id, tool) in enumerate(identities, 1)
+        ),
+        key=lambda x: x["modelId"],
+    )
     outputs = {
         tool: (["trend-result"] if tool == "run_monitoring_trend" else ["result"])
         for _, tool in identities
@@ -78,7 +88,8 @@ def _release_identity() -> dict:
             "inputSchemaChecksum": "sha256:" + f"{index + 20:064x}",
             "defaultParameters": (
                 {"alpha": 0.05, "threshold": 3.5}
-                if tool == "run_monitoring_trend" else {}
+                if tool == "run_monitoring_trend"
+                else {}
             ),
             "executionService": "executor",
             "executorId": "workflow-dag",
@@ -91,7 +102,9 @@ def _release_identity() -> dict:
         "assembly_manifest_checksum": "sha256:" + "a" * 64,
         "assembly_lock_checksum": "sha256:" + "b" * 64,
         "models": models,
-        "model_identity_checksum": definitions._sha256(definitions._canonical_json(models)),
+        "model_identity_checksum": definitions._sha256(
+            definitions._canonical_json(models)
+        ),
         "final_outputs": outputs,
         "execution_contracts": contracts,
         "operator_catalog_digest": "sha256:" + "c" * 64,
@@ -126,7 +139,9 @@ def _ordinary_output(text: str = "地下水水位是水面相对基准面的高�
 
 
 def _context(
-    output: dict, *, dialogue_policy: str | None = "READ_ONLY",
+    output: dict,
+    *,
+    dialogue_policy: str | None = "READ_ONLY",
 ) -> tuple[dict, dict, dict]:
     session = {
         "confirmation": None,
@@ -183,12 +198,17 @@ def _records(provider: str = "minimax") -> list[dict]:
             "agent_run_id": f"run-{case['case_id']}-{iteration}",
             "provider": provider,
             "model": f"{provider}-test-model",
-            "provider_requests": [{
-                "stage": "AGENT_INITIAL:1", "attempt": 1,
-                "provider": provider, "model": f"{provider}-test-model",
-                "protocol": "chat_completions",
-                "outcome": "SUCCEEDED", "error_class": None,
-            }],
+            "provider_requests": [
+                {
+                    "stage": "AGENT_INITIAL:1",
+                    "attempt": 1,
+                    "provider": provider,
+                    "model": f"{provider}-test-model",
+                    "protocol": "chat_completions",
+                    "outcome": "SUCCEEDED",
+                    "error_class": None,
+                }
+            ],
             "assertions": _assertions(),
             "review_content": {
                 "question": case["message"],
@@ -240,7 +260,9 @@ def test_fixture_freezes_eight_categories_and_twenty_four_runs() -> None:
     assert len({case["category"] for case in cases}) == 8
     assert len(cases) * definitions.REPETITIONS == 24
     assert identity.fixture_checksum().startswith("sha256:")
-    assert identity.data_fixture_checksum() == definitions.EXPECTED_DATA_FIXTURE_CHECKSUM
+    assert (
+        identity.data_fixture_checksum() == definitions.EXPECTED_DATA_FIXTURE_CHECKSUM
+    )
 
 
 def test_assessment_accepts_concise_structured_reply(monkeypatch) -> None:
@@ -309,37 +331,55 @@ def test_assessment_rejects_message_that_does_not_match_presentation(
 def test_assessment_enforces_options_required_all_and_option_leaks(monkeypatch) -> None:
     _environment(monkeypatch)
     case = next(
-        item for item in identity.load_cases()
+        item
+        for item in identity.load_cases()
         if item["category"] == "method_comparison"
     )
     output = _ordinary_output("趋势分析适合时间变化。")
     session, turn, run = _context(output)
     with pytest.raises(AssertionError, match="KNOWN_FACT_ERROR_ABSENT"):
         assessment.assess_reply(
-            case=case, output=output, session=session, turn=turn, run=run,
-            function_names=["submit_reply"], card_context=None,
+            case=case,
+            output=output,
+            session=session,
+            turn=turn,
+            run=run,
+            function_names=["submit_reply"],
+            card_context=None,
             execution_outcome=None,
         )
 
     output = _ordinary_output("趋势用于时间变化，流场用于空间方向。")
-    output["interaction_options"] = [{
-        "label": "submit_reply",
-        "description": "技术调用",
-        "message": "继续比较",
-    }]
+    output["interaction_options"] = [
+        {
+            "label": "submit_reply",
+            "description": "技术调用",
+            "message": "继续比较",
+        }
+    ]
     session, turn, run = _context(output)
     with pytest.raises(AssertionError, match="TECHNICAL_IDENTIFIER_LEAK_ABSENT"):
         assessment.assess_reply(
-            case=case, output=output, session=session, turn=turn, run=run,
-            function_names=["submit_reply"], card_context=None,
+            case=case,
+            output=output,
+            session=session,
+            turn=turn,
+            run=run,
+            function_names=["submit_reply"],
+            card_context=None,
             execution_outcome=None,
         )
 
     direct = identity.load_cases()[0]
     with pytest.raises(AssertionError, match="INTERACTION_OPTIONS_INVALID"):
         assessment.assess_reply(
-            case=direct, output=output, session=session, turn=turn, run=run,
-            function_names=["submit_reply"], card_context=None,
+            case=direct,
+            output=output,
+            session=session,
+            turn=turn,
+            run=run,
+            function_names=["submit_reply"],
+            card_context=None,
             execution_outcome=None,
         )
 
@@ -347,7 +387,8 @@ def test_assessment_enforces_options_required_all_and_option_leaks(monkeypatch) 
 def test_assessment_matches_authoritative_execution_output_summary(monkeypatch) -> None:
     _environment(monkeypatch)
     case = next(
-        item for item in identity.load_cases()
+        item
+        for item in identity.load_cases()
         if item["category"] == "execution_success"
     )
     summary = "已完成 1 项分析；生成 1 份结果，可在分析结果中查看或下载。"
@@ -368,7 +409,8 @@ def test_assessment_matches_authoritative_execution_output_summary(monkeypatch) 
         "interaction_options": [],
     }
     session, turn, run = _context(
-        output, dialogue_policy="EXECUTION_PROPOSAL",
+        output,
+        dialogue_policy="EXECUTION_PROPOSAL",
     )
 
     assertions, review = assessment.assess_reply(
@@ -397,7 +439,8 @@ def test_assessment_allows_explanation_before_authoritative_execution_summary(
 ) -> None:
     _environment(monkeypatch)
     case = next(
-        item for item in identity.load_cases()
+        item
+        for item in identity.load_cases()
         if item["category"] == "execution_success"
     )
     detail = "本次完成迁移学习回测，结果仅用于开发调试。"
@@ -419,7 +462,8 @@ def test_assessment_allows_explanation_before_authoritative_execution_summary(
         "interaction_options": [],
     }
     session, turn, run = _context(
-        output, dialogue_policy="EXECUTION_PROPOSAL",
+        output,
+        dialogue_policy="EXECUTION_PROPOSAL",
     )
 
     assertions, review = assessment.assess_reply(
@@ -466,14 +510,18 @@ def test_confirmation_requires_exact_release_identity_and_arguments() -> None:
         "analyses": {
             "run_monitoring_trend": {
                 "bindings": {
-                    "groupField": "井号", "timeField": "观测日", "valueField": "水头",
+                    "groupField": "井号",
+                    "timeField": "观测日",
+                    "valueField": "水头",
                 },
                 "parameters": {"frequency": "month"},
             },
         },
     }
     session = {
-        "goal_revision": 1, "workflow_run_ids": [], "remote_outputs": [],
+        "goal_revision": 1,
+        "workflow_run_ids": [],
+        "remote_outputs": [],
     }
     action = {
         "tool_call_id": "call-1",
@@ -488,41 +536,59 @@ def test_confirmation_requires_exact_release_identity_and_arguments() -> None:
         "fingerprint": "f" * 64,
         "input_references": {
             "versionId": {
-                key: value for key, value in resource.items()
-                if key != "project_id"
+                key: value for key, value in resource.items() if key != "project_id"
             },
         },
         "arguments": {
-            "alpha": 0.05, "threshold": 3.5, "versionId": "version-1",
-            "groupField": "井号", "timeField": "观测日", "valueField": "水头",
+            "alpha": 0.05,
+            "threshold": 3.5,
+            "versionId": "version-1",
+            "groupField": "井号",
+            "timeField": "观测日",
+            "valueField": "水头",
             "frequency": "month",
         },
     }
     confirmation = {
-        "status": "PENDING", "revision": 1, "kind": "INITIAL",
-        "replaces_confirmation_id": None, "source_workflow_run_id": None,
-        "goal_revision": 1, "agent_run_id": "run-1", "actions": [action],
+        "status": "PENDING",
+        "revision": 1,
+        "kind": "INITIAL",
+        "replaces_confirmation_id": None,
+        "source_workflow_run_id": None,
+        "goal_revision": 1,
+        "agent_run_id": "run-1",
+        "actions": [action],
     }
 
     scenarios._verify_confirmation(
-        confirmation, asset, release, session, "run-1",
+        confirmation,
+        asset,
+        release,
+        session,
+        "run-1",
     )
     wrong = deepcopy(confirmation)
     wrong["actions"][0]["arguments"]["versionId"] = "other"
     with pytest.raises(
-        AssertionError, match="CONFIRMATION_ARGUMENTS_MISMATCH",
+        AssertionError,
+        match="CONFIRMATION_ARGUMENTS_MISMATCH",
     ) as mismatch:
         scenarios._verify_confirmation(wrong, asset, release, session, "run-1")
     assert mismatch.value.argument_difference_paths == ["/versionId"]
     wrong_reference = deepcopy(confirmation)
-    wrong_reference["actions"][0]["input_references"]["versionId"][
-        "checksum"
-    ] = "sha256:" + "b" * 64
+    wrong_reference["actions"][0]["input_references"]["versionId"]["checksum"] = (
+        "sha256:" + "b" * 64
+    )
     with pytest.raises(
-        AssertionError, match="CONFIRMATION_INPUT_REFERENCES_MISMATCH",
+        AssertionError,
+        match="CONFIRMATION_INPUT_REFERENCES_MISMATCH",
     ):
         scenarios._verify_confirmation(
-            wrong_reference, asset, release, session, "run-1",
+            wrong_reference,
+            asset,
+            release,
+            session,
+            "run-1",
         )
 
 
@@ -581,10 +647,12 @@ def test_draft_oracle_accepts_arbitrary_valid_output_name() -> None:
                     "media_types": ["application/json"],
                 },
             ],
-            "outputs": [{
-                "name": "descriptive_statistics",
-                "node_output": {"node_id": "describe", "port": "summary"},
-            }],
+            "outputs": [
+                {
+                    "name": "descriptive_statistics",
+                    "node_output": {"node_id": "describe", "port": "summary"},
+                }
+            ],
         },
         "operators": [
             {
@@ -597,18 +665,24 @@ def test_draft_oracle_accepts_arbitrary_valid_output_name() -> None:
                 "title": title,
             }
             for node, title in zip(
-                nodes, ("排序", "描述统计"), strict=True,
+                nodes,
+                ("排序", "描述统计"),
+                strict=True,
             )
         ],
-        "missing_inputs": [{
-            "kind": "DATA",
-            "name": "rules",
-            "required_by": [{"node_id": "sort", "port": "rules"}],
-        }],
-        "data_bindings": [{
-            "input_name": "source",
-            "data_ref": resource,
-        }],
+        "missing_inputs": [
+            {
+                "kind": "DATA",
+                "name": "rules",
+                "required_by": [{"node_id": "sort", "port": "rules"}],
+            }
+        ],
+        "data_bindings": [
+            {
+                "input_name": "source",
+                "data_ref": resource,
+            }
+        ],
         "unresolved_items": ["缺少排序规则资料"],
         "parameter_values": {},
         "parameter_sources": [],
@@ -653,7 +727,9 @@ def test_summarize_rejects_duplicate_matrix_or_run_identity(monkeypatch) -> None
     records[-1]["category"] = records[0]["category"]
     records[-1]["iteration"] = records[0]["iteration"]
     report = reports.summarize(
-        records, cases=identity.load_cases(), release_identity=_release_identity(),
+        records,
+        cases=identity.load_cases(),
+        release_identity=_release_identity(),
     )
     assert report["status"] == "FAILED"
     gate = report["automatic_gates"]["case_iteration_matrix_exact"]
@@ -662,7 +738,9 @@ def test_summarize_rejects_duplicate_matrix_or_run_identity(monkeypatch) -> None
     records = _records()
     records[-1]["session_id"] = records[0]["session_id"]
     report = reports.summarize(
-        records, cases=identity.load_cases(), release_identity=_release_identity(),
+        records,
+        cases=identity.load_cases(),
+        release_identity=_release_identity(),
     )
     assert report["status"] == "FAILED"
     gate = report["automatic_gates"]["session_and_agent_runs_unique_24"]
@@ -680,22 +758,25 @@ def test_summarize_distinguishes_violation_from_unassessed_checks(monkeypatch) -
     failed["failure"] = "AGENT_MODEL_OUTPUT_INVALID"
 
     report = reports.summarize(
-        records, cases=identity.load_cases(), release_identity=_release_identity(),
+        records,
+        cases=identity.load_cases(),
+        release_identity=_release_identity(),
     )
 
     assert report["status"] == "FAILED"
     assert report["automatic_gates"]["provider_fallbacks_zero"] == {
-        "status": "PASS", "expected": 24, "assessed": 24,
-        "violations": 0, "failure_ids": [],
+        "status": "PASS",
+        "expected": 24,
+        "assessed": 24,
+        "violations": 0,
+        "failure_ids": [],
     }
     final_gate = report["automatic_gates"]["valid_final_reply_24_of_24"]
     assert final_gate["status"] == "NOT_ASSESSED"
     assert (final_gate["assessed"], final_gate["violations"]) == (23, 0)
     all_checks = report["automatic_gates"]["all_automatic_checks_pass"]
     assert all_checks["status"] == "FAIL"
-    assert all_checks["failure_ids"] == [
-        f"{failed['case_id']}#{failed['iteration']}"
-    ]
+    assert all_checks["failure_ids"] == [f"{failed['case_id']}#{failed['iteration']}"]
 
 
 def test_blind_bundle_and_finalize_bind_exact_content_and_provider(monkeypatch) -> None:
@@ -705,7 +786,9 @@ def test_blind_bundle_and_finalize_bind_exact_content_and_provider(monkeypatch) 
     assert len(bundle["responses"]) == 24
     assert "configuration" not in bundle
     assert "provider" not in json.dumps(bundle)
-    assert all(item["response_id"].startswith("sha256:") for item in bundle["responses"])
+    assert all(
+        item["response_id"].startswith("sha256:") for item in bundle["responses"]
+    )
     reviews = _reviews(report)
 
     final = reports.finalize_report(report, reviews)
@@ -760,11 +843,14 @@ def test_combine_requires_two_independent_passing_providers(monkeypatch) -> None
 
 
 def test_missing_configuration_writes_blocked_report(
-    tmp_path, monkeypatch,
+    tmp_path,
+    monkeypatch,
 ) -> None:
     for name in definitions.REQUIRED_ENVIRONMENT:
         monkeypatch.delenv(name, raising=False)
-    monkeypatch.setattr(identity, "load_release_identity", lambda _path: _release_identity())
+    monkeypatch.setattr(
+        identity, "load_release_identity", lambda _path: _release_identity()
+    )
     output = tmp_path / "reply-quality.json"
     monkeypatch.setattr(
         sys,

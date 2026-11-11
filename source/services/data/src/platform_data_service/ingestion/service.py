@@ -7,6 +7,7 @@ from ..adapters.readers import READERS
 from ..semantics.service import check_semantics
 from ..errors import DataProblemError
 from ..models import BeginPublication, Metrics
+from .field_profile import TableFieldProfiler
 from .json_validation import validate_json
 
 
@@ -50,13 +51,12 @@ def prepare(payload, store, settings, work):
                 iterator = READERS[output.format].read(source, output.conversion)
                 names, schema = next(iterator)
                 row_count = 0
-                nulls = [0] * len(names)
+                profiler = TableFieldProfiler(schema)
                 normalized = work / f"{output.name}.parquet"
                 full_schema = schema.append(pa.field("_row", pa.int64()))
                 with pq.ParquetWriter(normalized, full_schema) as writer:
                     for batch in iterator:
-                        for i in range(len(names)):
-                            nulls[i] += batch.column(i).null_count
+                        profiler.consume(batch)
                         augmented = pa.RecordBatch.from_arrays(
                             [
                                 *batch.columns,
@@ -91,12 +91,12 @@ def prepare(payload, store, settings, work):
                             "id": f"f{i}",
                             "name": name,
                             "type": str(schema.types[i]),
-                            "nullable": True,
-                            "null_count": nulls[i],
+                            **profiler.field(i),
                         }
                         for i, name in enumerate(names)
                     ],
                     row_count=row_count,
+                    profile=profiler.descriptor(),
                     quality={
                         "scope": "all_rows",
                         "checks": ["parse", "conversion", "null_count"],

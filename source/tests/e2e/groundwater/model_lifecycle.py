@@ -399,13 +399,47 @@ def _run_model_cases(client, capabilities: dict, cases: list[tuple]) -> list[dic
             )
         else:
             print(
-                f"six-model PASS {model_id} "
-                f"workflow={report['workflow_run_id']}",
+                f"six-model PASS {model_id} workflow={report['workflow_run_id']}",
                 flush=True,
             )
         report["elapsed_seconds"] = round(time.monotonic() - started, 3)
         reports.append(report)
     return reports
+
+
+def _coverage_geojson() -> bytes:
+    return json.dumps(
+        {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [116.4, 39.9],
+                    },
+                    "properties": {"level": 12.5, "well": "w1"},
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [116.5, 40.0],
+                    },
+                    "properties": {"level": 15.0, "well": "w2"},
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [116.45, 40.02],
+                    },
+                    "properties": {"level": 13.8, "well": "w3"},
+                },
+            ],
+        },
+        ensure_ascii=False,
+    ).encode()
 
 
 def run_suite(base_url: str, transfer_case: Path) -> list[dict]:
@@ -436,28 +470,10 @@ def run_suite(base_url: str, transfer_case: Path) -> list[dict]:
             data_nature=SYNTHETIC_TEST_ONLY,
             source="v12-six-model-lifecycle",
         )
-        geojson = json.dumps(
-            {
-                "type": "FeatureCollection",
-                "features": [
-                    {
-                        "type": "Feature",
-                        "geometry": {"type": "Point", "coordinates": [116.4, 39.9]},
-                        "properties": {"level": 12.5, "well": "w1"},
-                    },
-                    {
-                        "type": "Feature",
-                        "geometry": {"type": "Point", "coordinates": [116.5, 40.0]},
-                        "properties": {"level": 15.0, "well": "w2"},
-                    },
-                ],
-            },
-            ensure_ascii=False,
-        ).encode()
         points = _publish(
             client,
             name="六模型井点",
-            content=geojson,
+            content=_coverage_geojson(),
             format_="geojson",
             media_type="application/geo+json",
             data_nature=SYNTHETIC_TEST_ONLY,

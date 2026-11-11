@@ -748,3 +748,54 @@ def verify_scope(
         "dependencyDigest": current["digest"],
         "files": len(actual),
     }
+
+
+def locate_compatible_scope(
+    source_root: Path, paths: LifecyclePaths, scope: str
+) -> dict[str, Any]:
+    """Locate a verified scope without copying it into the current digest root.
+
+    Quick, isolated developer runs may consume a prior materialization only when
+    every lock input owned by that scope still matches. This lookup is read-only;
+    normal builds continue to require the current digest via ``verify_scope``.
+    """
+
+    if scope not in SCOPES:
+        raise DependencyRefusal("DEPENDENCY_SCOPE_INVALID")
+    target = root(source_root, paths)
+    try:
+        verified = verify_scope(source_root, paths, scope)
+    except DependencyRefusal:
+        pass
+    else:
+        return {
+            **verified,
+            "path": str(target / scope),
+            "reused": False,
+        }
+    dependency_root = owned_path("deps", paths.cache)
+    if dependency_root.is_symlink() or not dependency_root.is_dir():
+        raise DependencyRefusal("DEPENDENCY_SCOPE_NOT_MATERIALIZED")
+    for candidate in sorted(dependency_root.iterdir(), key=lambda path: path.name):
+        if (
+            candidate == target
+            or candidate.is_symlink()
+            or not candidate.is_dir()
+            or not candidate.name.startswith("sha256-")
+        ):
+            continue
+        reusable = _candidate_scope(source_root, candidate, scope)
+        if reusable is None:
+            continue
+        files, digest = reusable
+        if scope == "npm":
+            verify_npm_offline(source_root, candidate / scope / "cache")
+        return {
+            "status": "PASS",
+            "scope": scope,
+            "dependencyDigest": digest,
+            "path": str(candidate / scope),
+            "files": len(files),
+            "reused": True,
+        }
+    raise DependencyRefusal("DEPENDENCY_SCOPE_NOT_MATERIALIZED")

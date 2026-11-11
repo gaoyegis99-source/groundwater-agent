@@ -324,6 +324,7 @@ def test_kernel_case_finalizes_from_persisted_workflow_facts(kernel_settings, jo
     assert "腰站堡" not in final.output.message
     assert "训练" not in final.output.message
     assert "地下水" not in final.output.message
+    assert "开发调试案例" in final.output.message
     assert final.actions[0].arguments["axis"] == "columns"
     if job_status == "SUCCEEDED":
         assert "发布了 1 项可核验成果" in final.output.message

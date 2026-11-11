@@ -1,0 +1,245 @@
+{
+  "schemaVersion": "intent-routing-zh-gold.v1",
+  "cases": [
+    {
+      "caseId": "consult-cone-of-depression",
+      "category": "ordinary_consult",
+      "message": "请解释什么是地下水降落漏斗。",
+      "hasInputReferences": false,
+      "expected": {
+        "responseKind": "DIALOGUE",
+        "semanticIntent": "CONSULT"
+      }
+    },
+    {
+      "caseId": "consult-contour-meaning",
+      "category": "ordinary_consult",
+      "message": "等水位线图通常能说明哪些地下水流动信息？",
+      "hasInputReferences": false,
+      "expected": {
+        "responseKind": "DIALOGUE",
+        "semanticIntent": "CONSULT"
+      }
+    },
+    {
+      "caseId": "consult-water-level-unit",
+      "category": "ordinary_consult",
+      "message": "说明监测井水位单位与高程基准之间的关系。",
+      "hasInputReferences": false,
+      "expected": {
+        "responseKind": "DIALOGUE",
+        "semanticIntent": "CONSULT"
+      }
+    },
+    {
+      "caseId": "compare-interpolation-methods",
+      "category": "comparison",
+      "message": "比较反距离加权和克里金插值在水位面分析中的适用条件。",
+      "hasInputReferences": false,
+      "expected": {
+        "responseKind": "DIALOGUE",
+        "semanticIntent": "COMPARE"
+      }
+    },
+    {
+      "caseId": "compare-previous-current-results",
+      "category": "comparison",
+      "message": "比较上次和这次结果，指出主要变化，不要重新计算。",
+      "hasInputReferences": false,
+      "expected": {
+        "responseKind": "DIALOGUE",
+        "semanticIntent": "COMPARE"
+      }
+    },
+    {
+      "caseId": "compare-well-quality",
+      "category": "comparison",
+      "message": "对比监测井 A 和监测井 B 的数据质量，只说明差异，不运行模型。",
+      "hasInputReferences": false,
+      "expected": {
+        "responseKind": "DIALOGUE",
+        "semanticIntent": "COMPARE"
+      }
+    },
+    {
+      "caseId": "execute-monitoring-trend",
+      "category": "execution",
+      "message": "现在对附件中的监测数据执行水位趋势分析，并提交参数确认。",
+      "hasInputReferences": true,
+      "expected": {
+        "responseKind": "DIALOGUE",
+        "semanticIntent": "EXECUTE_ON_DATA"
+      }
+    },
+    {
+      "caseId": "execute-average-water-level",
+      "category": "execution",
+      "message": "请用当前数据计算各监测井的平均水位。",
+      "hasInputReferences": true,
+      "expected": {
+        "responseKind": "DIALOGUE",
+        "semanticIntent": "EXECUTE_ON_DATA"
+      }
+    },
+    {
+      "caseId": "execute-flow-field",
+      "category": "execution",
+      "message": "运行地下水流场模型，生成本期等水位线结果。",
+      "hasInputReferences": true,
+      "expected": {
+        "responseKind": "DIALOGUE",
+        "semanticIntent": "EXECUTE_ON_DATA"
+      }
+    },
+    {
+      "caseId": "negated-explain-first",
+      "category": "execution_negated",
+      "message": "请先解释监测趋势模型的作用，不要执行任何计算。",
+      "hasInputReferences": false,
+      "expected": {
+        "responseKind": "DIALOGUE",
+        "semanticIntent": "CONSULT"
+      }
+    },
+    {
+      "caseId": "negated-method-advice",
+      "category": "execution_negated",
+      "message": "告诉我应如何选择水位插值方法，但先不要运行模型。",
+      "hasInputReferences": false,
+      "expected": {
+        "responseKind": "DIALOGUE",
+        "semanticIntent": "DESIGN"
+      }
+    },
+    {
+      "caseId": "negated-analysis-steps",
+      "category": "execution_negated",
+      "message": "只给出分析步骤和所需数据，不要处理附件。",
+      "hasInputReferences": true,
+      "expected": {
+        "responseKind": "DIALOGUE",
+        "semanticIntent": "DESIGN"
+      }
+    },
+    {
+      "caseId": "status-current-analysis",
+      "category": "status_query",
+      "message": "刚才提交的分析现在进行到哪一步了？",
+      "hasInputReferences": false,
+      "expected": {
+        "responseKind": "DIALOGUE",
+        "semanticIntent": "STATUS_QUERY"
+      }
+    },
+    {
+      "caseId": "status-this-turn",
+      "category": "status_query",
+      "message": "这轮分析目前是什么状态，还在等待确认吗？",
+      "hasInputReferences": false,
+      "expected": {
+        "responseKind": "DIALOGUE",
+        "semanticIntent": "STATUS_QUERY"
+      }
+    },
+    {
+      "caseId": "status-after-confirmation",
+      "category": "status_query",
+      "message": "确认参数后的任务是否已经完成？",
+      "hasInputReferences": false,
+      "expected": {
+        "responseKind": "DIALOGUE",
+        "semanticIntent": "STATUS_QUERY"
+      }
+    },
+    {
+      "caseId": "workflow-reusable-trend",
+      "category": "workflow_draft",
+      "message": "为月度水位趋势分析生成一个可复用的工作流草稿。",
+      "hasInputReferences": false,
+      "expected": {
+        "responseKind": "WORKFLOW_DRAFT",
+        "semanticIntent": "CREATE_WORKFLOW"
+      }
+    },
+    {
+      "caseId": "workflow-export-template",
+      "category": "workflow_draft",
+      "message": "把监测覆盖率分析整理成可导出的流程模板。",
+      "hasInputReferences": false,
+      "expected": {
+        "responseKind": "WORKFLOW_DRAFT",
+        "semanticIntent": "CREATE_WORKFLOW"
+      }
+    },
+    {
+      "caseId": "workflow-draft-no-execution",
+      "category": "workflow_draft",
+      "message": "设计一个从数据核验到地图渲染的工作流草稿，先不要执行。",
+      "hasInputReferences": false,
+      "expected": {
+        "responseKind": "WORKFLOW_DRAFT",
+        "semanticIntent": "CREATE_WORKFLOW"
+      }
+    },
+    {
+      "caseId": "attachment-list-columns",
+      "category": "attachment_read",
+      "message": "读取附件并列出字段名称，不要做计算。",
+      "hasInputReferences": true,
+      "expected": {
+        "responseKind": "DIALOGUE",
+        "semanticIntent": "CONSULT"
+      }
+    },
+    {
+      "caseId": "attachment-describe-content",
+      "category": "attachment_read",
+      "message": "说明这个附件包含什么内容和多少条记录。",
+      "hasInputReferences": true,
+      "expected": {
+        "responseKind": "DIALOGUE",
+        "semanticIntent": "CONSULT"
+      }
+    },
+    {
+      "caseId": "attachment-inspect-types",
+      "category": "attachment_read",
+      "message": "检查附件的字段类型和时间范围，只报告元数据。",
+      "hasInputReferences": true,
+      "expected": {
+        "responseKind": "DIALOGUE",
+        "semanticIntent": "CONSULT"
+      }
+    },
+    {
+      "caseId": "missing-field-explicit-execution",
+      "category": "missing_field_clarification",
+      "message": "请对附件执行监测趋势分析；如果缺少水位字段，先问我使用哪一列。",
+      "hasInputReferences": true,
+      "expected": {
+        "responseKind": "DIALOGUE",
+        "semanticIntent": "EXECUTE_ON_DATA"
+      }
+    },
+    {
+      "caseId": "missing-field-explicit-workflow",
+      "category": "missing_field_clarification",
+      "message": "请生成一个可复用工作流；水位字段暂时未定，保留为必填参数。",
+      "hasInputReferences": false,
+      "expected": {
+        "responseKind": "WORKFLOW_DRAFT",
+        "semanticIntent": "CREATE_WORKFLOW"
+      }
+    },
+    {
+      "caseId": "missing-field-ambiguous-request",
+      "category": "missing_field_clarification",
+      "message": "附件里缺少水位字段，帮我处理一下。",
+      "hasInputReferences": true,
+      "expected": {
+        "responseKind": "NEEDS_CLARIFICATION",
+        "semanticIntent": "UNKNOWN"
+      }
+    }
+  ]
+}

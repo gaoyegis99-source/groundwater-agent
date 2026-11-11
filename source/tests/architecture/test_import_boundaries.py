@@ -21,9 +21,7 @@ def test_current_distribution_and_owner_boundaries_pass() -> None:
 
 def test_control_proposal_layers_are_one_way_and_read_only() -> None:
     problems = [
-        problem
-        for problem in MODULE.check(ROOT)
-        if "CONTROL_PROPOSAL_" in problem
+        problem for problem in MODULE.check(ROOT) if "CONTROL_PROPOSAL_" in problem
     ]
     assert problems == []
 
@@ -43,8 +41,12 @@ def test_control_proposal_layer_gate_rejects_backwards_and_write_dependencies(
     )
     (interaction / "control_proposal_commands.py").write_text("pass\n")
     problems = MODULE.check(tmp_path)
-    assert any("CONTROL_PROPOSAL_PURE_INTENT_INVALID" in problem for problem in problems)
-    assert any("CONTROL_PROPOSAL_QUERY_WRITE_INVALID" in problem for problem in problems)
+    assert any(
+        "CONTROL_PROPOSAL_PURE_INTENT_INVALID" in problem for problem in problems
+    )
+    assert any(
+        "CONTROL_PROPOSAL_QUERY_WRITE_INVALID" in problem for problem in problems
+    )
     assert any(
         "CONTROL_PROPOSAL_FACADE_BACKWARD_IMPORT_INVALID" in problem
         for problem in problems
@@ -62,13 +64,14 @@ def test_control_proposal_layer_gate_rejects_a_deferred_cycle(tmp_path: Path) ->
         "    return resolve\n"
     )
     (interaction / "control_proposal_targets.py").write_text(
-        "from .control_proposal_queries import query\n"
-        "resolve = query\n"
+        "from .control_proposal_queries import query\nresolve = query\n"
     )
     (interaction / "control_proposal_commands.py").write_text("pass\n")
 
     problems = MODULE.check(tmp_path)
-    assert any("CONTROL_PROPOSAL_LAYER_CYCLE_INVALID" in problem for problem in problems)
+    assert any(
+        "CONTROL_PROPOSAL_LAYER_CYCLE_INVALID" in problem for problem in problems
+    )
 
 
 def test_trigger_update_clause_is_not_misclassified_as_a_table(tmp_path) -> None:
@@ -78,6 +81,19 @@ def test_trigger_update_clause_is_not_misclassified_as_a_table(tmp_path) -> None
         "WHEN NEW.owner <> OLD.owner BEGIN SELECT RAISE(ABORT, 'immutable'); END;\"\n"
     )
     assert MODULE.sql_tables(source) == set()
+
+
+def test_declared_schema_tables_ignore_transient_migration_tables(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "database.py"
+    source.write_text(
+        'SCHEMA = "CREATE TABLE persistent_records(value TEXT);"\n'
+        'MIGRATION = "CREATE TABLE persistent_records_v1_backup '
+        'AS SELECT * FROM persistent_records;"\n'
+    )
+
+    assert MODULE.declared_schema_tables(source) == {"persistent_records"}
 
 
 def test_current_runtime_cannot_import_legacy_code(tmp_path) -> None:
@@ -121,37 +137,57 @@ def test_service_routers_cannot_own_sql(tmp_path) -> None:
 
 
 def test_services_cannot_import_another_service_database() -> None:
-    assert MODULE.violation(
-        "platform_knowledge_next.retrieval",
-        "platform_data_service.adapters.database",
-    ) == "DISTRIBUTION_DEPENDENCY_INVALID"
-    assert MODULE.violation(
-        "platform_data_service.catalog.service",
-        "platform_knowledge_next.database",
-    ) == "DISTRIBUTION_DEPENDENCY_INVALID"
-    assert MODULE.violation(
-        "platform_executor_service.control",
-        "platform_kernel.database",
-    ) == "DISTRIBUTION_DEPENDENCY_INVALID"
+    assert (
+        MODULE.violation(
+            "platform_knowledge_next.retrieval",
+            "platform_data_service.adapters.database",
+        )
+        == "DISTRIBUTION_DEPENDENCY_INVALID"
+    )
+    assert (
+        MODULE.violation(
+            "platform_data_service.catalog.service",
+            "platform_knowledge_next.database",
+        )
+        == "DISTRIBUTION_DEPENDENCY_INVALID"
+    )
+    assert (
+        MODULE.violation(
+            "platform_executor_service.control",
+            "platform_kernel.database",
+        )
+        == "DISTRIBUTION_DEPENDENCY_INVALID"
+    )
 
 
 def test_lightweight_agent_is_an_isolated_distribution_boundary() -> None:
     assert MODULE.PACKAGES["platform_lightweight_agent"].allowed_internal == frozenset()
-    assert MODULE.violation(
-        "platform_lightweight_agent.engine", "platform_kernel.database"
-    ) == "DISTRIBUTION_DEPENDENCY_INVALID"
-    assert MODULE.violation(
-        "platform_lightweight_agent.runtime", "platform_data_client"
-    ) == "DISTRIBUTION_DEPENDENCY_INVALID"
-    assert MODULE.violation(
-        "platform_lightweight_agent.runtime", "groundwater_api_client"
-    ) == "DISTRIBUTION_DEPENDENCY_INVALID"
-    assert MODULE.violation(
-        "platform_kernel.composition", "platform_lightweight_agent.engine"
-    ) == "DISTRIBUTION_DEPENDENCY_INVALID"
-    assert MODULE.violation(
-        "platform_workflow_compiler.compiler", "platform_lightweight_agent.spec"
-    ) == "DISTRIBUTION_DEPENDENCY_INVALID"
+    assert (
+        MODULE.violation(
+            "platform_lightweight_agent.engine", "platform_kernel.database"
+        )
+        == "DISTRIBUTION_DEPENDENCY_INVALID"
+    )
+    assert (
+        MODULE.violation("platform_lightweight_agent.runtime", "platform_data_client")
+        == "DISTRIBUTION_DEPENDENCY_INVALID"
+    )
+    assert (
+        MODULE.violation("platform_lightweight_agent.runtime", "groundwater_api_client")
+        == "DISTRIBUTION_DEPENDENCY_INVALID"
+    )
+    assert (
+        MODULE.violation(
+            "platform_kernel.composition", "platform_lightweight_agent.engine"
+        )
+        == "DISTRIBUTION_DEPENDENCY_INVALID"
+    )
+    assert (
+        MODULE.violation(
+            "platform_workflow_compiler.compiler", "platform_lightweight_agent.spec"
+        )
+        == "DISTRIBUTION_DEPENDENCY_INVALID"
+    )
 
 
 def test_lightweight_optional_extra_cannot_add_an_internal_distribution(
@@ -167,8 +203,8 @@ def test_lightweight_optional_extra_cannot_add_an_internal_distribution(
     project.parent.mkdir(parents=True)
     project.write_text(
         '[project]\nname = "platform-lightweight-agent-core"\n'
-        'dependencies = []\n'
-        '[project.optional-dependencies]\n'
+        "dependencies = []\n"
+        "[project.optional-dependencies]\n"
         'workflow = ["anyio==4.15.1", "platform_data_client==1.0", '
         '"groundwater-api-client==1.0"]\n'
     )
@@ -183,7 +219,9 @@ def test_lightweight_optional_extra_cannot_add_an_internal_distribution(
     )
 
 
-def test_distribution_metadata_does_not_hide_unexpected_source_packages(tmp_path) -> None:
+def test_distribution_metadata_does_not_hide_unexpected_source_packages(
+    tmp_path,
+) -> None:
     for name, package in MODULE.PACKAGES.items():
         source_root = tmp_path / package.root.relative_to(ROOT)
         (source_root / name).mkdir(parents=True)
@@ -201,19 +239,21 @@ def test_distribution_metadata_does_not_hide_unexpected_source_packages(tmp_path
 
 
 def test_kernel_cannot_import_capability_service_or_private_owner_module() -> None:
-    assert MODULE.violation(
-        "platform_kernel.agent_runtime.owner", "platform_data_service"
-    ) == "DISTRIBUTION_DEPENDENCY_INVALID"
-    assert MODULE.violation(
-        "platform_kernel.interaction.owner",
-        "platform_kernel.agent_runtime.persistence",
-    ) == "OWNER_DEPENDENCY_INVALID"
+    assert (
+        MODULE.violation("platform_kernel.agent_runtime.owner", "platform_data_service")
+        == "DISTRIBUTION_DEPENDENCY_INVALID"
+    )
+    assert (
+        MODULE.violation(
+            "platform_kernel.interaction.owner",
+            "platform_kernel.agent_runtime.persistence",
+        )
+        == "OWNER_DEPENDENCY_INVALID"
+    )
 
 
 def test_kernel_adapter_and_sql_free_boundaries_are_declared() -> None:
-    assert "openai" in MODULE.KERNEL_FORBIDDEN_IMPORTS[
-        "platform_kernel.composition"
-    ]
+    assert "openai" in MODULE.KERNEL_FORBIDDEN_IMPORTS["platform_kernel.composition"]
     assert MODULE.KERNEL_FORBIDDEN_IMPORTS[
         "platform_kernel.agent_runtime.owner"
     ] == frozenset({"agents", "openai"})
@@ -231,29 +271,38 @@ def test_kernel_adapter_and_sql_free_boundaries_are_declared() -> None:
         "platform_kernel.agent_runtime.result_processing"
         in MODULE.SQL_FREE_KERNEL_MODULES
     )
+    assert "platform_kernel.workflow_execution.owner" in MODULE.SQL_FREE_KERNEL_MODULES
     assert (
-        "platform_kernel.workflow_execution.owner" in MODULE.SQL_FREE_KERNEL_MODULES
+        MODULE.violation(
+            "platform_kernel.workflow_execution.owner",
+            "platform_kernel.agent_runtime.models",
+        )
+        == "OWNER_DEPENDENCY_INVALID"
     )
-    assert MODULE.violation(
-        "platform_kernel.workflow_execution.owner",
-        "platform_kernel.agent_runtime.models",
-    ) == "OWNER_DEPENDENCY_INVALID"
-    assert "platform_kernel.workflow_execution" in MODULE.KERNEL_FORBIDDEN_IMPORTS[
-        "platform_kernel.agent_runtime.sdk_execution.segment_runner"
-    ]
-    assert "sqlite3" in MODULE.KERNEL_FORBIDDEN_IMPORTS[
-        "platform_kernel.agent_runtime.result_processing"
-    ]
+    assert (
+        "platform_kernel.workflow_execution"
+        in MODULE.KERNEL_FORBIDDEN_IMPORTS[
+            "platform_kernel.agent_runtime.sdk_execution.segment_runner"
+        ]
+    )
+    assert (
+        "sqlite3"
+        in MODULE.KERNEL_FORBIDDEN_IMPORTS[
+            "platform_kernel.agent_runtime.result_processing"
+        ]
+    )
     assert {"agents", "openai", "sqlite3"} <= MODULE.KERNEL_FORBIDDEN_IMPORTS[
         "platform_kernel.agent_runtime.memory"
     ]
     assert {
-        "agents", "openai", "httpx", "sqlite3",
-        "platform_kernel.database", "platform_kernel.agent_runtime.persistence",
+        "agents",
+        "openai",
+        "httpx",
+        "sqlite3",
+        "platform_kernel.database",
+        "platform_kernel.agent_runtime.persistence",
         "platform_kernel.workflow_execution",
-    } <= MODULE.KERNEL_FORBIDDEN_IMPORTS[
-        "platform_kernel.agent_runtime.evidence"
-    ]
+    } <= MODULE.KERNEL_FORBIDDEN_IMPORTS["platform_kernel.agent_runtime.evidence"]
     assert "platform_kernel.agent_runtime.evidence" in MODULE.SQL_FREE_KERNEL_MODULES
 
 
@@ -306,32 +355,45 @@ def test_data_has_no_embedding_dependency() -> None:
 
 
 def test_owner_facades_depend_on_ports_instead_of_other_owner_modules() -> None:
-    assert MODULE.violation(
-        "platform_kernel.agent_runtime.owner",
-        "platform_kernel.workflow_execution.owner",
-    ) == "OWNER_DEPENDENCY_INVALID"
-    assert MODULE.violation(
-        "platform_kernel.interaction.owner",
-        "platform_kernel.agent_runtime.owner",
-    ) == "OWNER_DEPENDENCY_INVALID"
-    assert MODULE.violation(
-        "platform_kernel.agent_runtime.owner",
-        "platform_kernel.application.ports",
-    ) is None
-    assert MODULE.violation(
-        "platform_kernel.interaction.history",
-        "platform_kernel.agent_runtime.persistence.run_queries",
-    ) == "OWNER_DEPENDENCY_INVALID"
-    assert MODULE.violation(
-        "platform_kernel.agent_runtime.tooling",
-        "platform_kernel.tasks",
-    ) == "OWNER_DEPENDENCY_INVALID"
+    assert (
+        MODULE.violation(
+            "platform_kernel.agent_runtime.owner",
+            "platform_kernel.workflow_execution.owner",
+        )
+        == "OWNER_DEPENDENCY_INVALID"
+    )
+    assert (
+        MODULE.violation(
+            "platform_kernel.interaction.owner",
+            "platform_kernel.agent_runtime.owner",
+        )
+        == "OWNER_DEPENDENCY_INVALID"
+    )
+    assert (
+        MODULE.violation(
+            "platform_kernel.agent_runtime.owner",
+            "platform_kernel.application.ports",
+        )
+        is None
+    )
+    assert (
+        MODULE.violation(
+            "platform_kernel.interaction.history",
+            "platform_kernel.agent_runtime.persistence.run_queries",
+        )
+        == "OWNER_DEPENDENCY_INVALID"
+    )
+    assert (
+        MODULE.violation(
+            "platform_kernel.agent_runtime.tooling",
+            "platform_kernel.tasks",
+        )
+        == "OWNER_DEPENDENCY_INVALID"
+    )
 
 
 def test_kernel_metadata_has_no_capability_or_product_dependency() -> None:
-    value = tomllib.loads(
-        (ROOT / "kernel/pyproject.toml").read_text(encoding="utf-8")
-    )
+    value = tomllib.loads((ROOT / "kernel/pyproject.toml").read_text(encoding="utf-8"))
     dependencies = value["project"]["dependencies"]
     forbidden = (
         "platform-resource-service",
@@ -340,13 +402,13 @@ def test_kernel_metadata_has_no_capability_or_product_dependency() -> None:
         "platform-executor-service",
     )
     assert not any(
-        dependency.startswith(name)
-        for dependency in dependencies
-        for name in forbidden
+        dependency.startswith(name) for dependency in dependencies for name in forbidden
     )
 
 
-def test_single_reply_sdk_has_no_persistence_access_and_renderer_has_named_reads(tmp_path):
+def test_single_reply_sdk_has_no_persistence_access_and_renderer_has_named_reads(
+    tmp_path,
+):
     root = tmp_path / "src"
     module = root / "platform_kernel/agent_runtime/sdk_execution/initial_execution.py"
     module.parent.mkdir(parents=True)
@@ -362,11 +424,17 @@ def test_single_reply_sdk_has_no_persistence_access_and_renderer_has_named_reads
         module.write_text(forbidden)
         assert MODULE.sdk_persistence_imports(module, root)
     renderer = module.parents[1] / "reply.py"
-    renderer.write_text("from .persistence import allowed_workflow_run_ids, get_run, load_execution_context\n")
+    renderer.write_text(
+        "from .persistence import allowed_workflow_run_ids, get_run, load_execution_context\n"
+    )
     assert MODULE.sdk_persistence_imports(renderer, root) == []
     renderer.write_text("from .persistence import save_plan\n")
     assert MODULE.sdk_persistence_imports(renderer, root)
-    assert {"sqlite3", "platform_kernel.database", "platform_kernel.workflow_execution"} <= MODULE.KERNEL_FORBIDDEN_IMPORTS[
+    assert {
+        "sqlite3",
+        "platform_kernel.database",
+        "platform_kernel.workflow_execution",
+    } <= MODULE.KERNEL_FORBIDDEN_IMPORTS[
         "platform_kernel.agent_runtime.sdk_execution.initial_execution"
     ]
     assert "platform_kernel.agent_runtime.reply" in MODULE.SQL_FREE_KERNEL_MODULES

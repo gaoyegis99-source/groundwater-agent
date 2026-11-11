@@ -34,7 +34,13 @@ from .sdk_execution import (
     execute_resumed,
 )
 from .run_dependencies import RunDependencies
-from .run_finalization import fail_run_result, raise_execution_failure, record_result
+from .run_finalization import (
+    fail_run_result,
+    finalize_case_execution,
+    finalize_completed_execution,
+    raise_execution_failure,
+    record_result,
+)
 
 
 def confirm_run(
@@ -213,7 +219,7 @@ async def resume_run(
         return run
     case_state = kernel_case_state(deps.database, agent_run_id)
     if expected_status == "WAITING_EXECUTION" and case_state is not None:
-        return finalize_kernel_case(deps, run)
+        return finalize_case_execution(deps, run)
     if (
         expected_status == "WAITING_CONFIRMATION"
         and not approve
@@ -243,7 +249,7 @@ async def resume_run(
         # frozen actions and WorkflowRun records already contain every fact
         # needed for the terminal reply, so a transient Provider failure here
         # must not turn a completed execution into a failed AgentRun.
-        return finalize_kernel_case(deps, run)
+        return finalize_completed_execution(deps, run)
     try:
         stored = claim_state(
             deps.database,
@@ -278,96 +284,6 @@ async def resume_run(
     except SDKExecutionError as error:
         raise_execution_failure(deps, agent_run_id, error)
     return record_result(deps, agent_run_id, execution)
-
-
-def finalize_kernel_case(deps: RunDependencies, run: AgentRun) -> AgentRun:
-    if any(
-        (action.status in {"PENDING", "QUEUED", "RUNNING"} for action in run.actions)
-    ):
-        return run
-    if not run.actions:
-        raise ValueError("KERNEL_CASE_ACTION_REQUIRED")
-    plan = next(
-        (plan for plan in run.plans if plan.revision == run.actions[0].plan_revision)
-    )
-    succeeded = all((action.status == "COMPLETE" for action in run.actions))
-    workflow_ids = [
-        action.workflow_run_id
-        for action in run.actions
-        if action.workflow_run_id is not None
-    ]
-    outputs = [output for action in run.actions for output in action.remote_outputs]
-    if succeeded:
-        names = [output.output_name for output in outputs if output.output_name]
-        highlighted = "、".join(names[:6])
-        conclusion = f"已完成“{plan.goal}”，发布了 {len(outputs)} 项可核验成果。"
-        details = [
-            ReplySectionV1(
-                markdown=f"已使用 {len(run.actions[0].input_references)} 项冻结输入，参数采用本次确认时冻结的快照；执行前后均保持相同数据身份。",
-                source_indexes=[],
-            ),
-            ReplySectionV1(
-                markdown="主要成果包括："
-                + highlighted
-                + ("等。" if highlighted else "已发布结果。"),
-                source_indexes=[],
-            ),
-            ReplySectionV1(
-                markdown="这是开发调试案例；模拟或历史标准化数据不代表当前真实业务状况。",
-                source_indexes=[],
-            ),
-        ]
-        error = None
-        status = "COMPLETE"
-    else:
-        codes = list(
-            dict.fromkeys(
-                (
-                    action.error or "WORKFLOW_FAILED"
-                    for action in run.actions
-                    if action.status == "FAILED"
-                )
-            )
-        )
-        conclusion = f"“{plan.goal}”执行未完成。"
-        details = [
-            ReplySectionV1(
-                markdown="最新执行错误：" + "、".join(codes), source_indexes=[]
-            )
-        ]
-        error = codes[0] if codes else "WORKFLOW_FAILED"
-        status = "FAILED"
-    execution_summary = ReplySectionV1(
-        markdown=f"执行状态：{('成功' if succeeded else '失败')}；WorkflowRun {len(workflow_ids)} 项；成果 {len(outputs)} 项。",
-        source_indexes=[],
-    )
-    message = "\n\n".join(
-        [conclusion, *(item.markdown for item in details), execution_summary.markdown]
-    )
-    output = AgentFinalV5(
-        message=message,
-        presentation=ReplyPresentationV1(
-            conclusion=ReplySectionV1(markdown=conclusion, source_indexes=[]),
-            details=details,
-            execution_summary=execution_summary,
-            unresolved_items=[],
-            sources=[],
-        ),
-        workflow_runs=workflow_ids,
-        unresolved_items=[],
-        interaction_options=[],
-    )
-    finish_run(
-        deps.database,
-        run,
-        agent_projection=deps.agent_projection,
-        status=status,
-        output=output,
-        usage=UsageDelta(0, 0, 0),
-        error=error,
-        continuation_stop="KERNEL_CASE_FINALIZED",
-    )
-    return get_run(deps.database, run.agent_run_id)
 
 
 def finalize_kernel_case_rejection(

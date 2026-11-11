@@ -29,7 +29,7 @@ DOMAIN_FIELDS_V1 = {
 DOMAIN_FIELDS_V2 = DOMAIN_FIELDS_V1 | {"executionCases"}
 DOMAIN_FIELDS_V3 = DOMAIN_FIELDS_V2
 TOOL_FIELDS = {"service", "contract", "tool"}
-MODEL_FIELDS = {
+MODEL_FIELDS_V4 = {
     "schemaVersion",
     "modelId",
     "version",
@@ -45,6 +45,8 @@ MODEL_FIELDS = {
     "executionService",
     "executorId",
 }
+MODEL_FIELDS_V5 = MODEL_FIELDS_V4 | {"fieldRequirements"}
+MODEL_FIELDS = MODEL_FIELDS_V5 | {"semanticRequirements"}
 ROUTE_FIELDS = {"prefix", "service", "contract"}
 MODULE_FIELDS = {"apiVersion", "kind", "metadata", "spec"}
 CURRENT_MODULE_API_VERSION = "platform.module/v9"

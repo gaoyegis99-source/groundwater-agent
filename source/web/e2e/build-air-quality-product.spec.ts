@@ -38,7 +38,7 @@ test('production shell renders every product-owned air-quality presentation with
   await expect(page.getByRole('textbox', { name: '消息输入框' })).toHaveValue('请汇总 PM2.5 观测。');
   await page.getByRole('button', { name: '能力目录' }).click();
   await page.getByText('所需资料与参数', { exact: true }).click();
-  for (const text of ['颗粒物概览', '空气质量观测表', '颗粒物字段', '颗粒物统计摘要', '城市站点对比', '标准统计']) await expect(page.getByText(text, { exact: true })).toBeVisible();
+  for (const text of ['颗粒物概览', '空气质量观测表', '颗粒物字段', '颗粒物统计摘要', '颗粒物统计范围与语义', '城市站点对比', '标准统计']) await expect(page.getByText(text, { exact: true })).toBeVisible();
   const forbidden = ['groundwater', '地下水', '腰站堡', 'yaozhanbao'];
   const dom = (await page.locator('body').innerText()) + await page.locator('html').evaluate(node => node.outerHTML);
   for (const value of forbidden) expect(dom.toLowerCase()).not.toContain(value.toLowerCase());

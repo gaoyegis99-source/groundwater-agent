@@ -25,6 +25,7 @@ def run(source: TableInput, parameters: dict[str, Any], output_dir: Path) -> dic
         grouped[group].append((moment, row))
     selected: list[dict[str, Any]] = []
     diagnostics: list[dict[str, Any]] = []
+    target_time = target.isoformat()
     for group in sorted(grouped, key=str):
         candidates = grouped[group]
         if selection == "exact":
@@ -37,20 +38,37 @@ def run(source: TableInput, parameters: dict[str, Any], output_dir: Path) -> dic
             chosen = min(candidates, key=lambda item: (abs(item[0] - target), item[0]))
         else:
             raise ValueError("SELECTION_UNSUPPORTED")
+        context = {
+            group_field: group,
+            "target_time": target_time,
+            "selected_time": chosen[0].isoformat() if chosen is not None else None,
+            "selection": selection,
+            "max_age_days": max_age,
+        }
         if chosen is None:
-            diagnostics.append({group_field: group, "status": "NO_MATCH", "age_days": None})
+            diagnostics.append({**context, "status": "NO_MATCH", "age_days": None})
             continue
         age = abs((chosen[0] - target).total_seconds()) / 86400
         if age > max_age:
-            diagnostics.append({group_field: group, "status": "MAX_AGE_EXCEEDED", "age_days": age})
+            diagnostics.append({**context, "status": "MAX_AGE_EXCEEDED", "age_days": age})
             continue
         selected.append(chosen[1])
-        diagnostics.append({group_field: group, "status": "SELECTED", "age_days": age})
+        diagnostics.append({**context, "status": "SELECTED", "age_days": age})
     outputs = {
         "diagnostics": write(diagnostics, output_dir / "snapshot-diagnostics.parquet"),
         "summary": {
             "kind": "value",
-            "value": {"groupCount": len(grouped), "selectedCount": len(selected)},
+            "value": {
+                "groupCount": len(grouped),
+                "selectedCount": len(selected),
+                "noMatchCount": sum(item["status"] == "NO_MATCH" for item in diagnostics),
+                "maxAgeExceededCount": sum(
+                    item["status"] == "MAX_AGE_EXCEEDED" for item in diagnostics
+                ),
+                "targetTime": target_time,
+                "selection": selection,
+                "maxAgeDays": max_age,
+            },
         },
     }
     if not selected:

@@ -1,0 +1,164 @@
+{
+  "schemaVersion": "workflow.v6",
+  "workflowId": "groundwater.kriging",
+  "version": "1.0.0",
+  "inputs": [
+    {
+      "name": "points",
+      "cardinality": "one",
+      "mediaTypes": [
+        "text/csv",
+        "application/json",
+        "application/vnd.apache.parquet",
+        "application/vnd.apache.arrow.file"
+      ],
+      "formats": [
+        "csv",
+        "json",
+        "parquet",
+        "arrow-ipc-file"
+      ]
+    }
+  ],
+  "parameters": [
+    "valueField",
+    "xField",
+    "yField",
+    "sourceCrs",
+    "targetCrs",
+    "pixelSize",
+    "extentMinX",
+    "extentMinY",
+    "extentMaxX",
+    "extentMaxY",
+    "krigingType",
+    "variogramModel",
+    "variogramRange",
+    "variogramSill",
+    "variogramNugget",
+    "variogramBinCount",
+    "neighborCount",
+    "minimumNeighbors",
+    "searchRadius",
+    "exact",
+    "idwPower",
+    "valueUnit"
+  ],
+  "nodes": [
+    {
+      "nodeId": "kriging",
+      "operatorId": "points.interpolate.kriging",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "points": {
+          "workflowInput": "points"
+        }
+      },
+      "parameters": {
+        "valueField": {
+          "workflowParameter": "valueField"
+        },
+        "xField": {
+          "workflowParameter": "xField"
+        },
+        "yField": {
+          "workflowParameter": "yField"
+        },
+        "sourceCrs": {
+          "workflowParameter": "sourceCrs"
+        },
+        "targetCrs": {
+          "workflowParameter": "targetCrs"
+        },
+        "pixelSize": {
+          "workflowParameter": "pixelSize"
+        },
+        "extentMinX": {
+          "workflowParameter": "extentMinX"
+        },
+        "extentMinY": {
+          "workflowParameter": "extentMinY"
+        },
+        "extentMaxX": {
+          "workflowParameter": "extentMaxX"
+        },
+        "extentMaxY": {
+          "workflowParameter": "extentMaxY"
+        },
+        "krigingType": {
+          "workflowParameter": "krigingType"
+        },
+        "variogramModel": {
+          "workflowParameter": "variogramModel"
+        },
+        "variogramRange": {
+          "workflowParameter": "variogramRange"
+        },
+        "variogramSill": {
+          "workflowParameter": "variogramSill"
+        },
+        "variogramNugget": {
+          "workflowParameter": "variogramNugget"
+        },
+        "variogramBinCount": {
+          "workflowParameter": "variogramBinCount"
+        },
+        "neighborCount": {
+          "workflowParameter": "neighborCount"
+        },
+        "minimumNeighbors": {
+          "workflowParameter": "minimumNeighbors"
+        },
+        "searchRadius": {
+          "workflowParameter": "searchRadius"
+        },
+        "exact": {
+          "workflowParameter": "exact"
+        },
+        "idwPower": {
+          "workflowParameter": "idwPower"
+        },
+        "valueUnit": {
+          "workflowParameter": "valueUnit"
+        }
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "name": "kriging-prediction",
+      "nodeOutput": {
+        "nodeId": "kriging",
+        "port": "prediction"
+      }
+    },
+    {
+      "name": "kriging-variance",
+      "nodeOutput": {
+        "nodeId": "kriging",
+        "port": "variance"
+      }
+    },
+    {
+      "name": "variogram-diagnostics",
+      "nodeOutput": {
+        "nodeId": "kriging",
+        "port": "variogramDiagnostics"
+      }
+    },
+    {
+      "name": "kriging-loo",
+      "nodeOutput": {
+        "nodeId": "kriging",
+        "port": "loo"
+      }
+    },
+    {
+      "name": "kriging-summary",
+      "nodeOutput": {
+        "nodeId": "kriging",
+        "port": "summary"
+      }
+    }
+  ]
+}

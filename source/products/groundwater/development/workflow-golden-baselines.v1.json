@@ -1,0 +1,8 @@
+{
+  "cases": {
+    "flow-field": "workflow-goldens/flow-field.json",
+    "monitoring-trend": "workflow-goldens/monitoring-trend.json",
+    "render-map": "workflow-goldens/render-map.json"
+  },
+  "schemaVersion": "workflow-golden-baselines.v1"
+}

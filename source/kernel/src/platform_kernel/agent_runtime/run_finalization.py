@@ -11,7 +11,10 @@ from ..errors import (
 )
 from .persistence import load_request_context
 from .models import (
+    AgentFinalV5,
     AgentRun,
+    ReplyPresentationV1,
+    ReplySectionV1,
     SubmittedReplyV6,
     normalize_reply_json,
 )
@@ -41,6 +44,164 @@ from .sdk_execution import (
 
 def usage_delta(usage: ExecutionUsage) -> UsageDelta:
     return UsageDelta(usage.input_tokens, usage.output_tokens, usage.total_tokens)
+
+
+def finalize_completed_execution(
+    deps: RunDependencies, run: AgentRun,
+) -> AgentRun:
+    """Finalize a normal execution using frozen actions and WorkflowRun facts."""
+    return _finalize_persisted_execution(
+        deps,
+        run,
+        include_case_disclaimer=False,
+        continuation_stop="EXECUTION_RESULT",
+    )
+
+
+def finalize_case_execution(deps: RunDependencies, run: AgentRun) -> AgentRun:
+    """Finalize a deterministic synthetic case with its required disclaimer."""
+    return _finalize_persisted_execution(
+        deps,
+        run,
+        include_case_disclaimer=True,
+        continuation_stop="KERNEL_CASE_FINALIZED",
+    )
+
+
+def _finalize_persisted_execution(
+    deps: RunDependencies,
+    run: AgentRun,
+    *,
+    include_case_disclaimer: bool,
+    continuation_stop: str,
+) -> AgentRun:
+    if any(
+        action.status in {"PENDING", "QUEUED", "RUNNING"}
+        for action in run.actions
+    ):
+        return run
+    if not run.actions:
+        raise ValueError("EXECUTION_ACTION_REQUIRED")
+
+    plans_by_revision = {plan.revision: plan for plan in run.plans}
+    plan_revisions = list(dict.fromkeys(
+        action.plan_revision for action in run.actions
+    ))
+    if any(revision not in plans_by_revision for revision in plan_revisions):
+        raise ValueError("EXECUTION_PLAN_REQUIRED")
+    plans = [plans_by_revision[revision] for revision in plan_revisions]
+    workflow_ids = list(dict.fromkeys(
+        action.workflow_run_id
+        for action in run.actions
+        if action.workflow_run_id is not None
+    ))
+    outputs = [
+        output for action in run.actions for output in action.remote_outputs
+    ]
+    input_identities = {
+        (
+            reference.service,
+            reference.dataset_id,
+            reference.version_id,
+            reference.semantic_id,
+            reference.object_id,
+            reference.checksum,
+        )
+        for action in run.actions
+        for reference in action.input_references.values()
+    }
+    succeeded = all(action.status == "COMPLETE" for action in run.actions)
+    goals = "；".join(f"“{plan.goal}”" for plan in plans)
+    case_disclaimer = ReplySectionV1(
+        markdown="这是开发调试案例；模拟或历史标准化数据不代表当前真实业务状况。",
+        source_indexes=[],
+    )
+
+    if succeeded:
+        conclusion = (
+            f"已完成“{plans[0].goal}”，发布了 {len(outputs)} 项可核验成果。"
+            if len(plans) == 1
+            else f"已完成 {len(plans)} 项执行计划，发布了 {len(outputs)} 项可核验成果。"
+        )
+        names = list(dict.fromkeys(
+            output.output_name for output in outputs if output.output_name
+        ))
+        highlighted = "、".join(names[:6])
+        output_text = "主要成果包括：" + (
+            highlighted + ("等。" if len(names) > 6 else "。")
+            if highlighted
+            else "已发布结果。"
+        )
+        if len(plans) > 1:
+            output_text = f"执行目标：{goals}。{output_text}"
+        details = [
+            ReplySectionV1(
+                markdown=f"已使用 {len(input_identities)} 项冻结输入，参数采用本次确认时冻结的快照；执行前后均保持相同数据身份。",
+                source_indexes=[],
+            ),
+            ReplySectionV1(markdown=output_text, source_indexes=[]),
+        ]
+        error = None
+        status = "COMPLETE"
+    else:
+        codes = list(dict.fromkeys(
+            action.error or "WORKFLOW_FAILED"
+            for action in run.actions
+            if action.status == "FAILED"
+        ))
+        if not codes:
+            codes = ["WORKFLOW_FAILED"]
+        conclusion = (
+            f"“{plans[0].goal}”执行未完成。"
+            if len(plans) == 1
+            else f"{len(plans)} 项执行计划未全部完成。"
+        )
+        details = [ReplySectionV1(
+            markdown="最新执行错误：" + "、".join(codes), source_indexes=[]
+        )]
+        if len(plans) > 1:
+            details.append(ReplySectionV1(
+                markdown=f"执行目标：{goals}。", source_indexes=[]
+            ))
+        error = codes[0]
+        status = "FAILED"
+    if include_case_disclaimer:
+        details.append(case_disclaimer)
+
+    execution_summary = ReplySectionV1(
+        markdown=f"执行状态：{('成功' if succeeded else '失败')}；WorkflowRun {len(workflow_ids)} 项；成果 {len(outputs)} 项。",
+        source_indexes=[],
+    )
+    output = AgentFinalV5(
+        message="\n\n".join([
+            conclusion,
+            *(item.markdown for item in details),
+            execution_summary.markdown,
+        ]),
+        presentation=ReplyPresentationV1(
+            conclusion=ReplySectionV1(
+                markdown=conclusion, source_indexes=[]
+            ),
+            details=details,
+            execution_summary=execution_summary,
+            unresolved_items=[],
+            sources=[],
+        ),
+        workflow_runs=workflow_ids,
+        unresolved_items=[],
+        interaction_options=[],
+    )
+    finish_run(
+        deps.database,
+        run,
+        agent_projection=deps.agent_projection,
+        status=status,
+        output=output,
+        usage=UsageDelta(0, 0, 0),
+        error=error,
+        continuation_stop=continuation_stop,
+    )
+    return get_run(deps.database, run.agent_run_id)
 
 
 def raise_execution_failure(

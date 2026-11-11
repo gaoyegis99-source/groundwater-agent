@@ -1,7 +1,7 @@
 {
   "schemaVersion": "workflow.v6",
   "workflowId": "groundwater.monitoring-coverage",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "inputs": [
     {
       "name": "wells",
@@ -15,7 +15,8 @@
     }
   ],
   "parameters": [
-    "outputFormat"
+    "outputFormat",
+    "pointCoverageMode"
   ],
   "nodes": [
     {
@@ -27,7 +28,11 @@
           "workflowInput": "wells"
         }
       },
-      "parameters": {}
+      "parameters": {
+        "pointCoverageMode": {
+          "workflowParameter": "pointCoverageMode"
+        }
+      }
     },
     {
       "nodeId": "hull",
@@ -68,6 +73,13 @@
       "nodeOutput": {
         "nodeId": "geojson",
         "port": "data"
+      }
+    },
+    {
+      "name": "coverage-summary",
+      "nodeOutput": {
+        "nodeId": "dissolve",
+        "port": "summary"
       }
     }
   ]

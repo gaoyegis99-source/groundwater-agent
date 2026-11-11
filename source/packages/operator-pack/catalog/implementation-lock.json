@@ -1,8 +1,8 @@
 {
   "operators": {
     "cartography.render-png@1.0.0": {
-      "implementationRevision": "sha256:19666de82d2e1207081806cbe3e38761c90882b46ea1eed34b4bf8f346befe71",
-      "sourceDigest": "sha256:840f1540cc433f705b6903d95e041ea003358e006ffc449c1a4f0ef0c29c4737",
+      "implementationRevision": "sha256:fe5332f10b2d175d26729dba60b7f2b21043d9eb4222d309fd5e7053e20d593e",
+      "sourceDigest": "sha256:4610637ac8d160c9d2ee998322e96a21c0b2c16c129b61d6cc188052f4c23f9b",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -24,8 +24,8 @@
       ]
     },
     "crs.reproject@1.0.0": {
-      "implementationRevision": "sha256:e8f2d5e00d32a55b4b97c4af5ba43ec7d5a95fe9152d4f96cda4bc83a57f3fa7",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:66d44757a99899072017a75fbc0c3dbd500b369ae8c9c4df3c97e87873bb84c0",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -46,8 +46,8 @@
       ]
     },
     "data.convert@1.0.0": {
-      "implementationRevision": "sha256:4c1d632e67c0ed5ab6d789644395855e2619828a9f61c8a9127a7511cb5cca60",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:c9b6024507e2fdd0fc50fef8956e89e0c96dbefb1a75a6c13fdbcc1903de5d36",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -68,8 +68,8 @@
       ]
     },
     "data.inspect@1.0.0": {
-      "implementationRevision": "sha256:464a471bff1151f163f7b285ed91d7e9ed510f2ec3e0bc2c459b55f2a4b3825f",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:46baec2804f5765fbd185d370b6dc85d4f73f67a1d3624586f39a9d102b8b927",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -90,8 +90,8 @@
       ]
     },
     "document.chunk@1.0.0": {
-      "implementationRevision": "sha256:2deb06e8f76ba74f0ed1f463bdc1e205862ac0ab30af4c874a092e54ed76afc0",
-      "sourceDigest": "sha256:138c82cc560038106e71eb32fbde07bb88cddf3151ee2c81e9f45f3b68280e9c",
+      "implementationRevision": "sha256:701b29c3710ec1bb4d27eeab417503b7c48551217ed6bf56a57d24569abf7aee",
+      "sourceDigest": "sha256:707f9807012912ddf6f3525fe10b9c88d6f9d571d66ea075c0837ee0fb11ab63",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -113,8 +113,8 @@
       ]
     },
     "document.text_extract@1.0.0": {
-      "implementationRevision": "sha256:0c4b82506366a60bb891fb48c69983c7c772f2474add8a4de00d63f123e7bd7a",
-      "sourceDigest": "sha256:63a89dbc9107e31bfbe2d3ba91a9d080441132dce5ef4f865c1f177d94c23102",
+      "implementationRevision": "sha256:22760c78f6673ddce17dd64028515877b54e44642430a3001c740d36506c18e7",
+      "sourceDigest": "sha256:534be6d429635a436c069011963ec3ae93dfbe51be6912b3fe0b4b588a477ed6",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -137,8 +137,8 @@
       ]
     },
     "geometry.repair@1.0.0": {
-      "implementationRevision": "sha256:b9dfa616d306c9ea2837c8c449f1494ca3a7dc856fbcc1bf248b2916ccfe2cd7",
-      "sourceDigest": "sha256:9a321b576741d1290d8dfd2a1504954da6bc262e66778d3a579e0c13f078c690",
+      "implementationRevision": "sha256:b5522544faff5ea58e33e7dda9145126a82d7e0dc1f2db6219bb20a14a5ae64e",
+      "sourceDigest": "sha256:94b2f6719d0ccb06e209599120aea793945cdc633672f65656f65bd3ee35dd27",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/expressions.py",
@@ -153,8 +153,8 @@
       ]
     },
     "geometry.validate@1.0.0": {
-      "implementationRevision": "sha256:dd61ff4881b3d95c0c455fe16c877770eb0d659bc6c2b4d07f83e8425ebdf3ed",
-      "sourceDigest": "sha256:9a321b576741d1290d8dfd2a1504954da6bc262e66778d3a579e0c13f078c690",
+      "implementationRevision": "sha256:914a0383e0179bc425d9d2e65a8dc418c016f43e9add022a1d131b4c19652a61",
+      "sourceDigest": "sha256:94b2f6719d0ccb06e209599120aea793945cdc633672f65656f65bd3ee35dd27",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/expressions.py",
@@ -169,8 +169,8 @@
       ]
     },
     "groundwater.darcy_velocity@1.0.0": {
-      "implementationRevision": "sha256:f5501ed4c6051a7f90ce2adfbe636370f53af007bdc26b9dcbdd8e8e86cbdc25",
-      "sourceDigest": "sha256:c471142d9733395f7390c8258be768362d503be1e8da45d0b0540b2ab00b8db3",
+      "implementationRevision": "sha256:4e4bf46228bd175dc0db3e54cd8080f8b0eb15a3b159751c95477cd5354588e9",
+      "sourceDigest": "sha256:4d336b4dfa2c3f8936132bf5fa18f9be82f220a3bc80d869cb9fa22cd3daf60a",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -193,9 +193,33 @@
         "src/moperators/static_implementations.py"
       ]
     },
+    "groundwater.drastic.evaluate@1.0.0": {
+      "implementationRevision": "sha256:fba8b5a03a8da71f1f234a563f765ccf13f77f7fbe629b09cc7137fdbd9bf210",
+      "sourceDigest": "sha256:cf7b989cffc6252e15cf9c2a3186a4c4143916663a2eac4b10201a53d239f35c",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/drastic.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/groundwater.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
     "groundwater.drawdown.calculate@1.0.0": {
-      "implementationRevision": "sha256:5d3088b59ea925f9c2fd61c5ec0e56920bbeb56f62590cfbc26274483ade8fc6",
-      "sourceDigest": "sha256:27e8557c5a9ae74921caaadfb5ba15b0dac390bec25972d63a2cef954f5e4a51",
+      "implementationRevision": "sha256:cc5858fd7e088f0519b63736da6800344ef45dba1cc24ed20c2890e96da464e8",
+      "sourceDigest": "sha256:23fbb797dd6cd1add61bbc6e0ddd6373441428cb0d4fd0fd8b8e26cff5c2cc2c",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -217,8 +241,8 @@
       ]
     },
     "groundwater.head.calculate@1.0.0": {
-      "implementationRevision": "sha256:b87b360cdd52ad56d249379d80d172c5d1bed4b355f6d44c0fbe8ef2216b212c",
-      "sourceDigest": "sha256:e9d369fe1eb3b9816654a39158c001ffd24b733990796867719b62d74bb3f332",
+      "implementationRevision": "sha256:4af23db3ae3dff4a63826b8ac542a614c5df7824e137ef634538069979317c51",
+      "sourceDigest": "sha256:66b29c1f37404222718dc3113baed722ed276f855e6a1bfd0598ee1cc662a747",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -241,8 +265,8 @@
       ]
     },
     "groundwater.hydraulic_gradient@1.0.0": {
-      "implementationRevision": "sha256:1de544e274524fbe222e89df729c8b0ba1acce35662c7d4abde3cec0f9770224",
-      "sourceDigest": "sha256:30a2be5f811f1a2485438ac048e81647e10ab109522b29d99bca1d2f040a703e",
+      "implementationRevision": "sha256:938684cabd6ddc05d7cef9cf902617bc80238f56c670ac34f31056f26ab11ccc",
+      "sourceDigest": "sha256:912d8c15a990e9e10045063ae038ea1a45d2b0cb5c926bb7888e18b1ddf06879",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -266,96 +290,96 @@
       ]
     },
     "groundwater.porous.agri_invert@1.0.0": {
-      "implementationRevision": "sha256:fade4173150651c3e95ff02642109d2d696bc601f1a1e32887147b0cdf64c4ae",
-      "sourceDigest": "sha256:de8d986d700de9ac206bd344fc5fc7f7c9249148e99bda2ea15ec1a959086cf7",
+      "implementationRevision": "sha256:16a18b8a461d46ed9bb9b1c94dfb44d02db6c401022115f5f12c23656817f87a",
+      "sourceDigest": "sha256:c16e89420f5b2d1330cab3ac8338862dd47bf2adecce45d681647cb680c9b7e1",
       "sourceFiles": [
         "src/moperators/catalog.py",
         "src/moperators/static_implementations.py"
       ]
     },
     "groundwater.porous.flow_transport_simulate@1.0.0": {
-      "implementationRevision": "sha256:9a3c264a56c4268afeaf0bdad6041569aa4ea5c47e1f1904565b154dd01ed217",
-      "sourceDigest": "sha256:de8d986d700de9ac206bd344fc5fc7f7c9249148e99bda2ea15ec1a959086cf7",
+      "implementationRevision": "sha256:a5257198581909a18488270aa0634cda1323f369874ea57a9028890e6559fbfc",
+      "sourceDigest": "sha256:c16e89420f5b2d1330cab3ac8338862dd47bf2adecce45d681647cb680c9b7e1",
       "sourceFiles": [
         "src/moperators/catalog.py",
         "src/moperators/static_implementations.py"
       ]
     },
     "groundwater.porous.inversion_sample@1.0.0": {
-      "implementationRevision": "sha256:3ecf9280f6aae916bba5eeff398fda671a38727a5d0f0759ecec58a362ef03b8",
-      "sourceDigest": "sha256:de8d986d700de9ac206bd344fc5fc7f7c9249148e99bda2ea15ec1a959086cf7",
+      "implementationRevision": "sha256:8a5857192f6ade98c45964817cc7c41d7ec1e819405c4719fb632405409a6eca",
+      "sourceDigest": "sha256:c16e89420f5b2d1330cab3ac8338862dd47bf2adecce45d681647cb680c9b7e1",
       "sourceFiles": [
         "src/moperators/catalog.py",
         "src/moperators/static_implementations.py"
       ]
     },
     "groundwater.porous.inversion_train@1.0.0": {
-      "implementationRevision": "sha256:c7fe5adff5b339065c124512c9392a46a9ee87ac0027891d9a146f341f53a5ff",
-      "sourceDigest": "sha256:de8d986d700de9ac206bd344fc5fc7f7c9249148e99bda2ea15ec1a959086cf7",
+      "implementationRevision": "sha256:b73495eef3bff3066750da44fd8663ed43a633085769c6d743fb60e91f56322e",
+      "sourceDigest": "sha256:c16e89420f5b2d1330cab3ac8338862dd47bf2adecce45d681647cb680c9b7e1",
       "sourceFiles": [
         "src/moperators/catalog.py",
         "src/moperators/static_implementations.py"
       ]
     },
     "groundwater.porous.map_prepare@1.0.0": {
-      "implementationRevision": "sha256:120bed3b74b85821d410d760c320206c0633f33abdf0ca3d48b01f511de50b55",
-      "sourceDigest": "sha256:de8d986d700de9ac206bd344fc5fc7f7c9249148e99bda2ea15ec1a959086cf7",
+      "implementationRevision": "sha256:d13d09db0f2db6951f381a9de6a06e95898b472f7220f74ae959e8763bf0e2ca",
+      "sourceDigest": "sha256:c16e89420f5b2d1330cab3ac8338862dd47bf2adecce45d681647cb680c9b7e1",
       "sourceFiles": [
         "src/moperators/catalog.py",
         "src/moperators/static_implementations.py"
       ]
     },
     "groundwater.porous.model_compile@1.0.0": {
-      "implementationRevision": "sha256:f19445dcb0b9de9686e09061da0a0ba5b5496eb2e8acede27605f276bbca504f",
-      "sourceDigest": "sha256:de8d986d700de9ac206bd344fc5fc7f7c9249148e99bda2ea15ec1a959086cf7",
+      "implementationRevision": "sha256:8dac8a89204f9c8acb2f3b96ed6969b44af58572f3cf2c3e278bd498231f8611",
+      "sourceDigest": "sha256:c16e89420f5b2d1330cab3ac8338862dd47bf2adecce45d681647cb680c9b7e1",
       "sourceFiles": [
         "src/moperators/catalog.py",
         "src/moperators/static_implementations.py"
       ]
     },
     "groundwater.porous.pest_calibrate@1.0.0": {
-      "implementationRevision": "sha256:a9e8d4613a6404de1e201fe903ba663e36ffa974f5b4a04c0044695effc0f8ae",
-      "sourceDigest": "sha256:de8d986d700de9ac206bd344fc5fc7f7c9249148e99bda2ea15ec1a959086cf7",
+      "implementationRevision": "sha256:21969c46bcdb722a5478dbc24e2a18367688250c2c17440bc7050904cf3d4ca1",
+      "sourceDigest": "sha256:c16e89420f5b2d1330cab3ac8338862dd47bf2adecce45d681647cb680c9b7e1",
       "sourceFiles": [
         "src/moperators/catalog.py",
         "src/moperators/static_implementations.py"
       ]
     },
     "groundwater.porous.result_analyze@1.0.0": {
-      "implementationRevision": "sha256:0f6a1bdd801b47ef6eaa8441159fac5ccae6b011cb4d5f2f7fac78af72f1709a",
-      "sourceDigest": "sha256:de8d986d700de9ac206bd344fc5fc7f7c9249148e99bda2ea15ec1a959086cf7",
+      "implementationRevision": "sha256:db222c913b03577f4d991e798e820cdd5b1c49e55d77fae2f9d06c6908971bbc",
+      "sourceDigest": "sha256:c16e89420f5b2d1330cab3ac8338862dd47bf2adecce45d681647cb680c9b7e1",
       "sourceFiles": [
         "src/moperators/catalog.py",
         "src/moperators/static_implementations.py"
       ]
     },
     "groundwater.porous.result_render@1.0.0": {
-      "implementationRevision": "sha256:f91db706151279417ae582fd114fb0aee83f03b937ccbaeeb5a5b59d59226b66",
-      "sourceDigest": "sha256:de8d986d700de9ac206bd344fc5fc7f7c9249148e99bda2ea15ec1a959086cf7",
+      "implementationRevision": "sha256:b4948bd93083248743579ac5d5e4c981402d45c98e6333c41069c4319e824186",
+      "sourceDigest": "sha256:c16e89420f5b2d1330cab3ac8338862dd47bf2adecce45d681647cb680c9b7e1",
       "sourceFiles": [
         "src/moperators/catalog.py",
         "src/moperators/static_implementations.py"
       ]
     },
     "groundwater.porous.scenario_compare@1.0.0": {
-      "implementationRevision": "sha256:9f963c084165a31dca9c0851036bf1b8fba7ac08ed537069dc760cad8825eb17",
-      "sourceDigest": "sha256:de8d986d700de9ac206bd344fc5fc7f7c9249148e99bda2ea15ec1a959086cf7",
+      "implementationRevision": "sha256:142c31f1adf2041278a8326cb7c57a01490d8926f0ceefd54d0c1ff460e489f9",
+      "sourceDigest": "sha256:c16e89420f5b2d1330cab3ac8338862dd47bf2adecce45d681647cb680c9b7e1",
       "sourceFiles": [
         "src/moperators/catalog.py",
         "src/moperators/static_implementations.py"
       ]
     },
     "groundwater.source_sustainability.evaluate@1.0.0": {
-      "implementationRevision": "sha256:c962e7f2a271af682f9db9fd0e4080a29ce3baca17d4d420fa5b10e1070517be",
-      "sourceDigest": "sha256:de8d986d700de9ac206bd344fc5fc7f7c9249148e99bda2ea15ec1a959086cf7",
+      "implementationRevision": "sha256:5cc15ca737a501a9966fa033107a67cefa7159b26f107260b24e0501ec3705b7",
+      "sourceDigest": "sha256:c16e89420f5b2d1330cab3ac8338862dd47bf2adecce45d681647cb680c9b7e1",
       "sourceFiles": [
         "src/moperators/catalog.py",
         "src/moperators/static_implementations.py"
       ]
     },
     "hydrology.basins@1.0.0": {
-      "implementationRevision": "sha256:02a35c1354f2d10ce7f0aa5c477befaa85c31afe63aee959406f371336e248f7",
-      "sourceDigest": "sha256:9e1a946a36ee42e823b3acc0ef66e5df4d056e95b00a09e5ab7571e0e9d32d07",
+      "implementationRevision": "sha256:738d1fc2bcddfd599ab816e5d097ea3a76da40d7732fad76c3611de27a6ffcf3",
+      "sourceDigest": "sha256:57b6f7ac86393eadb20410665db6aaabd9efac1147b1d40c71fd2ecf56a64fce",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -377,8 +401,8 @@
       ]
     },
     "hydrology.fill_sinks@1.0.0": {
-      "implementationRevision": "sha256:e9cc12d6f53bdd779729abf6c69b27a09375f36f0db6eeca383682cc8e2768e1",
-      "sourceDigest": "sha256:098d97f5036d338b92d6e865a689cdb69f407feaadfb8987e358c8f5cc6fbd5f",
+      "implementationRevision": "sha256:9f0d3ad8082b98683eb58632fe2814f2a8651a950908721366d0e85c17aaf4e7",
+      "sourceDigest": "sha256:41e120028d5b8840fac7e89c48c143494abfa291ce1650bac5c1b64bab15116b",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/expressions.py",
@@ -394,8 +418,8 @@
       ]
     },
     "hydrology.flow_accumulation@1.0.0": {
-      "implementationRevision": "sha256:7ea8e080fdef96d3494ad426995376b0fdde9dc9dc566d0369edda16466424ef",
-      "sourceDigest": "sha256:9e1a946a36ee42e823b3acc0ef66e5df4d056e95b00a09e5ab7571e0e9d32d07",
+      "implementationRevision": "sha256:6a5a8474001898d51cb1d12ed7f46bba96e1005ca67ad96ea86a8afa633ec890",
+      "sourceDigest": "sha256:57b6f7ac86393eadb20410665db6aaabd9efac1147b1d40c71fd2ecf56a64fce",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -417,8 +441,8 @@
       ]
     },
     "hydrology.flow_direction@1.0.0": {
-      "implementationRevision": "sha256:e6f475fb0692cee3302caec13ba28f05f3e0bbbd2f3e65e32ecea6e67e4a5be0",
-      "sourceDigest": "sha256:9e1a946a36ee42e823b3acc0ef66e5df4d056e95b00a09e5ab7571e0e9d32d07",
+      "implementationRevision": "sha256:890587bda15991d3a86da14d3461cfe6c4edc42a9604ed985efd9f8f93a62132",
+      "sourceDigest": "sha256:57b6f7ac86393eadb20410665db6aaabd9efac1147b1d40c71fd2ecf56a64fce",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -440,8 +464,8 @@
       ]
     },
     "hydrology.snap_pour_points@1.0.0": {
-      "implementationRevision": "sha256:7453d10cf5268296cd6d56845c8881497045917d12781b4dd5b66f2d3081606f",
-      "sourceDigest": "sha256:9e1a946a36ee42e823b3acc0ef66e5df4d056e95b00a09e5ab7571e0e9d32d07",
+      "implementationRevision": "sha256:c299102e864c8a99f02fe51d955d35a1c245edc10075dcb079796d8fed4b449b",
+      "sourceDigest": "sha256:57b6f7ac86393eadb20410665db6aaabd9efac1147b1d40c71fd2ecf56a64fce",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -463,8 +487,8 @@
       ]
     },
     "hydrology.stream_extract@1.0.0": {
-      "implementationRevision": "sha256:6f672652c13cb002c2bc31ce89b0cfda54cc1abb29608f0bb5f73bf6735f45ff",
-      "sourceDigest": "sha256:9e1a946a36ee42e823b3acc0ef66e5df4d056e95b00a09e5ab7571e0e9d32d07",
+      "implementationRevision": "sha256:5fa3fabb7b8d35c85c65ccd1d54751a84a1a61803304099f2d6890ce7c839f65",
+      "sourceDigest": "sha256:57b6f7ac86393eadb20410665db6aaabd9efac1147b1d40c71fd2ecf56a64fce",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -486,8 +510,8 @@
       ]
     },
     "hydrology.stream_order@1.0.0": {
-      "implementationRevision": "sha256:e72749b6001c9a15637090a76b18fba4bbf09b17cc7cd4088939c094ca4e7722",
-      "sourceDigest": "sha256:9e1a946a36ee42e823b3acc0ef66e5df4d056e95b00a09e5ab7571e0e9d32d07",
+      "implementationRevision": "sha256:60629bd2596aafae83cb5584a342244e2f31afc2c9fe67568d8e7e6282c4983e",
+      "sourceDigest": "sha256:57b6f7ac86393eadb20410665db6aaabd9efac1147b1d40c71fd2ecf56a64fce",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -509,8 +533,8 @@
       ]
     },
     "hydrology.watershed@1.0.0": {
-      "implementationRevision": "sha256:b8e8c27476882e96edb0c4ebd0f9ffa312c2f9038d61307fc6c5f855b5c0266a",
-      "sourceDigest": "sha256:9e1a946a36ee42e823b3acc0ef66e5df4d056e95b00a09e5ab7571e0e9d32d07",
+      "implementationRevision": "sha256:808cfb7697eab27bec1ecc288c9100db62662c9ac0759463a67ce182bd9b7915",
+      "sourceDigest": "sha256:57b6f7ac86393eadb20410665db6aaabd9efac1147b1d40c71fd2ecf56a64fce",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -532,8 +556,8 @@
       ]
     },
     "ml.gru_attention_finetune@1.0.0": {
-      "implementationRevision": "sha256:8425549f1ab4463712ab5b61752fb7958e758bd867123265383a4105d046ce14",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:57ae3dde9c4a7cb1f889d39fc0cf006e687b36343773597a0cf9d69ecfeed010",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -554,8 +578,8 @@
       ]
     },
     "ml.gru_attention_predict@1.0.0": {
-      "implementationRevision": "sha256:61ca9ce9d33261a77049892e1287619c42422dc0afe2640350ca805b67a919b6",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:d40cd517cf106adaae70c587966243439fe13eba9888391390357c99f37c4754",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -576,8 +600,8 @@
       ]
     },
     "ml.gru_attention_pretrain@1.0.0": {
-      "implementationRevision": "sha256:ddb95810ae0369e64e03bf0accd302cfa2b685d79c2ed3580f3e48d7af34c396",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:ecbe482463d1609489de69066156c35144f53e9fcd3c5df531937496ce23d796",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -598,8 +622,8 @@
       ]
     },
     "points.interpolate.idw@1.0.0": {
-      "implementationRevision": "sha256:ddafb047da4da6d38ad12f9c6227e4834f7570fc4d40b43de1e5a6d604b8a42d",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:a3b4903ba6bed6a7b1074eb9bc69fa39d67bf2dacdbfe35d99347e3f9297fe6d",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -619,9 +643,32 @@
         "src/moperators/static_implementations.py"
       ]
     },
+    "points.interpolate.kriging@1.0.0": {
+      "implementationRevision": "sha256:93b012484e2facdb00a6f8eb361d7f8c25e22b966de72af1222e6787ae2210e7",
+      "sourceDigest": "sha256:2b816a0fa23cc567f535809884a77073c2bda4f9b30b379f6bd1d28c0c0b1663",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/kriging.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
     "preprocessing.standard_scaler_fit@1.0.0": {
-      "implementationRevision": "sha256:41eb33b7e97532566a3c5efcd636fb95af35ee3778ef45662ca5951810282e28",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:5846db717c572028b1cc3d2f6b990443d930302e8d451eb039cde2b2199cd487",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -642,8 +689,8 @@
       ]
     },
     "preprocessing.standard_scaler_inverse@1.0.0": {
-      "implementationRevision": "sha256:ab28e853149a6c087e70e81add49789f4534fc2710b2c87e2695241f49b617e7",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:39ce2773c08af30587263be475e4143972005dc1c5486348afd67fff2f8b72a9",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -664,8 +711,8 @@
       ]
     },
     "preprocessing.standard_scaler_transform@1.0.0": {
-      "implementationRevision": "sha256:1e245ef941e58566ed985da6d070e24f33e88e4696ae83ed97de5e18205c622e",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:063e0a5e8940471f95f80f777fd065d39dbe43277a777b4ed547737b2ba53882",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -686,8 +733,8 @@
       ]
     },
     "raster.algebra@1.0.0": {
-      "implementationRevision": "sha256:43768194b695d4a09d64ef69da22f66a63923446c8729136965c07ff8dedb25a",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:fa859073b17012e8b1ee92c89efe8108da2317c9241d57e1423d47d964b8bbf4",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -708,8 +755,8 @@
       ]
     },
     "raster.aspect@1.0.0": {
-      "implementationRevision": "sha256:256371d83015db2b515a5e3cca493dccd6a135d73cab0e8e9738f57b7beeaca6",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:004927c86408a614e7bfac6e9f28d7504373a02c618d761f9eee6d00a431c4cc",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -730,8 +777,8 @@
       ]
     },
     "raster.cell_statistics@1.0.0": {
-      "implementationRevision": "sha256:8c0a24e16502899980d1e0ac78a4b79bb0fde978308d9a118f4efd072e8e811f",
-      "sourceDigest": "sha256:912fb77cbda95802d74d6ba1dc59bd11b1dd2bf775600f0f92b2e1711366ae4f",
+      "implementationRevision": "sha256:4ea9b2b13ab49df0fc3aac06ebfe0473fc2e9d523f701a57ea7c067d4fa67abd",
+      "sourceDigest": "sha256:6e99ff771fcef5cbb24a0e632a67fe094d85c1564a3c20d50d2e6be035689d47",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -753,8 +800,8 @@
       ]
     },
     "raster.clip@1.0.0": {
-      "implementationRevision": "sha256:03b293ca768592586880a4501a3cf07fcafcb9b48eb062a536d8306e693637c5",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:c77872749575a1eb82e573fc1a3e272138aa0bb34ff2b2154fde610b25993f92",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -775,8 +822,8 @@
       ]
     },
     "raster.contour@1.0.0": {
-      "implementationRevision": "sha256:45d6de7de837301a6a9443ab59117a65c1ac46c515ed87c2610c80c9f349b0b4",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:edaa474c51c6d3f96c410873c3fa98f9af56b1bb97e896970bb8e43463e9db14",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -797,8 +844,8 @@
       ]
     },
     "raster.fill_nodata@1.0.0": {
-      "implementationRevision": "sha256:1e723afdac40a0e05c8fdf4f9c587cdd03b2daf568e0da6c9b0db29311699443",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:2355648822a81016d83f387153ff38c9c0cc034e3bccd508268167b6fd1eadd8",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -819,8 +866,8 @@
       ]
     },
     "raster.hillshade@1.0.0": {
-      "implementationRevision": "sha256:2455eaf0758902e0d562c5094355bff9a08a0716333340d5afd8ef9e3c62eb40",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:3063c987d9bbbdf1fd7f9bd338fcb26dd1bd241a89df3d48f0307166df77e4e2",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -841,8 +888,8 @@
       ]
     },
     "raster.mosaic@1.0.0": {
-      "implementationRevision": "sha256:1c1baf4325e7618d876ecd118757c61452c67752bb9105e46ba0d97cfba4f778",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:9d549e9e1cbe167fd149a07b4b2b8606feea20063cfbf5f5ed3ef3ac6fab75c8",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -863,8 +910,8 @@
       ]
     },
     "raster.polygonize@1.0.0": {
-      "implementationRevision": "sha256:41847e36d4839caec5435337b7f734b2d7ef50d64ccf791ee4b5ece1a7599fa6",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:089e5fd2ba0e90c5886af953f7cb307440f9f9040f8a83cf79b4f9b07269b725",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -885,8 +932,8 @@
       ]
     },
     "raster.proximity@1.0.0": {
-      "implementationRevision": "sha256:fab296e14ae46707511d1dc3a8fc91baba6afb44ede17ebd78775cbb84a4b8ca",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:cbe4f8aaf188cf5a9badc9f65aae5bb6cdb91733f75ba9d15ef8d8bf8fbefddd",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -907,8 +954,8 @@
       ]
     },
     "raster.rasterize@1.0.0": {
-      "implementationRevision": "sha256:bba28084cd2035b1c71eeefb8112a286ddf01f87f00ca99ecf6bc711f0ad7015",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:1b0073022b7c2e1509455662e875c47653444a59f3a5c73561061995b09c7c99",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -929,8 +976,8 @@
       ]
     },
     "raster.reclassify@1.0.0": {
-      "implementationRevision": "sha256:866e3dbb385e82c0205a9a481be95bd4582a48f6380a7bf56d9ac4a6778c359f",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:c6656b00c8aef13b404e12d9b866faa4741d3f423feb2c0d9b2a11f82107305f",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -951,8 +998,8 @@
       ]
     },
     "raster.reproject@1.0.0": {
-      "implementationRevision": "sha256:c3926036a407a445da7a8b412fae4bf395f406b2e6475b7d07944f5e870c8329",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:8db6d8f53b31e5e3684f8ce16c1f83f60a145270c1c2775964bd62f365ce57e2",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -973,8 +1020,8 @@
       ]
     },
     "raster.resample@1.0.0": {
-      "implementationRevision": "sha256:ad8669d9a84d7af655b09934bcbbc2c6688352c5b1855f56245bab1ca10e279b",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:67bcd8ad103d3f418c7118bd698c2b5f3cf5e61777c09a1dd95486c7e573a9e9",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -995,8 +1042,8 @@
       ]
     },
     "raster.sample_points@1.0.0": {
-      "implementationRevision": "sha256:cf5d0c6afa10fe2802744ae1c405c11ff6515e3c5120c69d929af7b07a60065e",
-      "sourceDigest": "sha256:4b74cda66848a861bd040db4416a1eec4b0ee315b22843fa86f0ed9cf43fee47",
+      "implementationRevision": "sha256:b033369f458a1ea2c5ca626bfdda0b92618ed2287a3b544cab5e874cd20c34b7",
+      "sourceDigest": "sha256:11dc090ce4d0455ec532bc0b8a6c9eac70c0f8ac2d0b797b293df657067252f4",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -1018,8 +1065,8 @@
       ]
     },
     "raster.slope@1.0.0": {
-      "implementationRevision": "sha256:c82fbeb48197f7e63c4cf7788235c68d8443590473efbe2522ff546cba585444",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:b863e3e62b168aa63504ef499c98f932109f1dbddc9824a9b8a38bf5a4c05f35",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -1040,8 +1087,8 @@
       ]
     },
     "raster.statistics@1.0.0": {
-      "implementationRevision": "sha256:5c9e80d90f5d2c266c9c05fc96ec35349d73d6845c13bcce21e649c189f39d2a",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:11eee0154ab9bdd08bd25ae04af52f9029732516566a6657b5c5219841d2563b",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -1062,8 +1109,8 @@
       ]
     },
     "raster.window@1.0.0": {
-      "implementationRevision": "sha256:a32578dfdabb601ee20b63470dcd686dadbc2bd27c2cc595c45cea6a0498105c",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:9f8dc816695456d19eb735b9166f5a3f9241415a62cca07adfe4848af822b456",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -1084,8 +1131,8 @@
       ]
     },
     "raster.zonal_statistics@1.0.0": {
-      "implementationRevision": "sha256:2af408da577753dead211a32e08fc4e3ce3f3870fbe81ebdfea988bfc621e657",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:b18abf6310d203e1706b90fd2c85d1757d1c3affa185bc5623e670d281023152",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -1106,8 +1153,8 @@
       ]
     },
     "spreadsheet.extract_table@1.0.0": {
-      "implementationRevision": "sha256:1783e2fe00b0cd521c12993a0c1dd148ef6fc9151eb976ab2558e09a8cc9dec2",
-      "sourceDigest": "sha256:34f3c481f949f063fb9de3ee3cda8646d55171b94bb2af4a9eb95ed8b6ca5f8e",
+      "implementationRevision": "sha256:34c6e9b4f68452a5dde179e4206e612778e94e634ba51386188be446053b0a76",
+      "sourceDigest": "sha256:9319879af755992211274673549544b72bda2ea3840f6397b752b0b72b2f2041",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -1129,8 +1176,8 @@
       ]
     },
     "statistics.describe@1.0.0": {
-      "implementationRevision": "sha256:caf8b2a92c87b17002195a5cda7d84c45bc06cea66bc0d2f5561ab1ca36618f5",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:8194d69b00a03979babc377229293f7b9f38a7d7006e463bbc7bfecf39f60be4",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -1151,8 +1198,8 @@
       ]
     },
     "statistics.linear_trend@1.0.0": {
-      "implementationRevision": "sha256:0816e6915326b24ffe866b7f41b9c08d69ec13e6e71c7db51c121b57fa06eb3a",
-      "sourceDigest": "sha256:3ea7752189e0846998e24e598c49dde105e68af91efec87e08af9d2e470265af",
+      "implementationRevision": "sha256:ccfce628620a27f40130f241285b3d1e410a19e650e7abddd4d5329fd45258b9",
+      "sourceDigest": "sha256:bfe01c3e6d1d585ae60afc0ea5de6b8b657dcbdd5aa096f7e6462e1b518e3e06",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -1174,8 +1221,8 @@
       ]
     },
     "statistics.mad_outliers@1.0.0": {
-      "implementationRevision": "sha256:e5296cebc605e2cafa73257f8186be7d0780cee895559db2130dd7024fb889ef",
-      "sourceDigest": "sha256:991aa83d8b087728ef7fec37caeeb6ad32d9ec7e6c916559ec4c935e11a31470",
+      "implementationRevision": "sha256:f3d94cc181741ada68603c92d4368ce3a3a526c69d072dd8f0b7b5ff439a71d5",
+      "sourceDigest": "sha256:b6cc7b63cf81f0fa0baafad366878b2a3b6f23e4bddbee4408e25a72bc103088",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -1198,8 +1245,8 @@
       ]
     },
     "statistics.mann_kendall@1.0.0": {
-      "implementationRevision": "sha256:2df85e6bb1ed4f23c7fc26792a0269bbe66fcb0c0678153ca048c6d408214496",
-      "sourceDigest": "sha256:3ea7752189e0846998e24e598c49dde105e68af91efec87e08af9d2e470265af",
+      "implementationRevision": "sha256:cab2faeb1959d53d923e9f4fd0bef4bec24d525779e7754d57a0d3f20d767c38",
+      "sourceDigest": "sha256:bfe01c3e6d1d585ae60afc0ea5de6b8b657dcbdd5aa096f7e6462e1b518e3e06",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -1221,8 +1268,8 @@
       ]
     },
     "statistics.pettitt_change_point@1.0.0": {
-      "implementationRevision": "sha256:c0dfb998719718f50b07de48212617719bff02ef11371f4ae38eb1f8aa402c8f",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:0444c268ae74d7b48db19c77599c92e898d5266bd03b77fe1850cebf27469e71",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -1243,8 +1290,8 @@
       ]
     },
     "statistics.regression_metrics@1.0.0": {
-      "implementationRevision": "sha256:1d2224528326877af8002054898c2c378d0883cc89d36a4efb8f57c2ae0f8979",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:532b45b838859414f9efa051b033c74df5e3393d321f125da1276ffd016dd105",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -1265,8 +1312,8 @@
       ]
     },
     "statistics.seasonal_mann_kendall@1.0.0": {
-      "implementationRevision": "sha256:a7125727fa329ae6c290a7371caaa0cfd29e888dc753438287a9912a5a35893f",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:8894e469d3b55a71ead4f8a87d7fa6259bd591ab919540df29807e74d7fe599c",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -1286,9 +1333,32 @@
         "src/moperators/static_implementations.py"
       ]
     },
+    "table.classify@1.0.0": {
+      "implementationRevision": "sha256:27cb3627af32ff571ce467461eb39880c993799de6b8cda80296f09bf68bac9f",
+      "sourceDigest": "sha256:e6a25bba38b1e40d33168687a45450d11b1d742fd95ea503dd610010467ca026",
+      "sourceFiles": [
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_classify.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
     "table.deduplicate@1.0.0": {
-      "implementationRevision": "sha256:3240ad9f44da2512ca6f6cb340659a741d3344b0a1f0a56c76a53df8087bfaac",
-      "sourceDigest": "sha256:11fa113bad2c526f0478d1df386b697f232a087fa022c8a10b9eeaed1a7bdce3",
+      "implementationRevision": "sha256:3e3f31704e62cb7028687362bada53d518eaf39488754adb0c5a6438bdac0727",
+      "sourceDigest": "sha256:fd65841f6848c6bdbbfb1902cce30ad63d82fd56af3311347f4f63bf6d95bfb1",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -1310,8 +1380,8 @@
       ]
     },
     "table.filter@1.0.0": {
-      "implementationRevision": "sha256:2c82acbfb13db1a7f08ac8521909e60a8fce67ef2730dc4a9a3509436bd60773",
-      "sourceDigest": "sha256:8a808348dd64c121b512a24502c4e1c01cc885ca66ca33fa79ad28499ab17b01",
+      "implementationRevision": "sha256:bfa139d5f28e9f41d35d101894b7488066821d8779f07f2f48414a7358eb9c90",
+      "sourceDigest": "sha256:aade425bccf9c96256217852956e5310ba8277d1577c607b06db4dc755be1397",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -1333,8 +1403,8 @@
       ]
     },
     "table.join@1.0.0": {
-      "implementationRevision": "sha256:dbddc04ebf6fefb06a044918dc9f84888d2c173e4f6fcde67ace1358038f5fd0",
-      "sourceDigest": "sha256:eb92936446bbf8b2c785a385a3960364a601fd6231ba57494019c49de35bda2e",
+      "implementationRevision": "sha256:68b719501681409f5e5784152195d49f95820014f824ce9c186d9b228f1de9ec",
+      "sourceDigest": "sha256:ef08e8b71010adf89d1353c685c94f6dcc1dbc1fb14e0a9ce7e43f1ceed2a288",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -1356,8 +1426,8 @@
       ]
     },
     "table.profile@1.0.0": {
-      "implementationRevision": "sha256:9b9ccde2fd05387191bb33341c14b1bd87c2c168b70577db097eb48b3c7bfb9c",
-      "sourceDigest": "sha256:bf356d68896bc77c25ee1e3f237ddb1d23b814c60cc9ccf21e86c9b78b4eb685",
+      "implementationRevision": "sha256:16884fc0b9716b25e27d099936dff625dd7842e62c462963867bc7c829f586a6",
+      "sourceDigest": "sha256:00ab312916f16f826b97e8011274ac76921e3b35d4f9d60b8afacd31536d92a9",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -1379,8 +1449,8 @@
       ]
     },
     "table.project@1.0.0": {
-      "implementationRevision": "sha256:dc1268e7a149eacd63569b403dbf82ba62854f646acbb277b73a3109e8a2a17a",
-      "sourceDigest": "sha256:589e74c97c979b9ef4a485143be9c543b52577f76745ab2dbfb61571d6e41216",
+      "implementationRevision": "sha256:b8cd312d55a75a5973c149e16a335001c452f1f0c07c19025cf7c45e941cbfa8",
+      "sourceDigest": "sha256:ec50c995978c3c2518f7b9b1916156e3029fb4b3056c0f108e79b429f468bca3",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -1402,8 +1472,8 @@
       ]
     },
     "table.sort@1.0.0": {
-      "implementationRevision": "sha256:1364f6cd71017578cea0443756ad1ecfa96b9733b9408a3cc68be660f5ad3938",
-      "sourceDigest": "sha256:2014c53948d64cc4e7eaf95a5fdbb737c57fc3cc00c0f4033236802995f0dee7",
+      "implementationRevision": "sha256:c592596aa34812af3d154f9873c6d6489a5240bb58987ae520eda115a2219e85",
+      "sourceDigest": "sha256:d4f95b00b99676545cfca33e4e3529efa65f1d9f773f99f299a56ebad1089fb0",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -1425,8 +1495,8 @@
       ]
     },
     "table.timeseries_unpivot@1.0.0": {
-      "implementationRevision": "sha256:6eee7aeea26b223839e854051fb6875cc6e46c5493977c0a677ee9ddf7074cb4",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:f948c5d17d2a34eb360791323e7d616c652cbefeb38dc656a695883360afb22c",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -1447,8 +1517,8 @@
       ]
     },
     "table.validate@1.0.0": {
-      "implementationRevision": "sha256:c2f96bbccd2845d53d1452fed5e3188000c5bbd2abecbff92be5d2e57ee7438c",
-      "sourceDigest": "sha256:6b32c34ed9d0ef1727a3ac274e2db19ac2e7216196bae7187ef9c396e86059de",
+      "implementationRevision": "sha256:c2f91220b138eee94bc6c774da2b8cecc64c19602b680c497e41f1a993d2e4bd",
+      "sourceDigest": "sha256:29286deddaa4de59e6e755acaaf5d1c69d316e1c8055e0b496c23c6b07198e9b",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -1470,8 +1540,8 @@
       ]
     },
     "timeseries.aggregate@1.0.0": {
-      "implementationRevision": "sha256:1140ad13f6d618c18426e3cf5a439851d7c7e1aec6a14db2f470a206fe626b3f",
-      "sourceDigest": "sha256:2ebe8c0abfb352bfbe6d4d2fbcd147b5dbd6308760464824e012fd5fd9e957c4",
+      "implementationRevision": "sha256:2db65abc0a85115ef171270176107e16ff8274da9706ce8067af38bbb8bb01ad",
+      "sourceDigest": "sha256:096c74857ba1ac55d371d8ba02778e14b89d4f0e27ccdda80599ecb34db51718",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -1494,8 +1564,8 @@
       ]
     },
     "timeseries.autocorrelation@1.0.0": {
-      "implementationRevision": "sha256:13cb14261dc31695e4b495202d44a029994ff525e66b3d28150e48664e77c587",
-      "sourceDigest": "sha256:23ee147e2ed4f26b38ec0884514b3439519af4ffe29b9fd3b39e9cd2e3b47ae1",
+      "implementationRevision": "sha256:242e548127b934938d87001109043535af95777b65c7ed76202080d12bf8d558",
+      "sourceDigest": "sha256:f550030fe1ca34882e046e60e5f78ba3862d47c068057e1f0ca17e460e60e23c",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -1517,8 +1587,8 @@
       ]
     },
     "timeseries.baseline_anomaly@1.0.0": {
-      "implementationRevision": "sha256:7cc4267a23f44c5b2f98911af070a896c2b4f21ee8b6ade024eb16dab91c068b",
-      "sourceDigest": "sha256:8a48f7027d0c633ddc7590eddb55c655b33f67312f398aaefa0a5503722ab251",
+      "implementationRevision": "sha256:e3c591ef041b0d7194eacd14b961e22456e6677fd4245d98824366074c731f6a",
+      "sourceDigest": "sha256:784aebd3ef81b663d568be83f48a0d1890c310e060728a5daa826cd3f0f6d389",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -1540,8 +1610,8 @@
       ]
     },
     "timeseries.chronological_split@1.0.0": {
-      "implementationRevision": "sha256:dae82a5d40843792096b32b1599d40ee2e3dd39270bf96df4a1d1d12b6fccb50",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:a88e88c756df9eb2ce41ff4f49f4f5bf2d0897ba1fe845cb312f337638901e53",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -1562,8 +1632,8 @@
       ]
     },
     "timeseries.completeness@1.0.0": {
-      "implementationRevision": "sha256:6ac9e97ca18a5c9f34382f56909d880cadb455579026885e719d6ab84a1ef4fc",
-      "sourceDigest": "sha256:ac2abbea260486ed72f7c6f8f0d856aa4625879bafaec73b1d83ba6b57a52aa0",
+      "implementationRevision": "sha256:debb6cfe61b4912fbc82395c3aa97b8cef8d393267059420cfeef2e4f36912c4",
+      "sourceDigest": "sha256:dc2ef0226e355a070f3126c957954e3c7dde3ff04d942ccd36ea532b3f6d8648",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -1586,8 +1656,8 @@
       ]
     },
     "timeseries.cross_correlation@1.0.0": {
-      "implementationRevision": "sha256:a4452b7823a473869c098cc206ad5d2da097da557b193ef4cda13cb68d94f732",
-      "sourceDigest": "sha256:a8a589b64a1bccb594aec881985c174518e139df24dd0ad95292b69613d47125",
+      "implementationRevision": "sha256:4b61511267f93a9ed161fc9af9ad59889450465a87dbd615f6b9df8d0ad8c858",
+      "sourceDigest": "sha256:9a6540b19e5270998ed3003f9081409a3da0c011c6a02e15064009c62ee9ccea",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -1609,8 +1679,8 @@
       ]
     },
     "timeseries.empirical_percentile@1.0.0": {
-      "implementationRevision": "sha256:b6ff4c744bc4ac57fcf5a58b23fbf3f50c783905953f3a3b9cc9ec0d950f83f0",
-      "sourceDigest": "sha256:3af9078696d77f1b6db32a85cf60713077352b6c24ef170c7ad1fb3e3b3ed8cd",
+      "implementationRevision": "sha256:0efc34cb0771e4bbc02d414808ea3c204c5609c60518976d59f5330d7227a298",
+      "sourceDigest": "sha256:575fa4bf26d8dfdba390f34ee8d5585caa9549b82686355e95f565de50c454f0",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/advanced_timeseries_common.py",
@@ -1633,8 +1703,8 @@
       ]
     },
     "timeseries.gap_runs@1.0.0": {
-      "implementationRevision": "sha256:e309335e763f21b8d5df9980366f4a5b2dd59c382857461a3c65e39136638d30",
-      "sourceDigest": "sha256:c1cf8b9378d7717d701cb38e6c1a88517a90822743d5a64b2f164356c7008c3d",
+      "implementationRevision": "sha256:ef61b5225712a8b9ed7299b5824399f7f9618c64506c039712487659f0889b29",
+      "sourceDigest": "sha256:f4009b4a391b62b566e13246c8258307bbbb6bef34c6eb13766cbd9975046ce5",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -1656,8 +1726,8 @@
       ]
     },
     "timeseries.lag_change@1.0.0": {
-      "implementationRevision": "sha256:3d34e366384608576990104c8abb50480c47ff6826ec0cb65ada0281cdd27d7e",
-      "sourceDigest": "sha256:2eb9a06ee46b01ff35ee470a26dbc83201ec9a2e7dcbe8c0ef705f90b582bebe",
+      "implementationRevision": "sha256:066bc265660279139cd0a24e69ab4702b712ceba1f41c7414bf5e35be035023f",
+      "sourceDigest": "sha256:f67aab771c7413031ef0ff6a1a021cdb3e8ec4f0d47576d6b7a20eba47654154",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/advanced_timeseries_common.py",
@@ -1680,8 +1750,8 @@
       ]
     },
     "timeseries.period_change@1.0.0": {
-      "implementationRevision": "sha256:a6e7f118df664a52421715d07c13eaccc84fa4aea73bca417e002b1d1d54ddde",
-      "sourceDigest": "sha256:b6ff6ed93593715b813e2e5afff9f0255cc5567116189a6fa3f2a84f21185b1c",
+      "implementationRevision": "sha256:0d0cee4176ff3e30d7cfc6c6ad665e761d5469ea49958505bacd46bf9028c99e",
+      "sourceDigest": "sha256:ba0da6b23009b021ef651b50c31a67041578af8262546d68e50f7a6d29ba748f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -1704,8 +1774,8 @@
       ]
     },
     "timeseries.rate_of_change@1.0.0": {
-      "implementationRevision": "sha256:511f3c76c8022d79dbc0164c774271e2e0ab9731671b134731d4f1c6435e7107",
-      "sourceDigest": "sha256:c98914a083f0bf5362f262f62b42e92bed0d4a70bba4c9098776a28bc2488240",
+      "implementationRevision": "sha256:9f5d02833d7139f1b705b490c1fb4c25a8bcdcf139c0301de09cb72d7f4cd4bb",
+      "sourceDigest": "sha256:b1e4c1edf2711026cffda7e29b3c7e39b461cf9a59a6ca83ba7e84c9664b3596",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/advanced_timeseries_common.py",
@@ -1728,8 +1798,8 @@
       ]
     },
     "timeseries.regularize@1.0.0": {
-      "implementationRevision": "sha256:d3cbbd90f87162022f33c73e3d571a7a33273d8098f8168184efb2977d43a0bc",
-      "sourceDigest": "sha256:292a6f9cb60d057aff8eda6805684d48019e4ecb9370200199f7157c108b2ab2",
+      "implementationRevision": "sha256:b854cbadfd2019a60949db26e0b0c86c6f305e1f5d8d9883c7950354c78a77a4",
+      "sourceDigest": "sha256:c2c86a2f5ec2b494ffa3914d4314f29aa29ac594265d22b685dcb8b668eae2e5",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/advanced_timeseries_common.py",
@@ -1752,8 +1822,8 @@
       ]
     },
     "timeseries.rolling_statistics@1.0.0": {
-      "implementationRevision": "sha256:40a5da2d2e05d892a579a2557ac7ce1dbf098d7509af5515e574cb46b2ff561c",
-      "sourceDigest": "sha256:ad777fc3abcbb4dbd31589f29d61bdd0244ab793d481644bf889642cbf86d383",
+      "implementationRevision": "sha256:7720ab409055d1c40fd4b84e8450110ebf2222c34859396742706d06a147c68c",
+      "sourceDigest": "sha256:1753f46f4643adaba48afad1d0fa62e09ebc38b342fa9eba94e9c0bf2c6cccf0",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -1775,8 +1845,8 @@
       ]
     },
     "timeseries.seasonal_anomaly@1.0.0": {
-      "implementationRevision": "sha256:f50926a2da1293c6893c75fb21f43f8d0b28ffca6f37e687191e50245801d94e",
-      "sourceDigest": "sha256:7b2bc272bcf627c86bb0725d7e17463dc6175da02f94336b2874ca8d0aaad8ee",
+      "implementationRevision": "sha256:76396de01bb9103890382d3cc895cc0d50aa0c2208c5c5cf6f830e2f1844de46",
+      "sourceDigest": "sha256:bcb12831fc76f200b3073a2d4159ee33661edb1f482c137ca7f4da249a146a0f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/advanced_timeseries_common.py",
@@ -1799,8 +1869,8 @@
       ]
     },
     "timeseries.snapshot@1.0.0": {
-      "implementationRevision": "sha256:f9881c4f0665b024528d7e4445826248ce20a741b076576ae2595898df905dc6",
-      "sourceDigest": "sha256:af84601a1fb35fb7a53654250dde0e9a70dd525b46f8b009cf8207f16d01b54e",
+      "implementationRevision": "sha256:6ea0bd13db83781604ba981f0bd5e792ba8de33c315a7d93b629e6676dae05be",
+      "sourceDigest": "sha256:344c66c4f2abc5a72b0a35ec4dc34687c0d226dc038ffe498d500de2b2ac6d3e",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -1823,8 +1893,8 @@
       ]
     },
     "timeseries.supervised_windows@1.0.0": {
-      "implementationRevision": "sha256:7211a0f2805507c000a093426aa2b6e8423d0d6554afe477cff8ab5ed2fa2e20",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:55c639c4def2db97d32f170f2cc644456e34b333f97c23b61d2f5db503a31ae5",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -1845,8 +1915,8 @@
       ]
     },
     "timeseries.threshold_events@1.0.0": {
-      "implementationRevision": "sha256:1abcfa3e1110f7afa68bf4ba13416fa85daf3935c78f5ae70b8d063c1e2ce269",
-      "sourceDigest": "sha256:f062ccce48593f1e70f5598542ad951236f73468ef3eea799811c6c400bd2197",
+      "implementationRevision": "sha256:6e8ab4eb5e18da2a9157194b85fe2653a7d35644e86ade401d9ae6b88163df1e",
+      "sourceDigest": "sha256:169f46a305d4f281eb2cb1f580e6aeae956d5a396ffc3c4f371d2fe96f064092",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/advanced_timeseries_common.py",
@@ -1869,8 +1939,8 @@
       ]
     },
     "vector.buffer@1.0.0": {
-      "implementationRevision": "sha256:7c63c9507a0f7c47ef43d791b8982259ff2da2c27012b4ef73150af060c314a4",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:3526049b923538c98d2d91cdc1cdf2dbf9261dde792a48a6a02f9789601ebb58",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -1891,8 +1961,8 @@
       ]
     },
     "vector.centroid@1.0.0": {
-      "implementationRevision": "sha256:f441f4fe59dd0a9e69622ad2f82187795a0fae17bb0d50dfa595d4354ee0abb3",
-      "sourceDigest": "sha256:9a321b576741d1290d8dfd2a1504954da6bc262e66778d3a579e0c13f078c690",
+      "implementationRevision": "sha256:80f94ed14612c15a2287b2db87d9ddee8e1218a42425aa139294177c3fd4ccae",
+      "sourceDigest": "sha256:94b2f6719d0ccb06e209599120aea793945cdc633672f65656f65bd3ee35dd27",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/expressions.py",
@@ -1907,8 +1977,8 @@
       ]
     },
     "vector.clip@1.0.0": {
-      "implementationRevision": "sha256:7b3c174007e60d26fa52637b2956603dd68b5402706c39dffc3c2840fb01d879",
-      "sourceDigest": "sha256:9a321b576741d1290d8dfd2a1504954da6bc262e66778d3a579e0c13f078c690",
+      "implementationRevision": "sha256:084b23353beac9773cdd91d69919b787747db8d99021428982b0682bed1f3c11",
+      "sourceDigest": "sha256:94b2f6719d0ccb06e209599120aea793945cdc633672f65656f65bd3ee35dd27",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/expressions.py",
@@ -1923,8 +1993,8 @@
       ]
     },
     "vector.convex_hull@1.0.0": {
-      "implementationRevision": "sha256:b6b96bf9d7df6aad0287b67681884fc366b5e2f85432d9cd9473603c3e9f5842",
-      "sourceDigest": "sha256:9a321b576741d1290d8dfd2a1504954da6bc262e66778d3a579e0c13f078c690",
+      "implementationRevision": "sha256:46f9e5a00fb45d809257e35c160227faa4d679a5c32fbddf4c3476e6f0d33f20",
+      "sourceDigest": "sha256:94b2f6719d0ccb06e209599120aea793945cdc633672f65656f65bd3ee35dd27",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/expressions.py",
@@ -1939,8 +2009,8 @@
       ]
     },
     "vector.dissolve@1.0.0": {
-      "implementationRevision": "sha256:2e836bf8f4def70b52ace14de360322ee8b5bfc933e892a2fe984720224d9e30",
-      "sourceDigest": "sha256:9a321b576741d1290d8dfd2a1504954da6bc262e66778d3a579e0c13f078c690",
+      "implementationRevision": "sha256:6bb2ee5b88698f36c7766fe97f78ffaa7710247b3faf5b53157985a7a1b23230",
+      "sourceDigest": "sha256:94b2f6719d0ccb06e209599120aea793945cdc633672f65656f65bd3ee35dd27",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/expressions.py",
@@ -1955,8 +2025,8 @@
       ]
     },
     "vector.envelope@1.0.0": {
-      "implementationRevision": "sha256:64576a4bbd4da66c745109c961703f0096d73e22562aa31e6a132d4ccaf1f64e",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:bb0c54652a475be74ad09856cd9021930dee3156350284aa8c6176ab732b90a4",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -1977,8 +2047,8 @@
       ]
     },
     "vector.extract_by_extent@1.0.0": {
-      "implementationRevision": "sha256:10b3d5221ebf627b7baf5aa5d740796128e905ed2710113e9c81a45ca632aff4",
-      "sourceDigest": "sha256:9a321b576741d1290d8dfd2a1504954da6bc262e66778d3a579e0c13f078c690",
+      "implementationRevision": "sha256:8ca15c94310922f8f5d768636cda55d303579761e28b35320c825fe63a602461",
+      "sourceDigest": "sha256:94b2f6719d0ccb06e209599120aea793945cdc633672f65656f65bd3ee35dd27",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/expressions.py",
@@ -1993,8 +2063,8 @@
       ]
     },
     "vector.from_xy@1.0.0": {
-      "implementationRevision": "sha256:21e35d6b9500a98afc91f5134be2ddd6353ae8f037598f85eb5f3111b70742b6",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:7d6b082268af81d9e59d24cd86d04992ee873f9082dd4c7bfaf7e9f1cff7250f",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",
@@ -2015,8 +2085,8 @@
       ]
     },
     "vector.merge@1.0.0": {
-      "implementationRevision": "sha256:a9134b3ccd39fbbe3b6ad96f2065422de2d6bf5cda0f83164e107af2aee51005",
-      "sourceDigest": "sha256:9a321b576741d1290d8dfd2a1504954da6bc262e66778d3a579e0c13f078c690",
+      "implementationRevision": "sha256:28b30bf9e3cd4055127159733b12131fe75f7e757a8a6ac882ec8464a0b01d59",
+      "sourceDigest": "sha256:94b2f6719d0ccb06e209599120aea793945cdc633672f65656f65bd3ee35dd27",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/expressions.py",
@@ -2031,8 +2101,8 @@
       ]
     },
     "vector.multipart_to_singleparts@1.0.0": {
-      "implementationRevision": "sha256:ce49d1f7196dc0cc331483467e570c9114e63fde9ac5916d679db6e98c31e093",
-      "sourceDigest": "sha256:9a321b576741d1290d8dfd2a1504954da6bc262e66778d3a579e0c13f078c690",
+      "implementationRevision": "sha256:d662a4f3859c8bcc04b098d5272843e46af3cac7baeaddebf721a4b6859484e9",
+      "sourceDigest": "sha256:94b2f6719d0ccb06e209599120aea793945cdc633672f65656f65bd3ee35dd27",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/expressions.py",
@@ -2047,8 +2117,8 @@
       ]
     },
     "vector.nearest_join@1.0.0": {
-      "implementationRevision": "sha256:e4b0bd8aa55071afa7ceddccab9b747801e91b29c91d067c4542d5d3258ce455",
-      "sourceDigest": "sha256:9a321b576741d1290d8dfd2a1504954da6bc262e66778d3a579e0c13f078c690",
+      "implementationRevision": "sha256:ce0484f141223ad588140042a8b756afcfacca37094bd205f696ab79a721a039",
+      "sourceDigest": "sha256:94b2f6719d0ccb06e209599120aea793945cdc633672f65656f65bd3ee35dd27",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/expressions.py",
@@ -2063,8 +2133,8 @@
       ]
     },
     "vector.overlay@1.0.0": {
-      "implementationRevision": "sha256:c0ee78246e75418eaa805758a4684be70d60e4e7224cddc5e80ccd47a86b0514",
-      "sourceDigest": "sha256:9a321b576741d1290d8dfd2a1504954da6bc262e66778d3a579e0c13f078c690",
+      "implementationRevision": "sha256:589073fbd94efb6164f4726d9b228d9dbad41cc21c184ab195d638dee93708f7",
+      "sourceDigest": "sha256:94b2f6719d0ccb06e209599120aea793945cdc633672f65656f65bd3ee35dd27",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/expressions.py",
@@ -2079,8 +2149,8 @@
       ]
     },
     "vector.point_on_surface@1.0.0": {
-      "implementationRevision": "sha256:cb7ef2b3e9a0318d57f1a36a8e989be0a0e46d781c1495bd504016b10d2bfeef",
-      "sourceDigest": "sha256:9a321b576741d1290d8dfd2a1504954da6bc262e66778d3a579e0c13f078c690",
+      "implementationRevision": "sha256:95afebe9d63833007cac38edddf2b21001269fdec404ee2ed3f6d6f0fc7984b9",
+      "sourceDigest": "sha256:94b2f6719d0ccb06e209599120aea793945cdc633672f65656f65bd3ee35dd27",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/expressions.py",
@@ -2095,8 +2165,8 @@
       ]
     },
     "vector.simplify@1.0.0": {
-      "implementationRevision": "sha256:fcb540804a7ad71a87a7b37d880662efde66613501f5a8bceb6a89a31aeda6f1",
-      "sourceDigest": "sha256:9a321b576741d1290d8dfd2a1504954da6bc262e66778d3a579e0c13f078c690",
+      "implementationRevision": "sha256:6f23a379d2d1adfe49bab3df4b1cb93333515ff4cf9c5bb4dd8fc59c1e0b6cbf",
+      "sourceDigest": "sha256:94b2f6719d0ccb06e209599120aea793945cdc633672f65656f65bd3ee35dd27",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/expressions.py",
@@ -2111,8 +2181,8 @@
       ]
     },
     "vector.spatial_join@1.0.0": {
-      "implementationRevision": "sha256:f1a079e693bdd97787a82ba9fd0bf1e24a1616226daa0d7589e8f4c861b5428c",
-      "sourceDigest": "sha256:9a321b576741d1290d8dfd2a1504954da6bc262e66778d3a579e0c13f078c690",
+      "implementationRevision": "sha256:82f4d7bf368bc2250dbb215f56a3a71ea6461932f69c807ffc4c83bb0d3f2be5",
+      "sourceDigest": "sha256:94b2f6719d0ccb06e209599120aea793945cdc633672f65656f65bd3ee35dd27",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/expressions.py",
@@ -2127,8 +2197,8 @@
       ]
     },
     "vector.tag_membership@1.0.0": {
-      "implementationRevision": "sha256:df45df365fd37b68189a6117553c55e80055fb6d82c825bb8cf0bad6788b2076",
-      "sourceDigest": "sha256:c4e2b5253de7ed3b6de223ebe93f3bd69e3c7a0c643f466773c672b189c9fc30",
+      "implementationRevision": "sha256:d4a12c16bf6c97df94f4e252c73f86167ba10cb867c9f3b3176472beded1dbc3",
+      "sourceDigest": "sha256:52d6f652fbe687dc5cc1b3b0e3544641b3db1f74a06b395abb00ccb67c740a8f",
       "sourceFiles": [
         "src/moperators/fixture_inspection.py",
         "src/moperators/operators/analysis.py",

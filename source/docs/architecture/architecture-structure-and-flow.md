@@ -7,7 +7,7 @@
 产品清单选择 Groundwater 领域包、Data、Knowledge Next 和 Executor 模块。Assembler 在部署前校验 Schema、引用、算子实现 revision、端口与格式、Worker runtime、输出声明和服务绑定，并生成：
 
 - `kernel-config.json`：Kernel Config v8，包含只读工具、模型投影、固定执行案例和草稿算子目录。
-- `executor-config.json`：Executor Config v8，包含七个 Executable Model v4 的完整 Workflow v6 DAG 与部署级远程服务绑定。
+- `executor-config.json`：Executor Config v8，包含当前装配的 Executable Model v6、完整 Workflow v6 DAG 与部署级远程服务绑定。
 - `compose.json`、`nginx.conf` 和 `assembly-lock.json`。
 
 执行相关版本必须分别表述为 **Executor Module v10、Executor Config v8、Executor SQLite v9**。三者是模块合同、生成配置和运行存储的不同身份。
@@ -71,8 +71,8 @@ Router 和 Agent 的协议/schema 修复各阶段最多一次；网络、HTTP、
 
 | 路径 | 内容 |
 | --- | --- |
-| [`products/groundwater/`](../../products/groundwater/) | Product Manifest v7、Product UI v1 与公开路由。 |
-| [`domains/groundwater/`](../../domains/groundwater/) | Groundwater 领域包、六个模型、Workflow 和知识源。 |
+| [`products/groundwater/`](../../products/groundwater/) | Product Manifest v8、Product UI v1 与公开路由。 |
+| [`domains/groundwater/`](../../domains/groundwater/) | Groundwater 领域包、模型、Workflow 和知识源；精确当前集合见[自动生成的功能清单](../development/current-capability-inventory.md)。 |
 | [`platform/assembler/`](../../platform/assembler/) | 静态校验、版本冻结与配置生成。 |
 | [`kernel/`](../../kernel/) | Router、Agent、确认、WorkflowRun、Provider 记录和公开 Kernel API。 |
 | [`services/data/`](../../services/data/) | Data PostgreSQL schema v8、owner + PRIVATE/PROJECT、质量/模型治理、outbox、只读预览与对象库。 |

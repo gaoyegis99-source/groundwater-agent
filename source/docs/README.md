@@ -6,7 +6,7 @@
 
 | 任务 | 当前入口 |
 | --- | --- |
-| 本地运行 | [仓库 README](../README.md)、[执行手册](operations/execution-playbook.md) |
+| 本地运行与当前能力 | [仓库 README](../README.md)、[执行手册](operations/execution-playbook.md)、[交互式增量开发](development/interactive-incremental-mode.md)、[Vibecoding 快速参考](development/vibecoding-quick-reference.md)、[当前功能清单](development/current-capability-inventory.md) |
 | 架构与服务边界 | [架构总览](architecture/architecture-overview.md)、[结构与运行流](architecture/architecture-structure-and-flow.md)、[协议与存储](reference/contracts.md) |
 | HTTP、身份和权限 | [HTTP API](capabilities/http-api.md)、[WebUI](capabilities/webui.md) |
 | 科研验收与归档 | [科研验收](operations/acceptance-gates.md)、[地下水研究证据链](capabilities/groundwater-research-evidence.md) |

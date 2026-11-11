@@ -1,7 +1,7 @@
 {
   "schemaVersion": "workflow.v6",
   "workflowId": "groundwater.summary",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "inputs": [
     {
       "name": "data",
@@ -24,7 +24,9 @@
   ],
   "parameters": [
     "axis",
-    "column"
+    "column",
+    "groupField",
+    "unit"
   ],
   "nodes": [
     {
@@ -42,6 +44,12 @@
         },
         "column": {
           "workflowParameter": "column"
+        },
+        "groupField": {
+          "workflowParameter": "groupField"
+        },
+        "unit": {
+          "workflowParameter": "unit"
         }
       }
     }
@@ -52,6 +60,13 @@
       "nodeOutput": {
         "nodeId": "describe",
         "port": "summary"
+      }
+    },
+    {
+      "name": "summary-details",
+      "nodeOutput": {
+        "nodeId": "describe",
+        "port": "details"
       }
     }
   ]
