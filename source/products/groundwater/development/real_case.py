@@ -31,6 +31,11 @@ from scripts.development.workflow_golden import (
     _workflow_outputs,
     topological_node_ids,
 )
+from scripts.development.product_selection import (
+    ProductSelectionRefusal,
+    load_selected_product,
+    resolve_selected_workflow,
+)
 from scripts.maintenance.project_environment import EnvironmentRefusal, docker_arguments
 
 
@@ -231,7 +236,7 @@ def _gdal(
 def _load_manifest(path: Path) -> dict[str, Any]:
     manifest = _read_object(path, "REAL_CASE_MANIFEST_INVALID")
     if (
-        manifest.get("schemaVersion") != "real-data-cases.v1"
+        manifest.get("schemaVersion") != "real-data-cases.v2"
         or not isinstance(manifest.get("sourceGroups"), dict)
         or not isinstance(manifest.get("cases"), dict)
         or not manifest["cases"]
@@ -462,18 +467,14 @@ def _execute_case(
     catalog_directory: Path,
     case_id: str,
     case: dict[str, Any],
+    workflow: dict[str, Any],
+    workflow_path: Path,
     staging_root: Path,
     published_root: Path,
     python: Path,
     runtime_evidence: dict[str, Any],
     task_command: Sequence[str],
 ) -> dict[str, Any]:
-    workflow_path = _inside(
-        repository_root, case.get("workflow"), "REAL_CASE_WORKFLOW_INVALID"
-    )
-    if not workflow_path.is_file() or workflow_path.is_symlink():
-        raise RealCaseRefusal("REAL_CASE_WORKFLOW_INVALID")
-    workflow = _read_object(workflow_path, "REAL_CASE_WORKFLOW_INVALID")
     try:
         catalog = OperatorCatalog.load(catalog_directory)
         compiled = compile_workflow(workflow, _catalog_projection(catalog))
@@ -593,6 +594,7 @@ def _execute_case(
 def run_real_cases(
     *,
     repository_root: Path,
+    product_manifest_path: Path,
     catalog_directory: Path,
     manifest_path: Path,
     case_id: str,
@@ -624,6 +626,12 @@ def run_real_cases(
     ):
         raise RealCaseRefusal("REAL_CASE_OUTPUT_INVALID")
     manifest = _load_manifest(Path(manifest_path))
+    try:
+        selected_product = load_selected_product(
+            repository_root, Path(product_manifest_path)
+        )
+    except ProductSelectionRefusal as error:
+        raise RealCaseRefusal(error.code, error.detail) from error
     selected = _select_cases(manifest, case_id)
     source_files, source_evidence = _resolve_sources(
         manifest, selected, source_root, Path(source_cache)
@@ -660,11 +668,19 @@ def run_real_cases(
         validations: dict[str, Any] = {}
         for selected_id in selected:
             case = manifest["cases"][selected_id]
+            try:
+                workflow, workflow_path = resolve_selected_workflow(
+                    selected_product, case.get("workflowId")
+                )
+            except ProductSelectionRefusal as error:
+                raise RealCaseRefusal(error.code, error.detail) from error
             result = _execute_case(
                 repository_root=repository_root,
                 catalog_directory=Path(catalog_directory),
                 case_id=selected_id,
                 case=case,
+                workflow=workflow,
+                workflow_path=workflow_path,
                 staging_root=staging,
                 published_root=run_directory,
                 python=python,

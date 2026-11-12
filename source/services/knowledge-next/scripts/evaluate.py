@@ -9,6 +9,7 @@ import time
 
 from platform_knowledge_client import KnowledgeClient, models
 from platform_knowledge_next.package_conversion import convert_domain_package
+from scripts.development.product_selection import load_selected_product_by_id
 
 
 def as_dict(value):
@@ -76,7 +77,8 @@ def main():
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[3]
     fixture = args.fixture or root / "tests/fixtures/groundwater-knowledge-retrieval.v1.json"
-    domain = args.domain or root / "domains/groundwater/5.0.0/knowledge"
+    selected = load_selected_product_by_id(root, "groundwater")
+    domain = args.domain or selected.domain.root / "knowledge"
     cases = json.loads(fixture.read_text())["cases"]
     assert len(cases) == 297
     model_ids = {

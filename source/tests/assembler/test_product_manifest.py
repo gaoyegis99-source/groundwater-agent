@@ -39,7 +39,7 @@ def _manifest(product: str) -> Path:
 def test_domain_cli_checks_current_package_without_loading_legacy_services(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    domain = ROOT / "domains" / "groundwater" / "6.0.0"
+    domain = _selected_groundwater_domain(ROOT)
     monkeypatch.setattr(
         sys,
         "argv",
@@ -959,7 +959,8 @@ def test_single_binding_cannot_feed_many_operator_port_before_output(
         operators, digest = load_catalog(root)
         workflow = json.loads(
             (
-                root / "domains/groundwater/6.0.0/workflows/summary.workflow.json"
+                _selected_groundwater_domain(root)
+                / "workflows/summary.workflow.json"
             ).read_text()
         )
         node = workflow["nodes"][0]
@@ -982,7 +983,7 @@ def test_port_requires_every_possible_media_format_pair() -> None:
 
     operators, _ = _load_operator_catalog(ROOT)
     workflow = json.loads(
-        (ROOT / "domains/groundwater/6.0.0/workflows/summary.workflow.json").read_text()
+        (_selected_groundwater_domain(ROOT) / "workflows/summary.workflow.json").read_text()
     )
     key = (workflow["nodes"][0]["operatorId"], workflow["nodes"][0]["operatorVersion"])
     narrowed = deepcopy(operators[key])

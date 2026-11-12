@@ -1448,8 +1448,11 @@ def _run_workflow_golden(
             }
         return run_workflow_golden(
             repository_root=ROOT,
+            product_manifest_path=(
+                ROOT / "products" / product_id / "product-manifest.json"
+            ),
             catalog_directory=ROOT / "packages/operator-pack/catalog/operators",
-            case_file=product_development / "workflow-golden-cases.v1.json",
+            case_file=product_development / "workflow-golden-cases.v2.json",
             baseline_file=product_development / "workflow-golden-baselines.v1.json",
             case_id=args.case,
             run_directory=output,
@@ -1494,13 +1497,16 @@ def _run_real_case(args: argparse.Namespace, product_id: str) -> dict[str, objec
         return run_real_cases(
             product_id=product_id,
             repository_root=ROOT,
+            product_manifest_path=(
+                ROOT / "products" / product_id / "product-manifest.json"
+            ),
             catalog_directory=ROOT / "packages/operator-pack/catalog/operators",
             manifest_path=(
                 ROOT
                 / "products"
                 / product_id
                 / "development"
-                / "real-data-cases.v1.json"
+                / "real-data-cases.v2.json"
             ),
             case_id=args.case,
             source_root=args.source_root,

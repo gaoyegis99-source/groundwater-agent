@@ -63,7 +63,9 @@ def _copy_assembly_inputs(target: Path) -> None:
 
 
 def _create_air_quality_product(root: Path) -> Path:
-    groundwater = root / "domains/groundwater/6.0.0"
+    product = _read(root / "products/groundwater/product-manifest.json")
+    reference = product["domainPackage"]
+    groundwater = root / "domains" / reference["domainId"] / reference["version"]
     domain = root / "domains/air-quality/1.0.0"
     (domain / "models").mkdir(parents=True)
     (domain / "workflows").mkdir()

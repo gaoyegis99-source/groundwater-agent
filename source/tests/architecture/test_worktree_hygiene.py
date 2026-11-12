@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import json
 from pathlib import Path
+import shutil
 import sys
 
 
@@ -20,7 +21,7 @@ def test_reusable_source_and_case_manifest_are_trackable() -> None:
         MODULE.check_paths(
             [
                 "kernel/src/platform_kernel/main.py",
-                "migration-assets/yaozhanbao-transfer-case/relocation.v1.json",
+                "products/groundwater/development/yaozhanbao-transfer-case/relocation.v1.json",
             ]
         )
         == []
@@ -50,7 +51,7 @@ def test_historical_and_candidate_roots_cannot_be_tracked() -> None:
 def test_case_payload_and_local_state_cannot_be_tracked() -> None:
     assert MODULE.check_paths(
         [
-            "migration-assets/yaozhanbao-transfer-case/payload/resources/workbook.xlsx",
+            "products/groundwater/development/yaozhanbao-transfer-case/payload/resources/workbook.xlsx",
             "services/data/.venv/bin/python",
             ".generated/groundwater/compose.json",
             ".env.production",
@@ -61,11 +62,23 @@ def test_case_payload_and_local_state_cannot_be_tracked() -> None:
         ".env.production: TRACKED_SECRET_CONFIGURATION",
         ".generated/groundwater/compose.json: TRACKED_EPHEMERAL_PATH:.generated",
         ".v6-agent-runs.sqlite: TRACKED_EPHEMERAL_JOURNAL",
-        "migration-assets/yaozhanbao-transfer-case/payload/resources/workbook.xlsx: "
-        "TRACKED_CASE_PAYLOAD",
         "packages/lightweight-agent-core/.v6-agent-runs.sqlite-wal: "
         "TRACKED_EPHEMERAL_JOURNAL",
+        "products/groundwater/development/yaozhanbao-transfer-case/payload/resources/workbook.xlsx: "
+        "TRACKED_CASE_PAYLOAD",
         "services/data/.venv/bin/python: TRACKED_EPHEMERAL_PATH:.venv",
+    ]
+
+
+def test_activity_plan_rejects_tracked_or_untracked_extras(tmp_path: Path) -> None:
+    project = tmp_path / "groundwater-v6"
+    source = project / "source"
+    source.mkdir(parents=True)
+    shutil.copytree(ROOT.parent / "plans", project / "plans")
+    (project / "plans/old-report.md").write_text("historical\n", encoding="utf-8")
+
+    assert MODULE._activity_plan_violations(source) == [
+        "../plans/old-report.md: EXTRA_ACTIVITY_PLAN_CONTENT"
     ]
 
 

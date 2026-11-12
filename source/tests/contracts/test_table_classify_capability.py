@@ -10,11 +10,12 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "platform" / "assembler"))
 from assembler import compile_product  # noqa: E402
+from scripts.development.product_selection import load_selected_product_by_id  # noqa: E402
 
 OPERATOR = (
     ROOT / "packages/operator-pack/catalog/operators/table.classify/1.0.0/manifest.json"
 )
-DOMAIN = ROOT / "domains/groundwater/6.0.0"
+DOMAIN = load_selected_product_by_id(ROOT, "groundwater").domain.root
 MODEL = DOMAIN / "models/rule-classification.model.json"
 WORKFLOW = DOMAIN / "workflows/rule-classification.workflow.json"
 

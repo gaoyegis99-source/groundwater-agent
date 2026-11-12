@@ -31,6 +31,11 @@ from moperators.smoke import (  # noqa: E402
 )
 from platform_workflow_compiler import compile_workflow  # noqa: E402
 from platform_workflow_compiler.validation import WorkflowValidationError  # noqa: E402
+from scripts.development.product_selection import (  # noqa: E402
+    ProductSelectionRefusal,
+    load_selected_product,
+    resolve_selected_workflow,
+)
 
 
 class WorkflowGoldenRefusal(ValueError):  # noqa: N818 - stable CLI refusal family
@@ -189,34 +194,22 @@ def _read_object(path: Path, code: str) -> dict[str, Any]:
     return value
 
 
-def _inside_repository(repository_root: Path, relative: object) -> Path:
-    if not isinstance(relative, str) or not relative or Path(relative).is_absolute():
-        raise WorkflowGoldenRefusal("WORKFLOW_GOLDEN_WORKFLOW_PATH_INVALID")
-    path = (repository_root / relative).resolve()
-    if (
-        not path.is_relative_to(repository_root)
-        or not path.is_file()
-        or path.is_symlink()
-    ):
-        raise WorkflowGoldenRefusal("WORKFLOW_GOLDEN_WORKFLOW_PATH_INVALID")
-    return path
-
-
 def _load_case(
     repository_root: Path,
+    product_manifest_path: Path,
     case_file: Path,
     baseline_file: Path,
     case_id: str,
 ) -> tuple[dict[str, Any], dict[str, Any], Path, dict[str, Any], Path]:
     cases = _read_object(case_file, "WORKFLOW_GOLDEN_CASES_INVALID")
-    if cases.get("schemaVersion") != "workflow-golden-cases.v1" or not isinstance(
+    if cases.get("schemaVersion") != "workflow-golden-cases.v2" or not isinstance(
         cases.get("cases"), dict
     ):
         raise WorkflowGoldenRefusal("WORKFLOW_GOLDEN_CASES_INVALID")
     case = cases["cases"].get(case_id)
     if not isinstance(case, dict):
         raise WorkflowGoldenRefusal("WORKFLOW_GOLDEN_CASE_NOT_FOUND")
-    if set(case) != {"workflow", "inputs", "parameters", "keyOutputs"}:
+    if set(case) != {"workflowId", "inputs", "parameters", "keyOutputs"}:
         raise WorkflowGoldenRefusal("WORKFLOW_GOLDEN_CASE_INVALID")
     if (
         not isinstance(case["inputs"], dict)
@@ -227,8 +220,13 @@ def _load_case(
         or len(case["keyOutputs"]) != len(set(case["keyOutputs"]))
     ):
         raise WorkflowGoldenRefusal("WORKFLOW_GOLDEN_CASE_INVALID")
-    workflow_path = _inside_repository(repository_root, case["workflow"])
-    workflow = _read_object(workflow_path, "WORKFLOW_GOLDEN_WORKFLOW_INVALID")
+    try:
+        selected = load_selected_product(repository_root, product_manifest_path)
+        workflow, workflow_path = resolve_selected_workflow(
+            selected, case["workflowId"]
+        )
+    except ProductSelectionRefusal as error:
+        raise WorkflowGoldenRefusal(error.code, error.detail) from error
 
     baselines = _read_object(baseline_file, "WORKFLOW_GOLDEN_BASELINES_INVALID")
     if baselines.get(
@@ -411,6 +409,7 @@ def _snapshot(
 def run_workflow_golden(
     *,
     repository_root: Path,
+    product_manifest_path: Path,
     catalog_directory: Path,
     case_file: Path,
     baseline_file: Path,
@@ -437,7 +436,11 @@ def run_workflow_golden(
         raise WorkflowGoldenRefusal("WORKFLOW_GOLDEN_PYTHON_INVALID")
 
     case, workflow, workflow_path, baseline, baseline_path = _load_case(
-        repository_root, Path(case_file), Path(baseline_file), case_id
+        repository_root,
+        Path(product_manifest_path),
+        Path(case_file),
+        Path(baseline_file),
+        case_id,
     )
     try:
         catalog = OperatorCatalog.load(Path(catalog_directory))

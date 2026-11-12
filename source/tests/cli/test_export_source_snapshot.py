@@ -28,7 +28,7 @@ def test_explicit_manifest_selects_only_declared_sources(tmp_path: Path) -> None
     manifest = snapshot._load_manifest(manifest_path)
     assert snapshot._selected("packages/protocol-contracts/pyproject.toml", manifest)
     assert snapshot._selected(
-        "domains/groundwater/6.0.0/domain-manifest.json", manifest
+        "domains/groundwater/6.1.0/domain-manifest.json", manifest
     )
     assert snapshot._selected("products/groundwater/contracts/public-api-v12.json", manifest)
     assert not snapshot._selected(

@@ -43,7 +43,6 @@ SOURCE_AREAS = frozenset(
         "scripts",
         "tests",
         "docs",
-        "migration-assets",
     }
 )
 DOC_AREAS = frozenset(

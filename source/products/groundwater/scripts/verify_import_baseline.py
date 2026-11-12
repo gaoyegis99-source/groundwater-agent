@@ -2,7 +2,7 @@
 
 The input is a review export of VersionResponse objects (or their compact
 equivalent), never a source document.  This preserves the repository-external
-corpus boundary while making the 99-document/291-unit gate reproducible.
+corpus boundary while deriving document and unit expectations from that manifest.
 """
 
 from __future__ import annotations

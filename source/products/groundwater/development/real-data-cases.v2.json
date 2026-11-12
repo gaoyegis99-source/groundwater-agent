@@ -1,0 +1,194 @@
+{
+  "schemaVersion": "real-data-cases.v2",
+  "sourceGroups": {
+    "local-groundwater-v2": {
+      "kind": "local",
+      "title": "Groundwater authoritative v2 candidate release",
+      "qualityStatus": "candidate_verified",
+      "license": "Source-specific; no redistribution by this runner",
+      "files": [
+        {
+          "id": "release-manifest",
+          "path": "data/groundwater/00_标准化数据/00_资产目录/v2/release-manifest.json",
+          "size": 18616,
+          "sha256": "0dc0334527e4aa75eced6e98b37cc6d780cf1d370a6196750543caef38b39a0e"
+        },
+        {
+          "id": "quality-summary",
+          "path": "data/groundwater/00_标准化数据/00_资产目录/v2/quality-summary.json",
+          "size": 674,
+          "sha256": "4bc0be70f3599e99383a2985f409a9d9133b9cda28146b81a039e7d9617a1367"
+        },
+        {
+          "id": "monthly-observation",
+          "path": "data/groundwater/00_标准化数据/04_时序数据/v2/facts/monthly_observation.parquet",
+          "size": 3576897,
+          "sha256": "85329d1f26866865ca4f7fa8fb47aecfe204e45624cd7ba6ee98796c1eb3505d"
+        }
+      ]
+    },
+    "usgs-mrva-2024": {
+      "kind": "download",
+      "title": "Mississippi River Valley alluvial aquifer, spring 2024",
+      "landingPage": "https://doi.org/10.5066/P1FGVGED",
+      "license": "CC0-1.0",
+      "files": [
+        {
+          "id": "measured-points",
+          "name": "MRVA_GW_AgencyMeas_2024.zip",
+          "url": "https://www.sciencebase.gov/catalog/file/get/6a610a331ba49b5f0cc3eb47?f=__disk__79%2Ff9%2F15%2F79f9152c6e394e4e5a8291181d2c7331f114ca21",
+          "size": 150872,
+          "md5": "26510e03fb9997c34ed3646006689906",
+          "sha256": "e67be1c8771e9ea522d1d8ff1b4193eb6f4ebbb35f3d618de555b4ca043d2183"
+        },
+        {
+          "id": "potentiometric-raster",
+          "name": "pot2024_ft.zip",
+          "url": "https://www.sciencebase.gov/catalog/file/get/6a610c161ba49b5f0cc3eb91?f=__disk__da%2F4e%2F69%2Fda4e69528100724518b35964576899ce4aed38e2",
+          "size": 410044,
+          "md5": "7dc061cecf3cf321e2f967919fbb2a6e",
+          "sha256": "abab209de58d0a161ac1ac2c210e0b72822d7d5cb81c8b43c42630b7131da358"
+        }
+      ]
+    },
+    "odnr-franklin-drastic": {
+      "kind": "download",
+      "title": "Groundwater Vulnerability - Franklin County, Ohio",
+      "landingPage": "https://ohiodnr.gov/discover-and-learn/safety-conservation/about-ODNR/geologic-survey/groundwater-resources/groundwater-vulnerability-map",
+      "license": "Ohio public geodata; preserve source attribution",
+      "files": [
+        {
+          "id": "franklin-vulnerability",
+          "name": "GV_Franklin.zip",
+          "url": "https://gis.ohiodnr.gov/geodata/Franklin/GV_Franklin.zip",
+          "size": 1657140,
+          "md5": "ecd1bdb62f7b2313656cc8c3e0518339",
+          "sha256": "332c07050ef2f7bff7722f9030cb254bc3b6455bd53f8e9b8d1ecf9c279da623"
+        }
+      ]
+    }
+  },
+  "cases": {
+    "local-monitoring-trend": {
+      "sourceGroup": "local-groundwater-v2",
+      "workflowId": "groundwater.monitoring-trend",
+      "inputs": {
+        "observations": {
+          "path": "prepared/local-monitoring-trend/observations.csv",
+          "mediaType": "text/csv",
+          "format": "csv"
+        }
+      },
+      "parameters": {
+        "aggregation": "mean",
+        "alpha": 0.05,
+        "baselineEnd": "2021-12-31",
+        "baselineStart": "2018-01-01",
+        "comparisonEnd": "2025-12-31",
+        "comparisonStart": "2022-01-01",
+        "eventComparison": "above",
+        "eventThreshold": 0.0,
+        "expectedEnd": "2025-12-31",
+        "expectedStart": "2018-01-01",
+        "frequency": "month",
+        "groupField": "station",
+        "seasonFrequency": "month",
+        "seasonalTrendEnabled": true,
+        "threshold": 3.5,
+        "thresholdEventsEnabled": false,
+        "timeField": "time",
+        "valueField": "value"
+      }
+    },
+    "usgs-mrva-flow-field": {
+      "sourceGroup": "usgs-mrva-2024",
+      "workflowId": "groundwater.flow-field",
+      "inputs": {
+        "observations": {
+          "path": "prepared/usgs-mrva-2024/flow-observations.csv",
+          "mediaType": "text/csv",
+          "format": "csv"
+        }
+      },
+      "parameters": {
+        "depthToWaterField": "depth_to_water_m",
+        "depthToWaterUnit": "m",
+        "effectivePorosity": 0.25,
+        "hydraulicConductivityMetersPerDay": 10.0,
+        "maxAgeDays": 100,
+        "neighborCount": 12,
+        "pixelSize": 10000.0,
+        "power": 2.0,
+        "referenceElevationField": "reference_elevation_m",
+        "referenceElevationUnit": "m",
+        "selection": "latestAtOrBefore",
+        "sourceCrs": "EPSG:5070",
+        "targetCrs": "EPSG:5070",
+        "targetTime": "2024-05-31",
+        "timeField": "time",
+        "valueField": "hydraulic_head_m",
+        "wellField": "well_id",
+        "xField": "x",
+        "yField": "y"
+      },
+      "scenarioAssumptions": {
+        "hydraulicConductivityMetersPerDay": 10.0,
+        "effectivePorosity": 0.25,
+        "interpretation": "Gradient and direction are data-derived; Darcy flux and seepage velocity are scenario outputs."
+      }
+    },
+    "usgs-mrva-kriging": {
+      "sourceGroup": "usgs-mrva-2024",
+      "workflowId": "groundwater.kriging",
+      "inputs": {
+        "points": {
+          "path": "prepared/usgs-mrva-2024/kriging-points.csv",
+          "mediaType": "text/csv",
+          "format": "csv"
+        }
+      },
+      "parameters": {
+        "exact": true,
+        "extentMaxX": 600000.0,
+        "extentMaxY": 1600000.0,
+        "extentMinX": 350000.0,
+        "extentMinY": 790000.0,
+        "idwPower": 2.0,
+        "krigingType": "ordinary",
+        "minimumNeighbors": 4,
+        "neighborCount": 12,
+        "pixelSize": 10000.0,
+        "searchRadius": null,
+        "sourceCrs": "EPSG:5070",
+        "targetCrs": "EPSG:5070",
+        "valueField": "head_m",
+        "valueUnit": "m NAVD88",
+        "variogramBinCount": 12,
+        "variogramModel": "spherical",
+        "variogramNugget": 0.0,
+        "variogramRange": 250000.0,
+        "variogramSill": 400.0,
+        "xField": "x",
+        "yField": "y"
+      },
+      "validation": "official-potentiometric-raster"
+    },
+    "odnr-franklin-drastic": {
+      "sourceGroup": "odnr-franklin-drastic",
+      "workflowId": "groundwater.drastic",
+      "inputs": {
+        "A": {"path": "prepared/odnr-franklin-drastic/A.tif", "mediaType": "image/tiff", "format": "geotiff"},
+        "C": {"path": "prepared/odnr-franklin-drastic/C.tif", "mediaType": "image/tiff", "format": "geotiff"},
+        "D": {"path": "prepared/odnr-franklin-drastic/D.tif", "mediaType": "image/tiff", "format": "geotiff"},
+        "I": {"path": "prepared/odnr-franklin-drastic/I.tif", "mediaType": "image/tiff", "format": "geotiff"},
+        "R": {"path": "prepared/odnr-franklin-drastic/R.tif", "mediaType": "image/tiff", "format": "geotiff"},
+        "S": {"path": "prepared/odnr-franklin-drastic/S.tif", "mediaType": "image/tiff", "format": "geotiff"},
+        "T": {"path": "prepared/odnr-franklin-drastic/T.tif", "mediaType": "image/tiff", "format": "geotiff"},
+        "config": {"path": "prepared/odnr-franklin-drastic/config.json", "mediaType": "application/json", "format": "json"}
+      },
+      "parameters": {},
+      "validation": "published-gv-index",
+      "classificationPolicy": "Dataset-relative polygon-record quartiles for development visualization; not official ODNR categories."
+    }
+  }
+}

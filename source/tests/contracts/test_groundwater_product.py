@@ -9,13 +9,15 @@ from assembler import load_domain, pack_domain
 from jsonschema import validate
 import pytest
 from pyarrow import parquet
+from scripts.development.product_selection import load_selected_product_by_id
 
 
 ROOT = Path(__file__).resolve().parents[2]
+DOMAIN = load_selected_product_by_id(ROOT, "groundwater").domain.root
 
 
 def test_dialogue_advice_instructions_use_natural_language_options():
-    instructions = (ROOT / "domains/groundwater/6.0.0/instructions.md").read_text()
+    instructions = (DOMAIN / "instructions.md").read_text()
     assert "方法建议和比较属于普通 DIALOGUE" in instructions
     assert "一至三个自然语言 interaction_options" in instructions
     assert "后续新消息是独立的 AUTO Turn" in instructions
@@ -130,7 +132,7 @@ def test_flow_field_binds_computed_head_through_snapshot_and_idw(
     from moperators.operators.head_calculate import run as calculate_head
     from moperators.operators.timeseries_snapshot import run as select_snapshot
 
-    package = load_domain(ROOT / "domains/groundwater/6.0.0")
+    package = load_domain(DOMAIN)
     workflow = package.definitions["workflows/flow-field.workflow.json"]
     model = package.definitions["models/flow-field.model.json"]
     nodes = {node["nodeId"]: node for node in workflow["nodes"]}
@@ -198,8 +200,7 @@ def test_coverage_dissolves_before_hull_and_uses_existing_runtimes():
     executor = json.loads((generated / "executor-config.json").read_text())
     workflow = json.loads(
         (
-            ROOT
-            / "domains/groundwater/6.0.0/workflows/monitoring-coverage.workflow.json"
+            DOMAIN / "workflows/monitoring-coverage.workflow.json"
         ).read_text()
     )
     assert [n["operatorId"] for n in workflow["nodes"]] == [

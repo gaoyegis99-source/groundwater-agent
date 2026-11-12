@@ -14,6 +14,7 @@ from platform_workflow_compiler import (
     list_operators,
     validate_catalog,
 )
+from scripts.development.product_selection import load_selected_product_by_id
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -144,9 +145,10 @@ def convert_render_graph():
 
 
 def test_all_static_workflows_keep_model_pinned_checksums(catalog):
-    directory = ROOT / "domains/groundwater/5.0.0"
+    selected = load_selected_product_by_id(ROOT, "groundwater")
+    directory = selected.domain.root
     workflows = sorted((directory / "workflows").glob("*.workflow.json"))
-    assert len(workflows) == 6
+    assert len(workflows) == len(selected.domain.manifest["workflowDefinitions"])
     for path in workflows:
         raw = json.loads(path.read_text())
         model = json.loads(

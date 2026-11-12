@@ -306,11 +306,13 @@ python -m scripts.migration.import_yaozhanbao_case \
 PLATFORM_BASE_URL=http://127.0.0.1:28186 npm --prefix web run test:e2e:yaozhanbao
 ```
 
-该命令默认使用 V6 内部固定案例载荷；先执行
-`python -m scripts.migration.import_yaozhanbao_case --verify-only`。如需复核独立保存的
-历史清单，可显式传入 `--manifest /absolute/path/case-manifest.json`。命令应指向已准备案例数据的
-隔离候选，会显式确认并执行迁移学习；不能以默认浏览器套件通过代替此案例通过。生产构建查看器
-另由 `test:e2e:build` 验证。
+该命令默认读取
+`$XDG_DATA_HOME/groundwater-v6/case-assets/yaozhanbao-transfer-case/payload/`；先执行
+`python -m scripts.migration.import_yaozhanbao_case --verify-only`。旧工作区载荷必须通过
+`--relocate-from` 生成计划并用 `--confirm` 摘要确认，命令不再接受旧绝对路径
+`--manifest`。载荷缺失时会明确返回 `CASE_PAYLOAD_NOT_MATERIALIZED`，不会回退扫描工作区。
+命令应指向已准备案例数据的隔离候选，会显式确认并执行迁移学习；不能以默认浏览器套件通过
+代替此案例通过。生产构建查看器另由 `test:e2e:build` 验证。
 
 仅运行会话浏览器门禁，创建并清理自己的 Compose 项目、容器与数据卷：
 

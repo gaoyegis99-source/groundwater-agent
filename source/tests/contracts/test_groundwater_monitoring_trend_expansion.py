@@ -5,11 +5,13 @@ from pathlib import Path
 
 import pytest
 from jsonschema import Draft202012Validator
+from scripts.development.product_selection import load_selected_product_by_id
 
 
 SOURCE = Path(__file__).resolve().parents[2]
-MODEL_PATH = SOURCE / "domains/groundwater/6.0.0/models/monitoring-trend.model.json"
-WORKFLOW_PATH = SOURCE / "domains/groundwater/6.0.0/workflows/monitoring-trend.workflow.json"
+DOMAIN = load_selected_product_by_id(SOURCE, "groundwater").domain.root
+MODEL_PATH = DOMAIN / "models/monitoring-trend.model.json"
+WORKFLOW_PATH = DOMAIN / "workflows/monitoring-trend.workflow.json"
 
 LEGACY_OUTPUTS = {
     "aggregated-series",

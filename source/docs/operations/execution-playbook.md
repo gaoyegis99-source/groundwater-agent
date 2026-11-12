@@ -44,8 +44,10 @@ GDAL 的 case 可显式传入 `--runtime-image <local-image>`；CLI 只使用项
 这些状态。入口重新验证 size、MD5（清单声明时）和 SHA-256，安全解包后才调用真实 workflow compiler
 与生产 task 子进程。`--runtime-image` 必须是项目 rootless daemon 中已验证的本地 Linux/amd64 Native
 镜像；运行时 no-network、read-only、no-pull。`--case all` 运行完整案例集，单案例 ID 用于快速复核。
-当前数据选择、质量边界、外部核验结果和可复现运行证据见仓库级
-`plans/REAL_DATA_VALIDATION_2026-11-11.md`。
+当前案例选择由 `products/groundwater/development/real-data-cases.v2.json` 中的稳定
+`workflowId` 和产品清单选择的领域包共同决定。质量边界与可复现命令见
+[Vibecoding 本地快速参考](../development/vibecoding-quick-reference.md)，运行证据写入 XDG cache/state，
+不写回活动计划目录。
 
 Agent 级反馈入口复用真实 Kernel 状态机，以签入 `ScriptedModel` 步骤和进程内 `MockTransport` 回放
 六个关键边界；默认每个 case 重复三轮，核对逐项不变量、Confirmation/WorkflowRun 计数和稳定

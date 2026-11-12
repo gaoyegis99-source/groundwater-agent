@@ -4,15 +4,16 @@ import hashlib
 import json
 from pathlib import Path
 
+from scripts.development.product_selection import load_selected_product_by_id
+
 
 SOURCE = Path(__file__).resolve().parents[2]
-MODEL_PATH = SOURCE / "domains/groundwater/6.0.0/models/monitoring-coverage.model.json"
-WORKFLOW_PATH = (
-    SOURCE / "domains/groundwater/6.0.0/workflows/monitoring-coverage.workflow.json"
-)
+DOMAIN = load_selected_product_by_id(SOURCE, "groundwater").domain.root
+MODEL_PATH = DOMAIN / "models/monitoring-coverage.model.json"
+WORKFLOW_PATH = DOMAIN / "workflows/monitoring-coverage.workflow.json"
 UI_PATH = SOURCE / "products/groundwater/ui/product-ui.json"
-INSTRUCTIONS_PATH = SOURCE / "domains/groundwater/6.0.0/instructions.md"
-MODEL_CARDS_PATH = SOURCE / "domains/groundwater/6.0.0/knowledge/model-cards.v1.json"
+INSTRUCTIONS_PATH = DOMAIN / "instructions.md"
+MODEL_CARDS_PATH = DOMAIN / "knowledge/model-cards.v1.json"
 DISSOLVE_PATH = (
     SOURCE
     / "packages/operator-pack/catalog/operators/vector.dissolve/1.0.0/manifest.json"

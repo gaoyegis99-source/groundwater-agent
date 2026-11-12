@@ -4,9 +4,11 @@ import hashlib
 import json
 from pathlib import Path
 
+from scripts.development.product_selection import load_selected_product_by_id
+
 
 ROOT = Path(__file__).resolve().parents[2]
-DOMAIN = ROOT / "domains/groundwater/6.0.0"
+DOMAIN = load_selected_product_by_id(ROOT, "groundwater").domain.root
 OPERATORS = ROOT / "packages/operator-pack/catalog/operators"
 
 

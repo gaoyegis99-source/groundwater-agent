@@ -1,4 +1,4 @@
-"""Import the pinned Yaozhanbao transfer case into v11 Data and Knowledge Next.
+"""Verify, relocate, or import the pinned Yaozhanbao case through Public API v12.
 
 The source manifest is an existing, independently retained transfer-case receipt.
 This command never scans the surrounding archive: it verifies and publishes only
@@ -8,8 +8,12 @@ the 19 paths and SHA-256 values named by that manifest.
 from __future__ import annotations
 
 import argparse
+from datetime import UTC, datetime
 import hashlib
 import json
+import os
+import shutil
+import tempfile
 import time
 from pathlib import Path
 import sys
@@ -21,16 +25,15 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from scripts.lib.wire_json import from_wire_json, to_wire_json  # noqa: E402
+from scripts.maintenance.contracts import canonical_bytes, sha256_digest  # noqa: E402
+from scripts.maintenance.project_environment import lifecycle  # noqa: E402
+from scripts.maintenance.xdg_layout import ensure_private_roots, owned_path  # noqa: E402
 
 
 PROJECT = "groundwater-demo"
-DEFAULT_CASE_ROOT = (
-    PROJECT_ROOT / "migration-assets" / "yaozhanbao-transfer-case"
-)
-DEFAULT_MANIFEST = (
-    DEFAULT_CASE_ROOT
-    / "payload/source-package/original-transfer-20261009-029d28edd3"
-    / "prepared/inputs.json"
+DESCRIPTOR_ROOT = (
+    PROJECT_ROOT
+    / "products/groundwater/development/yaozhanbao-transfer-case"
 )
 RELOCATION_FILE = "relocation.v1.json"
 INTEGRITY_FILE = "integrity.v1.json"
@@ -92,12 +95,19 @@ def _tree_inventory_sha256(root: Path) -> tuple[int, str]:
     return len(rows), digest
 
 
-def _load_case_layout(case_root: Path) -> tuple[Path, dict[str, Path]]:
+def _load_case_layout(
+    case_root: Path, descriptor_root: Path | None = None
+) -> tuple[Path, dict[str, Path]]:
     """Load a tracked relocation map without changing source evidence bytes."""
-    if not case_root.is_dir() or case_root.is_symlink():
+    descriptor_root = descriptor_root or DESCRIPTOR_ROOT
+    if case_root.is_symlink():
         raise ValueError("CASE_ROOT_INVALID")
-    relocation_path = case_root / RELOCATION_FILE
-    integrity_path = case_root / INTEGRITY_FILE
+    if not case_root.is_dir() or not (case_root / "payload").is_dir():
+        raise FileNotFoundError(
+            f"CASE_PAYLOAD_NOT_MATERIALIZED:{case_root / 'payload'}"
+        )
+    relocation_path = descriptor_root / RELOCATION_FILE
+    integrity_path = descriptor_root / INTEGRITY_FILE
     relocation = json.loads(relocation_path.read_text(encoding="utf-8"))
     integrity = json.loads(integrity_path.read_text(encoding="utf-8"))
     if relocation.get("schema_version") != "yaozhanbao-case-relocation.v1":
@@ -147,6 +157,156 @@ def _load_case_layout(case_root: Path) -> tuple[Path, dict[str, Path]]:
             raise ValueError(f"CASE_RESOURCE_CHECKSUM_CHANGED:{name}")
         resolved[name] = path
     return manifest_path, resolved
+
+
+def _default_case_root() -> Path:
+    return owned_path(
+        "case-assets/yaozhanbao-transfer-case", lifecycle().data
+    )
+
+
+def _payload_identity(case_root: Path) -> dict[str, object]:
+    payload = case_root / "payload"
+    if not payload.is_dir() or payload.is_symlink():
+        raise FileNotFoundError(f"CASE_PAYLOAD_NOT_MATERIALIZED:{payload}")
+    rows: list[list[object]] = []
+    total = 0
+    for path in sorted(payload.rglob("*"), key=lambda item: item.as_posix()):
+        if path.is_symlink():
+            raise ValueError("CASE_PAYLOAD_SYMLINK_INVALID")
+        if path.is_file():
+            size = path.stat().st_size
+            total += size
+            rows.append(
+                [path.relative_to(payload).as_posix(), size, _sha256(path)]
+            )
+        elif not path.is_dir():
+            raise ValueError("CASE_PAYLOAD_TYPE_INVALID")
+    return {
+        "files": len(rows),
+        "bytes": total,
+        "inventorySha256": sha256_digest(canonical_bytes(rows)),
+    }
+
+
+def relocation_plan(source_case_root: Path, target_case_root: Path) -> dict:
+    source = source_case_root.absolute()
+    target = target_case_root.absolute()
+    if source == target or source.is_symlink() or source.resolve() != source:
+        raise ValueError("CASE_RELOCATION_SOURCE_INVALID")
+    _load_case_layout(source)
+    identity = _payload_identity(source)
+    body = {
+        "schemaVersion": "yaozhanbao-case-relocation-plan.v1",
+        "sourceCaseRoot": str(source),
+        "targetCaseRoot": str(target),
+        **identity,
+    }
+    return body | {"confirmationDigest": sha256_digest(canonical_bytes(body))}
+
+
+_RELOCATION_RECEIPT_IDENTITY_FIELDS = (
+    "schemaVersion",
+    "status",
+    "confirmationDigest",
+    "sourceCaseRoot",
+    "targetCaseRoot",
+    "files",
+    "bytes",
+    "inventorySha256",
+)
+
+
+def _write_relocation_receipt(paths, receipt: dict) -> tuple[Path, dict]:
+    ensure_private_roots(paths, ("state",))
+    root = owned_path(
+        "migrations/yaozhanbao-transfer-case", paths.state
+    )
+    root.mkdir(parents=True, exist_ok=True, mode=0o700)
+    name = str(receipt["confirmationDigest"]).removeprefix("sha256:")
+    receipt_path = root / f"{name}.json"
+    if receipt_path.is_symlink():
+        raise ValueError("CASE_RELOCATION_RECEIPT_SYMLINK")
+    if receipt_path.exists():
+        existing = json.loads(receipt_path.read_text(encoding="utf-8"))
+        if any(
+            existing.get(field) != receipt.get(field)
+            for field in _RELOCATION_RECEIPT_IDENTITY_FIELDS
+        ):
+            raise ValueError("CASE_RELOCATION_RECEIPT_CONFLICT")
+        return receipt_path, existing
+    temporary = root / f".{name}.{os.getpid()}.tmp"
+    descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(descriptor, "wb") as stream:
+        stream.write(canonical_bytes(receipt))
+        stream.flush()
+        os.fsync(stream.fileno())
+    os.replace(temporary, receipt_path)
+    return receipt_path, receipt
+
+
+def apply_relocation(plan: dict, confirmation: str) -> dict:
+    body = {key: value for key, value in plan.items() if key != "confirmationDigest"}
+    expected = plan.get("confirmationDigest")
+    if expected != sha256_digest(canonical_bytes(body)) or confirmation != expected:
+        raise ValueError("CASE_RELOCATION_CONFIRMATION_MISMATCH")
+    source = Path(str(plan["sourceCaseRoot"]))
+    target = Path(str(plan["targetCaseRoot"]))
+    current = relocation_plan(source, target)
+    if current != plan:
+        raise ValueError("CASE_RELOCATION_SOURCE_CHANGED")
+
+    paths = lifecycle()
+    owned_path(target, paths.data)
+    target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    published = False
+    temporary: Path | None = None
+    if target.exists() or target.is_symlink():
+        if target.is_symlink():
+            raise ValueError("CASE_RELOCATION_TARGET_SYMLINK")
+        _load_case_layout(target)
+        if _payload_identity(target) != _payload_identity(source):
+            raise ValueError("CASE_RELOCATION_TARGET_CONFLICT")
+    else:
+        temporary = Path(
+            tempfile.mkdtemp(prefix=".yaozhanbao-relocate-", dir=target.parent)
+        )
+        try:
+            shutil.copytree(source / "payload", temporary / "payload")
+            _load_case_layout(temporary)
+            if _payload_identity(temporary) != _payload_identity(source):
+                raise ValueError("CASE_RELOCATION_COPY_CHANGED")
+            os.replace(temporary, target)
+            temporary = None
+            published = True
+        finally:
+            if temporary is not None and temporary.exists():
+                shutil.rmtree(temporary)
+
+    verified_at = datetime.now(UTC).replace(microsecond=0).isoformat()
+    receipt = {
+        "schemaVersion": "yaozhanbao-case-relocation-receipt.v1",
+        "status": "PASS",
+        "confirmationDigest": expected,
+        "sourceCaseRoot": str(source),
+        "targetCaseRoot": str(target),
+        "files": plan["files"],
+        "bytes": plan["bytes"],
+        "inventorySha256": plan["inventorySha256"],
+        "published": published,
+        "verifiedAt": verified_at,
+    }
+    receipt_path, persisted_receipt = _write_relocation_receipt(paths, receipt)
+    shutil.rmtree(source / "payload")
+    for candidate in (source, source.parent):
+        try:
+            candidate.rmdir()
+        except OSError:
+            break
+    return persisted_receipt | {
+        "receipt": str(receipt_path),
+        "sourcePayloadRemoved": True,
+    }
 
 
 def _request(client: httpx.Client, method: str, path: str, **kwargs) -> dict:
@@ -638,7 +798,7 @@ def run(
         *general_knowledge["result"]["versions"],
     ]
     result = {
-        "schema_version": "yaozhanbao-v11-import-receipt.v1",
+        "schema_version": "yaozhanbao-v12-import-receipt.v1",
         "project_id": PROJECT,
         "source_manifest": str(manifest_path),
         "source_manifest_sha256": manifest_checksum,
@@ -659,18 +819,19 @@ def run(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--gateway", default="http://127.0.0.1:28087")
+    parser.add_argument("--gateway", default="http://127.0.0.1:28186")
     parser.add_argument(
         "--case-root",
         type=Path,
-        default=DEFAULT_CASE_ROOT,
-        help="V6-local relocation root; ignored when --manifest is supplied.",
+        default=None,
+        help="Materialized XDG case root (defaults under XDG_DATA_HOME).",
     )
     parser.add_argument(
-        "--manifest",
+        "--relocate-from",
         type=Path,
-        help="Legacy direct manifest path. Its resource paths are used as written.",
+        help="Legacy case root to plan or apply into XDG data.",
     )
+    parser.add_argument("--confirm", help="Confirmation digest for relocation.")
     parser.add_argument("--receipt", type=Path)
     parser.add_argument(
         "--verify-only",
@@ -678,11 +839,15 @@ def main() -> None:
         help="Validate the local case payload without contacting Data or Knowledge.",
     )
     args = parser.parse_args()
-    if args.manifest is not None:
-        manifest_path = args.manifest
-        resolved_paths = None
-    else:
-        manifest_path, resolved_paths = _load_case_layout(args.case_root)
+    case_root = args.case_root or _default_case_root()
+    if args.relocate_from is not None:
+        plan = relocation_plan(args.relocate_from, case_root)
+        result = plan if args.confirm is None else apply_relocation(plan, args.confirm)
+        print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+        return
+    if args.confirm is not None:
+        parser.error("--confirm requires --relocate-from")
+    manifest_path, resolved_paths = _load_case_layout(case_root)
 
     manifest, manifest_checksum, verified_paths = _load_and_verify(
         manifest_path, resolved_paths
