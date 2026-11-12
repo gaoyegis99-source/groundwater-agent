@@ -489,3 +489,7 @@
 ### 2026-11-11 INTERACTION-INTERFACES-01（三端交互验收完成）
 
 WebUI、TLI 和 Python SDK 统一使用 Gateway Public API v12。终端和 SDK 通过离线 wheel 安装到独立环境，实际验证同一会话的终端创建、桌面发起、SDK 冻结确认与事件续接、终端下载及浏览器刷新恢复。WebUI 288 项、公共合同 186 项、客户端与边界 80 项通过。 [三端验收报告](INTERACTION_INTERFACES_VALIDATION_2026-11-11.md)
+
+### 2026-11-12 INTERACTION-RESILIENCE-01（三端隔离门禁与恢复通过）
+
+新增 `--interaction-only`、SDK 工作流查询和 TLI 自动续接。隔离浏览器三项通过，包含真实确认回执丢失后唯一执行，以及真实超时后跨端恢复。固定开发案例的数据范围说明由恢复回归保留。 [测试报告](INTERACTION_OPTIMIZATION_VALIDATION_2026-11-12.md)

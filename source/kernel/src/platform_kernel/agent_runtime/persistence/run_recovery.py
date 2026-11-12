@@ -6,7 +6,13 @@ from pathlib import Path
 
 from ...application.ports import AgentProjectionPort
 from ...database import append_event, connect_database, duration_ms, utc_now
-from ..models import AgentFinalV5, AgentRun, ReplyPresentationV1, ReplySectionV1
+from ..models import (
+    DEVELOPMENT_CASE_LIMITATION,
+    AgentFinalV5,
+    AgentRun,
+    ReplyPresentationV1,
+    ReplySectionV1,
+)
 from .projection import project_run, stable_error
 from .timeline import close_activities_connection
 from ...application.task_api import (
@@ -77,17 +83,16 @@ def finalize_recovered_run(
         if succeeded:
             details = [
                 ReplySectionV1(
-                    markdown="首次执行未完成；已使用相同确认内容完成恢复执行。",
+                    markdown=(
+                        "首次执行未完成；已使用相同确认内容完成恢复执行。"
+                        "执行沿用已冻结的数据版本和参数；早先失败记录继续保留在执行历史中。"
+                    ),
                     source_indexes=[],
                 ),
                 ReplySectionV1(
                     markdown=(
                         f"恢复批次已发布 {len(outputs)} 项可核验成果，可在任务工作台的成果页查看或下载。"
                     ),
-                    source_indexes=[],
-                ),
-                ReplySectionV1(
-                    markdown="执行沿用已冻结的数据版本和参数；早先失败记录继续保留在执行历史中。",
                     source_indexes=[],
                 ),
             ]
@@ -110,6 +115,11 @@ def finalize_recovered_run(
             ]
             summary = f"恢复执行失败 {len(codes)} 项；未发布失败批次的成果。"
             error = codes[0]
+        if current_output is not None and any(
+            section.markdown == DEVELOPMENT_CASE_LIMITATION
+            for section in current_output.presentation.details
+        ):
+            details.append(ReplySectionV1(markdown=DEVELOPMENT_CASE_LIMITATION, source_indexes=[]))
         presentation = ReplyPresentationV1(
             conclusion=None,
             details=details,

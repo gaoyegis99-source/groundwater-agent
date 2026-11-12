@@ -140,6 +140,9 @@ def _forbid_confirmation_bypass(value: str) -> None:
         raise ValueError("CONFIRMATION_BYPASS_LANGUAGE_FORBIDDEN")
 
 
+DEVELOPMENT_CASE_LIMITATION = "这是开发调试案例；模拟或历史标准化数据不代表当前真实业务状况。"
+
+
 class ReplySectionV1(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

@@ -2,6 +2,7 @@ import asyncio
 import json
 
 import httpx
+import pytest
 
 from platform_kernel.agent_runtime.persistence import finalize_recovered_run, get_run
 from platform_kernel.application.query_dtos import ConfirmedAction
@@ -140,7 +141,10 @@ def test_recovery_creates_new_attempt_without_overwriting_failure(kernel_setting
     ]
 
 
-def test_successful_recovery_reprojects_terminal_agent_reply(kernel_settings):
+@pytest.mark.parametrize("case_disclaimer", [
+    None, "这是开发调试案例；模拟或历史标准化数据不代表当前真实业务状况。",
+])
+def test_successful_recovery_reprojects_terminal_agent_reply(kernel_settings, case_disclaimer):
     settings = kernel_settings()
     database = settings.data_root / "kernel.sqlite3"
     create_session(database, "session", "p")
@@ -150,7 +154,9 @@ def test_successful_recovery_reprojects_terminal_agent_reply(kernel_settings):
         "message": "首次执行失败。",
         "presentation": {
             "conclusion": None,
-            "details": [],
+            "details": [
+                {"markdown": case_disclaimer, "source_indexes": []}
+            ] if case_disclaimer else [],
             "execution_summary": {
                 "markdown": "执行失败。", "source_indexes": [],
             },
@@ -227,6 +233,7 @@ def test_successful_recovery_reprojects_terminal_agent_reply(kernel_settings):
     assert recovered.output is not None
     assert recovered.output.workflow_runs == ["recovered-run"]
     assert "恢复后已完成" in recovered.output.message
+    assert ("不代表当前真实业务状况" in recovered.output.message) == bool(case_disclaimer)
     with connect_database(database) as connection:
         message = connection.execute(
             "SELECT content FROM messages WHERE role='assistant'",
@@ -235,6 +242,7 @@ def test_successful_recovery_reprojects_terminal_agent_reply(kernel_settings):
             "SELECT event_type FROM session_events ORDER BY event_id",
         ).fetchall()
     assert "恢复后已完成" in message
+    assert ("不代表当前真实业务状况" in message) == bool(case_disclaimer)
     assert events[-1][0] == "agent.complete"
     replay = finalize_recovered_run(database, "agent", agent_projection)
     assert replay is not None

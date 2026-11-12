@@ -11,6 +11,7 @@ from ..errors import (
 )
 from .persistence import load_request_context
 from .models import (
+    DEVELOPMENT_CASE_LIMITATION,
     AgentFinalV5,
     AgentRun,
     ReplyPresentationV1,
@@ -113,7 +114,7 @@ def _finalize_persisted_execution(
     succeeded = all(action.status == "COMPLETE" for action in run.actions)
     goals = "；".join(f"“{plan.goal}”" for plan in plans)
     case_disclaimer = ReplySectionV1(
-        markdown="这是开发调试案例；模拟或历史标准化数据不代表当前真实业务状况。",
+        markdown=DEVELOPMENT_CASE_LIMITATION,
         source_indexes=[],
     )
 

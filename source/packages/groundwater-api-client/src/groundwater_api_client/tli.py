@@ -13,6 +13,7 @@ import re
 import shlex
 import sys
 import tempfile
+import time
 from typing import Any, TextIO
 from uuid import uuid4
 
@@ -35,7 +36,7 @@ HELP = """命令（交互模式下以前缀 / 调用；普通文字直接发送�
   /clear                             清空待发送附件
   /confirm 确认ID                    显式批准该批次
   /reject 确认ID 原因                  显式拒绝该批次
-  /events [--cursor 事件ID]            实时查看事件；Ctrl-C 停止，重用最后事件 ID 可续接
+  /events [--cursor 事件ID] [--follow] 查看事件；--follow 自动续接至待确认或终态，Ctrl-C 停止
   /results [--cursor 数字]             查看成果及精确版本
   /download 版本ID 对象ID 目标路径      下载到新文件，不覆盖已有文件
   /help                              显示帮助
@@ -205,12 +206,15 @@ class Terminal:
             result = self.client.confirm(session, rest[0]) if command == 'confirm' else self.client.reject(session, rest[0], ' '.join(rest[1:]))
             self._print(result)
         elif command == 'events':
-            positional, opts = _options(rest, 'cursor')
+            follow = '--follow' in rest
+            if rest.count('--follow') > 1:
+                raise ValueError('参数无效: --follow')
+            positional, opts = _options([arg for arg in rest if arg != '--follow'], 'cursor')
             if positional:
-                raise ValueError('用法: events [--cursor 事件ID]')
+                raise ValueError('用法: events [--cursor 事件ID] [--follow]')
             session = self._session()
             cursor = _integer(opts, 'cursor', self.event_cursors.get(session))
-            self._events(session, cursor)
+            self._events(session, cursor, follow=follow)
         elif command == 'results':
             positional, opts = _options(rest, 'cursor')
             if positional:
@@ -257,7 +261,24 @@ class Terminal:
             raise ValueError(f'未知命令: {command}；输入 /help 查看帮助')
         return True
 
-    def _events(self, session: str, cursor: int | None) -> None:
+    def _events(self, session: str, cursor: int | None, *, follow: bool = False) -> None:
+        delay = 0.25
+        if follow and cursor is not None:
+            self.event_cursors[session] = cursor
+        while True:
+            before = cursor
+            try:
+                terminal, cursor = self._event_stream(session, cursor, follow=follow)
+                if terminal or not follow:
+                    return
+            except TransportError:
+                if not follow:
+                    raise
+                cursor = self.event_cursors.get(session, cursor)
+            time.sleep(delay)
+            delay = 0.25 if cursor != before else min(delay * 2, 5.0)
+
+    def _event_stream(self, session: str, cursor: int | None, *, follow: bool) -> tuple[bool, int | None]:
         decoder = codecs.getincrementaldecoder('utf-8')()
         buffer = ''
         stream = self.client.events(session, cursor=cursor)
@@ -269,16 +290,71 @@ class Terminal:
                     event, buffer = buffer.split('\n\n', 1)
                     if not event or all(line.startswith(':') for line in event.splitlines()):
                         continue
+                    event_id = None
+                    event_type = ''
+                    data_lines = []
                     for line in event.splitlines():
                         if line.startswith('id:'):
                             value = line[3:].strip()
                             if value.isdecimal():
-                                self.event_cursors[session] = int(value)
+                                event_id = int(value)
+                        elif line.startswith('event:'):
+                            event_type = line[6:].strip()
+                        elif line.startswith('data:'):
+                            data_lines.append(line[5:].lstrip(' '))
+                    if follow and event_id is not None and cursor is not None and event_id <= cursor:
+                        continue
+                    stop = follow and self._current_terminal(session, event_type, data_lines)
+                    if event_id is not None:
+                        cursor = event_id
+                        self.event_cursors[session] = cursor
                     print(event, file=self.output, flush=True)
+                    if stop:
+                        return True, cursor
         finally:
             close = getattr(stream, 'close', None)
             if close is not None:
                 close()
+        return False, cursor
+
+    def _current_terminal(self, session: str, event_type: str, data_lines: list[str]) -> bool:
+        statuses = {
+            'agent.waiting_confirmation': 'WAITING_CONFIRMATION', 'agent.complete': 'COMPLETE',
+            'agent.failed': 'FAILED', 'agent.cancelled': 'CANCELLED', 'agent.superseded': 'SUPERSEDED',
+        }
+        recovery = {'confirmation.recovery_created', 'workflow.recovery_completed', 'workflow.recovery_failed'}
+        if event_type not in statuses and event_type not in recovery:
+            return False
+        try:
+            payload = json.loads('\n'.join(data_lines))
+            data = payload['data']
+            if not isinstance(data, dict):
+                return False
+        except (ValueError, TypeError, KeyError):
+            return False
+        history = _jsonable(self.client.history(session, cursor=None, limit=100))
+        turns = history.get('turns', [])
+        revision = history.get('goalRevision')
+        turn = next((item for item in reversed(turns) if item.get('goalRevision') == revision), None)
+        if turn is None:
+            return False
+        confirmations = turn.get('confirmations', [])
+        latest = confirmations[-1] if confirmations else None
+        tasks = turn.get('executionTasks', [])
+        active = any(task.get('isLatestAttempt', True) and task.get('status') in {'QUEUED', 'RUNNING'} for task in tasks)
+        if event_type in recovery:
+            if not latest or latest.get('confirmationId') != data.get('confirmationId'):
+                return False
+            if event_type == 'confirmation.recovery_created':
+                return latest.get('status') == 'PENDING' and not latest.get('decisionState')
+            return not active and latest.get('status') == 'CONFIRMED'
+        if not data.get('agentRunId') or data.get('agentRunId') != turn.get('agentRunId') or turn.get('status') != statuses[event_type]:
+            return False
+        if event_type == 'agent.waiting_confirmation':
+            return bool(latest and latest.get('status') == 'PENDING' and not latest.get('decisionState'))
+        if active or (latest and latest.get('status') == 'PENDING'):
+            return False
+        return not latest or latest.get('kind') != 'RECOVERY' or data.get('recovered') is True
 
     def run_line(self, line: str) -> bool:
         try:

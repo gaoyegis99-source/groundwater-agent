@@ -270,3 +270,166 @@ def test_download_size_mismatch_does_not_publish(tmp_path):
     with pytest.raises(ValueError, match='SIZE'):
         term.execute(f'download version object {target}')
     assert list(tmp_path.iterdir()) == []
+
+
+def test_follow_reconnects_after_eof_and_transport_error_without_duplicate_events(monkeypatch):
+    from platform_protocol_contracts import TransportError
+
+    term, client, output = terminal()
+    term.session_id = 'existing'
+    attempts = []
+    sleeps = []
+    monkeypatch.setattr('groundwater_api_client.tli.time.sleep', sleeps.append)
+
+    def events(session_id, *, cursor=None):
+        attempts.append((session_id, cursor))
+        if len(attempts) == 1:
+            yield b'id: 41\nevent: agent.running\ndata: {}\n\n'
+            return
+        if len(attempts) == 2:
+            yield b'id: 41\nevent: agent.running\ndata: {}\n\n'
+            yield b'id: 42\nevent: workflow.queued\ndata: {}\n\n'
+            raise TransportError('HTTP_TRANSPORT_FAILED')
+        yield b'id: 42\nevent: workflow.queued\ndata: {}\n\n'
+        yield b'id: 43\nevent: agent.complete\ndata: {"data":{"agentRunId":"current"}}\n\n'
+    client.events = events
+    client.history = lambda *_args, **_kwargs: follow_history('COMPLETE')
+    term.execute('events --cursor 7 --follow')
+    assert attempts == [('existing', 7), ('existing', 41), ('existing', 42)]
+    assert output.getvalue().count('id: 41\n') == 1
+    assert output.getvalue().count('id: 42\n') == 1
+    assert output.getvalue().count('id: 43\n') == 1
+    assert len(sleeps) == 2 and all(delay > 0 for delay in sleeps)
+    assert term.event_cursors['existing'] == 43
+    assert not client.calls
+
+
+@pytest.mark.parametrize('event_type', [
+    'agent.waiting_confirmation', 'agent.complete', 'agent.failed', 'agent.cancelled',
+    'agent.superseded', 'workflow.recovery_completed', 'workflow.recovery_failed',
+])
+def test_follow_stops_at_actionable_or_terminal_event(monkeypatch, event_type):
+    term, client, output = terminal()
+    term.session_id = 'existing'
+    monkeypatch.setattr('groundwater_api_client.tli.time.sleep', lambda _: pytest.fail('unexpected reconnect'))
+    status = {'agent.waiting_confirmation': 'WAITING_CONFIRMATION', 'agent.complete': 'COMPLETE', 'agent.failed': 'FAILED', 'agent.cancelled': 'CANCELLED', 'agent.superseded': 'SUPERSEDED'}.get(event_type, 'FAILED')
+    confirmation = {'confirmationId': 'recovery', 'status': 'CONFIRMED', 'kind': 'RECOVERY'} if event_type.startswith('workflow.recovery_') else ({'confirmationId': 'pending', 'status': 'PENDING'} if status == 'WAITING_CONFIRMATION' else None)
+    client.history = lambda *_args, **_kwargs: follow_history(status, confirmation)
+    data = json.dumps({'data': {'agentRunId': 'current', 'confirmationId': 'recovery'}})
+    client.events = lambda _session, *, cursor=None: iter([f'id: 2\nevent: {event_type}\ndata: {data}\n\n'.encode()])
+    term.execute('events --follow')
+    assert event_type in output.getvalue()
+
+
+def test_follow_closes_stream_and_interrupt_propagates(monkeypatch):
+    term, client, _ = terminal()
+    term.session_id = 'existing'
+    closed = []
+    def stream():
+        try:
+            yield b'id: 3\nevent: workflow.queued\ndata: {}\n\n'
+            raise KeyboardInterrupt
+        finally:
+            closed.append(True)
+    client.events = lambda _session, *, cursor=None: stream()
+    with pytest.raises(KeyboardInterrupt):
+        term.execute('events --follow')
+    assert closed == [True]
+    assert term.event_cursors['existing'] == 3
+
+
+def test_follow_uses_bounded_backoff_and_does_not_advance_incomplete_event(monkeypatch):
+    from platform_protocol_contracts import TransportError
+
+    term, client, output = terminal()
+    term.session_id = 'existing'
+    term.event_cursors['existing'] = 99
+    attempts, sleeps = [], []
+    monkeypatch.setattr('groundwater_api_client.tli.time.sleep', sleeps.append)
+    def events(_session, *, cursor=None):
+        attempts.append(cursor)
+        if len(attempts) <= 7:
+            yield b'id: 9\nevent: workflow.running\ndata: incomplete'
+            raise TransportError('HTTP_TRANSPORT_FAILED')
+        yield b'id: 9\nevent: agent.complete\ndata: {"data":{"agentRunId":"current"}}\n\n'
+    client.events = events
+    client.history = lambda *_args, **_kwargs: follow_history('COMPLETE')
+    term.execute('events --follow --cursor 8')
+    assert attempts == [8] * 8
+    assert sleeps == [0.25, 0.5, 1, 2, 4, 5, 5]
+    assert output.getvalue().count('id: 9\n') == 1
+    assert term.event_cursors['existing'] == 9
+
+
+def test_follow_waits_for_whole_turn_and_ignores_old_terminal(monkeypatch):
+    term, client, output = terminal()
+    term.session_id = 'existing'
+    monkeypatch.setattr('groundwater_api_client.tli.time.sleep', lambda _: pytest.fail('unexpected reconnect'))
+    client.history = lambda _session, **_kwargs: {'goalRevision': 2, 'turns': [
+        {'goalRevision': 2, 'agentRunId': 'current', 'status': 'COMPLETE', 'confirmations': [], 'executionTasks': []},
+    ]}
+    client.events = lambda _session, *, cursor=None: iter([
+        b'id: 1\nevent: agent.complete\ndata: {"data":{"agentRunId":"old"}}\n\n',
+        b'id: 2\nevent: workflow.succeeded\ndata: {"data":{"agentRunId":"current"}}\n\n',
+        b'id: 3\nevent: workflow.succeeded\ndata: {"data":{"agentRunId":"current"}}\n\n',
+        b'id: 4\nevent: agent.complete\ndata: {"data":{"agentRunId":"current"}}\n\n',
+    ])
+    term.execute('events --cursor 0 --follow')
+    assert 'id: 4\n' in output.getvalue()
+    assert term.event_cursors['existing'] == 4
+
+
+def test_follow_does_not_stop_at_confirmed_historical_wait(monkeypatch):
+    term, client, output = terminal()
+    term.session_id = 'existing'
+    monkeypatch.setattr('groundwater_api_client.tli.time.sleep', lambda _: pytest.fail('unexpected reconnect'))
+    client.history = lambda _session, **_kwargs: {'goalRevision': 1, 'turns': [
+        {'goalRevision': 1, 'agentRunId': 'current', 'status': 'COMPLETE', 'confirmations': [], 'executionTasks': []},
+    ]}
+    client.events = lambda _session, *, cursor=None: iter([
+        b'id: 1\nevent: agent.waiting_confirmation\ndata: {"data":{"agentRunId":"current"}}\n\n',
+        b'id: 2\nevent: agent.complete\ndata: {"data":{"agentRunId":"current"}}\n\n',
+    ])
+    term.execute('events --follow --cursor 0')
+    assert 'id: 2\n' in output.getvalue()
+
+
+def follow_history(status, confirmation=None):
+    return {'goalRevision': 1, 'turns': [{'goalRevision': 1, 'agentRunId': 'current', 'status': status, 'confirmations': [confirmation] if confirmation else [], 'executionTasks': []}]}
+
+
+def test_follow_waits_for_latest_recovery_batch(monkeypatch):
+    term, client, output = terminal()
+    term.session_id = 'existing'
+    monkeypatch.setattr('groundwater_api_client.tli.time.sleep', lambda _: pytest.fail('unexpected reconnect'))
+    snapshots = iter([
+        {'goalRevision': 1, 'turns': [{'goalRevision': 1, 'agentRunId': 'current', 'status': 'FAILED',
+          'confirmations': [{'confirmationId': 'new-recovery', 'kind': 'RECOVERY', 'status': 'CONFIRMED'}],
+          'executionTasks': [{'status': 'RUNNING', 'isLatestAttempt': True}]}]},
+        {'goalRevision': 1, 'turns': [{'goalRevision': 1, 'agentRunId': 'current', 'status': 'FAILED',
+          'confirmations': [{'confirmationId': 'new-recovery', 'kind': 'RECOVERY', 'status': 'CONFIRMED'}],
+          'executionTasks': [{'status': 'TIMED_OUT', 'isLatestAttempt': True}]}]},
+    ])
+    client.history = lambda *_args, **_kwargs: next(snapshots)
+    client.events = lambda _session, *, cursor=None: iter([
+        b'id: 1\nevent: agent.failed\ndata: {"data":{"agentRunId":"current"}}\n\n',
+        b'id: 2\nevent: workflow.timed_out\ndata: {"data":{}}\n\n',
+        b'id: 3\nevent: workflow.recovery_failed\ndata: {"data":{"confirmationId":"new-recovery"}}\n\n',
+    ])
+    term.execute('events --follow --cursor 0')
+    assert 'id: 3\n' in output.getvalue()
+    assert term.event_cursors['existing'] == 3
+
+
+def test_follow_stops_at_current_recovery_approval(monkeypatch):
+    term, client, output = terminal()
+    term.session_id = 'existing'
+    monkeypatch.setattr('groundwater_api_client.tli.time.sleep', lambda _: pytest.fail('unexpected reconnect'))
+    client.history = lambda *_args, **_kwargs: follow_history(
+        'FAILED', {'confirmationId': 'recovery', 'kind': 'RECOVERY', 'status': 'PENDING'}
+    )
+    client.events = lambda _session, *, cursor=None: iter([
+        b'id: 1\nevent: confirmation.recovery_created\ndata: {"data":{"confirmationId":"recovery"}}\n\n',
+    ])
+    term.execute('events --follow --cursor 0')
+    assert 'confirmation.recovery_created' in output.getvalue()

@@ -165,6 +165,14 @@ class GroundwaterClient:
             query={"cursor": cursor},
         )  # type: ignore[return-value]
 
+    def workflow_run(self, run_id: str, *, project_id: str) -> models.KernelWorkflowRunResponse:
+        """Read a workflow run in the specified project."""
+        return self.call(
+            operations.KERNEL_GET_WORKFLOW_RUN,
+            path={"runId": run_id},
+            query={"projectId": project_id},
+        )  # type: ignore[return-value]
+
     def list_datasets(
         self, *, query: str | None = None, cursor: str | None = None, limit: int = 20
     ) -> models.DataDatasetPage:

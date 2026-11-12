@@ -72,6 +72,11 @@ def main() -> None:
         help="Run only the isolated browser gate, not the complete execution regression",
     )
     subset.add_argument(
+        "--interaction-only",
+        action="store_true",
+        help="Run the isolated WebUI, installed TLI and SDK handoff and recovery gate",
+    )
+    subset.add_argument(
         "--tasks-only",
         action="store_true",
         help="Run only isolated task collaboration and Kernel restart acceptance",
@@ -125,6 +130,12 @@ def main() -> None:
         "--webui-report", type=Path, default=output_root / "webui-evidence"
     )
     args = parser.parse_args()
+    if args.interaction_only and (
+        args.product != "groundwater"
+        or args.webui_report.resolve().is_relative_to(ROOT.parent)
+        or args.embedding_base_url is not None
+    ):
+        parser.error("--interaction-only requires groundwater, local test providers and a report outside the checkout")
     if args.sustainability_case is not None and (
         not args.sustainability_only
         or not args.sustainability_case.is_file()
@@ -182,6 +193,7 @@ def main() -> None:
         args.qgis_worker_image,
         product_id=args.product,
         webui_only=args.webui_only,
+        interaction_only=args.interaction_only,
         webui_report=args.webui_report,
         tasks_only=args.tasks_only,
         six_model_only=args.six_model_only,

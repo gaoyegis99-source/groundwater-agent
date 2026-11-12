@@ -18,7 +18,7 @@
 groundwater-tli --origin http://127.0.0.1:28186 --username researcher --session "$GROUNDWATER_SESSION_ID"
 ```
 
-交互模式支持 `/sessions`、`/new`、`/use`、`/datasets`、`/attach`、`/history`、`/status`、`/events` 和 `/results`。普通文本直接发送到当前会话。查看 `/status` 中冻结的参数及输入版本后，使用 `/confirm <确认ID>` 或 `/reject <确认ID> <原因>`。`/events --cursor <事件ID>` 从已读事件续接。`/download <版本ID> <对象ID> <目标路径>` 校验大小和 SHA-256 后保存文件。单次命令省略斜杠，例如 `groundwater-tli --session <会话ID> results`，使用 `GROUNDWATER_API_TOKEN` 可供脚本调用。
+交互模式支持 `/sessions`、`/new`、`/use`、`/datasets`、`/attach`、`/history`、`/status`、`/events` 和 `/results`。普通文本直接发送到当前会话。查看 `/status` 中冻结的参数及输入版本后，使用 `/confirm <确认ID>` 或 `/reject <确认ID> <原因>`。`/events --cursor <事件ID> --follow` 从已读事件自动续接，到当前轮待确认或执行批次结束时退出，也可按 Ctrl-C 停止。`/download <版本ID> <对象ID> <目标路径>` 校验大小和 SHA-256 后保存文件。单次命令省略斜杠，例如 `groundwater-tli --session <会话ID> results`，使用 `GROUNDWATER_API_TOKEN` 可供脚本调用。
 
 Python SDK 示例从同一个 Gateway 读取会话和成果：
 
@@ -39,6 +39,8 @@ with GroundwaterClient(
 ```
 
 SDK 提供 `send_message`、`input_reference`、`confirm`、`reject`、`events`、`results` 和 `download_object`。公开 JSON 接口和内容流也可通过 `call` 或 `stream` 传入生成的 `operations` 常量访问。消息重试保留原 `requestId` 和相同正文及引用，事件续接使用 `afterEventId`。
+
+使用 `client.workflow_run(run_id, project_id=session.project_id)` 读取类型化工作流状态。若提交确认后连接断开，可先读取原会话和确认状态，再以同一个确认 ID 复核处理结果。
 
 ## 健康与能力
 

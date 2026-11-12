@@ -175,7 +175,9 @@ def _exec_python(
     return result.stdout
 
 
-def _bootstrap_e2e_api_token(command: list[str], project_id: str) -> str:
+def _bootstrap_e2e_api_token(
+    command: list[str], project_id: str, *, browser_credentials: Path | None = None,
+) -> str:
     """Create a short-lived admin identity inside the isolated Kernel store."""
 
     password = "e2e-" + secrets.token_urlsafe(24)
@@ -184,6 +186,7 @@ def _bootstrap_e2e_api_token(command: list[str], project_id: str) -> str:
         "kernel-service",
         f"""
 from pathlib import Path
+import sys
 from platform_kernel.access.research_auth import bootstrap_admin, create_token
 database = Path('/data/kernel.sqlite3')
 user_id = bootstrap_admin(
@@ -191,14 +194,21 @@ user_id = bootstrap_admin(
     {project_id!r},
     'acceptance-admin',
     'Acceptance Admin',
-    {password!r},
+    sys.stdin.read(),
 )
 _metadata, token = create_token(database, user_id, 'compose-e2e', expires_days=1)
 print(token)
 """,
+        input_text=password,
     ).strip()
     if not token.startswith("gwr_"):
         raise RuntimeError("E2E_API_TOKEN_INVALID")
+    if browser_credentials is not None:
+        with os.fdopen(
+            os.open(browser_credentials, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600),
+            "w",
+        ) as stream:
+            stream.write(f"username=acceptance-admin\npassword={password}\n")
     return token
 
 

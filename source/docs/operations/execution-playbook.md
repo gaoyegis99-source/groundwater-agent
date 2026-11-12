@@ -83,6 +83,14 @@ git diff --check
 
 ## 测试
 
+三端交接可在已物化的项目环境中单独验收：
+
+```bash
+python -m scripts.checks.check_compose_e2e --product groundwater --interaction-only
+```
+
+入口使用独立 Compose 项目、临时身份、合成观测和固定测试 Provider，离线安装本次源码生成的 TLI 与 SDK wheel。测试包括正常交接、确认回执丢失后的同批次复核、长任务事件续接、真实失败后跨端恢复。运行结束自动清理隔离实例。`--webui-report` 可指定源码树外的证据目录，每次运行在其下生成独立子目录，保存 `gate.json`、Playwright 结果、截图和校验记录。
+
 ```bash
 python -m pytest -q
 python -m scripts.checks.check_native_tests

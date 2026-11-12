@@ -176,6 +176,7 @@ def _run_groundwater_knowledge(
     qgis_image=None,
     *,
     webui_only=False,
+    interaction_only=False,
     webui_report=None,
     tasks_only=False,
     six_model_only=False,
@@ -193,6 +194,7 @@ def _run_groundwater_knowledge(
     if not groundwater and (
         transfer_case
         or webui_only
+        or interaction_only
         or tasks_only
         or six_model_only
         or native_real_cases is not None
@@ -221,6 +223,7 @@ def _run_groundwater_knowledge(
             qgis_image,
             product_id=product_id,
             webui_only=webui_only,
+            interaction_only=interaction_only,
             webui_report=webui_report,
             tasks_only=tasks_only,
             six_model_only=six_model_only,
@@ -243,6 +246,7 @@ def _run_groundwater_product(
     qgis_image=None,
     *,
     webui_only=False,
+    interaction_only=False,
     webui_report=None,
     tasks_only=False,
     six_model_only=False,
@@ -398,7 +402,7 @@ def _run_groundwater_product(
         try:
             try:
                 if (
-                    not (six_model_only or sustainability_only or native_real_cases is not None)
+                    not (six_model_only or sustainability_only or interaction_only or native_real_cases is not None)
                     and porous is None
                     and reply_quality is None
                     and "knowledge-bootstrap" in compose["services"]
@@ -415,8 +419,9 @@ def _run_groundwater_product(
                         "180",
                     ]
                 )
+                browser_credentials = Path(directory) / "browser-credentials" if interaction_only else None
                 os.environ[TOKEN_ENVIRONMENT] = _bootstrap_e2e_api_token(
-                    command, project_id
+                    command, project_id, browser_credentials=browser_credentials,
                 )
                 if "knowledge-bootstrap" in compose["services"]:
                     _verify_bootstrap_publications(command, config)
@@ -463,6 +468,14 @@ def _run_groundwater_product(
                 browser_report = (
                     webui_report or validation_cache_root(ROOT) / "webui-evidence"
                 )
+                if interaction_only:
+                    from .interaction_gate import run_interaction_gate
+
+                    assert browser_credentials is not None
+                    run_interaction_gate(
+                        base_url, browser_report, browser_credentials, command, project, project_id
+                    )
+                    return
                 if tasks_only:
                     _verify_task_collaboration(command, base_url)
                     return

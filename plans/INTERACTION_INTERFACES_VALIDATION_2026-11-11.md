@@ -1,5 +1,7 @@
 # WebUI、终端与 API 联合验收
 
+2026-11-12 已补充可重复隔离门禁、确认回执丢失和跨端恢复测试。 [后续验收报告](INTERACTION_OPTIMIZATION_VALIDATION_2026-11-12.md)
+
 三个交互入口统一使用 Gateway Public API v12 和同一实例内的会话、确认、任务及成果身份。WebUI 保留浏览器鉴权和公开合同生成的 TypeScript 类型。新终端入口 `groundwater-tli` 通过同一公开 OpenAPI 生成的 Python SDK 调用 Gateway，支持交互模式和单次命令。会话和执行状态仍由 Kernel 管理，数据版本及下载对象由 Data 管理。 [使用说明](/home/mtd/liweigis/workflow/groundwater-v6/source/docs/capabilities/http-api.md)
 
 ## 真实联测

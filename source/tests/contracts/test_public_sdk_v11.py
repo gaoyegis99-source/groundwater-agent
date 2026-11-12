@@ -166,6 +166,50 @@ def test_public_sdk_token_catalog_and_exact_object_reference() -> None:
             client.input_reference("version-1", "missing")
 
 
+def test_public_sdk_reads_workflow_run_in_an_explicit_project() -> None:
+    project_id = "groundwater-demo"
+    output = {"outputName": "summary", "versionId": "version-2"}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "GET"
+        assert request.url.raw_path.split(b"?", 1)[0] == b"/api/v12/workflow-runs/run%2F1"
+        assert dict(request.url.params) == {"projectId": project_id}
+        return _json(200, {
+            "runId": "run/1",
+            "agentRunId": "agent-1",
+            "toolCallId": "tool-call-1",
+            "position": 0,
+            "projectId": project_id,
+            "modelId": "groundwater.summary",
+            "modelVersion": "3.1.0",
+            "modelChecksum": "sha256:" + "1" * 64,
+            "workflowId": "groundwater.summary",
+            "workflowVersion": "1.1.0",
+            "workflowChecksum": "sha256:" + "2" * 64,
+            "executionService": "executor",
+            "executorId": "workflow-dag",
+            "arguments": {"versionId": "version-1", "axis": "columns"},
+            "status": "SUCCEEDED",
+            "remoteJobId": "job-1",
+            "outputs": [output],
+            "error": None,
+            "createdAt": "2026-11-12T00:00:00Z",
+            "startedAt": "2026-11-12T00:00:01Z",
+            "finishedAt": "2026-11-12T00:00:02Z",
+            "durationMs": 1000,
+        })
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as http, GroundwaterClient(
+        "http://gateway.test", client=http
+    ) as client:
+        result = client.workflow_run("run/1", project_id=project_id)
+        assert isinstance(result, models.KernelWorkflowRunResponse)
+        assert result.run_id == "run/1"
+        assert result.project_id == project_id
+        assert result.status == "SUCCEEDED"
+        assert result.outputs == [output]
+
+
 def test_public_sdk_event_stream_reports_public_problem() -> None:
     problem = {
         "type": "urn:groundwater:problem:session-not-found",
