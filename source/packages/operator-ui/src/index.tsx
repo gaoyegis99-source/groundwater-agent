@@ -6,6 +6,7 @@ import type { DiagnosticSink, UiDiagnostic } from "@platform/ui-boundary";
 export type OperatorErrorInfo = { summary: string; action: string; technical: string };
 
 const errorGuidance: Record<string, [string, string]> = {
+  QUERY_SUBMISSION_UNCERTAIN: ["查询提交结果仍无法确认。", "核对查询状态后再尝试提交。"],
   NETWORK_UNCERTAIN: ["网络连接中断，结果尚未确认。", "检查局域网连接后重试；不要重复提交已经获得操作 ID 的请求。"],
   API_RESPONSE_INVALID: ["服务返回的数据与当前界面合同不一致。", "重新加载页面；若仍出现，请把请求 ID 交给 Operator。"],
   API_REQUEST_INVALID: ["待提交内容没有通过合同校验。", "检查标红字段和文件结构后重新提交。"],

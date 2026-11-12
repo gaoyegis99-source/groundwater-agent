@@ -113,6 +113,10 @@ class RejectionRequest(CamelModel):
 class ConfirmationRevisionAction(CamelModel):
     tool_call_id: _Utf8String = Field(alias="toolCallId", min_length=1)
     arguments: dict[str, object]
+    expected_input_references: dict[str, MessageInputReference] | None = Field(
+        default=None, min_length=1,
+        description="Exact Data references selected for this action, keyed by model input parameter.",
+    )
 
 
 class ConfirmationRevisionRequest(CamelModel):

@@ -22,6 +22,9 @@ from kernel.tests.test_kernel_lifecycle import (
     _turn,
 )
 from platform_kernel.database import connect_database
+from platform_kernel.access.identity import RequestIdentity
+from platform_kernel.api.dependencies import current_identity
+from platform_protocol_contracts import build_problem_details
 
 
 GOAL = "请运行摘要并交付 summary 结果"
@@ -47,6 +50,8 @@ def test_workflow_task_http_probe(kernel_settings, tmp_path, remote_status):
     submitted = []
     workflow_id = None
     workflow_agent_run_id = None
+    diagnostics_requests = []
+    diagnostic_mode = "normal"
 
     def link_result(_call):
         assert workflow_id is not None and workflow_agent_run_id is not None
@@ -118,6 +123,24 @@ def test_workflow_task_http_probe(kernel_settings, tmp_path, remote_status):
     ]
 
     def executor(request):
+        if request.url.path.endswith("/nodes"):
+            diagnostics_requests.append(request.url.path)
+            if diagnostic_mode == "down":
+                raise httpx.ConnectError("private upstream URL", request=request)
+            if diagnostic_mode == "missing":
+                problem = build_problem_details("JOB_NOT_FOUND", 404, "Missing job")
+                return httpx.Response(404, json=problem.model_dump(by_alias=True),
+                                      headers={"Content-Type": "application/problem+json"})
+            attempts = {} if diagnostic_mode == "legacy" else {"attemptCount": 2}
+            return httpx.Response(200, json={"nodes": [{
+                "nodeId": "summarize", "operatorId": "table.summary", "runtime": "native",
+                "status": remote_status, **attempts,
+                "startedAt": "2026-11-12T00:00:00Z", "finishedAt": "2026-11-12T00:00:01Z",
+                "error": "private raw error" if diagnostic_mode == "legacy" else (
+                    "WORKER_LOST" if remote_status == "FAILED" else None
+                ),
+                "parametersJson": "private", "remoteStateJson": "private",
+            }]})
         if request.method == "POST" and request.url.path.endswith("/jobs"):
             body = json.loads(request.content)
             submitted.append(body["requestId"])
@@ -231,6 +254,11 @@ def test_workflow_task_http_probe(kernel_settings, tmp_path, remote_status):
             params={"projectId": "p"},
         )
         assert queued["status"] == "QUEUED"
+        nodes_path = f"{workflow_path}/nodes"
+        assert probe("nodes_pending", "GET", nodes_path, 200, params={"projectId": "p"}) == {
+            "workflowRunId": workflow_id, "availability": "NOT_DISPATCHED", "nodes": [],
+        }
+        assert diagnostics_requests == []
         probe(
             "workflow_wrong_project",
             "GET",
@@ -256,6 +284,51 @@ def test_workflow_task_http_probe(kernel_settings, tmp_path, remote_status):
             params={"projectId": "p"},
         )
         assert final_workflow["status"] == remote_status
+        probe("nodes_wrong_project", "GET", nodes_path, 404, params={"projectId": "other"})
+        api.dependency_overrides[current_identity] = lambda: RequestIdentity(
+            "other-researcher", "Other", frozenset({"researcher"}),
+        )
+        try:
+            probe("nodes_wrong_owner", "GET", nodes_path, 404, params={"projectId": "p"})
+        finally:
+            del api.dependency_overrides[current_identity]
+        assert diagnostics_requests == []
+        nodes = probe("nodes_final", "GET", nodes_path, 200, params={"projectId": "p"})
+        assert nodes == {"workflowRunId": workflow_id, "availability": "AVAILABLE", "nodes": [{
+            "nodeId": "summarize", "operatorId": "table.summary", "runtime": "native",
+            "status": remote_status, "attemptCount": 2,
+            "startedAt": "2026-11-12T00:00:00Z", "finishedAt": "2026-11-12T00:00:01Z",
+            "errorCode": "WORKER_LOST" if remote_status == "FAILED" else None,
+        }]}
+        assert diagnostics_requests == [f"/internal/execution/v6/jobs/{final_workflow['remoteJobId']}/nodes"]
+        with connect_database(application.database) as connection:
+            binding = connection.execute(
+                "SELECT target_digest FROM workflow_service_bindings WHERE workflow_run_id=?", (workflow_id,)
+            ).fetchone()[0]
+            connection.execute(
+                "UPDATE workflow_service_bindings SET target_digest=? WHERE workflow_run_id=?",
+                ("sha256:" + "f" * 64, workflow_id),
+            )
+        assert probe("nodes_target_changed", "GET", nodes_path, 200, params={"projectId": "p"}) == {
+            "workflowRunId": workflow_id, "availability": "UNAVAILABLE", "nodes": [],
+        }
+        assert len(diagnostics_requests) == 1
+        with connect_database(application.database) as connection:
+            connection.execute(
+                "UPDATE workflow_service_bindings SET target_digest=? WHERE workflow_run_id=?", (binding, workflow_id)
+            )
+        diagnostic_mode = "missing"
+        assert probe("nodes_job_missing", "GET", nodes_path, 200, params={"projectId": "p"}) == {
+            "workflowRunId": workflow_id, "availability": "UNAVAILABLE", "nodes": [],
+        }
+        diagnostic_mode = "legacy"
+        old_node = probe("nodes_old_executor", "GET", nodes_path, 200, params={"projectId": "p"})["nodes"][0]
+        assert old_node["attemptCount"] is None
+        assert old_node["errorCode"] == "WORKFLOW_NODE_FAILED"
+        diagnostic_mode = "down"
+        problem = probe("nodes_upstream_down", "GET", nodes_path, 503, params={"projectId": "p"})
+        assert problem["code"] == "WORKFLOW_NODE_DIAGNOSTICS_UNAVAILABLE"
+        assert "private upstream URL" not in json.dumps(problem)
         assert len(final_workflow["outputs"]) == (
             1 if remote_status == "SUCCEEDED" else 0
         )

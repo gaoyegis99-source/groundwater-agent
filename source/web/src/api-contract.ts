@@ -1,3 +1,4 @@
+import { validDatasetProfile, validFieldProfile } from '@platform/ui-boundary';
 import type { DataPreviewResponse, DataQueryResponse, ResourceDetail, Result } from './types';
 
 type RecordValue = Record<string, unknown>;
@@ -29,10 +30,18 @@ export function decodeResourceDetail(value: unknown): ResourceDetail {
       throw new TypeError('API_RESPONSE_INVALID');
     }
   }
+  const profile = validDatasetProfile(descriptor.profile) ? descriptor.profile : undefined;
+  const rowCount = typeof descriptor.rowCount === 'number' ? descriptor.rowCount : null;
+  if (descriptor.profile !== undefined && (!profile || rowCount === null
+      || !Number.isInteger(rowCount) || rowCount < 0 || !Array.isArray(descriptor.fields))) throw new TypeError('API_RESPONSE_INVALID');
   if (descriptor.fields !== undefined && (!Array.isArray(descriptor.fields)
       || !descriptor.fields.every(fieldValue => {
         const field = record(fieldValue);
-        return !!field && typeof field.fieldId === 'string' && typeof field.name === 'string' && typeof field.type === 'string';
+        if (!field || typeof field.fieldId !== 'string' || typeof field.name !== 'string' || typeof field.type !== 'string') return false;
+        if (profile === undefined) return field.profile === undefined;
+        return typeof field.nullCount === 'number'
+          && Number.isInteger(field.nullCount) && field.nullCount >= 0
+          && validFieldProfile(field.profile, profile.sampleLimitPerField, rowCount, field.nullCount);
       }))) throw new TypeError('API_RESPONSE_INVALID');
   return value as ResourceDetail;
 }

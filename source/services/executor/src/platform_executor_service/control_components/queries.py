@@ -103,6 +103,8 @@ class ExecutionQueries(ControlComponent):
             if job is None or json.loads(job["request_json"])["project_id"] != self.project_id:
                 raise JobNotFoundError("JOB_NOT_FOUND")
             rows = connection.execute(
-                "SELECT * FROM job_nodes WHERE job_id = ? ORDER BY node_id", (job_id,)
+                """SELECT n.*, (SELECT COUNT(*) FROM node_attempts a
+                    WHERE a.job_id = n.job_id AND a.node_id = n.node_id) AS attempt_count
+                    FROM job_nodes n WHERE n.job_id = ? ORDER BY n.node_id""", (job_id,)
             ).fetchall()
             return [dict(row) for row in rows]

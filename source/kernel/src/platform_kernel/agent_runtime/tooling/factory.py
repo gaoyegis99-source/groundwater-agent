@@ -59,11 +59,10 @@ def build_agent_tools(
         [build_plan_tool(database, all_tool_names, provider=provider)]
         if capabilities.allow_plan else []
     )
+    explicit_model_tool_request = (
+        None if request_context is None else request_context.get("explicit_model_tool_request")
+    )
     if capabilities.allow_model_tools:
-        explicit_model_tool_request = (
-            None if request_context is None
-            else request_context.get("explicit_model_tool_request")
-        )
         tools.append(build_preparation_tool(
             database,
             observations=observations,
@@ -99,7 +98,10 @@ def build_agent_tools(
         tools.extend(build_catalog_tools(operator_catalog))
     if capabilities.allow_model_tools:
         tools.extend(
-            build_model_tool(database, item, provider=provider) for item in models
+            build_model_tool(
+                database, item, provider=provider,
+                explicit_model_tool_request=explicit_model_tool_request,
+            ) for item in models
         )
     return _prepare_tools(
         tools,

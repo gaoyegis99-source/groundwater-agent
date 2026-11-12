@@ -18,9 +18,12 @@ from .confirmation import (
 from .models import SessionView
 from .history import list_sessions, message_history, session_view
 from .intent_route_queue import (
+    IntentRoutingMetrics,
     claim_intent_route,
+    intent_routing_metrics,
     recover_intent_routes,
     requested_intent_routes,
+    route_store_writable,
 )
 from ..application.route_commands import fail_intent_route, resolve_intent_route
 from .message_request_common import IntentRouteRequest
@@ -144,6 +147,12 @@ class InteractionOwner:
 
     def message_request(self, session_id: str, request_id: str) -> dict[str, object]:
         return message_request(self.database, session_id, self.project_id, request_id)
+
+    def route_metrics(self) -> IntentRoutingMetrics:
+        return intent_routing_metrics(self.database)
+
+    def scheduler_store_writable(self) -> bool:
+        return route_store_writable(self.database)
 
     def requested_routes(self, limit: int | None = None) -> tuple[IntentRouteRequest, ...]:
         return requested_intent_routes(self.database, limit)
@@ -315,7 +324,10 @@ class InteractionOwner:
         request_id: str,
         expected_goal_revision: int,
         actions: tuple[dict[str, object], ...],
-        decision_subject: str | None = None,
+        *,
+        decision_subject: str,
+        decision_display_name: str,
+        decision_roles: frozenset[str],
     ) -> SessionView:
         if self.client is None:
             raise RuntimeError("RESOURCE_SERVICE_UNAVAILABLE")
@@ -330,7 +342,9 @@ class InteractionOwner:
             request_id=request_id,
             expected_goal_revision=expected_goal_revision,
             actions=actions,
-            decision_subject=self._actor(decision_subject),
+            decision_subject=decision_subject,
+            decision_display_name=decision_display_name,
+            decision_roles=decision_roles,
         )
         return self.get(session_id)
 

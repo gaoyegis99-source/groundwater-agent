@@ -1,14 +1,14 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { ApiError, callApi, errorCodeMessage } from './api';
-import { decodeResourceDetail } from './api-contract';
+import { ApiError, errorCodeMessage, readDataVersion } from './api';
 import { agentTokenUsageLabel, taskLabel } from './chat-state';
 import { argumentLabel, modelName, outputName, resourceTitle } from './card-presentation';
 import { productUi } from './product-ui';
 import { ConfirmationEditor } from './ConfirmationEditor';
+import { WorkflowNodeDetails } from './WorkflowNodeDetails';
 import { ErrorNotice } from './ErrorNotice';
 import { Icon } from './Icon';
 import { readEnumCache, readFlagCache, readNumberCache } from './browser-cache';
-import type { Capabilities, Confirmation, History, ResourceDetail, ResourceItem, ResourceReference, Result, TaskPreparationCheck, TaskPreparationEntry } from './types';
+import type { Capabilities, Confirmation, ConfirmationRevisionAction, History, ResourceDetail, ResourceItem, ResourceReference, Result, TaskPreparationCheck, TaskPreparationEntry } from './types';
 import type { ConfirmationFocus } from './use-workspace-controller';
 import { scopedStorageKey } from './browser-scope';
 import './workbench-polish.css';
@@ -45,9 +45,13 @@ export function resolveWorkspaceState(history: History | null, hasSelectedSessio
   return { taskStatus: '本轮回答已完成', turnStatus: '本轮回答已生成', tone: 'success', recommendedTab: 'tasks' };
 }
 
+function referenceKey(item: ResourceReference) {
+  return `${item.versionId}/${item.objectId}/${item.semanticId}/${item.checksum}`;
+}
+
 function uniqueReferences(items: ResourceReference[]) {
   const seen = new Set<string>();
-  return items.filter(item => { const key = `${item.versionId}/${item.objectId}`; if (seen.has(key)) return false; seen.add(key); return true; });
+  return items.filter(item => { const key = referenceKey(item); if (seen.has(key)) return false; seen.add(key); return true; });
 }
 
 function ReferenceDetails({ item }: { item: ResourceReference }) {
@@ -132,11 +136,11 @@ export function PreparationDetails({ history, dataAvailable = true, onData, onVe
   })}</section>)}</details>;
 }
 
-export function WorkspacePanel({ history, results, activeId, storageScope = '', project = '', capabilities = null, dataAvailable = true, collapsed, pendingInputs = [], selectedResourceId = null, editingConfirmationId = null, confirmationFocus = null, focusRequest, busy = false, onToggle, onJump, onResource = () => {}, onInputResource = () => {}, onOpenDatabase = () => {}, onRemovePending = () => {}, onEdit = () => {}, onResolveParameter = () => {}, onEditClose = () => {}, onRevision = () => {}, onRecover = () => {}, onReview = () => {} }: {
+export function WorkspacePanel({ history, results, activeId, storageScope = '', project = '', capabilities = null, dataAvailable = true, collapsed, pendingInputs = [], selectedResourceId = null, selectedResourceReference = null, editingConfirmationId = null, confirmationFocus = null, focusRequest, busy = false, onToggle, onJump, onResource = () => {}, onInputResource = () => {}, onOpenDatabase = () => {}, onRemovePending = () => {}, onEdit = () => {}, onResolveParameter = () => {}, onEditClose = () => {}, onRevision = () => {}, onRecover = () => {}, onReview = () => {} }: {
   history: History | null; results: Result[]; activeId: string; storageScope?: string; project?: string; capabilities?: Capabilities | null; dataAvailable?: boolean; collapsed: boolean;
-  pendingInputs?: ResourceItem[]; selectedResourceId?: string | null; editingConfirmationId?: string | null; confirmationFocus?: ConfirmationFocus; focusRequest?: { tab: WorkspaceTab; nonce: number } | null; busy?: boolean;
-  onToggle: () => void; onJump: (revision: number) => void; onResource?: (id: string) => void; onInputResource?: (id: string, input?: string) => void; onOpenDatabase?: (formats?: string[]) => void; onRemovePending?: (id: string) => void; onEdit?: (id: string) => void; onResolveParameter?: (name: string) => void; onEditClose?: () => void;
-  onRevision?: (confirmation: Confirmation, actions: { toolCallId: string; arguments: Record<string, unknown> }[]) => void; onRecover?: (workflowRunId: string) => void; onReview?: (text: string) => void;
+  pendingInputs?: ResourceItem[]; selectedResourceId?: string | null; selectedResourceReference?: ResourceReference | null; editingConfirmationId?: string | null; confirmationFocus?: ConfirmationFocus; focusRequest?: { tab: WorkspaceTab; nonce: number } | null; busy?: boolean;
+  onToggle: () => void; onJump: (revision: number) => void; onResource?: (id: string, reference?: ResourceReference) => void; onInputResource?: (id: string, input?: string, reference?: ResourceReference) => void; onOpenDatabase?: (formats?: string[]) => void; onRemovePending?: (id: string) => void; onEdit?: (id: string) => void; onResolveParameter?: (name: string) => void; onEditClose?: () => void;
+  onRevision?: (confirmation: Confirmation, actions: ConfirmationRevisionAction[]) => void; onRecover?: (workflowRunId: string) => void; onReview?: (text: string) => void;
 }) {
   const turn = history?.turns.find(item => item.goalRevision === history.goalRevision);
   const confirmations = history?.turns.flatMap(item => item.confirmations.map(value => ({ ...value, goalRevision: item.goalRevision }))) ?? [];
@@ -151,7 +155,9 @@ export function WorkspacePanel({ history, results, activeId, storageScope = '', 
   const taskOutputs = history?.task?.progress.results ?? [];
   const outputEntries = [...results.filter(result => result.status === 'COMPLETE').flatMap(result => result.remoteOutputs.map(reference => ({ reference, revision: result.goalRevision, workflowRunId: result.workflowRunId }))), ...taskOutputs.map(reference => ({ reference, revision: history?.task?.spec.revision ?? 0, workflowRunId: null }))];
   const outputs = [...new Map(outputEntries.reverse().map(item => [item.reference.versionId, item])).values()];
-  const selectedOutput = outputs.find(output => output.reference.versionId === selectedResourceId)?.reference;
+  const selectedOutput = selectedResourceReference?.versionId === selectedResourceId ? selectedResourceReference
+    : outputs.find(output => output.reference.versionId === selectedResourceId)?.reference;
+  const outputIdentity = JSON.stringify(selectedOutput ?? null);
   const state = resolveWorkspaceState(history, Boolean(activeId));
   const tabKey = scopedStorageKey(storageScope, 'workspace-tab', activeId);
   const pinnedKey = scopedStorageKey(storageScope, 'workspace-pinned', activeId);
@@ -162,7 +168,9 @@ export function WorkspacePanel({ history, results, activeId, storageScope = '', 
   const [width, setWidth] = useState(() => readNumberCache(widthKey, 460, 360, 760));
   const [loadedResource, setResource] = useState<ResourceDetail | null>(null);
   const [resourceScope, setResourceScope] = useState(project);
-  const resource = loadedResource?.versionId === selectedResourceId && resourceScope === project ? loadedResource : null;
+  const [loadedOutputIdentity, setLoadedOutputIdentity] = useState('');
+  const resource = loadedResource?.versionId === selectedResourceId && resourceScope === project
+    && loadedOutputIdentity === outputIdentity ? loadedResource : null;
   const [resourceError, setResourceError] = useState<ApiError | null>(null);
   const [resourceLoading, setResourceLoading] = useState(false);
   const [resourceRetry, setResourceRetry] = useState(0);
@@ -204,28 +212,29 @@ export function WorkspacePanel({ history, results, activeId, storageScope = '', 
     setResource(null); setResourceError(null);
     if (!selectedResourceId) { setResourceLoading(false); return; }
     const controller = new AbortController(); setResourceLoading(true);
-    void callApi('data_get_version', `/data/versions/${encodeURIComponent(selectedResourceId)}`, undefined, controller.signal, decodeResourceDetail).then(value => {
+    void readDataVersion(selectedResourceId, controller.signal, selectedOutput ?? undefined).then(value => {
       if (controller.signal.aborted) return;
-      if (value.versionId !== selectedResourceId) throw new ApiError(409, 'DATA_VERSION_IDENTITY_MISMATCH');
-      setResource(value); setResourceScope(project); setResourceLoading(false);
+      setResource(value); setResourceScope(project); setLoadedOutputIdentity(outputIdentity); setResourceLoading(false);
     }).catch(caught => { if (controller.signal.aborted) return; setResourceError(caught as ApiError); setResourceLoading(false); });
     return () => controller.abort();
-  }, [selectedResourceId, project, resourceRetry]);
+  }, [selectedResourceId, project, resourceRetry, outputIdentity]);
   useEffect(() => {
     setReferenceChecks({});
     const all = uniqueReferences([...pendingInputs, ...attached, ...prepared, ...frozen]);
     const controllers = all.map(item => {
       const controller = new AbortController();
-      void callApi('data_get_version', `/data/versions/${encodeURIComponent(item.versionId)}`, undefined, controller.signal, decodeResourceDetail).then(detail => {
+      void readDataVersion(item.versionId, controller.signal, item).then(() => {
         if (controller.signal.aborted) return;
-        const object = detail.objects.find(value => value.objectId === item.objectId);
-        const matches = detail.versionId === item.versionId && detail.datasetId === item.datasetId && detail.semanticId === item.semanticId && !!object && object.checksum === item.checksum && object.format === item.format && object.mediaType === item.mediaType;
-        setReferenceChecks(previous => ({ ...previous, [`${item.versionId}/${item.objectId}`]: matches ? 'readable' : 'mismatch' }));
-      }).catch(() => { if (!controller.signal.aborted) setReferenceChecks(previous => ({ ...previous, [`${item.versionId}/${item.objectId}`]: 'unavailable' })); });
+        setReferenceChecks(previous => ({ ...previous, [referenceKey(item)]: 'readable' }));
+      }).catch(error => {
+        if (controller.signal.aborted) return;
+        const status = error instanceof ApiError && error.code === 'DATA_VERSION_IDENTITY_MISMATCH' ? 'mismatch' : 'unavailable';
+        setReferenceChecks(previous => ({ ...previous, [referenceKey(item)]: status }));
+      });
       return controller;
     });
     return () => controllers.forEach(controller => controller.abort());
-  }, [project, JSON.stringify([...pendingInputs, ...attached, ...prepared, ...frozen].map(item => [item.datasetId, item.versionId, item.semanticId, item.objectId, item.checksum, item.format, item.mediaType]))]);
+  }, [project, JSON.stringify([...pendingInputs, ...attached, ...prepared, ...frozen].map(item => [item.datasetId, item.versionId, item.semanticId, item.objectId, item.checksum, item.format, item.mediaType, item.sizeBytes]))]);
   useEffect(() => {
     if (!overlay) return;
     const prior = document.body.style.overflow;
@@ -262,7 +271,7 @@ export function WorkspacePanel({ history, results, activeId, storageScope = '', 
     event.preventDefault(); chooseTab(next); panelRef.current?.querySelector<HTMLElement>(`#workspace-tab-${next}`)?.focus();
   }
   function openDatabase(formats?: string[]) { if (overlay) onToggle(); onOpenDatabase(formats); }
-  function openInput(id: string, input?: string) { if (overlay && !input) onToggle(); onInputResource(id, input); }
+  function openInput(id: string, input?: string, reference?: ResourceReference) { if (overlay && !input) onToggle(); onInputResource(id, input, reference); }
   const recovery = useMemo(() => {
     const latest = turn?.executionTasks.filter(item => item.agentRunId === turn.agentRunId && item.isLatestAttempt) ?? [];
     const source = latest.filter(item => ['FAILED', 'TIMED_OUT', 'CANCELLED'].includes(item.status))
@@ -277,7 +286,7 @@ export function WorkspacePanel({ history, results, activeId, storageScope = '', 
   const unresolved = history?.task?.spec.unresolvedItems ?? turn?.reply?.unresolvedItems.map(item => item.markdown) ?? [];
   const count = { inputs: uniqueReferences([...pendingInputs, ...attached, ...prepared, ...frozen]).length, parameters: Math.max(confirmations.filter(item => item.status === 'PENDING').length, preparedParameterCount), results: outputs.length };
 
-  const renderReferences = (title: string, items: ResourceReference[], stage: 'pending' | 'attached' | 'frozen') => <section className="workspace-data-group"><h4>{title}<span>{items.length}</span></h4>{items.length ? <ul>{items.map(item => { const key = `${item.versionId}/${item.objectId}`; const check = referenceChecks[key]; return <li key={key}><div className="workspace-data-title"><Icon name="file" /><span><strong>{'name' in item ? String((item as ResourceItem).name) : item.outputName ?? item.datasetId}</strong><small>{item.format.toUpperCase()} · {item.versionId.slice(0, 12)}</small></span></div><span className={`reference-state is-${check ?? 'checking'}`}>{check === 'readable' ? '当前可读取' : check === 'mismatch' ? '身份不一致' : check === 'unavailable' ? '暂时无法核验' : '正在核验'}</span><ReferenceDetails item={item} /><div className="workspace-inline-actions"><button onClick={() => openInput(item.versionId)}>查看版本与内容</button>{stage === 'pending' && <button onClick={() => onRemovePending(item.versionId)}>移除</button>}</div></li>; })}</ul> : <p className="workspace-empty">暂无数据</p>}</section>;
+  const renderReferences = (title: string, items: ResourceReference[], stage: 'pending' | 'attached' | 'frozen') => <section className="workspace-data-group"><h4>{title}<span>{items.length}</span></h4>{items.length ? <ul>{items.map(item => { const key = referenceKey(item); const check = referenceChecks[key]; return <li key={key}><div className="workspace-data-title"><Icon name="file" /><span><strong>{'name' in item ? String((item as ResourceItem).name) : item.outputName ?? item.datasetId}</strong><small>{item.format.toUpperCase()} · {item.versionId.slice(0, 12)}</small></span></div><span className={`reference-state is-${check ?? 'checking'}`}>{check === 'readable' ? '当前可读取' : check === 'mismatch' ? '身份不一致' : check === 'unavailable' ? '暂时无法核验' : '正在核验'}</span><ReferenceDetails item={item} /><div className="workspace-inline-actions"><button onClick={() => openInput(item.versionId, undefined, item)}>查看版本与内容</button>{stage === 'pending' && <button onClick={() => onRemovePending(item.versionId)}>移除</button>}</div></li>; })}</ul> : <p className="workspace-empty">暂无数据</p>}</section>;
 
   return <>{overlay && <button className="workspace-backdrop" tabIndex={-1} aria-label="关闭任务工作台遮罩" onClick={onToggle} />}<aside ref={panelRef} id="workspace-panel" role={overlay ? 'dialog' : undefined} aria-modal={overlay ? true : undefined} style={collapsed || overlay ? undefined : { width, flexBasis: width }} className={`workspace-panel ${collapsed ? 'is-collapsed' : ''} ${fullscreen && !collapsed ? 'is-fullscreen' : ''} ${overlay ? 'is-overlay' : ''}`} aria-label="任务工作台" data-testid="workspace-panel">
     {!collapsed && !overlay && <div className="workspace-resizer" role="separator" tabIndex={0} aria-label="调整任务工作台宽度" aria-orientation="vertical" aria-valuemin={360} aria-valuemax={760} aria-valuenow={width} aria-valuetext={`${width} 像素`} onPointerDown={() => { resizing.current = true; }} onKeyDown={event => { const next = event.key === 'Home' ? 360 : event.key === 'End' ? 760 : event.key === 'ArrowLeft' ? width + 20 : event.key === 'ArrowRight' ? width - 20 : null; if (next !== null) { event.preventDefault(); setWidth(Math.max(360, Math.min(760, next))); } }} />}
@@ -291,9 +300,16 @@ export function WorkspacePanel({ history, results, activeId, storageScope = '', 
       {history?.task?.progress.blockingReasons?.length ? <details open><summary>阻塞原因</summary>{history.task.progress.blockingReasons.map((item, index) => <p key={index}>{item}</p>)}</details> : null}
       {history?.preparation && <PreparationDetails history={history} dataAvailable={dataAvailable} onData={openDatabase} onVersion={openInput} onParameter={onResolveParameter} />}
       {history?.turns.flatMap(item => item.plans.map(plan => ({ ...plan, goalRevision: item.goalRevision }))).map(plan => <details key={`${plan.goalRevision}/${plan.revision}`}><summary>Agent Plan 第 {plan.revision} 版</summary><p>{plan.goal}</p><ol>{plan.steps.map(step => <li key={step.stepId}>{step.purpose}</li>)}</ol></details>)}
-      <h3>执行记录</h3>{history?.turns.some(item => item.executionTasks.length) ? <ol className="workspace-tasks">{history.turns.flatMap(item => item.executionTasks).map(task => <li key={task.workflowRunId} className={!task.isLatestAttempt ? 'is-history' : ''}><span>{modelName(task.modelId)}<small>第 {task.attempt ?? 1} 次 · {task.durationMs ? `${Math.round(task.durationMs / 1000)} 秒` : '未计时'}</small></span><small>{taskLabel(task)}</small>{task.errorCode && <small>{errorCodeMessage(task.errorCode)}</small>}</li>)}</ol> : <p className="workspace-empty">暂无执行记录。</p>}{recovery && <><p className="muted">从第 {recovery.source.position + 1} 项开始恢复本批次 {recovery.count} 项分析，确认后执行。</p><button className="primary recover-button" disabled={busy || !!pendingConfirmation} onClick={() => onRecover(recovery.source.workflowRunId)}>恢复最新未完成批次</button></>}
+      <h3>执行记录</h3>{history?.turns.some(item => item.executionTasks.length) ? <ol className="workspace-tasks">{history.turns.flatMap(item => item.executionTasks).map(task => (
+        <li key={task.workflowRunId} data-execution-run-id={task.workflowRunId} className={!task.isLatestAttempt ? 'is-history' : ''}>
+          <span>{modelName(task.modelId)}<small>第 {task.attempt ?? 1} 次 · {task.durationMs ? `${Math.round(task.durationMs / 1000)} 秒` : '未计时'}</small></span>
+          <small>{taskLabel(task)}</small>
+          {task.errorCode && <small className="workflow-task-error">{errorCodeMessage(task.errorCode)}</small>}
+          {project && <WorkflowNodeDetails key={project} runId={task.workflowRunId} project={project} status={task.status} />}
+        </li>
+      ))}</ol> : <p className="workspace-empty">暂无执行记录。</p>}{recovery && <><p className="muted">从第 {recovery.source.position + 1} 项开始恢复本批次 {recovery.count} 项分析，确认后执行。</p><button className="primary recover-button" disabled={busy || !!pendingConfirmation} onClick={() => onRecover(recovery.source.workflowRunId)}>恢复最新未完成批次</button></>}
       {(history?.task || turn?.agentMetrics) && <details className="workspace-usage"><summary>技术用量</summary>{history?.task && <p>任务累计：{history.task.progress.metrics.totalTokens} 词元，{Math.round(history.task.progress.metrics.durationMs / 1000)} 秒</p>}{turn?.agentMetrics && <p>本轮：模型请求 {turn.agentMetrics.requestCount} 次，查证 {turn.agentMetrics.observationCallCount} 次，{agentTokenUsageLabel(turn.agentMetrics)}</p>}</details>}</section></div>}
-      {tab === 'results' && <div role="tabpanel" tabIndex={0} aria-labelledby="workspace-tab-results" id="workspace-results"><section className="workspace-section artifact-section"><div className="workspace-section-heading"><h3>{selectedOutput?.outputName ? outputName(selectedOutput.outputName) : resource?.title ? resourceTitle(resource.title) : '已发布成果'}</h3>{selectedResourceId && <button className="text-button" onClick={() => onResource('')}>返回成果列表</button>}</div>{resourceError && <div className="workbench-read-error"><ErrorNotice error={resourceError} title="成果读取未完成" /><button onClick={() => setResourceRetry(value => value + 1)}>重新读取成果</button></div>}{resourceLoading ? <div className="workbench-loading"><p className="muted" role="status">正在读取成果信息…</p><div className="workbench-skeleton" aria-hidden="true"><span /><span /></div></div> : resource ? <Suspense fallback={<p className="muted" role="status">正在加载成果查看器…</p>}><ArtifactViewer key={resource.versionId} resource={resource} project={project} preferredViewer={selectedOutput?.outputName ? productUi().outputs[selectedOutput.outputName]?.viewer : 'auto'} onResource={onResource} /></Suspense> : selectedResourceId ? null : outputs.length ? <ul className="workspace-outputs">{outputs.map(({ reference, revision, workflowRunId }) => <li key={reference.versionId}><button onClick={() => onResource(reference.versionId)}><Icon name={reference.mediaType === 'image/png' ? 'map' : 'file'} /><span><strong>{reference.outputName ? outputName(reference.outputName) : '结果文件'}</strong><small>{reference.format} · 第 {revision} 轮{workflowRunId ? ` · ${workflowRunId.slice(0, 8)}` : ''}</small></span><Icon name="arrow-up-right" /></button></li>)}</ul> : <p className="workspace-empty">暂无已发布成果。</p>}</section></div>}
+      {tab === 'results' && <div role="tabpanel" tabIndex={0} aria-labelledby="workspace-tab-results" id="workspace-results"><section className="workspace-section artifact-section"><div className="workspace-section-heading"><h3>{selectedOutput?.outputName ? outputName(selectedOutput.outputName) : resource?.title ? resourceTitle(resource.title) : '已发布成果'}</h3>{selectedResourceId && <button className="text-button" onClick={() => onResource('')}>返回成果列表</button>}</div>{resourceError && <div className="workbench-read-error"><ErrorNotice error={resourceError} title="成果读取未完成" /><button onClick={() => setResourceRetry(value => value + 1)}>重新读取成果</button></div>}{resourceLoading ? <div className="workbench-loading"><p className="muted" role="status">正在读取成果信息…</p><div className="workbench-skeleton" aria-hidden="true"><span /><span /></div></div> : resource ? <Suspense fallback={<p className="muted" role="status">正在加载成果查看器…</p>}><ArtifactViewer key={`${resource.versionId}:${resource.semanticId}:${selectedOutput?.objectId ?? ""}`} resource={resource} objectId={selectedOutput?.objectId} project={project} preferredViewer={selectedOutput?.outputName ? productUi().outputs[selectedOutput.outputName]?.viewer : 'auto'} onResource={onResource} /></Suspense> : selectedResourceId ? null : outputs.length ? <ul className="workspace-outputs">{outputs.map(({ reference, revision, workflowRunId }) => <li key={reference.versionId}><button onClick={() => onResource(reference.versionId, reference)}><Icon name={reference.mediaType === 'image/png' ? 'map' : 'file'} /><span><strong>{reference.outputName ? outputName(reference.outputName) : '结果文件'}</strong><small>{reference.format} · 第 {revision} 轮{workflowRunId ? ` · ${workflowRunId.slice(0, 8)}` : ''}</small></span><Icon name="arrow-up-right" /></button></li>)}</ul> : <p className="workspace-empty">暂无已发布成果。</p>}</section></div>}
     </div>
   </aside></>;
 }

@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 from ..database import append_event, begin_immediate, connect_database, utc_now
-from ..errors import ConfirmationConflictError, ResourceNotFoundError, WriteLockUnavailableError
+from ..errors import ConfirmationConflictError, ResourceNotFoundError, WriteLockUnavailableError, scheduler_write
 from ..application.task_api import refresh_task
 from .actors import DEFAULT_LOCAL_ACTOR_SUBJECT
 
@@ -87,7 +87,7 @@ def claim_controls(database, owner, *, limit=32, lease_seconds=30, wait=True):
 
     if not isinstance(owner, str) or not owner or limit < 1 or lease_seconds < 1:
         raise ValueError("CONTROL_CLAIM_INVALID")
-    with connect_database(database) as connection:
+    with scheduler_write(), connect_database(database) as connection:
         # Most dispatcher polls have no eligible controls. Keep that path
         # read-only so unrelated auth/workflow writes cannot block it. This is
         # only a hint: claim eligibility is re-read under the write lock below.
@@ -185,7 +185,7 @@ def finalize_stop(database, control, *, wait=True):
     required_claim = {"claim_owner", "claim_generation"}
     if not required_claim <= control.keys() or not control["claim_owner"]:
         raise ValueError("CONTROL_CLAIM_REQUIRED")
-    with connect_database(database) as c:
+    with scheduler_write(), connect_database(database) as c:
         if not begin_immediate(c, wait=wait):
             raise WriteLockUnavailableError("KERNEL_WRITE_BUSY")
         now = utc_now()

@@ -88,16 +88,33 @@ export function ConfirmationCard({ confirmation, history, busy, onDecision, onEd
   </section>;
 }
 
-export function ResultCard({ task, result, project, onResource, onAttach, onContinue, onCompare, continueDisabled = false, continuationVersionId = null }: { task: ExecutionTask; result?: Result; project: string; onResource: (id: string) => void; onAttach?: (item: ResourceReference) => void; onContinue?: (item: ResourceReference) => void; onCompare?: (item: ResourceReference) => void; continueDisabled?: boolean; continuationVersionId?: string | null }) {
+const resultFileExtensions: Record<string, string> = {
+  'arrow-ipc-file': 'arrow', binary: 'bin', cog: 'tif', flatgeobuf: 'fgb',
+  geopackage: 'gpkg', geoparquet: 'parquet', geotiff: 'tif', markdown: 'md',
+  'pytorch-state-dict': 'pt', text: 'txt',
+};
+
+function resultDownloadName(output: ResourceReference): string | true {
+  if (!output.outputName) return true;
+  const format = output.format.toLowerCase();
+  const extension = resultFileExtensions[format] ?? format;
+  const name = output.outputName.toLowerCase();
+  if (name.endsWith(`.${extension}`) || name.endsWith(`.${format}`) || (extension === 'tif' && name.endsWith('.tiff'))) return output.outputName;
+  return `${output.outputName}.${extension}`;
+}
+
+export function ResultCard({ task, result, project, onResource, onAttach, onContinue, onCompare, continueDisabled = false, continuationVersionId = null }: { task: ExecutionTask; result?: Result; project: string; onResource: (item: ResourceReference) => void; onAttach?: (item: ResourceReference) => void; onContinue?: (item: ResourceReference) => void; onCompare?: (item: ResourceReference) => void; continueDisabled?: boolean; continuationVersionId?: string | null }) {
   const [expanded, setExpanded] = useState(false);
-  const outputs = task.status === 'SUCCEEDED' && result?.remoteOutputs.length === task.outputCount ? result.remoteOutputs : [];
+  const outputs = task.status === 'SUCCEEDED' && result && result.workflowRunId === task.workflowRunId
+    && ['COMPLETE', 'SUCCEEDED'].includes(result.status) && result.remoteOutputs.length === task.outputCount
+    ? result.remoteOutputs : [];
   return <section className="result-card" data-testid="result-card" data-status={task.status} data-workflow-run-id={task.workflowRunId} aria-label={`分析结果 · ${taskLabel(task)}`}>
     <p className="result-review-note">结果须结合输入、参数和验收状态复核。</p>
     <div className="card-eyebrow"><Icon name="chart" />分析结果 <span>{taskLabel(task)}</span></div>
     <strong>{modelName(task.modelId)}</strong>
     {task.status === 'SUCCEEDED' && (task.attempt ?? 1) > 1 && <p className="recovery-success">已通过第 {task.attempt} 次执行恢复</p>}
     {(expanded ? outputs : outputs.slice(0, 3)).map((output: ResourceReference) => <div className="output-item" key={output.versionId} data-resource-id={output.versionId}>
-      <div className="output-heading"><button className="text-button" onClick={() => onResource(output.versionId)}>{output.outputName ? outputName(output.outputName) : '结果文件'}<Icon name="arrow-up-right" /></button><small className="output-format" title={`数据版本 ${output.versionId}`}>{output.format} · 版本 {shortVersion(output.versionId)}</small><a href={contentUrl(project, output.versionId, output.objectId)} download={output.outputName}><Icon name="download" />下载</a></div>
+      <div className="output-heading"><button className="text-button" onClick={() => onResource(output)}>{output.outputName ? outputName(output.outputName) : '结果文件'}<Icon name="arrow-up-right" /></button><small className="output-format" title={`数据版本 ${output.versionId}`}>{output.format} · 版本 {shortVersion(output.versionId)}</small><a href={contentUrl(project, output.versionId, output.objectId)} download={resultDownloadName(output)}><Icon name="download" />下载</a></div>
       <details className="technical-details output-identity"><summary>数据身份</summary><dl className="argument-list">
         <div><dt>数据集</dt><dd>{output.datasetId}</dd></div>
         <div><dt>数据版本</dt><dd>{output.versionId}</dd></div>

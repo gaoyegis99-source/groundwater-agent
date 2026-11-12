@@ -325,6 +325,32 @@ def test_exact_retrieval_carries_binding_trust_into_historical_read() -> None:
     assert evidence.knowledge == {expected: "资料卡"}
 
 
+@pytest.mark.parametrize("stale_first", [False, True])
+def test_stale_checksum_does_not_discard_a_different_exact_read(stale_first) -> None:
+    identity = {"versionId": "version", "unitId": "unit", "checksum": "sha256:" + "a" * 64}
+    retrieved = {"data": {"items": [{
+        **identity, "status": "OK", "bindingMatch": "EXACT", "content": "candidate",
+    }]}}
+    exact = {**identity, "status": "OK", "bindingMatch": "NOT_CHECKED", "content": "full evidence"}
+    stale = {**identity, "checksum": "sha256:" + "b" * 64, "status": "STALE", "content": None}
+    response = {"data": {"items": [stale, exact] if stale_first else [exact, stale]}}
+    control = {"knowledge_evidence": [], "knowledge_exact_candidates": []}
+
+    _record_retrieved_evidence(control, retrieved)
+    _record_read_evidence(control, response)
+    evidence = collect_turn_evidence([
+        {"type": "function_call", "call_id": "search", "name": "retrieve_evidence"},
+        {"type": "function_call_output", "call_id": "search", "output": retrieved},
+        {"type": "function_call", "call_id": "read", "name": "read_evidence"},
+        {"type": "function_call_output", "call_id": "read", "output": response},
+    ])
+
+    expected = (identity["versionId"], identity["unitId"], identity["checksum"])
+    assert (control["knowledge_evidence"], evidence.knowledge) == (
+        [list(expected)], {expected: "知识依据"},
+    )
+
+
 def test_unavailable_table_observation_is_not_trusted_as_data_evidence() -> None:
     evidence = collect_turn_evidence(
         [

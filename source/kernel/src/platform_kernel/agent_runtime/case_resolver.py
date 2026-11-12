@@ -4,6 +4,7 @@ import asyncio
 from dataclasses import dataclass
 import hashlib
 import json
+from pathlib import Path
 import re
 
 from jsonschema import validate
@@ -16,6 +17,7 @@ from ..settings import (
     KernelSettings,
 )
 from .observation_client import ObservationClient
+from .persistence.run_queries import load_request_message
 from .result_processing import PreparedAction
 
 
@@ -107,6 +109,15 @@ def parse_explicit_model_tool_request(
     ):
         return None
     return ExplicitModelToolRequest(tool, dict(arguments))
+
+
+def load_explicit_model_tool_request(
+    database: Path, settings: KernelSettings, agent_run_id: str,
+) -> dict[str, object] | None:
+    """Reconstruct the same user binding for proposal persistence and replay."""
+    message = load_request_message(database, agent_run_id)
+    request = None if message is None else parse_explicit_model_tool_request(settings, message)
+    return None if request is None else {"tool": request.tool, "arguments": request.arguments}
 
 
 _COMPARISON = re.compile(

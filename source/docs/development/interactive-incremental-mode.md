@@ -7,11 +7,16 @@
 ```bash
 ../bin/bootstrap --sync
 ../bin/gw deps materialize --scope python --scope npm --scope system
+npm ci --ignore-scripts --offline
 ../bin/dev interactive --product groundwater --dry-run
 ../bin/dev interactive --product groundwater
 ```
 
-启动后按 `Ctrl-C` 停止文件监视器、控制台和由它创建的 Vite 进程。Compose 服务会保留，便于继续诊断；需要停止服务时显式执行：
+首次启动 Vite 前，在 `source/` 安装根 npm workspace。若默认 npm 缓存未填充，
+`npm ci` 的 `--cache` 指向 `gw deps status` 报告目录下的 `npm/cache`。
+
+启动后按 `Ctrl-C` 停止接收变更，等待正在执行和已入队的批次结束并回收测试资源，然后关闭控制台和 Vite 进程。
+Compose 服务会保留，便于继续诊断。需要停止服务时显式执行：
 
 ```bash
 ../bin/dev down --product groundwater
@@ -32,19 +37,29 @@
 | 生成状态 | `$XDG_STATE_HOME/groundwater-v6/research-dev/<product>/interactive/` | `status.json`、`events.jsonl`、日志和 `compose.interactive.json`；不写入源码树或装配 bundle |
 | 源码挂载 | `/workspace` | 容器内只读；Python 不写 `pyc` |
 
-默认装配仍只把 Gateway 发布到 loopback `28186`。交互模式最后叠加 XDG 中的 Compose 覆盖文件，并只在 loopback 临时发布开发 API；覆盖文件不会复制进装配、镜像或发布产物。架构测试会阻止系统运行时反向导入开发控制面。
+默认装配仍只把 Gateway 发布到 loopback `28186`。交互模式最后叠加 XDG 中的 Compose 覆盖文件，API 仍在 Compose 内部网络。覆盖文件和进程探针仅随开发模式加载。架构测试会阻止系统运行时反向导入开发控制面。
 
 ## 增量策略
 
 | 变化 | 反馈方式 | 是否重建系统装配 |
 | --- | --- | --- |
-| `web/`、Data UI、Knowledge UI | 宿主 Vite HMR | 否 |
-| Kernel、Data API、Knowledge API、Executor Control Python | 容器内 Uvicorn stat reload；显式监视 `/workspace/.../src` | 否 |
+| `web/`、Data UI、Knowledge UI | 宿主 Vite 模块热替换或整页刷新 | 否 |
+| Kernel、Data API、Knowledge API、Executor Control Python | Uvicorn 监视挂载源码。新增或删除 Python 文件时重启受影响 API，再核对源码摘要 | 否 |
 | Data、Knowledge、Executor worker | 只重启受影响的 Compose worker | 否 |
 | Product、Domain、Assembler、合同、锁文件、Dockerfile、环境定义 | 重新编译装配并调和开发 Compose | 是 |
 | 控制器自身 | 记录 `controller.restart-required` | 需人工重启控制器 |
 
-变更批次经过 debounce，连续批次会合并；应用和验证严格串行，避免多个重启或测试同时修改共享状态。验证失败不会杀死控制器，而会记录稳定事件和 XDG 日志。
+控制器先拍摄源码快照，再启动运行时，启动期间写入的文件也会进入首个变更批次。变更批次经过 debounce，连续批次会合并；应用和验证严格串行，避免多个重启或测试同时修改共享状态。验证失败会记录稳定事件和 XDG 日志。控制器会在下一批源码变化时合并仍待应用的变更，并补跑仍待验证的范围。已应用成功的运行时更新只在后续变更需要时重做。可通过 `supervisor.retryApply` 和 `supervisor.retryValidationScopes` 查看待重试项。
+
+每个批次通过 `supervisor.latestBatch` 和同一 `batchId` 的事件区分运行时更新与检查结果。
+API 进程在导入应用时记录源码摘要和进程代次。控制器通过容器内本地 HTTP 读取这两项，摘要一致后才运行检查。
+浏览器反馈异步显示在 `runtime.ui.*.hmrObservations`。每条记录带文件相对路径和摘要，
+`VITE_DETECTED` 表示 Vite 已检测到文件，`BROWSER_AFTER_UPDATE` 表示客户端报告模块更新事件结束，
+`BROWSER_RELOADED` 表示客户端报告页面刷新后重新加载。浏览器未打开时，后端和检查仍可继续执行。
+
+Data 的快速检查运行常规测试，镜像专属测试由 `scripts/checks/check_data_knowledge_e2e.py` 验收。
+Knowledge 和全量增量检查用装配中的 pgvector 镜像创建一次性 `knowledge_test` 数据库，只在本机
+发布动态端口，检查完成后回收容器和卷。验证过程使用 XDG 目录保存日志和检查缓存。
 
 ## 本机端口与可观测性
 

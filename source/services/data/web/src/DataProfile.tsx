@@ -1,3 +1,4 @@
+import { formatFieldProfileValue } from "@platform/ui-boundary";
 import type { FieldDescriptor, Version } from "./api";
 
 function percentage(numerator: number, denominator: number): string {
@@ -32,8 +33,8 @@ function NumericStringEvidence({ field }: { field: FieldDescriptor }) {
 function FieldProfileItem({ field, version }: { field: FieldDescriptor; version: Version }) {
   const profile = field.profile;
   const semantic = version.semantics.fields?.[field.fieldId];
-  const rowCount = version.descriptor.rowCount ?? 0;
-  const nonNull = profile?.nonNullCount ?? Math.max(0, rowCount - field.nullCount);
+  const rowCount = version.descriptor.rowCount;
+  const nonNull = profile?.nonNullCount ?? (rowCount === null ? null : rowCount - field.nullCount);
   return <li className="field-profile-card" data-testid={`field-profile-${field.fieldId}`}>
     <div className="field-profile-heading">
       <div><strong>{field.name}</strong>{semantic?.meaning && <span>{semantic.meaning}</span>}</div>
@@ -41,9 +42,9 @@ function FieldProfileItem({ field, version }: { field: FieldDescriptor; version:
     </div>
     <details className="inline-technical"><summary>技术标识</summary><code>{field.fieldId}</code></details>
     <dl className="field-profile-facts">
-      <div><dt>有效值</dt><dd>{rowCount ? countLabel(nonNull, rowCount) : nonNull}</dd></div>
+      <div><dt>非空值</dt><dd>{nonNull === null ? "未统计" : rowCount ? countLabel(nonNull, rowCount) : nonNull}</dd></div>
       <div><dt>空值</dt><dd>{rowCount ? countLabel(field.nullCount, rowCount) : field.nullCount}</dd></div>
-      {profile?.valueRange && <div><dt>范围</dt><dd>{valueLabel(profile.valueRange.minimum)} – {valueLabel(profile.valueRange.maximum)}</dd></div>}
+      {profile?.valueRange && <div><dt>范围</dt><dd>{formatFieldProfileValue(profile.valueRange.minimum, field.type, profile.exactIntegers?.minimum)} – {formatFieldProfileValue(profile.valueRange.maximum, field.type, profile.exactIntegers?.maximum)}</dd></div>}
       {profile?.temporal && <div><dt>日期解析</dt><dd>{countLabel(profile.temporal.parsedCount, profile.temporal.checkedCount)}</dd></div>}
       {profile?.temporal?.kind === "timestamp" && <div><dt>物理时区</dt><dd>{profile.temporal.physicalTimezone || "未声明"}</dd></div>}
       {profile?.temporal && <div><dt>业务时区</dt><dd>{version.semantics.timezone || "未声明"}</dd></div>}
@@ -52,7 +53,7 @@ function FieldProfileItem({ field, version }: { field: FieldDescriptor; version:
     {profile && <section className="field-sample" aria-label={`${field.name} 样例`}>
       <h5>样例值</h5>
       {profile.sampleValues.length > 0
-        ? <ul>{profile.sampleValues.map((value, index) => <li key={index}><code>{valueLabel(value)}</code></li>)}</ul>
+        ? <ul>{profile.sampleValues.map((value, index) => <li key={index}><code>{formatFieldProfileValue(value, field.type, profile.exactIntegers?.sampleValues?.[index])}</code></li>)}</ul>
         : <p className="muted">没有非空样例</p>}
     </section>}
     <NumericStringEvidence field={field} />

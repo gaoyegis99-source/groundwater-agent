@@ -7,6 +7,8 @@ import logging
 import math
 import re
 
+from ..settings import ExecutableModelDefinition
+
 _JSON_NUMBER = re.compile(
     r"-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?\Z"
 )
@@ -273,3 +275,38 @@ def normalize_model_tool_arguments(
             if name != "progress_intent"
         }
     return normalize_model_arguments(arguments, schema, provider=provider)
+
+
+def omit_unset_field_arguments(
+    arguments: dict[str, object],
+    model: ExecutableModelDefinition,
+    explicit_request: object = None,
+) -> dict[str, object]:
+    """Keep optional field selectors absent when the Provider fills an unset slot."""
+    properties = model.input_schema.get("properties")
+    required = model.input_schema.get("required", [])
+    if not isinstance(properties, dict) or not isinstance(required, list):
+        return arguments
+    explicit_arguments = (
+        explicit_request.get("arguments")
+        if isinstance(explicit_request, dict) and explicit_request.get("tool") == model.tool_name
+        else None
+    )
+    omitted = set()
+    for field in model.field_requirements:
+        name = field.parameter
+        definition = properties.get(name)
+        if (
+            name not in arguments or name in required or name in model.default_parameters
+            or not isinstance(definition, dict) or definition.get("type") != "string"
+            or not isinstance(min_length := definition.get("minLength"), int) or min_length < 1
+        ):
+            continue
+        if isinstance(explicit_arguments, dict):
+            # The structured request defines which optional selectors the user supplied.
+            unset = name not in explicit_arguments
+        else:
+            unset = arguments[name] is None or arguments[name] == ""
+        if unset:
+            omitted.add(name)
+    return {name: value for name, value in arguments.items() if name not in omitted}

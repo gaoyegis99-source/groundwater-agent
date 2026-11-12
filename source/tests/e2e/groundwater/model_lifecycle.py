@@ -504,7 +504,7 @@ def run_suite(base_url: str, transfer_case: Path) -> list[dict]:
         ).encode()
         table = _publish(
             client,
-            name="六模型观测表",
+            name="六模型生命周期观测表",
             content=observations,
             format_="csv",
             media_type="text/csv",

@@ -55,6 +55,12 @@ export function BindingPicker({
     retry: retryable,
     retryDelay,
   });
+  const searchingDatasets = deferredDatasetSearch !== datasetSearch || datasetPages.isLoading;
+  const emptyDatasetText = searchingDatasets
+    ? "正在搜索 Data 目录…"
+    : datasetPages.isError
+      ? errorText(datasetPages.error)
+      : "Data 目录中没有可绑定的数据集";
   const datasets = useMemo(() => {
     const items = datasetPages.data?.pages.flatMap(page => page.items) ?? [];
     return [...new Map(items.map(item => [item.datasetId, item])).values()];
@@ -80,7 +86,7 @@ export function BindingPicker({
 
   const chooseDataset = async (key: Key | null) => {
     const next = key === null ? "" : String(key);
-    if (next && next === selectedDatasetKey.current) return;
+    if (next === selectedDatasetKey.current) return;
     selectedDatasetKey.current = next;
     selectedVersionKey.current = "";
     datasetSelection.current += 1;
@@ -94,25 +100,24 @@ export function BindingPicker({
     setSemantics([]);
     setFields([]);
     setError(null);
+    setVersionLoading(false);
     onChange(null);
     if (!next) return;
   };
 
-  const chooseVersion = async (key: Key | null) => {
-    const next = key === null ? "" : String(key);
+  const chooseVersion = async (next: string) => {
     if (next && next === selectedVersionKey.current) return;
     selectedVersionKey.current = next;
     const selection = ++versionSelection.current;
     setVersionId(next);
-    setVersionSearch(next);
     setSemanticId("");
     setFieldId("");
     setSemantics([]);
     setFields([]);
     setError(null);
     onChange(null);
+    setVersionLoading(Boolean(next));
     if (!next) return;
-    setVersionLoading(true);
     try {
       const [detail, history] = await Promise.all([
         dataApi("data_get_version", `versions/${encodeURIComponent(next)}`),
@@ -167,18 +172,36 @@ export function BindingPicker({
     <fieldset className="binding-picker">
       <legend>限定到具体数据版本（可选）</legend>
       <p className="binding-catalog-state" role="status">
-        {datasetPages.isLoading || datasetPages.isFetching && deferredDatasetSearch !== datasetSearch ? "正在搜索 Data 目录…" : datasets.length > 0 ? `已加载 ${datasets.length} 个数据集${datasetPages.hasNextPage ? "，还有更多" : ""}` : "Data 目录中没有可绑定的数据集"}
+        {searchingDatasets || datasetPages.isError || !datasets.length ? emptyDatasetText : `已加载 ${datasets.length} 个数据集${datasetPages.hasNextPage ? "，还有更多" : ""}`}
       </p>
-      <ComboBox inputValue={datasetSearch} onInputChange={setDatasetSearch} selectedKey={datasetId || null} onSelectionChange={chooseDataset}>
+      <ComboBox
+        allowsEmptyCollection
+        items={searchingDatasets ? [] : datasets}
+        inputValue={datasetSearch}
+        onInputChange={setDatasetSearch}
+        selectedKey={datasetId || null}
+        onSelectionChange={chooseDataset}
+      >
         <Label>数据集</Label>
         <div className="combo-input"><Input /><Button aria-label="打开数据集列表">▼</Button></div>
-        <Popover><ListBox items={datasets}>{item => <ListBoxItem id={item.datasetId}>{item.title}<small>{item.datasetId}</small></ListBoxItem>}</ListBox></Popover>
+        <Popover>
+          <ListBox<(typeof datasets)[number]> renderEmptyState={() => emptyDatasetText}>
+            {item => <ListBoxItem id={item.datasetId} textValue={item.title}>{item.title}<small>{item.datasetId}</small></ListBoxItem>}
+          </ListBox>
+        </Popover>
       </ComboBox>
-      <ComboBox inputValue={versionSearch} onInputChange={setVersionSearch} selectedKey={versionId || null} onSelectionChange={chooseVersion} isDisabled={!datasetId}>
-        <Label>不可变版本</Label>
-        <div className="combo-input"><Input /><Button aria-label="打开版本列表">▼</Button></div>
-        <Popover><ListBox items={versions}>{item => <ListBoxItem id={item.versionId}>{item.versionId}<small>{new Date(item.createdAt).toLocaleString()}</small></ListBoxItem>}</ListBox></Popover>
-      </ComboBox>
+      <div>
+        <label>搜索不可变版本
+          <input type="search" value={versionSearch} disabled={!datasetId} onChange={event => setVersionSearch(event.target.value)} />
+        </label>
+        <label>不可变版本
+          <select value={versionId} disabled={!datasetId || versionPages.isLoading} onChange={event => void chooseVersion(event.target.value)}>
+            <option value="">{datasetId && !versionPages.isLoading && !versions.length ? "没有匹配的不可变版本" : "选择不可变版本"}</option>
+            {versionId && !versions.some(item => item.versionId === versionId) && <option value={versionId}>{versionId}</option>}
+            {versions.map(item => <option value={item.versionId} key={item.versionId}>{item.versionId} · {new Date(item.createdAt).toLocaleString()}</option>)}
+          </select>
+        </label>
+      </div>
       <p className="binding-version-state" role="status">
         {versionPages.isLoading
           ? "正在读取不可变版本…"

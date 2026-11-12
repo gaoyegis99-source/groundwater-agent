@@ -7,6 +7,7 @@ import sys
 
 import pytest
 
+from scripts.development.product_selection import load_selected_product_by_id
 
 from scripts.evaluation import evaluate_reply_quality as quality
 from scripts.evaluation.reply_quality import (
@@ -36,13 +37,13 @@ def _environment(monkeypatch, provider: str = "minimax") -> None:
 
 def test_frozen_reply_quality_identity_matches_current_product() -> None:
     root = Path(__file__).resolve().parents[2]
-    product = json.loads(
-        (root / "products/groundwater/product-manifest.json").read_text(
-            encoding="utf-8"
-        )
-    )
+    selected = load_selected_product_by_id(root, "groundwater")
 
-    assert product["domainPackage"] == definitions.EXPECTED_DOMAIN_PACKAGE
+    assert selected.manifest["domainPackage"] == definitions.EXPECTED_DOMAIN_PACKAGE
+    assert {
+        selected.domain.definitions[path]["modelId"]
+        for path in selected.domain.manifest["executableModels"]
+    } == definitions.EXPECTED_MODEL_IDS
 
 
 def _release_identity() -> dict:
@@ -63,6 +64,14 @@ def _release_identity() -> dict:
         ("groundwater.kriging", "run_kriging"),
         ("groundwater.rule-classification", "run_rule_classification"),
         ("groundwater.drastic", "run_drastic"),
+        ("groundwater.porous-agricultural-inversion", "run_porous_agri_inversion"),
+        ("groundwater.porous-calibration", "run_porous_pest_calibration"),
+        ("groundwater.porous-inversion-sampling", "run_porous_inversion_sample"),
+        ("groundwater.porous-inversion-training", "run_porous_inversion_train"),
+        ("groundwater.porous-map", "run_porous_map_prepare"),
+        ("groundwater.porous-scenario-comparison", "run_porous_scenario_compare"),
+        ("groundwater.porous-simulation", "run_porous_simulation"),
+        ("groundwater.sustainability-input-preparation", "prepare_source_sustainability"),
     )
     models = sorted(
         (

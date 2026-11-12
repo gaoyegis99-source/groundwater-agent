@@ -67,6 +67,8 @@ snapshot identity。运行证据原子写入 `$XDG_CACHE_HOME/groundwater-v6/age
 
 `--scope all` 将 Python 套件拆为 foundation、Kernel、Data、Knowledge、Executor、跨服务合同和产品装配七个互不重叠的切片，并分别报告结果与显式 skip 原因；同时运行主界面、Data 界面和 Knowledge 界面的测试、类型检查与构建。切片清单由 `scripts/checks/v6_test_suite.py` 单点维护，架构测试会核对根 Pytest 收集范围内的每个测试文件恰好属于一个切片，避免新增组件或产品测试被静默漏掉。Native 套件始终使用 `toolchain.lock.json` 指定的精确 CPython 版本创建离线环境，不继承调用入口的宿主 Python ABI。
 
+`dev check` 与完整项目报告为各 Pytest 调用分配独立临时目录，调用结束后清理。显式传入的 `--basetemp` 或 `PYTEST_ADDOPTS` 中的同名参数由调用方管理。
+
 ## 锁与静态门禁
 
 ```bash
@@ -101,6 +103,8 @@ npm run typecheck
 npm run build
 python -m scripts.operations.test_full_project --product groundwater
 ```
+
+完整项目报告记录 Git HEAD 和工作区内容指纹，包括跟踪文件改动和未忽略的新文件。`--resume --output <原报告>` 仅复用同一源码指纹的已通过阶段。源码变动或旧报告缺少指纹时，用新的 `--output` 启动验收。联合验收和最终 Compose 的证据按报告运行及阶段尝试存放。用 `--rerun-stage` 重跑阶段时会生成独立的证据目录。
 
 根 `pytest.ini` 的普通 Python 套件不收集 Operator Pack 测试，因为它们需要独立 Native 锁域。
 `check_native_tests` 先验证已物化的 Python wheelhouse，再用锁定的 Native/build wheel 离线创建

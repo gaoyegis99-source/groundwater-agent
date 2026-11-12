@@ -135,6 +135,15 @@ beforeEach(() => {
   rawRaster.image.readRasters.mockClear();
 });
 
+it('colors 150,000 GeoJSON features and preserves finite extrema', async () => {
+  render(<GeoViewer url="/data/large.geojson" />);
+  const features = Array.from({ length: 150_000 }, (_, index) => feature({ reading: index - 10 }));
+  features.push(feature({ reading: Infinity }), feature({ reading: null }));
+  act(() => ol.sources[0].emitReady(features));
+  expect(await screen.findByText('-10 – 149989')).toBeVisible();
+  expect(ol.maps).toHaveLength(1);
+});
+
 it('changes numeric styling and legend without rebuilding or reloading the GeoJSON map', async () => {
   render(<GeoViewer url="/data/first.geojson" />);
   expect(ol.maps).toHaveLength(1);

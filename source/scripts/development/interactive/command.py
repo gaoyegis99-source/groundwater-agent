@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from contextlib import nullcontext
 from dataclasses import dataclass
 import json
 import os
@@ -8,10 +9,13 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import time
 
 from .controller import InteractiveController
+from .generation import PROBE_PATH, source_digest
 from .profile import DEV_METRIC_SERVICES, build_compose_override
 from .runtime import CallbackRuntime
+from .test_database import knowledge_test_database
 
 
 @dataclass(frozen=True)
@@ -42,6 +46,7 @@ class InteractiveCommand:
             raise ValueError("DEV_STATE_MUST_BE_OUTSIDE_SOURCE")
         self.product_id = product_id
         self.hooks = hooks
+        self._knowledge_image: str | None = None
 
     @property
     def override_path(self) -> Path:
@@ -55,6 +60,9 @@ class InteractiveCommand:
             raise RuntimeError("DEV_ASSEMBLY_COMPOSE_INVALID") from error
         if not isinstance(available, dict):
             raise RuntimeError("DEV_ASSEMBLY_COMPOSE_INVALID")
+        database = available.get("knowledge-next-db")
+        image = database.get("image") if isinstance(database, dict) else None
+        self._knowledge_image = image if isinstance(image, str) else None
         payload = build_compose_override(self.root, available)
         self.state_directory.mkdir(parents=True, mode=0o700, exist_ok=True)
         self.state_directory.chmod(0o700)
@@ -88,7 +96,7 @@ class InteractiveCommand:
             if completed.returncode:
                 raise RuntimeError("DEV_KNOWLEDGE_BOOTSTRAP_FAILED")
 
-    def _restart(self, requested: tuple[str, ...]) -> None:
+    def _selected_services(self, requested: tuple[str, ...]) -> tuple[str, ...]:
         try:
             payload = json.loads(self.override_path.read_text(encoding="utf-8"))
             available = payload["services"]
@@ -96,9 +104,45 @@ class InteractiveCommand:
             raise RuntimeError("DEV_INTERACTIVE_OVERRIDE_NOT_READY") from error
         if not isinstance(available, dict):
             raise RuntimeError("DEV_INTERACTIVE_OVERRIDE_NOT_READY")
-        services = tuple(name for name in requested if name in available)
+        return tuple(name for name in requested if name in available)
+
+    def _restart(self, requested: tuple[str, ...]) -> tuple[str, ...]:
+        services = self._selected_services(requested)
         if services:
             self.hooks.run_compose(["restart", *services], (self.override_path,), True)
+        return services
+
+    def _observe_apis(self, requested: tuple[str, ...] | None) -> dict[str, object]:
+        if requested == ():
+            return {}
+        services = self._selected_services(
+            tuple(DEV_METRIC_SERVICES.values()) if requested is None else requested
+        )
+        expected = {name: source_digest(self.root, name) for name in services}
+        proof = {}
+        deadline = time.monotonic() + 20
+        while expected:
+            for service, digest in tuple(expected.items()):
+                payload = self._service_probe(service, PROBE_PATH)
+                try:
+                    generation = json.loads(payload) if payload else None
+                except ValueError:
+                    continue
+                if (
+                    isinstance(generation, dict)
+                    and generation.get("sourceDigest") == digest
+                    and re.fullmatch(r"[0-9a-f]{32}", str(generation.get("generation")))
+                ):
+                    proof[service] = {
+                        "sourceDigest": digest,
+                        "generation": generation["generation"],
+                    }
+                    del expected[service]
+            if expected:
+                if time.monotonic() >= deadline:
+                    raise RuntimeError("DEV_API_GENERATION_TIMEOUT:" + ",".join(expected))
+                time.sleep(0.25)
+        return proof
 
     def _validation_commands(self, target: str) -> tuple[tuple[str, ...], ...]:
         if target in {
@@ -152,8 +196,23 @@ class InteractiveCommand:
         logs = self.state_directory / "logs"
         logs.mkdir(parents=True, exist_ok=True)
         path = logs / f"validation-{target}.log"
-        environment = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
-        with path.open("wb") as stream:
+        cache = self.state_directory / "check-cache"
+        cache.mkdir(exist_ok=True)
+        environment = {
+            **os.environ,
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "PYTEST_ADDOPTS": f"{os.getenv('PYTEST_ADDOPTS', '')} -p no:cacheprovider",
+            "MYPY_CACHE_DIR": str(cache / "mypy"),
+            "RUFF_CACHE_DIR": str(cache / "ruff"),
+        }
+        database = nullcontext()
+        if target in {"knowledge", "all"}:
+            if self._knowledge_image is None:
+                raise RuntimeError("DEV_KNOWLEDGE_TEST_IMAGE_UNAVAILABLE")
+            database = knowledge_test_database(self._knowledge_image)
+        with database as dsn, path.open("wb") as stream:
+            if dsn is not None:
+                environment["TEST_KNOWLEDGE_DATABASE_URL"] = dsn
             for command in self._validation_commands(target):
                 stream.write((json.dumps(command) + "\n").encode())
                 stream.flush()
@@ -175,10 +234,14 @@ class InteractiveCommand:
         service = DEV_METRIC_SERVICES.get(alias)
         if service is None or not self.override_path.is_file():
             return None
+        return self._service_probe(service, "/internal/metrics")
+
+    def _service_probe(self, service: str, path: str) -> str | None:
         probe = (
             "import urllib.request;"
-            "print(urllib.request.urlopen("
-            "'http://127.0.0.1:8000/internal/metrics',timeout=2"
+            "opener=urllib.request.build_opener(urllib.request.ProxyHandler({}));"
+            "print(opener.open("
+            f"{'http://127.0.0.1:8000' + path!r},timeout=2"
             ").read().decode(),end='')"
         )
         try:
@@ -204,6 +267,7 @@ class InteractiveCommand:
             ui_enabled=ui_enabled,
             validation_enabled=validation_enabled,
             service_metrics_target=self._service_metrics,
+            observe_apis=self._observe_apis,
         )
 
     def run(

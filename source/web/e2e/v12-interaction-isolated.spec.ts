@@ -236,9 +236,12 @@ for (const scenario of [
       const tliPath = info.outputPath(`tli-${output.outputName}.json`);
       const link = cards.locator(`[data-resource-id="${output.versionId}"]`).getByRole('link', { name: '下载', exact: true });
       await expect(link).toHaveAttribute('href', `/api/v12/data/versions/${output.versionId}/objects/${output.objectId}/content`);
+      await expect(link).toHaveAttribute('download', `${output.outputName}.json`);
       const downloading = page.waitForEvent('download');
       await link.click();
-      await (await downloading).saveAs(webPath);
+      const download = await downloading;
+      expect(download.suggestedFilename()).toMatch(/\.json$/);
+      await download.saveAs(webPath);
       await clients.cli('download', output.versionId, output.objectId, tliPath);
       for (const path of [webPath, tliPath]) {
         const bytes = readFileSync(path);

@@ -23,8 +23,15 @@ def _parquet_profile_fixture() -> bytes:
                 ],
                 type=pa.timestamp("us", tz="Asia/Shanghai"),
             ),
+            pa.array(["9" * 4500, None, "0" * 4500 + "12", "10", "12", "14"]),
+            pa.array([1.0, 2.0, 3.0, float("inf"), 4.0, 100.0]),
+            pa.array([2**53, 2**53 + 1, 10, None, -(2**63), 2**63 - 1], type=pa.int64()),
+            pa.array([2**64 - 1, 2**64 - 2, 1, 2, None, 3], type=pa.uint64()),
         ],
-        names=["well_id", "level_text", "level", "observed_at"],
+        names=[
+            "well_id", "level_text", "level", "observed_at", "long_identifier", "complete_range",
+            "exact_signed", "exact_unsigned",
+        ],
     )
     stream = io.BytesIO()
     pq.write_table(table, stream)
@@ -127,6 +134,36 @@ def test_queryable_ingestion_persists_bounded_whole_table_field_profile(
         "minimum": "2026-01-01T08:00:00+08:00",
         "maximum": "2026-01-06T08:00:00+08:00",
     }
+    long_text = fields["long_identifier"]["profile"]
+    assert long_text["nonNullCount"] == 5
+    assert long_text["sampleValues"][0] == "9" * 159 + "…"
+    assert long_text["numericString"]["identifierLike"] is True
+    assert "suggestedType" not in long_text["numericString"]
+    assert fields["complete_range"]["profile"] == {
+        "nonNullCount": 6,
+        "nonFiniteCount": 1,
+        "sampleValues": [1.0, 2.0, 3.0, "inf", 4.0],
+        "valueRange": {"minimum": 1.0, "maximum": 100.0},
+    }
+    signed = fields["exact_signed"]["profile"]
+    assert signed["sampleValues"] == [2**53, 2**53 + 1, 10, -(2**63), 2**63 - 1]
+    assert signed["valueRange"] == {"minimum": -(2**63), "maximum": 2**63 - 1}
+    assert signed["exactIntegers"] == {
+        "sampleValues": ["9007199254740992", "9007199254740993", None, "-9223372036854775808", "9223372036854775807"],
+        "minimum": "-9223372036854775808",
+        "maximum": "9223372036854775807",
+    }
+    assert fields["exact_unsigned"]["profile"]["exactIntegers"] == {
+        "sampleValues": ["18446744073709551615", "18446744073709551614", None, None, None],
+        "maximum": "18446744073709551615",
+    }
+    with worker.db.transaction() as connection:
+        persisted = connection.execute(
+            "SELECT descriptor FROM versions WHERE id=%s", (detail["versionId"],)
+        ).fetchone()["descriptor"]
+    stored_signed = next(field["profile"] for field in persisted["fields"] if field["name"] == "exact_signed")
+    assert stored_signed["sample_values"][:2] == [2**53, 2**53 + 1]
+    assert "exact_integers" not in stored_signed
 
 
 def test_exact_version_tool_reuses_the_persisted_profile(client, worker):
@@ -151,6 +188,9 @@ def test_exact_version_tool_reuses_the_persisted_profile(client, worker):
         "minimum": 12.5,
         "maximum": 17.5,
     }
+    assert descriptor["fields"][6]["profile"]["exactIntegers"]["sampleValues"][:2] == [
+        "9007199254740992", "9007199254740993",
+    ]
 
 
 def test_numeric_string_hint_does_not_recommend_a_lossy_float_conversion():
@@ -166,3 +206,24 @@ def test_numeric_string_hint_does_not_recommend_a_lossy_float_conversion():
     evidence = profiler.field(0)["profile"]["numeric_string"]
     assert evidence["parsed_count"] == 1
     assert "suggested_type" not in evidence
+
+
+def test_long_numeric_text_preserves_ingestion_and_bounded_samples():
+    schema = pa.schema([pa.field("identifier", pa.string())])
+    profiler = TableFieldProfiler(schema)
+    for values in (["9" * 4500, None], ["0" * 4500 + "12", "42"]):
+        profiler.consume(
+            pa.RecordBatch.from_arrays([pa.array(values)], schema=schema)
+        )
+
+    field = profiler.field(0)
+    assert field["null_count"] == 1
+    profile = field["profile"]
+    assert profile["non_null_count"] == 3
+    assert profile["sample_values"] == ["9" * 159 + "…", "0" * 159 + "…", "42"]
+    assert profile["numeric_string"] == {
+        "checked_count": 3,
+        "parsed_count": 3,
+        "parse_success_rate": 1.0,
+        "identifier_like": True,
+    }

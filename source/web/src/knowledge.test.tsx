@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import { DatabaseWorkbench } from './DatabaseWorkbench';
 import { KnowledgeDrawer, ResourcePreview } from './Drawers';
@@ -215,7 +215,8 @@ it('lists datasets and opens one immutable Data version', async () => {
   const attach = vi.fn();
   render(<DatabaseWorkbench project="project" onClose={vi.fn()} onAttach={attach} />);
   fireEvent.click(await screen.findByRole('button', { name: /地下水观测/ }));
-  expect(await screen.findByText('973004')).toBeVisible();
+  const detailPane = screen.getByRole('region', { name: '数据详情' });
+  expect(await within(detailPane).findByText('973004')).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: '附加精确版本' }));
   expect(attach.mock.calls[0][0]).toEqual(expect.objectContaining({ versionId: 'version-1', semanticId: 'semantics-1', objectId: 'object-1' }));
 });

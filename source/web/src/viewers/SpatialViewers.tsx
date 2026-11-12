@@ -68,11 +68,13 @@ export function GeoViewer({ url }: { url: string }) {
       if (source.getState() !== 'ready') return;
       unByKey(sourceKey);
       const features = source.getFeatures();
-      const fields = [...new Set(features.flatMap(feature => (
-        Object.entries(feature.getProperties())
-          .filter(([key, value]) => key !== 'geometry' && typeof value === 'number' && Number.isFinite(value))
-          .map(([key]) => key)
-      )))];
+      const numeric = new Set<string>();
+      for (const feature of features) {
+        for (const [key, value] of Object.entries(feature.getProperties())) {
+          if (key !== 'geometry' && typeof value === 'number' && Number.isFinite(value)) numeric.add(key);
+        }
+      }
+      const fields = [...numeric];
       setNumericFields(fields);
       setColorField(previous => fields.includes(previous) ? previous : fields[0] ?? '');
       const extent = source.getExtent();
@@ -108,25 +110,35 @@ export function GeoViewer({ url }: { url: string }) {
       layer.setStyle(defaultStyleRef.current ?? undefined);
       return;
     }
-    const values = source.getFeatures()
-      .map(feature => feature.get(colorField))
-      .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
-    if (!values.length) {
+    let min = Infinity;
+    let max = -Infinity;
+    for (const feature of source.getFeatures()) {
+      const value = feature.get(colorField);
+      if (typeof value !== 'number' || !Number.isFinite(value)) continue;
+      min = Math.min(min, value);
+      max = Math.max(max, value);
+    }
+    if (min === Infinity) {
       setRange(null);
       layer.setStyle(defaultStyleRef.current ?? undefined);
       return;
     }
-    const bounds: [number, number] = [Math.min(...values), Math.max(...values)];
-    setRange(bounds);
+    setRange([min, max]);
+    const scale = Number.isFinite(max - min) ? 1 : 0.5;
+    const lower = min * scale;
+    const span = max * scale - lower;
+    const styles = new globalThis.Map<string, Style>();
     layer.setStyle(feature => {
       const value = feature.get(colorField);
-      const ratio = typeof value === 'number' && Number.isFinite(value) && bounds[1] !== bounds[0]
-        ? (value - bounds[0]) / (bounds[1] - bounds[0])
+      const ratio = typeof value === 'number' && Number.isFinite(value) && span > 0
+        ? (value * scale - lower) / span
         : .5;
       const red = Math.round(44 + 210 * ratio);
       const blue = Math.round(210 - 170 * ratio);
       const color = `rgb(${red},92,${blue})`;
-      return new Style({
+      const cached = styles.get(color);
+      if (cached) return cached;
+      const style = new Style({
         stroke: new Stroke({ color, width: 2 }),
         fill: new Fill({ color: `rgba(${red},92,${blue},.35)` }),
         image: new CircleStyle({
@@ -135,6 +147,8 @@ export function GeoViewer({ url }: { url: string }) {
           stroke: new Stroke({ color: '#fff', width: 1 }),
         }),
       });
+      styles.set(color, style);
+      return style;
     });
   }, [colorField, url]);
 

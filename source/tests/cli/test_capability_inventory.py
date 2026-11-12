@@ -25,7 +25,7 @@ def test_inventory_is_derived_from_domain_catalog_and_product_ui() -> None:
     selected = load_selected_product_by_id(repository, "groundwater")
     domain = _json(selected.domain.root / "domain-manifest.json")
     catalog = _json(repository / "packages/operator-pack/catalog/index.json")
-    product_ui = _json(repository / "products/groundwater/ui/product-ui.json")
+    product_ui = _json(selected.manifest_path.parent / selected.manifest["uiProfile"]["path"])
 
     summary = inventory["summary"]
     assert summary["modelCount"] == len(domain["executableModels"])

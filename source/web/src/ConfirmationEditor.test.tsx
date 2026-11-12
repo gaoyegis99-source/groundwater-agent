@@ -30,10 +30,10 @@ const resourceCapabilities: Capabilities = {
   }],
 };
 
-function renderResourceEditor(project = 'project-a') {
+function renderResourceEditor(project = 'project-a', onSave = vi.fn()) {
   return render(<ConfirmationEditor
     confirmation={resourceConfirmation} capabilities={resourceCapabilities}
-    project={project} busy={false} onClose={vi.fn()} onSave={vi.fn()}
+    project={project} busy={false} onClose={vi.fn()} onSave={onSave}
   />);
 }
 
@@ -95,11 +95,65 @@ it('edits the complete action and submits a new immutable revision payload', asy
   render(<ConfirmationEditor confirmation={confirmation} capabilities={capabilities} project="p" busy={false} onClose={vi.fn()} onSave={save} />);
   await userEvent.clear(screen.getByRole('spinbutton'));
   await userEvent.type(screen.getByRole('spinbutton'), '5');
+  expect(screen.getByText('原值：2')).toBeVisible();
   expect(screen.getByText('字段变化 · 1')).toBeVisible();
   await userEvent.click(screen.getByRole('button', { name: '保存为新修订' }));
   expect(save).toHaveBeenCalledWith([{ toolCallId: 'call-1', arguments: {
     resourceId: 'resource-1', threshold: 5,
   } }]);
+});
+
+it('pages and searches a catalog of 51 datasets while retaining the selected version', async () => {
+  const items = Array.from({ length: 51 }, (_, index) => {
+    const number = index + 1;
+    return {
+      datasetId: `dataset-${number}`, project: 'project-a', title: `观测 ${number}`, tags: [],
+      currentVersion: `version-${number}`, createdAt: '2026-11-10T00:00:00Z', formats: ['csv'], semantics: {},
+    };
+  });
+  const datasetRequests: URLSearchParams[] = [];
+  let semanticId = 'semantic-seen';
+  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+    const url = new URL(String(input), 'http://local.test');
+    if (url.pathname.endsWith('/datasets')) {
+      datasetRequests.push(url.searchParams);
+      const filtered = url.searchParams.has('query') ? items.slice(50) : items;
+      const offset = url.searchParams.has('cursor') ? 50 : 0;
+      return json({ items: filtered.slice(offset, offset + 50), nextCursor: filtered.length > offset + 50 ? 'dataset-50' : null, matchBasis: 'catalog' });
+    }
+    const item = items.find(candidate => url.pathname.endsWith(`/${candidate.currentVersion}`));
+    if (!item) throw new Error(`unexpected endpoint ${url.pathname}`);
+    return json(dataDetail({ versionId: item.currentVersion, datasetId: item.datasetId, title: item.title, semanticId }));
+  }));
+
+  const save = vi.fn();
+  const user = userEvent.setup();
+  renderResourceEditor('project-a', save);
+  expect(await screen.findByRole('option', { name: '观测 50 · version-50' })).toBeInTheDocument();
+  expect(screen.queryByRole('option', { name: '观测 51 · version-51' })).not.toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: '下一页数据集' }));
+  const option = await screen.findByRole('option', { name: '观测 51 · version-51' });
+  await user.selectOptions(screen.getByRole('combobox', { name: /输入资料/ }), option);
+  expect(datasetRequests[1].get('cursor')).toBe('dataset-50');
+  await user.click(screen.getByRole('button', { name: '上一页数据集' }));
+  expect(await screen.findByRole('option', { name: '观测 50 · version-50' })).toBeInTheDocument();
+  expect(screen.getByRole('combobox', { name: /输入资料/ })).toHaveValue('version-51');
+  semanticId = 'semantic-after-selection';
+  await user.type(screen.getByRole('searchbox', { name: '搜索数据集' }), '观测 51');
+  await user.click(screen.getByRole('button', { name: '搜索' }));
+  expect(await screen.findByRole('option', { name: '观测 51 · version-51' })).toBeInTheDocument();
+  expect(datasetRequests.at(-1)?.get('query')).toBe('观测 51');
+  expect(datasetRequests.at(-1)?.has('cursor')).toBe(false);
+  await user.click(screen.getByRole('button', { name: '保存为新修订' }));
+  const raw = dataDetail().objects.find(item => item.role === 'raw')!;
+  expect(save).toHaveBeenCalledWith([{
+    toolCallId: 'call-resource', arguments: { versionId: 'version-51' },
+    expectedInputReferences: { versionId: {
+      kind: 'data_version', service: 'data-primary', datasetId: 'dataset-51',
+      versionId: 'version-51', semanticId: 'semantic-seen', objectId: raw.objectId,
+      checksum: raw.checksum, mediaType: raw.mediaType, format: raw.format, sizeBytes: raw.size,
+    } },
+  }]);
 });
 
 it('applies and focuses an explicitly requested field without caller DOM lookup', async () => {

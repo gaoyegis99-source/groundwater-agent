@@ -1,8 +1,8 @@
 import { useCallback, useState } from 'react';
-import type { KnowledgeReference } from './types';
+import type { KnowledgeReference, ResourceReference } from './types';
 
 export type Drawer =
-  | { kind: 'database'; id?: string; compare?: boolean; formats?: string[] }
+  | { kind: 'database'; id?: string; reference?: ResourceReference; compare?: boolean; formats?: string[] }
   | { kind: 'knowledge'; reference?: KnowledgeReference }
   | { kind: 'capabilities' }
   | { kind: 'readiness' }

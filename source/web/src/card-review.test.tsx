@@ -141,11 +141,11 @@ it('presents released result names in Chinese while retaining the real download 
   render(<ResultCard task={task} result={result} project="demo" onResource={onResource} />);
   expect(screen.getByText('地下水流场')).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: /水头栅格/ }));
-  expect(onResource).toHaveBeenCalledExactlyOnceWith('released-head');
+  expect(onResource).toHaveBeenCalledExactlyOnceWith(result.remoteOutputs[0]);
   expect(screen.getByText('geotiff · 版本 released-head')).toBeVisible();
   expect(screen.getByText('head-semantics')).not.toBeVisible();
   expect(screen.getByRole('link', { name: '下载' })).toHaveAttribute('href', '/api/v12/data/versions/released-head/objects/object-head/content');
-  expect(screen.getByRole('link', { name: '下载' })).toHaveAttribute('download', 'head-raster');
+  expect(screen.getByRole('link', { name: '下载' })).toHaveAttribute('download', 'head-raster.tif');
   expect(screen.queryByText(text => text.includes('"checksum": "sha256:exact-output"'))).not.toBeInTheDocument();
   expect(screen.queryByText('模型与结果身份')).not.toBeInTheDocument();
 });

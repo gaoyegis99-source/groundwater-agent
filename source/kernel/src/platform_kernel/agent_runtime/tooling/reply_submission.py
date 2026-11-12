@@ -383,9 +383,9 @@ class ReplySubmission:
                         "Call submit_reply once more. The user requested a sequence: "
                         "connect each explicitly downstream operation to the requested "
                         "upstream nodeOutput instead of reusing the external "
-                        "workflowInput. Expose every requested terminal operation as a "
-                        "workflow output; fan-out and multiple terminal outputs are "
-                        "valid. Preserve the requested operation order and all explicit "
+                        "workflowInput. Expose the requested results as named workflow "
+                        "outputs. Multiple outputs and explicitly requested intermediate "
+                        "outputs are valid. Preserve the requested operation order and all explicit "
                         "missing inputs."
                     )
                 elif issue["code"] == "DRAFT_DATA_FORMAT_INCOMPATIBLE":
@@ -465,16 +465,6 @@ class ReplySubmission:
             if connected != node_ids:
                 return "WORKFLOW_DRAFT_SEQUENCE_INVALID", "/graph/nodes"
 
-        sinks = {
-            node_id
-            for node_id, downstream_ids in downstream_by_node.items()
-            if not downstream_ids
-        }
-        if any(
-            output.node_output.node_id not in sinks
-            for output in draft.graph.outputs
-        ):
-            return "WORKFLOW_DRAFT_SEQUENCE_INVALID", "/graph/outputs"
         return None
 
     def _matching_sequence_nodes(self, text: str, nodes) -> set[str]:
@@ -550,10 +540,9 @@ class ReplySubmission:
                 "and no rules binding, so only the rules input remains missing. "
                 "Use only the documented workflow_draft fields; never add explanatory "
                 "note fields beside parameter_values or other draft fields. "
-                "For sequential requests, "
-                "each graph output must reference a requested terminal operation, "
-                "never an intermediate node; fan-out may have multiple terminal "
-                "outputs. Workflow-draft replies never include "
+                "For sequential requests, expose intermediate results only when "
+                "explicitly requested. Multiple requested outputs are valid. "
+                "Workflow-draft replies never include "
                 "interaction_options; the saved draft carries its own gaps. Keep "
                 "workflow_draft.summary to one sentence within 120 characters."
             )

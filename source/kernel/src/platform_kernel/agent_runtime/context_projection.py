@@ -105,16 +105,16 @@ def project_execution_context(
     estimator: TokenEstimator,
 ) -> tuple[dict[str, object], list[ContextBlockV1]]:
     referenced_runs: set[str] = set()
-    referenced_resources: set[str] = set()
+    referenced_versions: set[str] = set()
     if task is not None:
         for item in _dicts(task.get("evidence")):
             run_id = item.get("workflow_run_id")
             if isinstance(run_id, str):
                 referenced_runs.add(run_id)
         for item in _dicts(task.get("results")):
-            resource_id = item.get("resource_id")
-            if isinstance(resource_id, str):
-                referenced_resources.add(resource_id)
+            version_id = item.get("version_id")
+            if isinstance(version_id, str):
+                referenced_versions.add(version_id)
 
     pinned: list[dict[str, object]] = []
     retrievable: list[dict[str, object]] = []
@@ -126,9 +126,9 @@ def project_execution_context(
         )
         action_revision = _integer(action.get("goal_revision"))
         outputs = _dicts(action.get("outputs"))
-        output_ids = {
-            value.get("resource_id") for value in outputs
-            if isinstance(value.get("resource_id"), str)
+        output_versions = {
+            value.get("version_id") for value in outputs
+            if isinstance(value.get("version_id"), str)
         }
         must_pin = (
             status in {"PENDING", "QUEUED", "RUNNING"}
@@ -139,7 +139,7 @@ def project_execution_context(
                 and action_revision >= task_start
             )
             or action.get("workflow_run_id") in referenced_runs
-            or bool(output_ids & referenced_resources)
+            or bool(output_versions & referenced_versions)
         )
         block = ContextBlockV1(
             block_id=f"agent:execution:{index}",

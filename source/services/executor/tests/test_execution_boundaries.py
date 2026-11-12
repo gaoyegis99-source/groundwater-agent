@@ -446,7 +446,7 @@ def test_workspace_cleanup_before_periodic_heartbeat_keeps_worker_alive(tmp_path
     asyncio.run(exercise())
 
 
-@pytest.mark.parametrize("phase", ["stage", "commit-intent"])
+@pytest.mark.parametrize("phase", ["stage", "commit-intent", "finalizing-restart"])
 def test_expired_unreleased_publication_aborts_without_first_commit(
     tmp_path, monkeypatch, phase
 ):
@@ -473,7 +473,7 @@ def test_expired_unreleased_publication_aborts_without_first_commit(
         monkeypatch.setattr(resources, "stage_result", delayed_stage)
         publisher.publish_ready()
         publisher.publish_ready()
-    else:
+    elif phase == "commit-intent":
 
         def interrupted_commit(*args):
             raise RuntimeError("Control stopped after commit intent")
@@ -486,6 +486,16 @@ def test_expired_unreleased_publication_aborts_without_first_commit(
         expire()
         control.recover()
         publisher.publish_ready()
+    else:
+        with connect_database(control.database) as connection:
+            connection.execute(
+                "UPDATE executor_jobs SET stage='FINALIZING' WHERE job_id=?",
+                (job.job_id,),
+            )
+        expire()
+        control.recover()
+        publisher.publish_ready()
+        assert resources.stage_calls == 0
     assert resources.commit_calls == 0
     assert resources.groups[job.job_id]["state"] == "ABORTED"
     status = control.get(job.job_id)

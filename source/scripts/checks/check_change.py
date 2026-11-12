@@ -24,6 +24,7 @@ from scripts.maintenance.project_environment import docker_executable  # noqa: E
 from scripts.checks.v6_test_suite import (  # noqa: E402
     V6_PYTEST_SLICES,
     V6_UI_WORKSPACES,
+    isolated_pytest_command,
     pytest_command,
 )
 
@@ -72,7 +73,10 @@ _CHECKS = {
         ),
     ),
     "data": (
-        Check("Data tests", (PYTHON, "-m", "pytest", "-q", "services/data/tests")),
+        Check(
+            "Data tests",
+            (PYTHON, *pytest_command(next(item for item in V6_PYTEST_SLICES if item.key == "data"))),
+        ),
     ),
     "knowledge": (
         Check(
@@ -245,4 +249,5 @@ def run_checks(scope: str, *, knowledge_test_database_url: str | None = None) ->
                 **os.environ,
                 "TEST_KNOWLEDGE_DATABASE_URL": knowledge_test_database_url,
             }
-        subprocess.run(step.command, cwd=ROOT, check=True, env=environment)
+        with isolated_pytest_command(step.command) as command:
+            subprocess.run(command, cwd=ROOT, check=True, env=environment)

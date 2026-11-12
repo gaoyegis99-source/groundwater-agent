@@ -73,15 +73,18 @@ class PublicationOrchestrator:
                 return
         with connect_database(self.database) as connection:
             current = connection.execute(
-                "SELECT * FROM executor_jobs WHERE job_id=?", (job_id,)
+                """SELECT *, julianday(deadline_at)<=julianday(?) AS overdue
+                   FROM executor_jobs WHERE job_id=?""",
+                (utc_now(), job_id),
             ).fetchone()
-        if current["cancel_requested"]:
-            if current["stage"] == "COMMIT_PENDING":
-                self.finalizer.abort_commit_pending(job_id, "JOB_CANCELLED")
-            else:
-                self.finalizer.abort_finalizing(job_id, "JOB_CANCELLED")
-            return
         if current["status"] != "RUNNING":
+            return
+        if current["cancel_requested"] or current["overdue"]:
+            error = "JOB_CANCELLED" if current["cancel_requested"] else "JOB_DEADLINE_EXCEEDED"
+            if current["stage"] == "COMMIT_PENDING":
+                self.finalizer.abort_commit_pending(job_id, error)
+            else:
+                self.finalizer.abort_finalizing(job_id, error)
             return
 
         declarations = {

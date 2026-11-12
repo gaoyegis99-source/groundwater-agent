@@ -282,6 +282,7 @@ details[open] > summary { margin-bottom: 8px; }
 .reply-details > summary { color: var(--accent); font-size: 13px; }
 .reply-detail { padding: 15px 0; border-bottom: 1px solid var(--border); }
 .reply-sources { padding-top: 15px; }
+.reply-section-sources { display: flex; flex-wrap: wrap; gap: 5px 12px; margin-top: 6px; font-size: 13px; }
 .markdown-content p { margin: 0 0 14px; white-space: pre-line; }
 .markdown-content p:last-child { margin-bottom: 0; }
 .markdown-content :is(h1, h2, h3, h4, h5, h6) { margin: 24px 0 12px; letter-spacing: 0; line-height: 1.5; }
@@ -417,11 +418,10 @@ details[open] > summary { margin-bottom: 8px; }
 .draft-graph-scroll:focus-visible { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent); }
 .draft-graph { display: block; color: #66707e; }
 .draft-graph-column-label { fill: #737c88; font-size: 12px; font-weight: 600; letter-spacing: .05em; }
-.draft-graph-terminal-summary { fill: #737c88; font-size: 12px; }
 .draft-graph-edge { fill: none; stroke: #9da7b4; stroke-width: 1.4; }
 .draft-graph-edge + marker path, .draft-graph marker path { fill: #8994a2; }
 .draft-graph-missing-edge { fill: none; stroke: #c78d31; stroke-width: 1.2; stroke-dasharray: 4 4; }
-.draft-graph-input rect { fill: #f1f5f8; stroke: #bdc7d1; }
+.draft-graph-input rect, .draft-graph-output rect { fill: #f1f5f8; stroke: #bdc7d1; }
 .draft-graph-input.is-missing rect { fill: #fff8e8; stroke: #d09a42; stroke-dasharray: 4 3; }
 .draft-graph-input-title { fill: #303946; font-size: 12px; font-weight: 600; }
 .draft-graph-input-meta, .draft-graph-input-missing { fill: #6d7784; font-size: 12px; }

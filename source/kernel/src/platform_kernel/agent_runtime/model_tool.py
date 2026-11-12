@@ -12,7 +12,7 @@ from jsonschema import ValidationError, validate
 from ..errors import AgentRunError
 from ..settings import ExecutableModelDefinition
 from .persistence import load_replayed_action
-from .provider_arguments import normalize_model_tool_arguments
+from .provider_arguments import normalize_model_tool_arguments, omit_unset_field_arguments
 
 
 def provider_model_input_schema(
@@ -60,6 +60,7 @@ def build_model_tool(
     model: ExecutableModelDefinition,
     *,
     provider: str = "deepseek",
+    explicit_model_tool_request: object = None,
 ) -> FunctionTool:
     async def invoke(context: ToolContext[dict[str, Any]], arguments_json: str):
         try:
@@ -69,6 +70,7 @@ def build_model_tool(
             supplied = normalize_model_tool_arguments(
                 supplied, model.input_schema, provider=provider,
             )
+            supplied = omit_unset_field_arguments(supplied, model, explicit_model_tool_request)
             arguments = {**model.default_parameters, **supplied}
             validate(arguments, model.input_schema)
         except (json.JSONDecodeError, TypeError, ValidationError) as error:

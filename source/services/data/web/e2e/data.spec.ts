@@ -44,7 +44,27 @@ test("upload, atomic publication, search, inspect, query, refresh and download",
   const raw = await rawDownload;
   expect(await readFile((await raw.path())!)).toEqual(content);
   await page.getByRole("button", { name: /查询这份数据/ }).click();
+  const accepted: Array<{ queryId: string; body: string | null }> = [];
+  await page.route("**/data/v3/queries", async route => {
+    const request = route.request();
+    if (request.method() !== "POST" || !("filters" in request.postDataJSON())) {
+      await route.continue();
+      return;
+    }
+    const receipt = await route.fetch();
+    expect(receipt.status()).toBe(202);
+    const body = await receipt.json() as { queryId: string };
+    accepted.push({ queryId: body.queryId, body: request.postData() });
+    if (accepted.length === 1) await route.abort("connectionreset");
+    else await route.fulfill({ response: receipt });
+  });
   await page.getByRole("button", { name: "执行查询", exact: true }).click();
+  await expect.poll(() => accepted.length).toBe(2);
+  expect(accepted[1]).toEqual(accepted[0]);
+  await testInfo.attach("query-receipt-recovery", {
+    body: JSON.stringify({ queryId: accepted[0].queryId, submissions: accepted.length }),
+    contentType: "application/json",
+  });
   await expect(
     page.getByRole("cell", { name: "001", exact: true }),
   ).toBeVisible();

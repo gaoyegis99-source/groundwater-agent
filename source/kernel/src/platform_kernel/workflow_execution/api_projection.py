@@ -1,4 +1,5 @@
 from .models import WorkflowRun
+from .node_diagnostics import WorkflowNodeDiagnosticsResponse as WorkflowNodeDiagnosticsResponse
 
 
 def workflow_run_response(run: WorkflowRun) -> dict[str, object]:

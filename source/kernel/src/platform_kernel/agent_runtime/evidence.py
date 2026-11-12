@@ -76,6 +76,15 @@ def trusted_read_identity(
     return None
 
 
+def read_supersedes_identity(
+    current: KnowledgeKey, observed: KnowledgeKey, status: object,
+) -> bool:
+    # STALE reports a checksum mismatch for the requested identity only.
+    if status == "STALE":
+        return current == observed
+    return current[:2] == observed[:2]
+
+
 def _object(value: object) -> dict[str, object]:
     parsed = ast.literal_eval(value) if isinstance(value, str) else value
     if not isinstance(parsed, dict):
@@ -209,15 +218,17 @@ def collect_turn_evidence(input_items: list[dict[str, Any]]) -> TurnEvidence:
                 observed = knowledge_identity(evidence)
                 identity = trusted_read_identity(evidence, exact_retrievals)
                 if observed is not None:
+                    status = evidence.get("status")
                     exact_retrievals = {
                         current for current in exact_retrievals
-                        if current[:2] != observed[:2]
+                        if not read_supersedes_identity(current, observed, status)
                     }
+                    if identity is None:
+                        knowledge = {
+                            key: title for key, title in knowledge.items()
+                            if not read_supersedes_identity(key, observed, status)
+                        }
                 if identity is None:
-                    knowledge = {
-                        key: title for key, title in knowledge.items()
-                        if observed is None or key[:2] != observed[:2]
-                    }
                     continue
                 locator = evidence.get("locator")
                 title = (

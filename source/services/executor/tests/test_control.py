@@ -690,6 +690,8 @@ def test_first_lost_lease_retries_and_second_fails(tmp_path) -> None:
         )
     control.reconcile()
     assert control.get(status.job_id).error == "WORKER_LOST"
+    (diagnostic,) = control.node_diagnostics(status.job_id)
+    assert diagnostic["attempt_count"] == 2
 
 
 def test_recovery_metrics_observe_lost_lease_and_late_workspace_gc(tmp_path) -> None:

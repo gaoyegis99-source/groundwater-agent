@@ -4,6 +4,7 @@ import asyncio
 from collections import deque
 from contextlib import aclosing
 from datetime import datetime, timezone
+import logging
 
 from .agent_runtime.case_resolver import (
     matches_execution_case_request,
@@ -12,7 +13,10 @@ from .agent_runtime.case_resolver import (
 from .agent_runtime.owner import AgentRuntimeOwner
 from .agent_runtime.persistence.context import load_route_context_sources
 from .change_signal import CommitSignal
-from .errors import AgentRunError, UpstreamServiceError, WriteLockUnavailableError
+from .errors import (
+    AgentRunError, SchedulerStoreReadonlyError, UpstreamServiceError,
+    WriteLockUnavailableError,
+)
 from .interaction.control_intents import rule_intent
 from .interaction.owner import InteractionOwner
 from .intent_routing import (
@@ -25,6 +29,7 @@ from .task_supervisor import KernelTaskSupervisor
 
 IDLE_WAIT_SECONDS = 1.0
 TRACE_PRUNE_INTERVAL_SECONDS = 3600.0
+_LOGGER = logging.getLogger(__name__)
 
 
 class KernelRuntime:
@@ -49,6 +54,7 @@ class KernelRuntime:
         self.commit_signal = commit_signal or CommitSignal()
         self._stop = asyncio.Event()
         self._task: asyncio.Task[None] | None = None
+        self._store_readonly = False
         self._tasks = KernelTaskSupervisor(task_concurrency, task_queue_capacity)
         self._poll_routes_first = True
         self._next_admission = "database"
@@ -58,7 +64,13 @@ class KernelRuntime:
 
     async def start(self) -> None:
         await self.recover()
-        self._task = asyncio.create_task(self._dispatch())
+        self._task = asyncio.create_task(self._dispatch(), name="kernel:dispatcher")
+        self._task.add_done_callback(self._log_dispatcher_failure)
+
+    @staticmethod
+    def _log_dispatcher_failure(task: asyncio.Task[None]) -> None:
+        if not task.cancelled() and (error := task.exception()) is not None:
+            _LOGGER.error("Kernel dispatcher stopped unexpectedly", exc_info=error)
 
     async def recover(self) -> None:
         self.workflow_execution.recover_interrupted()
@@ -78,6 +90,7 @@ class KernelRuntime:
         return (
             self._task is not None
             and not self._task.done()
+            and not self._store_readonly
             and not self._agent_task_failed()
         )
 
@@ -100,6 +113,8 @@ class KernelRuntime:
             generation = self.commit_signal.generation
             processed_count = 0
             try:
+                if self._store_readonly:
+                    self._check_scheduler_store_writable()
                 await self._process_controls()
                 self._tasks.reap()
                 if asyncio.get_running_loop().time() >= self._next_trace_prune_at:
@@ -120,6 +135,11 @@ class KernelRuntime:
                                 )
                                 if recovered is not None:
                                     self.interaction.project(recovered)
+            except SchedulerStoreReadonlyError:
+                if not self._store_readonly:
+                    _LOGGER.warning("Kernel scheduler write store is read-only; waiting for recovery")
+                self._store_readonly = True
+                processed_count = 0
             except WriteLockUnavailableError:
                 # Only a refused BEGIN reaches here. Leave durable queue state
                 # intact and yield before another poll; never replay a write.
@@ -138,6 +158,12 @@ class KernelRuntime:
             await asyncio.gather(*pending, return_exceptions=True)
             for task in done:
                 task.result()
+
+    def _check_scheduler_store_writable(self) -> None:
+        if not self.interaction.scheduler_store_writable():
+            raise WriteLockUnavailableError("KERNEL_WRITE_BUSY")
+        self._store_readonly = False
+        _LOGGER.info("Kernel scheduler write store recovered")
 
     async def _process_controls(self) -> None:
         if self.controls is None:

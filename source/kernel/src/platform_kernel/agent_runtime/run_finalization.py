@@ -9,6 +9,7 @@ from ..errors import (
     AgentRunError,
     UpstreamServiceError,
 )
+from .case_resolver import load_explicit_model_tool_request
 from .persistence import load_request_context
 from .models import (
     DEVELOPMENT_CASE_LIMITATION,
@@ -264,6 +265,9 @@ def record_interruption(
             result,
             deps.models_by_tool,
             provider=deps.settings.agent_provider,
+            explicit_model_tool_request=load_explicit_model_tool_request(
+                deps.database, deps.settings, run.agent_run_id,
+            ),
         )
     except (ResultProcessingError, AgentRunError) as error:
         diagnostics = error.diagnostics if isinstance(error, AgentRunError) else None

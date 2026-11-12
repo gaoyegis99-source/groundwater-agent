@@ -75,8 +75,8 @@ OPTION_FORBIDDEN = re.compile(
 )
 EXPECTED_DOMAIN_PACKAGE = {
     "domainId": "groundwater",
-    "version": "6.0.0",
-    "checksum": "sha256:e5e8702c14a8ac0298b91f88399faa91154c107ccc7fc283fba34fffbf21eb09",
+    "version": "6.1.0",
+    "checksum": "sha256:8662efa7382bbe4f9fe7c35fd873bf7109a4d75ee3213fd4bb0fdc92b4c4b10d",
 }
 EXPECTED_DATA_FIXTURE_CHECKSUM = (
     "sha256:86c257568bc21eda70434b523f13670da614a8444e01a968058bab96d3f4bf6a"
@@ -92,6 +92,14 @@ EXPECTED_MODEL_IDS = {
     "groundwater.kriging",
     "groundwater.rule-classification",
     "groundwater.drastic",
+    "groundwater.porous-agricultural-inversion",
+    "groundwater.porous-calibration",
+    "groundwater.porous-inversion-sampling",
+    "groundwater.porous-inversion-training",
+    "groundwater.porous-map",
+    "groundwater.porous-scenario-comparison",
+    "groundwater.porous-simulation",
+    "groundwater.sustainability-input-preparation",
 }
 
 

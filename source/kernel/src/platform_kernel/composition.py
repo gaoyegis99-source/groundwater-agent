@@ -71,6 +71,7 @@ class KernelMetricSnapshot(TypedDict):
     workflow_dispatch_concurrency: int
     sse: dict[str, int]
     sqlite_busy: int
+    intent_routing: dict[str, int | float]
 
 
 class PlatformApplication:
@@ -301,6 +302,7 @@ class PlatformApplication:
             "workflow_dispatch_concurrency": self.settings.workflow_dispatch_concurrency,
             "sse": sse,
             "sqlite_busy": sqlite_busy_total(),
+            "intent_routing": dict(self.interaction.route_metrics()),
         }
 
     def record_sse_connection(self, *, reconnect: bool) -> None:

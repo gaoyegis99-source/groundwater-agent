@@ -47,7 +47,11 @@
 .workspace-panel .workspace-outputs button { padding: 12px; box-shadow: none; }
 .workspace-panel .workspace-outputs button strong { font-size: 14px; }
 .workspace-panel .workspace-tasks li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; }
-.workspace-panel .workspace-tasks li > small:last-child:not(:nth-child(2)) { grid-column: 1 / -1; white-space: normal; color: var(--error); }
+.workspace-panel .workspace-tasks .workflow-task-error { grid-column: 1 / -1; white-space: normal; color: var(--error); }
+.workflow-node-details { grid-column: 1 / -1; overflow-wrap: anywhere; }
+.workflow-node-details summary { cursor: pointer; }
+.workflow-node-details dl { display: grid; gap: 8px; }
+.workflow-node-details dd { margin: 2px 0 0; color: var(--muted); }
 .workspace-panel .workspace-empty { padding: 10px 0; font-size: 13px; }
 .workspace-panel .workspace-resizer:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
 .workspace-backdrop.workspace-backdrop { position: fixed; z-index: 39; inset: 0; padding: 0; border: 0; border-radius: 0; background: #20263340; cursor: default; }

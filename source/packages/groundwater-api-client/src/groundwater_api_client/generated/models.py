@@ -1295,27 +1295,6 @@ class KernelConfirmationRequest(BaseModel):
     confirmation_id: str = Field(..., alias='confirmationId', title='Confirmationid')
 
 
-class KernelConfirmationRevisionAction(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    arguments: dict[str, Any] = Field(..., title='Arguments')
-    tool_call_id: str = Field(..., alias='toolCallId', min_length=1, title='Toolcallid')
-
-
-class KernelConfirmationRevisionRequest(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    actions: list[KernelConfirmationRevisionAction] = Field(
-        ..., min_length=1, title='Actions'
-    )
-    expected_goal_revision: int = Field(
-        ..., alias='expectedGoalRevision', ge=0, title='Expectedgoalrevision'
-    )
-    request_id: str = Field(..., alias='requestId', min_length=1, title='Requestid')
-
-
 class KernelControlProposalDecisionRequest(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -1822,6 +1801,68 @@ class KernelWorkflowDraftResponse(BaseModel):
     status: str = Field(..., title='Status')
 
 
+class AttemptCount(RootModel[int]):
+    root: int = Field(..., ge=0, title='Attemptcount')
+
+
+class ErrorCode(RootModel[str]):
+    root: str = Field(..., pattern='^[A-Z][A-Z0-9_]{0,95}$', title='Errorcode')
+
+
+class Runtime(Enum):
+    native = 'native'
+    qgis = 'qgis'
+    remote_http = 'remote_http'
+
+
+class Status4(Enum):
+    waiting = 'WAITING'
+    ready = 'READY'
+    leased = 'LEASED'
+    running = 'RUNNING'
+    succeeded = 'SUCCEEDED'
+    failed = 'FAILED'
+    cancelled = 'CANCELLED'
+    skipped = 'SKIPPED'
+
+
+class KernelWorkflowNodeDiagnostic(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    attempt_count: AttemptCount | None = Field(
+        ..., alias='attemptCount', title='Attemptcount'
+    )
+    error_code: ErrorCode | None = Field(..., alias='errorCode', title='Errorcode')
+    finished_at: AwareDatetime | None = Field(
+        ..., alias='finishedAt', title='Finishedat'
+    )
+    node_id: str = Field(
+        ..., alias='nodeId', max_length=256, min_length=1, title='Nodeid'
+    )
+    operator_id: str = Field(
+        ..., alias='operatorId', max_length=256, min_length=1, title='Operatorid'
+    )
+    runtime: Runtime = Field(..., title='Runtime')
+    started_at: AwareDatetime | None = Field(..., alias='startedAt', title='Startedat')
+    status: Status4 = Field(..., title='Status')
+
+
+class Availability(Enum):
+    not_dispatched = 'NOT_DISPATCHED'
+    unavailable = 'UNAVAILABLE'
+    available = 'AVAILABLE'
+
+
+class KernelWorkflowNodeDiagnosticsResponse(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    availability: Availability = Field(..., title='Availability')
+    nodes: list[KernelWorkflowNodeDiagnostic] = Field(..., title='Nodes')
+    workflow_run_id: str = Field(..., alias='workflowRunId', title='Workflowrunid')
+
+
 class KernelWorkflowRecoveryRequest(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -2027,7 +2068,7 @@ class KnowledgeNextDocumentSummary(BaseModel):
     valid_through: date | None = Field(None, alias='validThrough', title='Validthrough')
 
 
-class Status4(Enum):
+class Status5(Enum):
     ok = 'OK'
     no_match = 'NO_MATCH'
     partial = 'PARTIAL'
@@ -2053,7 +2094,7 @@ class Scope(Enum):
     data_bound = 'DATA_BOUND'
 
 
-class Status5(Enum):
+class Status6(Enum):
     ok = 'OK'
     stale = 'STALE'
     withdrawn = 'WITHDRAWN'
@@ -2211,7 +2252,7 @@ class KnowledgeNextLifecycleBatchDiff(BaseModel):
     version_id: str = Field(..., alias='versionId', title='Versionid')
 
 
-class Status6(Enum):
+class Status7(Enum):
     active = 'ACTIVE'
     withdrawn = 'WITHDRAWN'
 
@@ -2233,7 +2274,7 @@ class KnowledgeNextLifecycleBatchItem(BaseModel):
     )
     reason: str = Field(..., max_length=1000, min_length=1, title='Reason')
     review_after: date = Field(..., alias='reviewAfter', title='Reviewafter')
-    status: Status6 = Field(..., title='Status')
+    status: Status7 = Field(..., title='Status')
     valid_through: date | None = Field(None, alias='validThrough', title='Validthrough')
     version_id: str = Field(
         ...,
@@ -2260,7 +2301,7 @@ class KnowledgeNextLifecycleBatchPreflightRequest(BaseModel):
     )
     reason: str = Field(..., max_length=1000, min_length=1, title='Reason')
     review_after: date = Field(..., alias='reviewAfter', title='Reviewafter')
-    status: Status6 = Field(..., title='Status')
+    status: Status7 = Field(..., title='Status')
     valid_through: date | None = Field(None, alias='validThrough', title='Validthrough')
 
 
@@ -2305,7 +2346,7 @@ class KnowledgeNextLifecycleUpdateRequest(BaseModel):
     )
     reason: str = Field(..., max_length=1000, min_length=1, title='Reason')
     review_after: date = Field(..., alias='reviewAfter', title='Reviewafter')
-    status: Status6 = Field(..., title='Status')
+    status: Status7 = Field(..., title='Status')
     valid_through: date | None = Field(None, alias='validThrough', title='Validthrough')
 
 
@@ -2873,6 +2914,33 @@ class KernelCapabilitiesResponse(BaseModel):
     services: list[str] | None = Field(None, title='Services')
 
 
+class KernelConfirmationRevisionAction(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    arguments: dict[str, Any] = Field(..., title='Arguments')
+    expected_input_references: dict[str, KernelMessageInputReference] | None = Field(
+        None,
+        alias='expectedInputReferences',
+        description='Exact Data references selected for this action, keyed by model input parameter.',
+        title='Expectedinputreferences',
+    )
+    tool_call_id: str = Field(..., alias='toolCallId', min_length=1, title='Toolcallid')
+
+
+class KernelConfirmationRevisionRequest(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    actions: list[KernelConfirmationRevisionAction] = Field(
+        ..., min_length=1, title='Actions'
+    )
+    expected_goal_revision: int = Field(
+        ..., alias='expectedGoalRevision', ge=0, title='Expectedgoalrevision'
+    )
+    request_id: str = Field(..., alias='requestId', min_length=1, title='Requestid')
+
+
 class KernelHTTPValidationError(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -3052,7 +3120,7 @@ class KnowledgeNextEvidenceItem(BaseModel):
     review_due: bool | None = Field(None, alias='reviewDue', title='Reviewdue')
     scope: Scope | None = Field(None, title='Scope')
     sources: list[KnowledgeNextSource] | None = Field(None, title='Sources')
-    status: Status5 = Field(..., title='Status')
+    status: Status6 = Field(..., title='Status')
     unit_id: str = Field(..., alias='unitId', title='Unitid')
     version_id: str = Field(..., alias='versionId', title='Versionid')
 
@@ -3201,7 +3269,7 @@ class KnowledgeNextEvidenceBundleV1(BaseModel):
     schema_version: Literal['evidence-bundle.v1'] = Field(
         'evidence-bundle.v1', alias='schemaVersion', title='Schemaversion'
     )
-    status: Status4 = Field(..., title='Status')
+    status: Status5 = Field(..., title='Status')
     timings_ms: dict[str, float] = Field(..., alias='timingsMs', title='Timingsms')
 
 

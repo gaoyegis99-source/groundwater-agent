@@ -30,8 +30,8 @@ test("exact task binding combines with general knowledge; defaults exclude bound
     await page.getByText("数据范围（可选）").click();
     await page.getByRole("button", { name: "打开数据集列表" }).click();
     await page.getByRole("option", { name: new RegExp(dataset.title) }).click();
-    await page.getByRole("button", { name: /打开版本列表/ }).click();
-    await page.getByRole("option", { name: new RegExp(version.versionId) }).click();
+    await page.getByRole("combobox", { name: "不可变版本", exact: true }).selectOption(version.versionId);
+    await expect(page.getByLabel("语义修订")).toHaveValue(version.semanticId);
     await page.getByLabel("适用范围", { exact: true }).selectOption("combined");
     await page.getByRole("button", { name: "开始检索", exact: true }).click();
     await expect(page.locator("#evidence")).toContainText(`${id} general`);

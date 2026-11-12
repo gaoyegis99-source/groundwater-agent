@@ -134,3 +134,93 @@ def test_archive_refuses_unknown_run(tmp_path: Path) -> None:
 
     with pytest.raises(ResearchArtifactError, match="ARCHIVE_RUN_NOT_FOUND"):
         create_archive(paths, ROOT, instance_id, "missing-run", "experiment", None)
+
+
+def test_snapshot_schema_probe_leaves_stopped_wal_database_untouched(tmp_path: Path) -> None:
+    from contextlib import closing
+
+    paths, instance_id, data, _state = _instance(tmp_path)
+    database = data / "kernel/kernel.sqlite3"
+    with closing(sqlite3.connect(database)) as connection:
+        assert connection.execute("PRAGMA journal_mode=WAL").fetchone() == ("wal",)
+
+    before = {file.name: file.read_bytes() for file in database.parent.iterdir()}
+    assert set(before) == {"kernel.sqlite3"}
+    result = create_snapshot(paths, instance_id)
+
+    assert {file.name: file.read_bytes() for file in database.parent.iterdir()} == before
+    with tarfile.open(Path(result["snapshot"]), "r:gz") as archive:
+        assert "data/kernel/kernel.sqlite3-wal" not in archive.getnames()
+        assert "data/kernel/kernel.sqlite3-shm" not in archive.getnames()
+
+
+def test_active_archive_reads_the_kernel_store_as_its_container_owner(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from scripts.maintenance import research_artifacts
+
+    paths, instance_id, data, state = _instance(tmp_path)
+    manifest_path = state / "instance-manifest.v4.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["status"] = "active"
+    manifest_path.write_bytes(canonical_bytes(manifest))
+    container = "a" * 64
+    calls = []
+
+    def docker_command(command, **kwargs):
+        calls.append(command)
+        if command[1] == "ps":
+            assert "label=com.docker.compose.project=groundwater-v6-research-test" in command
+            assert "label=com.docker.compose.service=kernel-service" in command
+            return container + "\n"
+        if command[1] == "inspect":
+            assert command[-1] == container
+            return str(data / "kernel") + "\n"
+        assert command[1:4] == ["exec", "-i", container]
+        assert kwargs["input"] == "container-only-run"
+        return json.dumps({
+            "run_id": "container-only-run",
+            "status": "FAILED",
+            "arguments_json": "{}",
+            "input_references_json": "[]",
+            "outputs_json": "[]",
+        })
+
+    monkeypatch.setattr(research_artifacts.subprocess, "check_output", docker_command)
+    result = create_archive(paths, ROOT, instance_id, "container-only-run", "experiment", None)
+    assert len(calls) == 3
+    with tarfile.open(Path(result["archive"]), "r:gz") as archive:
+        evidence = json.loads(archive.extractfile("run-evidence.json").read())
+        assert evidence["workflowRun"]["run_id"] == "container-only-run"
+
+
+def test_snapshot_schema_probe_reads_uncheckpointed_committed_wal(tmp_path: Path) -> None:
+    from contextlib import closing
+    import subprocess
+    import sys
+
+    paths, instance_id, data, _state = _instance(tmp_path)
+    database = data / "kernel/kernel.sqlite3"
+    with closing(sqlite3.connect(database)) as connection:
+        connection.execute("UPDATE schema_version SET version=33")
+        connection.commit()
+        assert connection.execute("PRAGMA journal_mode=WAL").fetchone() == ("wal",)
+    subprocess.run([sys.executable, "-c", """
+import os
+import sqlite3
+import sys
+connection = sqlite3.connect(sys.argv[1])
+connection.execute("UPDATE schema_version SET version=34")
+connection.commit()
+os._exit(0)
+""", str(database)], check=True, timeout=5)
+
+    before = {file.name: file.read_bytes() for file in database.parent.iterdir()}
+    assert before["kernel.sqlite3-wal"]
+    result = create_snapshot(paths, instance_id)
+
+    assert {file.name: file.read_bytes() for file in database.parent.iterdir()} == before
+    with tarfile.open(Path(result["snapshot"]), "r:gz") as archive:
+        assert archive.extractfile("data/kernel/kernel.sqlite3-wal").read() == before["kernel.sqlite3-wal"]
+        manifest = json.loads(archive.extractfile("manifest.json").read())
+        assert manifest["schemaVersions"]["kernel"] == 34

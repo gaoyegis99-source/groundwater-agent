@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { writeFileSync } from 'node:fs';
 
 const project = 'groundwater-demo';
 
@@ -62,7 +63,7 @@ test('逐题 02：模糊请求给出一个问题和三个互斥选项', async ({
   expect((await session(page, id)).workflowRunIds).toEqual([]);
 });
 
-test('逐题 03：知识问题读取证据后回复，不产生只读副作用', async ({ page }) => {
+test('逐题 03：知识问题读取证据后回复，不产生只读副作用', async ({ page }, testInfo) => {
   const id = await newChat(page);
   await ask(page, id, '请查询地下水时间聚合方法知识，只做说明。');
   await expect(page.getByTestId('message-list')).toContainText('没有适用于所有数据的唯一组合');
@@ -96,4 +97,48 @@ test('逐题 03：知识问题读取证据后回复，不产生只读副作用',
     .toEqual(['retrieve_evidence', 'read_evidence']);
   expect(turn.confirmations).toEqual([]);
   expect(turn.executionTasks).toEqual([]);
+
+  const conclusion = page.locator('.reply-conclusion');
+  const sourceIndexes: number[] = turn.reply.conclusion.sourceIndexes;
+  expect(sourceIndexes.length).toBeGreaterThan(1);
+  const index = sourceIndexes[1];
+  const { versionId, unitId, checksum, title } = turn.reply.sources[index];
+  const ref = { versionId, unitId, checksum };
+  const citation = conclusion.getByRole('button', { name: `查看依据 ${index + 1} · ${title}`, exact: true });
+  const evidenceResponse = page.waitForResponse(response => new URL(response.url()).pathname === '/api/v12/knowledge/evidence/read');
+  await citation.press('Enter');
+  const response = await evidenceResponse;
+  expect(response.status()).toBe(200);
+  expect(response.request().postDataJSON()).toEqual({ refs: [ref] });
+  const bundle = await response.json();
+  const evidence = bundle.items.find((item: typeof ref) => item.versionId === versionId && item.unitId === unitId && item.checksum === checksum);
+  expect(evidence?.status).toBe('OK');
+  expect(evidence.content.trim().length).toBeGreaterThan(0);
+  const drawer = page.getByRole('dialog', { name: '知识库' });
+  const article = drawer.locator('[data-primary="true"]');
+  await expect(article.locator('.knowledge-content')).toHaveText(evidence.content.trim());
+  await expect(article).toBeFocused();
+  await article.getByText('技术身份').click();
+  await expect(article.getByText(checksum, { exact: true })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('knowledge-citation.png') });
+  await page.keyboard.press('Escape');
+  await expect(drawer).toHaveCount(0);
+  await expect(citation).toBeFocused();
+
+  const wrongChecksum = `${checksum.slice(0, -1)}${checksum.endsWith('0') ? '1' : '0'}`;
+  const staleResponse = await page.request.post('/api/v12/knowledge/evidence/read', { data: { refs: [{ ...ref, checksum: wrongChecksum }] } });
+  expect(staleResponse.status()).toBe(200);
+  const stale = await staleResponse.json();
+  expect(stale.items).toHaveLength(1);
+  expect(stale.items[0]).toMatchObject({ ...ref, checksum: wrongChecksum, status: 'STALE' });
+  expect(stale.items[0].content == null).toBe(true);
+  const reloadedState = await session(page, id);
+  expect(reloadedState.workflowRunIds).toEqual([]);
+  await page.reload();
+  await expect(citation).toBeVisible();
+  writeFileSync(testInfo.outputPath('knowledge-citation.json'), JSON.stringify({
+    sessionId: id, index, ref, receiptId: bundle.receiptId, status: evidence.status,
+    contentLength: evidence.content.length, staleReceiptId: stale.receiptId,
+    staleStatus: stale.items[0].status, workflowRunIds: reloadedState.workflowRunIds,
+  }, null, 2) + '\n');
 });

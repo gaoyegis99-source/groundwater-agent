@@ -203,6 +203,14 @@ def load_request_context(database: Path, agent_run_id: str) -> dict:
         return context
 
 
+def load_request_message(database: Path, agent_run_id: str) -> str | None:
+    with connect_database(database) as connection:
+        row = connection.execute(
+            "SELECT message FROM message_requests WHERE agent_run_id=?", (agent_run_id,),
+        ).fetchone()
+    return None if row is None else str(row["message"])
+
+
 def ensure_dialogue_request(
     database: Path, agent_run_id: str, dialogue_policy: str,
 ) -> None:

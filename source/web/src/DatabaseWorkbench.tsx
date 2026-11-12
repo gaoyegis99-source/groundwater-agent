@@ -1,10 +1,10 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { ApiError, callApi, contentUrl } from './api';
-import { decodeResourceDetail } from './api-contract';
+import { ApiError, callApi, contentUrl, readDataVersion, readDataVersionSemantic } from './api';
+import { DataFieldQuality } from './DataFieldQuality';
 import { sizeLabel } from './format';
 import { ErrorNotice } from './ErrorNotice';
 import { Icon } from './Icon';
-import type { ResourceDetail, ResourceItem } from './types';
+import type { ResourceDetail, ResourceItem, ResourceReference } from './types';
 import { resourceItemFromDetail } from './resource-item';
 import { workbenchFocusTargets } from './workbench-focus';
 import './workbench-polish.css';
@@ -31,23 +31,40 @@ function VersionDiff({ left, right }: { left: ResourceDetail; right: ResourceDet
   const formats = (value: ResourceDetail) => value.objects.map(item => `${item.role}:${item.format}/${item.mediaType}`).join('、') || '无';
   const checksums = (value: ResourceDetail) => value.objects.map(item => `${item.role}:${item.checksum}`).join('、') || '无';
   const sizes = (value: ResourceDetail) => value.objects.map(item => `${item.role}:${sizeLabel(item.size)}`).join('、') || '无';
-  return <dl className="version-diff"><div><dt>数据集</dt><dd>{left.datasetId} → {right.datasetId}</dd></div><div><dt>版本</dt><dd>{left.versionId} → {right.versionId}</dd></div><div><dt>语义版本</dt><dd>{left.semanticId} → {right.semanticId}</dd></div><div><dt>对象身份</dt><dd>{objects(left)} → {objects(right)}</dd></div><div><dt>格式与 MIME</dt><dd>{formats(left)} → {formats(right)}</dd></div><div><dt>checksum</dt><dd>{checksums(left)} → {checksums(right)}</dd></div><div><dt>对象大小</dt><dd>{sizes(left)} → {sizes(right)}</dd></div><div><dt>字段新增</dt><dd>{added.join('、') || '无'}</dd></div><div><dt>字段移除</dt><dd>{removed.join('、') || '无'}</dd></div><div><dt>字段变化</dt><dd>{changed.join('、') || '无'}</dd></div><div><dt>语义变化</dt><dd>{semanticChanges.length ? <ul>{semanticChanges.map(name => <li key={name}><strong>{name}</strong>：{semanticValue(left.semantics[name as keyof typeof left.semantics])} → {semanticValue(right.semantics[name as keyof typeof right.semantics])}</li>)}</ul> : '无'}</dd></div></dl>;
+  return <dl className="version-diff">
+    <div><dt>数据集</dt><dd>{left.datasetId} → {right.datasetId}</dd></div>
+    <div><dt>版本</dt><dd>{left.versionId} → {right.versionId}</dd></div>
+    <div><dt>语义版本</dt><dd>{left.semanticId} → {right.semanticId}</dd></div>
+    <div><dt>对象身份</dt><dd>{objects(left)} → {objects(right)}</dd></div>
+    <div><dt>格式与 MIME</dt><dd>{formats(left)} → {formats(right)}</dd></div>
+    <div><dt>checksum</dt><dd>{checksums(left)} → {checksums(right)}</dd></div>
+    <div><dt>对象大小</dt><dd>{sizes(left)} → {sizes(right)}</dd></div>
+    <div><dt>血缘输入版本</dt><dd>{left.inputVersions.join('、') || '无'} → {right.inputVersions.join('、') || '无'}</dd></div>
+    <div><dt>字段新增</dt><dd>{added.join('、') || '无'}</dd></div>
+    <div><dt>字段移除</dt><dd>{removed.join('、') || '无'}</dd></div>
+    <div><dt>字段变化</dt><dd>{changed.join('、') || '无'}</dd></div>
+    <div><dt>语义变化</dt><dd>{semanticChanges.length ? <ul>{semanticChanges.map(name => <li key={name}><strong>{name}</strong>：{semanticValue(left.semantics[name as keyof typeof left.semantics])} → {semanticValue(right.semantics[name as keyof typeof right.semantics])}</li>)}</ul> : '无'}</dd></div>
+  </dl>;
 }
 
-export function DatabaseWorkbench({ project, initialId, compare = false, allowedFormats = [], onClose, onAttach }: {
-  project: string; initialId?: string; compare?: boolean; allowedFormats?: string[]; onClose: () => void; onAttach: (item: ResourceItem) => void;
+export function DatabaseWorkbench({ project, initialId, reference, compare = false, allowedFormats = [], onClose, onAttach }: {
+  project: string; initialId?: string; reference?: ResourceReference; compare?: boolean; allowedFormats?: string[];
+  onClose: () => void; onAttach: (item: ResourceItem) => void;
 }) {
   const dialog = useRef<HTMLElement>(null);
   const search = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState(''); const [tag, setTag] = useState(''); const [format, setFormat] = useState(allowedFormats.length === 1 ? allowedFormats[0] : '');
   const [datasets, setDatasets] = useState<Dataset[]>([]); const [cursor, setCursor] = useState<string | null>(null); const [catalogLoading, setCatalogLoading] = useState(true);
   const [target, setTarget] = useState(initialId ?? ''); const [loadedVersion, setVersion] = useState<ResourceDetail | null>(null); const [versions, setVersions] = useState<VersionItem[]>([]); const [objectId, setObjectId] = useState('');
+  const [historyCursor, setHistoryCursor] = useState<string | null>(null);
+  const historyRequest = useRef<AbortController | null>(null);
   const [versionScope, setVersionScope] = useState(project);
   // A pending selection must never expose the prior version's attach/download actions.
   const version = loadedVersion?.versionId === target && versionScope === project ? loadedVersion : null;
   const [targetFormat, setTargetFormat] = useState('');
-  const [compareTarget, setCompareTarget] = useState(''); const [loadedComparison, setComparison] = useState<ResourceDetail | null>(null);
-  const comparison = loadedComparison?.versionId === compareTarget && loadedComparison.datasetId === version?.datasetId ? loadedComparison : null;
+  const [compareTarget, setCompareTarget] = useState<VersionItem | null>(null); const [loadedComparison, setComparison] = useState<ResourceDetail | null>(null);
+  const comparison = loadedComparison && compareTarget && loadedComparison.versionId === compareTarget.versionId
+    && loadedComparison.semanticId === compareTarget.semanticId && loadedComparison.datasetId === version?.datasetId ? loadedComparison : null;
   const [pane, setPane] = useState<Pane>(initialId ? 'detail' : 'catalog');
   const [catalogError, setCatalogError] = useState<ApiError | null>(null);
   const [versionError, setVersionError] = useState<ApiError | null>(null);
@@ -61,7 +78,7 @@ export function DatabaseWorkbench({ project, initialId, compare = false, allowed
   const catalogRequest = useRef<AbortController | null>(null);
 
   useEffect(() => { (initialId ? dialog.current : search.current)?.focus(); }, [initialId]);
-  useEffect(() => { setTarget(initialId ?? ''); setTargetFormat(''); setCompareTarget(''); setPane(initialId ? 'detail' : 'catalog'); }, [initialId, project]);
+  useEffect(() => { setTarget(initialId ?? ''); setTargetFormat(''); setCompareTarget(null); setPane(initialId ? 'detail' : 'catalog'); }, [initialId, project]);
   useEffect(() => {
     const controller = new AbortController();
     catalogRequest.current = controller;
@@ -81,36 +98,61 @@ export function DatabaseWorkbench({ project, initialId, compare = false, allowed
     if (!target) { setVersionLoading(false); return; }
     const controller = new AbortController();
     setVersionLoading(true);
-    void callApi('data_get_version', `/data/versions/${encodeURIComponent(target)}`, undefined, controller.signal, decodeResourceDetail).then(value => {
+    void readDataVersion(target, controller.signal, reference).then(value => {
       if (controller.signal.aborted) return;
-      if (value.versionId !== target) throw new ApiError(409, 'DATA_VERSION_IDENTITY_MISMATCH');
-      setVersion(value); setVersionScope(project); setObjectId(value.objects.find(item => targetFormat && item.format.toLowerCase() === targetFormat)?.objectId ?? value.objects.find(item => item.role === 'raw')?.objectId ?? value.objects[0]?.objectId ?? '');
+      const frozenObjectId = reference?.versionId === target ? reference.objectId : undefined;
+      const preferred = value.objects.find(item => targetFormat && item.format.toLowerCase() === targetFormat)
+        ?? value.objects.find(item => item.role === 'raw') ?? value.objects[0];
+      setVersion(value); setVersionScope(project); setObjectId(frozenObjectId ?? preferred?.objectId ?? '');
       setVersionLoading(false); setPane(current => current === 'catalog' ? 'detail' : current);
     }).catch(caught => { if (controller.signal.aborted) return; setVersionError(caught as ApiError); setVersionLoading(false); });
     return () => controller.abort();
-  }, [target, targetFormat, project, versionRetry]);
+  }, [target, targetFormat, project, versionRetry, reference]);
   useEffect(() => {
-    setVersions([]); setHistoryError(null);
+    setVersions([]); setHistoryCursor(null); setHistoryError(null);
     if (!version) { setHistoryLoading(false); return; }
-    const controller = new AbortController(); setHistoryLoading(true);
-    void callApi('data_list_dataset_versions', `/data/datasets/${encodeURIComponent(version.datasetId)}/versions?limit=100`, undefined, controller.signal).then(history => {
-      if (controller.signal.aborted) return;
-      setVersions(history.items); setHistoryLoading(false);
-    }).catch(caught => { if (controller.signal.aborted) return; setHistoryError(caught as ApiError); setHistoryLoading(false); });
+    const controller = new AbortController();
+    historyRequest.current = controller;
+    void readVersionHistory(version.datasetId, null, controller.signal);
     return () => controller.abort();
   }, [version?.versionId, project, historyRetry]);
   useEffect(() => {
     setComparison(null); setCompareError(null);
-    if (!version || !compareTarget || compareTarget === version.versionId) { setCompareLoading(false); return; }
+    if (!version || !compareTarget || compareTarget.versionId === version.versionId) { setCompareLoading(false); return; }
     const controller = new AbortController();
     setCompareLoading(true);
-    void callApi('data_get_version', `/data/versions/${encodeURIComponent(compareTarget)}`, undefined, controller.signal, decodeResourceDetail).then(value => {
+    void readDataVersion(compareTarget.versionId, controller.signal).then(value => {
+      if (value.datasetId !== version.datasetId) throw new ApiError(409, 'DATASET_VERSION_FAMILY_MISMATCH');
+      return readDataVersionSemantic(value, compareTarget.semanticId, controller.signal);
+    }).then(value => {
       if (controller.signal.aborted) return;
-      if (value.datasetId !== version.datasetId || value.versionId !== compareTarget) throw new ApiError(409, 'DATASET_VERSION_FAMILY_MISMATCH');
       setComparison(value); setCompareLoading(false);
     }).catch(caught => { if (controller.signal.aborted) return; setCompareError(caught as ApiError); setCompareLoading(false); });
     return () => controller.abort();
   }, [compareTarget, version?.versionId, project, compareRetry]);
+
+  async function readVersionHistory(datasetId: string, after: string | null, signal: AbortSignal) {
+    setHistoryLoading(true);
+    setHistoryError(null);
+    const params = new URLSearchParams({ limit: '100' });
+    if (after) params.set('cursor', after);
+    try {
+      const history = await callApi('data_list_dataset_versions', `/data/datasets/${encodeURIComponent(datasetId)}/versions?${params}`, undefined, signal);
+      if (signal.aborted) return;
+      setVersions(previous => after ? [...new Map([...previous, ...history.items].map(item => [item.versionId, item])).values()] : history.items);
+      setHistoryCursor(history.nextCursor);
+    } catch (caught) {
+      if (!signal.aborted) setHistoryError(caught as ApiError);
+    } finally {
+      if (!signal.aborted) setHistoryLoading(false);
+    }
+  }
+
+  function moreVersions() {
+    const signal = historyRequest.current?.signal;
+    if (!version || !historyCursor || !signal || signal.aborted || historyLoading) return;
+    void readVersionHistory(version.datasetId, historyCursor, signal);
+  }
 
   function keyDown(event: React.KeyboardEvent) {
     if (event.key === 'Escape') { onClose(); return; }
@@ -131,7 +173,7 @@ export function DatabaseWorkbench({ project, initialId, compare = false, allowed
     catch (caught) { if (!controller.signal.aborted) setCatalogError(caught as ApiError); }
     finally { if (!controller.signal.aborted) setCatalogLoading(false); }
   }
-  function selectVersion(id: string, preferredFormat = '') { setTargetFormat(preferredFormat); setTarget(id); setCompareTarget(''); setPane('detail'); }
+  function selectVersion(id: string, preferredFormat = '') { setTargetFormat(preferredFormat); setTarget(id); setCompareTarget(null); setPane('detail'); }
   const object = version?.objects.find(item => item.objectId === objectId) ?? version?.objects[0];
   const selectableVersions = version && !versions.some(item => item.versionId === version.versionId) ? [{ versionId: version.versionId, semanticId: version.semanticId, createdAt: version.createdAt ?? '' }, ...versions] : versions;
   return <aside ref={dialog} tabIndex={-1} className="database-workbench" role="dialog" aria-modal="true" aria-label="数据库" data-testid="database-workbench" onKeyDown={keyDown}>
@@ -148,13 +190,15 @@ export function DatabaseWorkbench({ project, initialId, compare = false, allowed
       <section className="database-pane database-detail" data-mobile-active={pane === 'detail'} aria-label="数据详情">
         {versionLoading ? <div className="workbench-loading"><p role="status">正在读取所选版本…</p><div className="workbench-skeleton" aria-hidden="true"><span /><span /><span /></div></div> : versionError ? <div className="workbench-read-error"><ErrorNotice error={versionError} title="所选版本读取失败" /><button onClick={() => setVersionRetry(value => value + 1)}>重新读取所选版本</button></div> : !version || !object ? <div className="database-empty"><Icon name="file" /><h3>{version ? '没有数据对象' : '选择数据集'}</h3><p>{version ? '该版本没有可读取的数据对象，请选择其他版本。' : '从左侧目录选择数据后，这里会显示版本、语义、字段质量和血缘。'}</p></div> : <><div className="database-pane-heading"><div><span className="type-badge">{version.versionId === version.currentVersion ? '当前版本' : '不可变版本'}</span><h3>{version.title}</h3></div><button className="text-button" onClick={() => setPane('preview')}>查看内容<Icon name="arrow-up-right" /></button></div><p className="database-description">{version.semantics.description || '暂无数据说明'}</p>
           <div className="version-control"><label>不可变版本<select value={version.versionId} onChange={event => selectVersion(event.target.value)}>{selectableVersions.map(item => <option key={item.versionId} value={item.versionId}>{item.versionId}</option>)}</select></label><small>{version.createdAt ? new Date(version.createdAt).toLocaleString() : ''}</small></div>
-          {historyLoading && <p className="muted" role="status">正在读取版本列表…</p>}{historyError && <div className="workbench-read-error"><ErrorNotice error={historyError} title="版本列表读取失败" /><button onClick={() => setHistoryRetry(value => value + 1)}>重新读取版本列表</button></div>}
-          {compare && <section className="version-comparison"><h4>版本比较</h4><label>另一版本<select aria-label="比较版本" value={compareTarget} onChange={event => setCompareTarget(event.target.value)}><option value="">选择版本</option>{versions.filter(item => item.versionId !== version.versionId).map(item => <option key={item.versionId} value={item.versionId}>{item.versionId}</option>)}</select></label>{compareError && <div className="workbench-read-error"><ErrorNotice error={compareError} title="比较版本读取失败" /><button onClick={() => setCompareRetry(value => value + 1)}>重新读取比较版本</button></div>}{compareLoading ? <p className="muted" role="status">正在读取比较版本…</p> : comparison ? <VersionDiff left={version} right={comparison} /> : !historyLoading && !historyError && versions.length <= 1 ? <p className="muted">当前数据集没有另一版本。</p> : <p className="muted">选择另一不可变版本后比较身份、字段和语义。</p>}</section>}
+          {historyLoading && <p className="muted" role="status">正在读取版本列表…</p>}
+          {historyError ? <div className="workbench-read-error"><ErrorNotice error={historyError} title="版本列表读取失败" /><button onClick={() => historyCursor ? moreVersions() : setHistoryRetry(value => value + 1)}>重新读取版本列表</button></div>
+            : historyCursor && <button type="button" disabled={historyLoading} onClick={moreVersions}>加载更多版本</button>}
+          {compare && <section className="version-comparison"><h4>版本比较</h4><label>另一版本<select aria-label="比较版本" value={compareTarget?.versionId ?? ''} onChange={event => setCompareTarget(versions.find(item => item.versionId === event.target.value) ?? null)}><option value="">选择版本</option>{versions.filter(item => item.versionId !== version.versionId).map(item => <option key={item.versionId} value={item.versionId}>{item.versionId}</option>)}</select></label>{compareError && <div className="workbench-read-error"><ErrorNotice error={compareError} title="比较版本读取失败" /><button onClick={() => setCompareRetry(value => value + 1)}>重新读取比较版本</button></div>}{compareLoading ? <p className="muted" role="status">正在读取比较版本…</p> : comparison ? <VersionDiff left={version} right={comparison} /> : !historyLoading && !historyError && versions.length <= 1 ? <p className="muted">当前数据集没有另一版本。</p> : <p className="muted">选择另一不可变版本后比较身份、字段和语义。</p>}</section>}
           {version.objects.length > 1 && <label className="database-object-select">数据对象<select value={object.objectId} onChange={event => setObjectId(event.target.value)}>{version.objects.map(item => <option key={item.objectId} value={item.objectId}>{item.role} · {item.format} · {sizeLabel(item.size)}</option>)}</select></label>}
           <div className="database-summary"><div><span>行数</span><strong>{version.descriptor.rowCount ?? '未统计'}</strong></div><div><span>字段</span><strong>{version.descriptor.fields?.length ?? 0}</strong></div><div><span>格式</span><strong>{object.format.toUpperCase()}</strong></div><div><span>大小</span><strong>{sizeLabel(object.size)}</strong></div></div>
           <dl className="argument-list">{version.semantics.grain && <div><dt>数据粒度</dt><dd>{version.semantics.grain}</dd></div>}{version.semantics.timeRange && <div><dt>时间范围</dt><dd>{version.semantics.timeRange}</dd></div>}{version.semantics.timezone && <div><dt>时区</dt><dd>{version.semantics.timezone}</dd></div>}{version.semantics.crs && <div><dt>坐标参考系</dt><dd>{version.semantics.crs}</dd></div>}{version.semantics.verticalDatum && <div><dt>垂向基准</dt><dd>{version.semantics.verticalDatum}</dd></div>}</dl>
           {version.semantics.limitations?.length ? <section><h4>使用限制</h4><ul>{version.semantics.limitations.map(item => <li key={item}>{item}</li>)}</ul></section> : null}
-          {version.descriptor.fields?.length ? <section><h4>字段与质量</h4><div className="table-scroll" tabIndex={0} role="region" aria-label="字段与质量"><table><thead><tr><th scope="col">字段</th><th scope="col">类型</th><th scope="col">单位</th><th scope="col">空值</th></tr></thead><tbody>{version.descriptor.fields.map(field => <tr key={field.fieldId}><th scope="row"><strong>{field.name}</strong>{version.semantics.fields?.[field.fieldId]?.meaning && <small>{version.semantics.fields[field.fieldId].meaning}</small>}<details><summary>字段标识</summary><code>{field.fieldId}</code></details></th><td>{field.type}</td><td>{version.semantics.fields?.[field.fieldId]?.unit ?? '未声明'}</td><td>{field.nullCount ?? '未统计'}</td></tr>)}</tbody></table></div></section> : null}
+          <DataFieldQuality descriptor={version.descriptor} semantics={version.semantics} />
           {version.inputVersions.length > 0 && <section className="lineage-section"><h4>血缘输入</h4><div className="citation-list">{version.inputVersions.map(id => <button className="citation" key={id} onClick={() => selectVersion(id)}>{id}<Icon name="arrow-up-right" /></button>)}</div></section>}
           <details className="database-identity"><summary>不可变身份与技术详情</summary><dl className="argument-list"><div><dt>数据集</dt><dd>{version.datasetId}</dd></div><div><dt>数据版本</dt><dd>{version.versionId}</dd></div><div><dt>语义版本</dt><dd>{version.semanticId}</dd></div><div><dt>数据对象</dt><dd>{object.objectId}</dd></div><div><dt>校验和</dt><dd>{object.checksum}</dd></div><div><dt>媒体类型</dt><dd>{object.mediaType}</dd></div></dl></details>
           <div className="actions database-actions"><button className="primary" onClick={() => onAttach(resourceItemFromDetail(version, object))}>附加精确版本</button><a className="button secondary" href={contentUrl(project, version.versionId, object.objectId)} download><Icon name="download" />下载对象</a></div></>}

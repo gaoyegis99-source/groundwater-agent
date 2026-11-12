@@ -179,6 +179,7 @@ it('creates one continuation session for duplicate clicks and permits an explici
   const task = taskFixture({ status: 'SUCCEEDED', stage: null, outputCount: 1 });
   const output = dataRef({ versionId: 'published-result-version', outputName: 'summary' });
   let creations = 0;
+  let messagesSent = 0;
   window.history.replaceState({}, '', '/#/sessions/session-1');
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
     if (url.endsWith('/sessions') && init?.method === 'POST') {
@@ -188,8 +189,16 @@ it('creates one continuation session for duplicate clicks and permits an explici
     if (url.endsWith('/capabilities')) return json(capabilitiesFixture());
     if (url.endsWith('/sessions')) return json({ items: [], nextCursor: null });
     if (url.includes('/results')) return json(sessionResultsFixture([{ goalRevision: 1, agentRunId: 'agent-1', toolCallId: 'tool-1', modelId: task.modelId, status: 'SUCCEEDED', workflowRunId: task.workflowRunId, remoteOutputs: [output] }]));
-    if (url.endsWith('/messages')) return json(historyFixture({ sessionId: url.includes('/continued-session/') ? 'continued-session' : 'session-1', items: [{ messageId: 1, goalRevision: 1, role: 'user', content: '上一轮分析' }], turns: [{ executionTasks: [task] }] }));
-    if (url.includes('/data/versions/')) return json(dataDetail({ versionId: output.versionId }));
+    if (url.endsWith('/messages')) {
+      if (init?.method === 'POST') messagesSent += 1;
+      return json(historyFixture({ sessionId: url.includes('/continued-session/') ? 'continued-session' : 'session-1', items: [{ messageId: 1, goalRevision: 1, role: 'user', content: '上一轮分析' }], turns: [{ executionTasks: [task] }] }));
+    }
+    if (url.endsWith(`/data/versions/${output.versionId}/semantics/${output.semanticId}`)) return json({
+      versionId: output.versionId, semanticId: output.semanticId, body: { description: '成果发布时语义' }, actor: {}, createdAt: '2026-10-09T01:00:00Z',
+    });
+    if (url.includes('/data/versions/')) return json(dataDetail({ versionId: output.versionId, semanticId: 'later-semantics', semantics: { description: '后来修改的语义' } }));
+    if (url.includes('/data/datasets/')) return json({ items: [], nextCursor: null });
+    if (url.includes('/data/datasets?')) return json({ items: [], nextCursor: null, matchBasis: 'catalog' });
     throw new Error(`unexpected endpoint ${url}`);
   }));
   render(<App />);
@@ -209,7 +218,11 @@ it('creates one continuation session for duplicate clicks and permits an explici
   await waitFor(() => expect(window.location.hash).toBe('#/sessions/continued-session'));
   expect(creations).toBe(2);
   const scope = identityStorageScope('groundwater', 'demo', 'test-user');
-  expect(JSON.parse(sessionStorage.getItem(scopedStorageKey(scope, 'draft-attachments', 'continued-session'))!)[0].versionId).toBe(output.versionId);
+  expect(JSON.parse(sessionStorage.getItem(scopedStorageKey(scope, 'draft-attachments', 'continued-session'))!)).toEqual([expect.objectContaining(output)]);
+  expect(messagesSent).toBe(0);
+  fireEvent.click(await screen.findByTitle(/查看资料内容与版本/));
+  expect(await screen.findByText('成果发布时语义')).toBeVisible();
+  expect(screen.queryByText('后来修改的语义')).not.toBeInTheDocument();
 });
 
 it('keeps enabled control messages visually sendable while ordinary work is busy', () => {

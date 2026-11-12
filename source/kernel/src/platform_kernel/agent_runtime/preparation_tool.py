@@ -26,7 +26,7 @@ from ..settings import (
 from .evidence import _data_reference
 from .governance import governance
 from .observation_client import ObservationClient
-from .provider_arguments import normalize_model_arguments
+from .provider_arguments import normalize_model_arguments, omit_unset_field_arguments
 
 
 class _MissingDataInputError(ValueError):
@@ -69,6 +69,7 @@ def build_preparation_tool(
                 model.input_schema,
                 provider=provider,
             )
+            supplied = omit_unset_field_arguments(supplied, model, explicit_model_tool_request)
             request = {**request, "arguments": supplied}
             selection_policy = request["selection_policy"]
             arguments = {**model.default_parameters, **supplied}

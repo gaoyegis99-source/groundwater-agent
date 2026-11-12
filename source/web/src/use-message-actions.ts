@@ -4,7 +4,7 @@ import { isBusy } from './chat-state';
 import { inputReferences, isResourceItems, messageBody, newRequestId, savedSubmission, savedSubmissionForKey, saveSubmission, type SavedSubmission } from './message-routing';
 import { readJsonCache } from './browser-cache';
 import { readQueue, saveQueue, type QueuedMessage } from './task-state';
-import type { Confirmation, History, ResourceItem, Session } from './types';
+import type { Confirmation, ConfirmationRevisionAction, History, ResourceItem, Session } from './types';
 import type { SessionStreamRefs } from './use-session-stream';
 import { scopedStorageKey } from './browser-scope';
 
@@ -276,7 +276,7 @@ export function useMessageActions({
     catch (caught) { if (current()) showError(caught); }
     finally { if (current()) await refresh(activeId); setPendingOperation(previous => previous?.id === operation ? null : previous); }
   }
-  async function reviseConfirmation(confirmation: Confirmation, actions: { toolCallId: string; arguments: Record<string, unknown> }[]) {
+  async function reviseConfirmation(confirmation: Confirmation, actions: ConfirmationRevisionAction[]) {
     if (!history) return;
     const generation = viewGeneration.current; const operation = ++mutationSerial.current;
     const current = () => activeRef.current === activeId && viewGeneration.current === generation;

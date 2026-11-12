@@ -23,11 +23,14 @@ type NodeVisual = {
   terminalOutputCount: number;
 };
 type MissingVisual = { input: MissingInput; x: number; y: number };
+type OutputVisual = { output: WorkflowDefinition['outputs'][number]; x: number; y: number };
 
 const INPUT_WIDTH = 150;
 const INPUT_HEIGHT = 64;
 const NODE_WIDTH = 190;
 const NODE_HEIGHT = 82;
+const OUTPUT_WIDTH = 190;
+const OUTPUT_HEIGHT = 56;
 const COLUMN_STEP = 250;
 const ROW_STEP = 112;
 const TOP = 56;
@@ -125,21 +128,27 @@ function buildLayout(payload: WorkflowDraftPayload) {
   });
   const maxLevel = Math.max(1, ...nodes.map(node => node.level));
   const graphEnd = LEFT + maxLevel * COLUMN_STEP + NODE_WIDTH;
-  const missingX = graphEnd + 54;
+  const outputX = graphEnd + 54;
+  const outputs: OutputVisual[] = workflow.outputs.map((output, index) => ({
+    output, x: outputX, y: TOP + index * ROW_STEP,
+  }));
+  const missingX = outputX + (outputs.length > 0 ? COLUMN_STEP : 0);
   const missing: MissingVisual[] = payload.missingInputs.map((input, index) => ({
     input, x: missingX, y: TOP + index * 50,
   }));
   const rowCount = Math.max(
     1,
     inputs.length,
+    outputs.length,
     missing.length,
     ...[...nodesByLevel.values()].map(items => items.length),
   );
   return {
     inputs,
     nodes,
+    outputs,
     missing,
-    width: missing.length > 0 ? missingX + 224 : graphEnd + 28,
+    width: missing.length > 0 ? missingX + 224 : outputs.length > 0 ? outputX + OUTPUT_WIDTH + 28 : graphEnd + 28,
     height: Math.max(170, TOP + rowCount * ROW_STEP + 22),
   };
 }
@@ -205,7 +214,6 @@ export function WorkflowDraftGraph({ draftId, payload }: {
   const detailId = `draft-node-detail-${safeId(draftId)}`;
   const inputByName = new Map(layout.inputs.map(item => [item.input.name, item]));
   const nodeById = new Map(layout.nodes.map(item => [item.node.nodeId, item]));
-  const terminalNodes = unique(payload.workflow.outputs.map(output => output.nodeOutput.nodeId)).length;
   const chooseNode = (nodeId: string) => setSelectedNodeId(current => current === nodeId ? null : nodeId);
 
   return <div className="draft-graph-shell">
@@ -214,7 +222,7 @@ export function WorkflowDraftGraph({ draftId, payload }: {
         <defs><marker id={markerId} markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" /></marker></defs>
         <text className="draft-graph-column-label" x={LEFT} y="24">所需资料</text>
         <text className="draft-graph-column-label" x={LEFT + COLUMN_STEP} y="24">分析步骤</text>
-        <text className="draft-graph-terminal-summary" x={layout.width - 24} y="24" textAnchor="end">{terminalNodes} 个最终节点</text>
+        {layout.outputs.length > 0 && <text className="draft-graph-column-label" x={layout.outputs[0].x} y="24">预期输出</text>}
 
         {payload.workflow.nodes.flatMap(node => Object.entries(node.inputs).map(([port, binding]) => {
           const target = nodeById.get(node.nodeId);
@@ -228,6 +236,15 @@ export function WorkflowDraftGraph({ draftId, payload }: {
           if (!source) return null;
           return <path key={`${node.nodeId}:${port}`} className="draft-graph-edge" data-dag-edge-kind="node-output" data-edge-source={`${binding.nodeOutput.nodeId}:${binding.nodeOutput.port}`} data-edge-target={`${node.nodeId}:${port}`} d={edgePath(nodeOutputAnchor(source, binding.nodeOutput.port), nodeInputAnchor(target, port))} markerEnd={`url(#${markerId})`} />;
         }))}
+
+        {layout.outputs.map(({ output, x, y }) => {
+          const { nodeId, port } = output.nodeOutput;
+          const source = nodeById.get(nodeId);
+          if (!source) return null;
+          return <path key={output.name} className="draft-graph-edge" data-dag-edge-kind="workflow-output"
+            data-edge-source={`${nodeId}:${port}`} data-edge-target={`output:${output.name}`}
+            d={edgePath(nodeOutputAnchor(source, port), { x, y: y + OUTPUT_HEIGHT / 2 })} markerEnd={`url(#${markerId})`} />;
+        })}
 
         {layout.missing.flatMap(item => item.input.requiredBy.map(required => {
           const source = nodeById.get(required.nodeId);
@@ -256,9 +273,17 @@ export function WorkflowDraftGraph({ draftId, payload }: {
             <text className="draft-graph-node-title" x="14" y="25">{compact(visual.operator.title, 20)}</text>
             <text className="draft-graph-node-id" x="14" y="47">{compact(visual.node.nodeId, 24)}</text>
             <text className="draft-graph-node-count" x="14" y="68">{Object.keys(visual.node.inputs).length} 入 · {visual.outputPorts.length} 出</text>
-            {visual.terminalOutputCount > 0 && <text className="draft-graph-terminal-badge" x={NODE_WIDTH - 12} y="68" textAnchor="end">最终 ×{visual.terminalOutputCount}</text>}
+            {visual.terminalOutputCount > 0 && <text className="draft-graph-terminal-badge" x={NODE_WIDTH - 12} y="68" textAnchor="end">输出 ×{visual.terminalOutputCount}</text>}
           </g>;
         })}
+
+        {layout.outputs.map(({ output, x, y }) => <g key={output.name} className="draft-graph-output"
+          data-workflow-output={output.name} transform={`translate(${x} ${y})`}>
+          <rect width={OUTPUT_WIDTH} height={OUTPUT_HEIGHT} rx="8" />
+          <title>{output.name} · {output.nodeOutput.nodeId}:{output.nodeOutput.port}</title>
+          <text className="draft-graph-input-title" x="12" y="23">{compact(outputName(output.name), 23)}</text>
+          <text className="draft-graph-input-meta" x="12" y="43">{compact(output.nodeOutput.port, 23)}</text>
+        </g>)}
 
         {layout.missing.map(visual => {
           const label = `${visual.input.kind === 'DATA' ? '缺少数据' : '缺少参数'}：${argumentLabel(visual.input.name)}`;

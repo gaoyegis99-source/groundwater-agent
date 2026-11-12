@@ -120,10 +120,9 @@ class _FieldProfile:
         is_integer = bool(_INTEGER.fullmatch(text))
         self.numeric_integer_only = self.numeric_integer_only and is_integer
         if is_integer:
-            integer = int(text)
             self.numeric_int64_safe = (
                 self.numeric_int64_safe
-                and _INT64_MIN <= integer <= _INT64_MAX
+                and _INT64_MIN <= parsed <= _INT64_MAX
             )
             unsigned = text.lstrip("+-")
             if len(unsigned) > 1 and unsigned.startswith("0"):

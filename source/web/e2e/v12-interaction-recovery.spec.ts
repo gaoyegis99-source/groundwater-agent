@@ -4,6 +4,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { promisify } from 'node:util';
 import { expect, test, type Page } from '@playwright/test';
 import type { ExecutionTask, History, ResourceDetail, ResourceReference, Result } from '../src/types';
+import type { components } from '../src/generated/public-api-v12';
 import { isolatedInteractionClients, openSummaryProposal, type InteractionSession } from './interaction-isolated-helpers';
 
 test.use({ trace: 'off', extraHTTPHeaders: {} });
@@ -106,6 +107,9 @@ test('recovers an actual timed-out workflow across Web, TLI and SDK', async ({ p
   const session = () => clients.get<InteractionSession>(path);
   const tasks = async () => (await history()).turns.find(turn => turn.goalRevision === goalRevision)?.executionTasks ?? [];
   const workflow = (id: string) => clients.get<Run>(`/api/v12/workflow-runs/${id}?projectId=${projectId}`);
+  const nodeDiagnostics = (id: string) => clients.get<components['schemas']['kernel__WorkflowNodeDiagnosticsResponse']>(
+    `/api/v12/workflow-runs/${id}/nodes?projectId=${projectId}`,
+  );
   const card = (id: string) => page.locator(`[data-workflow-run-id="${id}"]`);
   await screenshot('01-initial-confirmation');
 
@@ -158,6 +162,14 @@ test('recovers an actual timed-out workflow across Web, TLI and SDK', async ({ p
   const workspace = page.getByTestId('workspace-panel');
   const tasksTab = workspace.getByRole('tab', { name: '任务', exact: true });
   await tasksTab.click();
+  const failedNodes = workspace.locator(`[data-execution-run-id="${failedTask.workflowRunId}"]`);
+  await failedNodes.getByText('节点详情', { exact: true }).click();
+  await expect(failedNodes).toContainText('JOB_DEADLINE_EXCEEDED', { timeout: 15_000 });
+  const originalDiagnostics = await nodeDiagnostics(failedTask.workflowRunId);
+  expect(originalDiagnostics).toMatchObject({ workflowRunId: failedTask.workflowRunId, availability: 'AVAILABLE' });
+  expect(originalDiagnostics.nodes).toEqual(expect.arrayContaining([
+    expect.objectContaining({ status: 'CANCELLED', errorCode: 'JOB_DEADLINE_EXCEEDED', attemptCount: 0 }),
+  ]));
   const recover = workspace.getByRole('button', { name: '恢复最新未完成批次', exact: true });
   await expect(recover).toBeEnabled();
   await expect(card(failedTask.workflowRunId).getByRole('link', { name: '下载', exact: true })).toHaveCount(0);
@@ -253,6 +265,17 @@ with GroundwaterClient(origin, api_token=os.environ["GROUNDWATER_API_TOKEN"]) as
   await expect(page.getByTestId('confirm-execution')).toHaveCount(0);
   await tasksTab.click();
   await expect(recover).toHaveCount(0);
+  const restoredNodes = workspace.locator(`[data-execution-run-id="${restored.workflowRunId}"]`);
+  await restoredNodes.getByText('节点详情', { exact: true }).click();
+  await expect(restoredNodes).toContainText('节点已完成');
+  const restoredDiagnostics = await nodeDiagnostics(restored.workflowRunId);
+  expect(restoredDiagnostics).toMatchObject({ workflowRunId: restored.workflowRunId, availability: 'AVAILABLE' });
+  expect(restoredDiagnostics.nodes).toEqual(expect.arrayContaining([
+    expect.objectContaining({ status: 'SUCCEEDED', errorCode: null, attemptCount: 1 }),
+  ]));
+  expect(await nodeDiagnostics(retained.workflowRunId)).toEqual(originalDiagnostics);
+  record('node-diagnostics', { original: originalDiagnostics, recovered: restoredDiagnostics });
+  await screenshot('06-workflow-node-diagnostics');
   const resultPage = JSON.parse(await clients.cli('--session', sessionId, 'results')) as { items: Result[] };
   expect(resultPage.items).toHaveLength(1);
   const [outcome] = resultPage.items;

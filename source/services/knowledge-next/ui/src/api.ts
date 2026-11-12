@@ -21,12 +21,20 @@ type Validators = {
   responseValidators: Readonly<Record<string, JsonValidator>>;
 };
 let knowledgeValidatorsPromise: Promise<Validators> | undefined;
+let initialKnowledgeValidatorsPromise: Promise<Validators> | undefined;
 let dataValidatorsPromise: Promise<Validators> | undefined;
-function loadKnowledgeValidators(): Promise<Validators> {
-  return knowledgeValidatorsPromise ??= import("./generated/knowledge-api-v3.validators.js") as Promise<Validators>;
+let initialDataValidatorsPromise: Promise<Validators> | undefined;
+
+async function loadKnowledgeValidators(operationId: string): Promise<Validators> {
+  const initial = await (initialKnowledgeValidatorsPromise ??= import("./generated/knowledge-api-v3.validators.initial.js"));
+  if (Object.hasOwn(initial.responseValidators, operationId)) return initial;
+  return knowledgeValidatorsPromise ??= import("./generated/knowledge-api-v3.validators.js");
 }
-function loadDataValidators(): Promise<Validators> {
-  return dataValidatorsPromise ??= import("./generated/data-api-v3.validators.js") as Promise<Validators>;
+
+async function loadDataValidators(operationId: string): Promise<Validators> {
+  const initial = await (initialDataValidatorsPromise ??= import("./generated/data-api-v3.validators.initial.js"));
+  if (Object.hasOwn(initial.responseValidators, operationId)) return initial;
+  return dataValidatorsPromise ??= import("./generated/data-api-v3.validators.js");
 }
 
 export { PlatformUiError };
@@ -48,10 +56,10 @@ async function requestJson<Ops, Name extends keyof Ops>(
   path: string,
   body: unknown,
   signal: AbortSignal | undefined,
-  loadValidators: () => Promise<Validators>,
+  loadValidators: (operationId: string) => Promise<Validators>,
 ): Promise<ApiResponse<Ops, Name>> {
-  const { requestValidators, responseValidators } = await loadValidators();
   const operation = String(operationId);
+  const { requestValidators, responseValidators } = await loadValidators(operation);
   const requestValidator = requestValidators[operation];
   if (requestValidator) requireValidJson(requestValidator, body, "request");
   const requestId = newRequestId();
@@ -173,7 +181,7 @@ export function decodeDataCapabilities(value: DataCapabilities): DataCapabilitie
 }
 
 export async function validatePackage(value: unknown): Promise<KnowledgeSchema["KnowledgePackageRequest"]> {
-  const { requestValidators } = await loadKnowledgeValidators();
+  const { requestValidators } = await loadKnowledgeValidators("knowledge_submit_import");
   requireValidJson(
     requestValidators.knowledge_submit_import,
     value,

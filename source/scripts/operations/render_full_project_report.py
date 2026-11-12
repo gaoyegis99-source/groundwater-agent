@@ -48,6 +48,9 @@ def render_full_project_report(
     ]
     if source_report is not None:
         lines.append(f"- 机器报告：`{source_report}`")
+    source_verification = report.get("sourceVerification")
+    if source_verification:
+        lines.append(f"- 源码指纹校验 `{_cell(source_verification['status'])}`")
     lines.extend(
         (
             "",
@@ -94,7 +97,10 @@ def render_full_project_report(
         )
     failures = [stage for stage in stages if stage.get("status") != "PASS"]
     lines.extend(("", "## 失败、阻断与未运行项", ""))
-    if not failures:
+    source_failed = source_verification and source_verification.get("status") == "FAIL"
+    if source_failed:
+        lines.append(f"- 源码校验失败 `{_cell(source_verification.get('reason'))}`")
+    if not failures and not source_failed:
         lines.append("无。所有声明阶段均通过。")
     else:
         for stage in failures:

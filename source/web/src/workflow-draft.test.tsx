@@ -83,6 +83,9 @@ it('renders an accessible DAG with external inputs, missing callouts and expanda
   expect(graph.querySelector('[data-edge-source="interpolate:raster"][data-edge-target="map:data"]')).toBeInTheDocument();
   expect(within(graph).getByText('缺少数据：boundary')).toBeVisible();
   expect(within(graph).getByText('缺少参数：field')).toBeVisible();
+  const missing = within(screen.getByTestId('draft-missing'));
+  expect(missing.getByText('valueField')).toBeVisible();
+  expect(missing.getByText('boundary', { selector: 'code' })).toBeVisible();
 
   const interpolation = graph.querySelector('[data-node-id="interpolate"]')!;
   const map = graph.querySelector('[data-node-id="map"]')!;
@@ -109,7 +112,7 @@ it('renders an accessible DAG with external inputs, missing callouts and expanda
   expect(detail).toHaveTextContent('用户说明 · 用户指定图名');
 });
 
-it('lays out fan-out and multiple terminal sinks as distinct DAG nodes', () => {
+it('lays out fan-out and links each declared output to its exact node and port', () => {
   const fanout: WorkflowDraft = {
     ...draft,
     draftId: 'draft-fanout',
@@ -127,6 +130,7 @@ it('lays out fan-out and multiple terminal sinks as distinct DAG nodes', () => {
           { nodeId: 'gaps', operatorId: 'timeseries.missing', operatorVersion: '1.0.0', inputs: { data: { nodeOutput: { nodeId: 'quality', port: 'clean' } } }, parameters: {} },
         ],
         outputs: [
+          { name: 'clean-table', nodeOutput: { nodeId: 'quality', port: 'clean' } },
           { name: 'trend-report', nodeOutput: { nodeId: 'trend', port: 'report' } },
           { name: 'missing-table', nodeOutput: { nodeId: 'gaps', port: 'table' } },
         ],
@@ -149,10 +153,13 @@ it('lays out fan-out and multiple terminal sinks as distinct DAG nodes', () => {
   expect(graph.querySelectorAll('[data-dag-edge-kind="node-output"]')).toHaveLength(2);
   expect(graph.querySelector('[data-edge-source="quality:clean"][data-edge-target="trend:data"]')).toBeInTheDocument();
   expect(graph.querySelector('[data-edge-source="quality:clean"][data-edge-target="gaps:data"]')).toBeInTheDocument();
+  expect(graph.querySelectorAll('[data-workflow-output]')).toHaveLength(3);
+  expect(graph.querySelector('[data-edge-source="quality:clean"][data-edge-target="output:clean-table"]')).toBeInTheDocument();
+  expect(graph.querySelector('[data-edge-source="trend:report"][data-edge-target="output:trend-report"]')).toBeInTheDocument();
+  expect(graph.querySelector('[data-edge-source="gaps:table"][data-edge-target="output:missing-table"]')).toBeInTheDocument();
   expect(trend).toHaveAttribute('data-terminal-output-count', '1');
   expect(gaps).toHaveAttribute('data-terminal-output-count', '1');
   expect(trend.getAttribute('transform')).not.toBe(gaps.getAttribute('transform'));
-  expect(within(graph).getByText('2 个最终节点')).toBeVisible();
   expect(graph.querySelector('[data-missing-input]')).not.toBeInTheDocument();
 
   fireEvent.keyDown(screen.getByRole('button', { name: '查看缺测分析节点详情' }), { key: 'Enter' });

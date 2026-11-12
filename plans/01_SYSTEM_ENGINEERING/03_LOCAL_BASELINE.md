@@ -26,3 +26,17 @@
 - `source/docs/operations/execution-playbook.md`
 
 历史审计只作为 Git 历史中的线索，不得直接当作当前事实。
+
+## SYS-01 执行基线
+
+2026-11-12（Asia/Shanghai），`codex/workspace-hygiene`，HEAD `cc83e9339c165eb424271d4ef46db93cc32ca8cc`。仓库根与上表一致，唯一检出的仓库内 `AGENTS.md` 位于 `source/`。初始工作区有 12 个已跟踪修改和 3 个未跟踪文件，涉及交互式增量开发、`check_change.py`、CLI 测试及交互模式文档。
+
+| 核验 | 证据 |
+|---|---|
+| 产品与激活领域 | `product-manifest.v8`、Public API v12、`groundwater@6.1.0`、`domain-manifest.v3`；产品选择的包 checksum 与上表一致 |
+| 算子目录 | `packages/operator-pack/catalog/index.json`，`operator-catalog-index.v1`，111 条算子（84 Native、15 QGIS、12 remote_http）；目录 digest `sha256:5a9d8c409454a44af27544a8a3d010953b8acd15543000dbfb5c7dddd473fcb8` |
+| 装配输入 | `../bin/dev capability-inventory --verify` 退出 0；验证 18 个 workflow、18 个模型、54 个实际被 workflow 引用的算子，生成清单与签入文件逐字节一致 |
+| 工具链与依赖 | `../bin/gw bootstrap --status` 退出 0，锁定 CPython 3.12.8；`../bin/gw deps status` 退出 0，python/npm/system 均 PASS；Node v22.23.1、npm 10.9.8 |
+| 测试入口 | `../bin/dev check --help` 与 `../bin/dev compile --help` 均退出 0；scope 与上表一致；`source/web/package.json` 声明 Vitest、tsc、Vite 与 Playwright 入口 |
+| 本地运行实例 | `../bin/dev status --product groundwater` 退出 0，`status=PASS`、`issues=[]`，报告 dirty 源码快照 `cc83e93`；Kernel、Data、Knowledge Next、Executor Control 与三个 Worker runtime 就绪。远程服务调用及真实 Provider 本卡 NOT_RUN |
+| 差异检查 | `git diff --check` 退出 0。本卡仅更新计划证据，产品测试留待对应任务卡 |

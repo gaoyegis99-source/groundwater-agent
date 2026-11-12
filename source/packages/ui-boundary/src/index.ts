@@ -1,3 +1,5 @@
+export { formatFieldProfileValue, validDatasetProfile, validFieldProfile, type DatasetProfile, type FieldProfileFacts } from './data-field-profile';
+
 export type ProblemIssue = {
   pointer: string;
   code?: string;
@@ -20,6 +22,33 @@ export class PlatformUiError extends Error {
   ) {
     super(code);
     this.name = "PlatformUiError";
+  }
+}
+
+const QUERY_SUBMISSION_TIMEOUT_MS = 30_000;
+
+function uncertainQuerySubmission(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "TimeoutError"
+    || error instanceof PlatformUiError && (
+      error.code === "NETWORK_UNCERTAIN" || error.code === "API_RESPONSE_INVALID"
+      || [502, 503, 504].includes(error.status)
+    );
+}
+
+/** Attempt must reuse the same query idempotency key and payload. */
+export async function recoverDataQuerySubmission<T>(attempt: (signal: AbortSignal) => Promise<T>): Promise<T> {
+  const submit = () => attempt(AbortSignal.timeout(QUERY_SUBMISSION_TIMEOUT_MS));
+  try {
+    return await submit();
+  } catch (error) {
+    if (!uncertainQuerySubmission(error)) throw error;
+    try {
+      return await submit();
+    } catch (retryError) {
+      const initialId = error instanceof PlatformUiError ? error.requestId : null;
+      const retryId = retryError instanceof PlatformUiError ? retryError.requestId : null;
+      throw new PlatformUiError(0, "QUERY_SUBMISSION_UNCERTAIN", retryId ?? initialId);
+    }
   }
 }
 

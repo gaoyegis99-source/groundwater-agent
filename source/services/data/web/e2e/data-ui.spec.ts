@@ -62,7 +62,12 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("catalog, semantic CAS, query pagination, version selection and scoped refresh", async ({ page }) => {
+  const bulkValidators: string[] = [];
+  page.on("request", request => {
+    if (/\/(?:data|knowledge)-api-v3\.validators-/.test(request.url())) bulkValidators.push(request.url());
+  });
   const queryBodies: Record<string, unknown>[] = [];
+  const queryAttempts: unknown[] = [];
   const semanticBodies: Record<string, unknown>[] = [];
   let currentSemantic = "s1";
   await page.route("**/data/v3/**", async route => {
@@ -87,7 +92,18 @@ test("catalog, semantic CAS, query pagination, version selection and scoped refr
     } else if (path === "queries" && request.method() === "POST" && !("filters" in request.postDataJSON()) && request.postDataJSON().kind === "table") {
       response = { operationId: "op-content", queryId: "q-content" };
     } else if (path === "queries" && request.method() === "POST") {
-      queryBodies.push(request.postDataJSON()); response = { operationId: `op-${queryBodies.length}`, queryId: `q${queryBodies.length}` };
+      const submitted = request.postDataJSON();
+      queryAttempts.push(submitted);
+      if (queryAttempts.length === 1) {
+        queryBodies.push(submitted);
+        return route.abort("connectionreset");
+      }
+      if (queryAttempts.length === 2 && submitted.idempotencyKey === queryBodies[0].idempotencyKey) {
+        response = { operationId: "q1", queryId: "q1" };
+      } else {
+        queryBodies.push(submitted);
+        response = { operationId: `q${queryBodies.length}`, queryId: `q${queryBodies.length}` };
+      }
     } else if (path.startsWith("queries/q")) response = queryResponse(path.split("/")[1]!, Number(url.searchParams.get("offset") ?? 0));
     else throw new Error(`Unexpected request: ${request.method()} ${path}`);
     await route.fulfill({ json: response });
@@ -95,7 +111,10 @@ test("catalog, semantic CAS, query pagination, version selection and scoped refr
   await page.goto("/data/");
   await page.getByText("系统信息", { exact: true }).click();
   await expect(page.getByText(/operator-1/)).toBeVisible();
-  await page.locator(".catalog").getByRole("button", { name: /监测数据/ }).click();
+  const datasetButton = page.locator(".catalog").getByRole("button", { name: /监测数据/ });
+  await expect(datasetButton).toBeVisible();
+  expect(bulkValidators).toEqual([]);
+  await datasetButton.click();
   await expect(page.getByRole("cell", { name: "001", exact: true })).toBeVisible();
   await page.getByText("版本与来源", { exact: true }).click();
   await expect(page.getByText("所有者：operator-1")).toBeVisible();
@@ -109,6 +128,8 @@ test("catalog, semantic CAS, query pagination, version selection and scoped refr
   await page.getByRole("button", { name: /查询这份数据/ }).click();
   await page.getByLabel("筛选值").fill("001");
   await page.getByRole("button", { name: "执行查询", exact: true }).click();
+  await expect.poll(() => queryAttempts.length).toBe(2);
+  expect(queryAttempts[1]).toEqual(queryAttempts[0]);
   await expect(page.getByRole("cell", { name: "001", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "下一页" }).click();
   await expect(page.getByRole("cell", { name: "002", exact: true })).toBeVisible();

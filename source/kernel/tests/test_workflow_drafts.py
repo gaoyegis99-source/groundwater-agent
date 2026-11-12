@@ -734,7 +734,7 @@ def test_deepseek_draft_repairs_missing_workflow_input_declaration(kernel_settin
     _no_execution(app)
 
 
-def test_deepseek_draft_repairs_disconnected_sequence_and_intermediate_output(
+def test_deepseek_draft_repairs_disconnected_sequence(
     kernel_settings,
 ):
     invalid = _draft()
@@ -767,8 +767,8 @@ def test_deepseek_draft_repairs_disconnected_sequence_and_intermediate_output(
     repair_input = json.dumps(model.calls[-1].input)
     assert "WORKFLOW_DRAFT_SEQUENCE_INVALID" in repair_input
     assert "upstream nodeOutput" in repair_input
-    assert "every requested terminal operation" in repair_input
-    assert "multiple terminal outputs are valid" in repair_input
+    assert "Expose the requested results as named workflow outputs" in repair_input
+    assert "explicitly requested intermediate outputs are valid" in repair_input
     assert model.calls[-1].model_settings.tool_choice == "submit_reply"
     _no_execution(app)
 
@@ -1546,4 +1546,29 @@ def test_authoring_context_uses_staged_discovery_and_old_draft_is_not_current_ev
         )
     )
     assert all(tool.name not in {"record_plan", "run_summary"} for tool in call.tools)
+    _no_execution(app)
+
+
+def test_explicit_sequence_can_return_both_requested_intermediate_and_final_outputs(
+    kernel_settings,
+):
+    draft = _draft()
+    draft["graph"]["outputs"].append({
+        "name": "sorted_table",
+        "nodeOutput": {"nodeId": "sort", "port": "data"},
+    })
+    app, client, model = _app(
+        kernel_settings, [*_steps(draft), _reply(draft, call_id="explicit-intermediate-repair")],
+    )
+    sid, path, _ = _create(
+        client,
+        message="请先按规则排序，再对排序表做描述统计；请把排序后的表和最终描述统计都作为输出。",
+    )
+
+    _drain(app, sid)
+
+    resource = client.get(path).json()
+    assert resource["status"] == "COMPLETE", resource["errorCode"]
+    assert resource["payload"]["workflow"]["outputs"] == draft["graph"]["outputs"]
+    assert len(model.calls) == len(_steps(draft))
     _no_execution(app)

@@ -118,11 +118,10 @@ documentation.
 Data owns its dataset catalog, immutable versions and bytes, semantic revisions,
 metric facts, query receipts, publication state and lineage. PostgreSQL and local
 objects belong exclusively to this service; DuckDB is a restricted query engine.
-Data is a required service in every current Public API v11 Product Manifest because
-Kernel input preparation and result publication unconditionally use its contract; the
-Assembler rejects a v11 product without it. Making Data optional would require a new
-versioned Kernel/Product capability contract rather than omitting a service from the
-current manifest. Data is the only v11 owner of input and result data. Operational details and component contracts live in
+Data is a required service in every current Public API v12 Product Manifest. Kernel
+input preparation and result publication use its contract, and the Assembler rejects
+a v12 product without Data. Making Data optional would require a new versioned
+Kernel/Product capability contract. Data owns input and result data. Operational details and component contracts live in
 [the Data Service documentation](../../services/data/README.md).
 
 Data's inventory and structured discovery endpoints are projections, not a second

@@ -1,11 +1,29 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { resolveWorkspaceState, WorkspacePanel } from './WorkspacePanel';
 import { dataRef, historyFixture, replyFixture, taskFixture } from './test-fixtures';
 import type { Result, TaskContext } from './types';
 import { scopedStorageKey } from './browser-scope';
+import { useWorkspaceController } from './use-workspace-controller';
 
 beforeEach(() => sessionStorage.clear());
+
+it('restores the selected result identity before the result list arrives and scopes it to its owner', () => {
+  const exact = dataRef({ semanticId: 'published-semantics', objectId: 'published-object' });
+  const first = renderHook(() => useWorkspaceController('session-1', 'researcher-a'));
+  act(() => first.result.current.openResource(exact.versionId, exact));
+  first.unmount();
+
+  const restored = renderHook(({ scope }) => useWorkspaceController('session-1', scope), { initialProps: { scope: 'researcher-a' } });
+  expect(restored.result.current.resourceId).toBe(exact.versionId);
+  expect(restored.result.current.resourceReference).toEqual(exact);
+  restored.rerender({ scope: 'researcher-b' });
+  expect(restored.result.current.resourceId).toBeNull();
+  expect(restored.result.current.resourceReference).toBeNull();
+  restored.rerender({ scope: 'researcher-a' });
+  act(() => restored.result.current.openResource(exact.versionId));
+  expect(restored.result.current.resourceReference).toBeNull();
+});
 
 it('does not offer recovery for a failed run from an earlier goal or a replaced attempt', () => {
   const view = render(<WorkspacePanel history={historyFixture({ goalRevision: 2, turns: [
@@ -64,7 +82,7 @@ it('shows recorded work and released outputs without presenting pending files as
   fireEvent.click(screen.getByRole('tab', { name: /成果/ }));
   fireEvent.click(screen.getByRole('button', { name: /汇总结果/ }));
   expect(onJump).toHaveBeenCalledExactlyOnceWith(1);
-  expect(onResource).toHaveBeenCalledExactlyOnceWith('released');
+  expect(onResource).toHaveBeenCalledExactlyOnceWith('released', results[0].remoteOutputs[0]);
 });
 
 it('keeps every selected tab usable for an empty session', () => {

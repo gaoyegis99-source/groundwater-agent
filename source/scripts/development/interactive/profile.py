@@ -5,6 +5,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any, Iterable
 
 from scripts.development.source_mounts import source_mount_python_path
+from .watcher import is_container_build_file
 
 
 DEV_METRIC_SERVICES = {
@@ -28,63 +29,45 @@ _SOURCE_SERVICES = (
     "executor-remote_http-worker",
 )
 
-_API_COMMANDS = {
+API_TARGETS = {
+    "kernel-service": ("platform_kernel.main", "app"),
+    "data-service": ("platform_data_service.main", "app"),
+    "knowledge-next-service": ("platform_knowledge_next.api", "create_app"),
+    "executor-control": ("platform_executor_service.main", "app"),
+}
+
+_PROTOCOL = "packages/protocol-contracts/src"
+_DATA_CLIENT = "services/data/client/src"
+_EMBEDDING_CLIENT = "packages/embedding-client/src"
+_EXECUTOR_WORKERS = (
+    "executor-native-worker", "executor-qgis-worker", "executor-remote_http-worker",
+)
+API_SOURCE_ROOTS = {
     "kernel-service": (
-        "uvicorn",
-        "platform_kernel.main:app",
-        "--host",
-        "0.0.0.0",
-        "--port",
-        "8000",
-        "--reload-dir",
-        "/workspace/kernel/src",
-        "--reload-dir",
-        "/workspace/packages/protocol-contracts/src",
-        "--reload",
+        "kernel/src", _PROTOCOL, "packages/workflow-compiler/src",
+        "services/executor/client/src",
     ),
-    "data-service": (
-        "uvicorn",
-        "platform_data_service.main:app",
-        "--host",
-        "0.0.0.0",
-        "--port",
-        "8000",
-        "--reload-dir",
-        "/workspace/services/data/src",
-        "--reload-dir",
-        "/workspace/packages/protocol-contracts/src",
-        "--reload",
-    ),
+    "data-service": ("services/data/src", _PROTOCOL),
     "knowledge-next-service": (
-        "uvicorn",
-        "platform_knowledge_next.api:create_app",
-        "--factory",
-        "--host",
-        "0.0.0.0",
-        "--port",
-        "8000",
-        "--reload-dir",
-        "/workspace/services/knowledge-next/src",
-        "--reload-dir",
-        "/workspace/packages/protocol-contracts/src",
-        "--reload",
+        "services/knowledge-next/src", _PROTOCOL, _DATA_CLIENT, _EMBEDDING_CLIENT,
     ),
     "executor-control": (
-        "uvicorn",
-        "platform_executor_service.main:app",
-        "--host",
-        "0.0.0.0",
-        "--port",
-        "8000",
-        "--reload-dir",
-        "/workspace/services/executor/src",
-        "--reload-dir",
-        "/workspace/packages/operator-pack/src",
-        "--reload-dir",
-        "/workspace/packages/protocol-contracts/src",
-        "--reload",
+        "services/executor/src", "packages/operator-pack/src", _PROTOCOL, _DATA_CLIENT,
     ),
 }
+
+
+def _api_command(service: str) -> list[str]:
+    return [
+        "uvicorn", "scripts.development.interactive.generation:create_app",
+        "--factory", "--app-dir", "/workspace", "--host", "0.0.0.0", "--port", "8000",
+        *(
+            value
+            for directory in API_SOURCE_ROOTS[service]
+            for value in ("--reload-dir", f"/workspace/{directory}")
+        ),
+        "--reload",
+    ]
 
 
 def _ordered(values: Iterable[str]) -> tuple[str, ...]:
@@ -136,14 +119,24 @@ def _safe_relative(value: str) -> str:
     return path.as_posix()
 
 
+def affected_apis(paths: Iterable[str]) -> tuple[str, ...]:
+    python_paths = tuple(path for path in paths if path.endswith(".py"))
+    return tuple(
+        service
+        for service, directories in API_SOURCE_ROOTS.items()
+        if any(path.startswith(directory + "/")
+               for directory in directories for path in python_paths)
+    )
+
+
 def classify_changes(paths: Iterable[str]) -> ChangePlan:
     plan = ChangePlan(paths=_ordered(_safe_relative(path) for path in paths))
     for path in plan.paths:
         current = ChangePlan()
         filename = PurePosixPath(path).name
         if (
-            filename.startswith("Dockerfile")
-            or filename == "pyproject.toml"
+            is_container_build_file(filename)
+            or filename in {"pyproject.toml", "package.json"}
             or path.startswith(("deployment/", "environments/"))
         ):
             current = ChangePlan(check_scopes=("all",), reconcile=True)
@@ -159,32 +152,46 @@ def classify_changes(paths: Iterable[str]) -> ChangePlan:
                 check_scopes=("web", "data-ui", "knowledge-ui"),
             )
         elif path.startswith("kernel/"):
+            current = ChangePlan(check_scopes=("kernel",))
+        elif path.startswith(_DATA_CLIENT + "/"):
             current = ChangePlan(
-                reload_services=("kernel-service",), check_scopes=("kernel",)
+                restart_services=("knowledge-next-worker", *_EXECUTOR_WORKERS),
+                check_scopes=("data", "knowledge", "executor"),
+            )
+        elif path.startswith(_EMBEDDING_CLIENT + "/"):
+            current = ChangePlan(
+                restart_services=("knowledge-next-worker",),
+                check_scopes=("knowledge", "contracts"),
             )
         elif path.startswith("services/data/"):
-            worker_only = "/operations/worker.py" in path or path.endswith("/cli.py")
             api_only = "/api/" in path or path.endswith("/main.py")
             current = ChangePlan(
-                reload_services=() if worker_only else ("data-service",),
-                restart_services=() if api_only else ("data-worker",),
+                restart_services=(
+                    ("data-worker",)
+                    if path.startswith("services/data/src/") and not api_only
+                    else ()
+                ),
                 check_scopes=("data",),
             )
         elif path.startswith("services/knowledge-next/"):
             current = ChangePlan(
-                reload_services=("knowledge-next-service",),
-                restart_services=("knowledge-next-worker",),
+                restart_services=(
+                    ("knowledge-next-worker",)
+                    if path.startswith("services/knowledge-next/src/")
+                    else ()
+                ),
                 check_scopes=("knowledge",),
             )
         elif path.startswith("services/executor/"):
             current = ChangePlan(
-                reload_services=("executor-control",),
                 restart_services=(
-                    "executor-native-worker",
-                    "executor-qgis-worker",
-                    "executor-remote_http-worker",
+                    _EXECUTOR_WORKERS if path.startswith("services/executor/src/") else ()
                 ),
-                check_scopes=("executor",),
+                check_scopes=(
+                    ("executor", "kernel")
+                    if path.startswith("services/executor/client/src/")
+                    else ("executor",)
+                ),
             )
         elif path.startswith("packages/operator-pack/"):
             current = ChangePlan(
@@ -231,7 +238,7 @@ def classify_changes(paths: Iterable[str]) -> ChangePlan:
     return ChangePlan(
         paths=plan.paths,
         hmr=plan.hmr,
-        reload_services=plan.reload_services,
+        reload_services=affected_apis(plan.paths),
         restart_services=plan.restart_services,
         check_scopes=plan.check_scopes,
         reconcile=plan.reconcile,
@@ -259,6 +266,8 @@ def build_compose_override(
             "packages/workflow-compiler/src",
             "packages/operator-pack/src",
             "services/executor/client/src",
+            _DATA_CLIENT,
+            _EMBEDDING_CLIENT,
         )
     )
     services: dict[str, object] = {}
@@ -277,11 +286,13 @@ def build_compose_override(
             "environment": {
                 "PYTHONPATH": source_mount_python_path(name, python_path),
                 "PYTHONDONTWRITEBYTECODE": "1",
+                "PYTHONPYCACHEPREFIX": "/tmp/platform-dev-pycache",
             },
             "labels": {"platform.dev.mode": "interactive"},
         }
-        if name in _API_COMMANDS:
-            service["command"] = list(_API_COMMANDS[name])
+        if name in API_TARGETS:
+            service["command"] = _api_command(name)
+            service["environment"]["PLATFORM_DEV_API_SERVICE"] = name
         if name in ports:
             service["ports"] = [f"127.0.0.1:{ports[name]}:8000"]
         services[name] = service

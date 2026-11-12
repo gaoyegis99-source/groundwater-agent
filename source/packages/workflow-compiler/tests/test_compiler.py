@@ -420,6 +420,21 @@ def test_raw_graph_rejects_untrusted_nested_fields_and_types(catalog, mutation):
     "mutation,code,path",
     [
         (
+            lambda g: g["inputs"].append(deepcopy(g["inputs"][0])),
+            "WORKFLOW_INPUT_INVALID",
+            "/graph/inputs/1/name",
+        ),
+        (
+            lambda g: g["nodes"].append(deepcopy(g["nodes"][0])),
+            "WORKFLOW_NODE_INVALID",
+            "/graph/nodes/1/nodeId",
+        ),
+        (
+            lambda g: g["outputs"].append(deepcopy(g["outputs"][0])),
+            "WORKFLOW_OUTPUT_INVALID",
+            "/graph/outputs/1/name",
+        ),
+        (
             lambda g: g["nodes"][0].update(operatorId="unknown.operator"),
             "WORKFLOW_OPERATOR_UNKNOWN",
             "/graph/nodes/0/operatorId",

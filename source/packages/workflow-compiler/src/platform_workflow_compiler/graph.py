@@ -9,16 +9,19 @@ from .validation import WorkflowValidationError, checksum, pointer, require_stri
 NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_.-]*$")
 VERSION_PATTERN = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
 
-def _named_list(value: object, name_key: str, error: str) -> dict[str, dict]:
+def _named_list(
+    value: object, name_key: str, error: str, *, collection: str | None = None,
+) -> dict[str, dict]:
     if not isinstance(value, list):
         raise WorkflowValidationError(error)
     result: dict[str, dict] = {}
-    for item in value:
+    for index, item in enumerate(value):
         if not isinstance(item, dict):
             raise WorkflowValidationError(error)
         name = require_string(item.get(name_key), error)
         if name in result:
-            raise WorkflowValidationError(error)
+            path = pointer([collection, index, name_key]) if collection is not None else ""
+            raise WorkflowValidationError(error, path)
         result[name] = item
     return result
 
@@ -56,11 +59,11 @@ class _WorkflowCompilation:
             version
         ):
             raise WorkflowValidationError("WORKFLOW_ID_INVALID")
-        self.inputs = _named_list(self.raw["inputs"], "name", "WORKFLOW_INPUT_INVALID")
+        self.inputs = _named_list(self.raw["inputs"], "name", "WORKFLOW_INPUT_INVALID", collection="inputs")
         if any(item.get("cardinality") != "one" for item in self.inputs.values()):
             raise WorkflowValidationError("WORKFLOW_CARDINALITY_UNSUPPORTED")
         self.parameters = string_set(self.raw["parameters"], "WORKFLOW_PARAMETER_INVALID")
-        self.nodes = _named_list(self.raw["nodes"], "nodeId", "WORKFLOW_NODE_INVALID")
+        self.nodes = _named_list(self.raw["nodes"], "nodeId", "WORKFLOW_NODE_INVALID", collection="nodes")
         if not self.nodes:
             raise WorkflowValidationError("WORKFLOW_NODE_INVALID", "/nodes")
         self.node_indices = {node_id: index for index, node_id in enumerate(self.nodes)}
@@ -218,7 +221,7 @@ class _WorkflowCompilation:
         }
 
     def _validate_outputs(self) -> None:
-        outputs = _named_list(self.raw["outputs"], "name", "WORKFLOW_OUTPUT_INVALID")
+        outputs = _named_list(self.raw["outputs"], "name", "WORKFLOW_OUTPUT_INVALID", collection="outputs")
         if not outputs:
             raise WorkflowValidationError("WORKFLOW_OUTPUT_INVALID", "/outputs")
         reachable: set[str] = set()
