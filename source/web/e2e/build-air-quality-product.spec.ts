@@ -33,6 +33,7 @@ test('production shell renders every product-owned air-quality presentation with
   await mock(page);
   await page.goto('/');
   await expect(page.getByText('空气质量分析')).toBeVisible();
+  await expect(page.locator('html')).toHaveCSS('--workspace-accent', '#4557c2');
   await expect(page.getByRole('heading', { name: '想了解哪些空气质量数据？' })).toBeVisible();
   await page.getByRole('button', { name: '概览颗粒物' }).click();
   await expect(page.getByRole('textbox', { name: '消息输入框' })).toHaveValue('请汇总 PM2.5 观测。');

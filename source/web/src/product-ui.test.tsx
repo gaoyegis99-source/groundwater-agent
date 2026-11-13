@@ -25,6 +25,19 @@ it('requires product and model identities to exactly match capabilities', () => 
   expect(() => verifyProductUi({ productId: profile.productId, projectId: 'p', models: models.slice(1) })).toThrow('PRODUCT_UI_IDENTITY_MISMATCH');
 });
 
+it('applies validated workspace tokens and clears them when switching to a default profile', () => {
+  const profile = decodeProductUi(copy());
+  setProductUi(profile);
+  expect(document.documentElement.style.getPropertyValue('--workspace-accent')).toBe('#2563eb');
+  const unthemed = copy();
+  delete unthemed.theme;
+  setProductUi(decodeProductUi(unthemed));
+  expect(document.documentElement.style.getPropertyValue('--workspace-accent')).toBe('');
+  expect(() => decodeProductUi({ ...unthemed, theme: { accent: 'url(/external)' } })).toThrow('PRODUCT_UI_INVALID');
+  expect(() => decodeProductUi({ ...unthemed, theme: { unknown: '#123456' } })).toThrow('PRODUCT_UI_INVALID');
+  setProductUi(profile);
+});
+
 it('falls back to auto when a recommended viewer is incompatible', () => {
   const object = dataDetail({ objects: [{ objectId: 'object', size: 10, checksum: 'a'.repeat(64), role: 'raw', format: 'csv', mediaType: 'text/csv' }] }).objects[0];
   expect(resolveViewerPreference('map', object)).toBe('auto');

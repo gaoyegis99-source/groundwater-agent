@@ -157,7 +157,7 @@ def load_product_ui(
         raise ValueError("PRODUCT_UI_INVALID") from cause
     if not isinstance(profile, dict):
         raise ValueError("PRODUCT_UI_INVALID")
-    require_fields(profile, PROFILE_FIELDS, "PRODUCT_UI_FIELDS_INVALID")
+    require_fields(profile, PROFILE_FIELDS | ({"theme"} & profile.keys()), "PRODUCT_UI_FIELDS_INVALID")
     if profile["schemaVersion"] != "product-ui.v1" or profile["productId"] != product_id:
         raise ValueError("PRODUCT_UI_IDENTITY_INVALID")
     if SAFE_LOCALE.fullmatch(_nonempty(profile["locale"])) is None:

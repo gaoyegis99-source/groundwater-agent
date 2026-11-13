@@ -2,6 +2,18 @@
   "schemaVersion": "product-ui.v1",
   "productId": "groundwater",
   "locale": "zh-CN",
+  "theme": {
+    "ink": "#172b4d",
+    "muted": "#52657c",
+    "canvas": "#f5f8fc",
+    "surface-soft": "#f0f5fb",
+    "line": "#dce5f0",
+    "accent": "#2563eb",
+    "accent-active": "#163b73",
+    "accent-soft": "#e8f0ff",
+    "radius-control": "8px",
+    "radius-panel": "12px"
+  },
   "brand": {
     "productName": "地下水分析",
     "workspaceName": "地下水工作区",

@@ -10,6 +10,22 @@ export default {
     "schemaVersion": {"const": "product-ui.v1"},
     "productId": {"$ref": "#/$defs/text"},
     "locale": {"type": "string", "pattern": "^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$"},
+    "theme": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ink": {"type": "string", "pattern": "^#[0-9a-fA-F]{6}$"},
+        "muted": {"type": "string", "pattern": "^#[0-9a-fA-F]{6}$"},
+        "canvas": {"type": "string", "pattern": "^#[0-9a-fA-F]{6}$"},
+        "surface-soft": {"type": "string", "pattern": "^#[0-9a-fA-F]{6}$"},
+        "line": {"type": "string", "pattern": "^#[0-9a-fA-F]{6}$"},
+        "accent": {"type": "string", "pattern": "^#[0-9a-fA-F]{6}$"},
+        "accent-active": {"type": "string", "pattern": "^#[0-9a-fA-F]{6}$"},
+        "accent-soft": {"type": "string", "pattern": "^#[0-9a-fA-F]{6}$"},
+        "radius-control": {"type": "string", "pattern": "^[0-9]{1,2}px$"},
+        "radius-panel": {"type": "string", "pattern": "^[0-9]{1,2}px$"}
+      }
+    },
     "brand": {
       "type": "object",
       "additionalProperties": false,

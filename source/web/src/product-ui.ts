@@ -12,6 +12,7 @@ export interface ModelPresentation {
 }
 export interface ProductUiProfile {
   schemaVersion: 'product-ui.v1'; productId: string; locale: string;
+  theme?: Record<string, string>;
   brand: { productName: string; workspaceName: string; assistantName: string; welcome: string; icon: { path: 'product-icon.svg'; checksum: string; mediaType: 'image/svg+xml' } };
   examples: { id: string; title: string; prompt: string; icon: IconName; featured: boolean }[];
   models: Record<string, ModelPresentation>;
@@ -47,7 +48,8 @@ function parameter(value: unknown): ParameterPresentation {
 export function decodeProductUi(value: unknown): ProductUiProfile {
   if (!validateProductUiSchema(value)) throw new TypeError('PRODUCT_UI_INVALID');
   const root = object(value);
-  exact(root, ['schemaVersion', 'productId', 'locale', 'brand', 'examples', 'models', 'parameterNames', 'parameterStages', 'outputs', 'cases']);
+  exact(root, ['schemaVersion', 'productId', 'locale', 'brand', 'examples', 'models', 'parameterNames', 'parameterStages', 'outputs', 'cases',
+    ...('theme' in root ? ['theme'] : [])]);
   if (root.schemaVersion !== 'product-ui.v1') throw new TypeError('PRODUCT_UI_INVALID');
   const brand = object(root.brand); exact(brand, ['productName', 'workspaceName', 'assistantName', 'welcome', 'icon']);
   const icon = object(brand.icon); exact(icon, ['path', 'checksum', 'mediaType']);
@@ -66,7 +68,10 @@ export function decodeProductUi(value: unknown): ProductUiProfile {
   const parameterStages = Object.fromEntries(Object.entries(object(root.parameterStages)).map(([name, raw]) => { const item = object(raw); exact(item, ['label', 'group']); return [name, { label: text(item.label), group: text(item.group) }]; }));
   const outputs = Object.fromEntries(Object.entries(object(root.outputs)).map(([name, raw]) => { const item = object(raw); exact(item, ['label', 'viewer']); if (!viewers.has(String(item.viewer))) throw new TypeError('PRODUCT_UI_INVALID'); return [name, { label: text(item.label), viewer: item.viewer as ViewerKind }]; }));
   const cases = Object.fromEntries(Object.entries(object(root.cases)).map(([id, raw]) => { const item = object(raw); exact(item, ['label', 'profiles']); return [id, { label: text(item.label), profiles: Object.fromEntries(Object.entries(object(item.profiles)).map(([name, label]) => [name, text(label)])) }]; }));
-  return { schemaVersion: 'product-ui.v1', productId: text(root.productId), locale: text(root.locale), brand: { productName: text(brand.productName), workspaceName: text(brand.workspaceName), assistantName: text(brand.assistantName), welcome: text(brand.welcome), icon: { path: 'product-icon.svg', checksum: text(icon.checksum), mediaType: 'image/svg+xml' } }, examples, models, parameterNames, parameterStages, outputs, cases };
+  const theme = 'theme' in root
+    ? Object.fromEntries(Object.entries(object(root.theme)).map(([name, value]) => [name, text(value)]))
+    : undefined;
+  return { schemaVersion: 'product-ui.v1', productId: text(root.productId), locale: text(root.locale), brand: { productName: text(brand.productName), workspaceName: text(brand.workspaceName), assistantName: text(brand.assistantName), welcome: text(brand.welcome), icon: { path: 'product-icon.svg', checksum: text(icon.checksum), mediaType: 'image/svg+xml' } }, examples, models, parameterNames, parameterStages, outputs, cases, ...(theme && { theme }) };
 }
 
 export async function loadProductUi(): Promise<ProductUiProfile> {
@@ -74,7 +79,17 @@ export async function loadProductUi(): Promise<ProductUiProfile> {
   if (!response.ok || !response.headers.get('content-type')?.includes('json')) throw new TypeError('PRODUCT_UI_INVALID');
   return decodeProductUi(await response.json());
 }
-export function setProductUi(profile: ProductUiProfile) { active = profile; if (typeof document !== 'undefined') { document.documentElement.lang = profile.locale; document.documentElement.dataset.product = profile.productId; document.title = profile.brand.workspaceName; } }
+export function setProductUi(profile: ProductUiProfile) {
+  if (typeof document !== 'undefined') {
+    const root = document.documentElement;
+    for (const name of Object.keys(active?.theme ?? {})) root.style.removeProperty(`--workspace-${name}`);
+    for (const [name, value] of Object.entries(profile.theme ?? {})) root.style.setProperty(`--workspace-${name}`, value);
+    root.lang = profile.locale;
+    root.dataset.product = profile.productId;
+    document.title = profile.brand.workspaceName;
+  }
+  active = profile;
+}
 export function productUi() { if (!active) throw new Error('PRODUCT_UI_NOT_LOADED'); return active; }
 export function verifyProductUi(capabilities: Capabilities) {
   const profile = productUi();

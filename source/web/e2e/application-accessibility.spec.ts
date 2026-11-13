@@ -111,6 +111,7 @@ for (const viewport of [
     await page.setViewportSize(viewport);
     await mockApplication(page);
     await page.goto('/');
+    await expect(page.locator('html')).toHaveCSS('--workspace-accent', '#2563eb');
     await expect(page.getByText('结果须结合输入、参数、lineage 和验收报告解释。')).toBeVisible();
     await expect(page.getByTestId('workspace-panel')).toBeAttached();
     await expect(page.locator('html')).toHaveCSS('background-color', 'rgb(245, 248, 252)');

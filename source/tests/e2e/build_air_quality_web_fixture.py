@@ -137,6 +137,7 @@ def _create_air_quality_product(root: Path) -> Path:
     profile_path = product_dir / "ui/product-ui.json"
     profile = _read(profile_path)
     profile["productId"] = "air-quality"
+    profile.pop("theme", None)
     profile["brand"].update(
         productName="空气质量分析",
         workspaceName="空气质量工作区",

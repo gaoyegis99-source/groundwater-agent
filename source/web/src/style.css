@@ -34,19 +34,6 @@
   --radius-panel: var(--workspace-radius-panel);
 }
 
-:root[data-product="groundwater"] {
-  --workspace-ink: #172b4d;
-  --workspace-muted: #52657c;
-  --workspace-canvas: #f5f8fc;
-  --workspace-surface-soft: #f0f5fb;
-  --workspace-line: #dce5f0;
-  --workspace-accent: #2563eb;
-  --workspace-accent-active: #163b73;
-  --workspace-accent-soft: #e8f0ff;
-  --workspace-radius-control: 8px;
-  --workspace-radius-panel: 12px;
-}
-
 * { box-sizing: border-box; }
 body { margin: 0; }
 button, input, textarea, select { font: inherit; }

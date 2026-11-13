@@ -48,6 +48,8 @@ def _save_profile(source: Path, profile: dict) -> None:
     ("mutate", "error"),
     [
         (lambda value: value["models"].pop("groundwater.summary"), "PRODUCT_UI_MODELS_INVALID"),
+        (lambda value: value.update(theme={"accent": "url(/external)"}), "PRODUCT_UI_SCHEMA_INVALID"),
+        (lambda value: value.update(theme={"unknown": "#123456"}), "PRODUCT_UI_SCHEMA_INVALID"),
         (lambda value: value["parameterNames"].pop("alpha"), "PRODUCT_UI_PARAMETER_MISSING"),
         (lambda value: value["parameterNames"]["axis"]["values"].pop("flatten"), "PRODUCT_UI_ENUM_INVALID"),
         (lambda value: value["parameterNames"].update(unknown={"label": "未知", "group": "未知"}), "PRODUCT_UI_PARAMETER_UNKNOWN"),
