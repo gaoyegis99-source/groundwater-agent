@@ -1,0 +1,13 @@
+{
+  "package": "groundwater-agent-ui-interaction-spec",
+  "version": "1.0",
+  "tasks": 13,
+  "contract_docs": 6,
+  "page_specs": 6,
+  "component_specs": 11,
+  "product_type": "vertical groundwater research agent",
+  "design_reference_images": 9,
+  "design_system": "design-references/DESIGN_SYSTEM.md",
+  "visual_style": "blue-white scientific research workspace",
+  "note": "Reference images are generated mockups; bind all UI data to actual backend facts."
+}
