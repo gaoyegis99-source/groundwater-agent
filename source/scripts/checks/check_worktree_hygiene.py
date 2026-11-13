@@ -105,55 +105,16 @@ def check_paths(paths: list[str]) -> list[str]:
 
 def _activity_plan_violations(root: Path) -> list[str]:
     plans = root.parent / "plans"
-    allowed = {"README.md", "01_SYSTEM_ENGINEERING"}
     if not plans.is_dir() or plans.is_symlink():
         return ["../plans: ACTIVITY_PLAN_ROOT_INVALID"]
+    index = plans / "README.md"
     violations = [
         f"../plans/{child.name}: EXTRA_ACTIVITY_PLAN_CONTENT"
         for child in plans.iterdir()
-        if child.name not in allowed
+        if child != index
     ]
-    package = plans / "01_SYSTEM_ENGINEERING"
-    manifest_path = package / "PACK_MANIFEST.json"
-    try:
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        violations.append("../plans/01_SYSTEM_ENGINEERING/PACK_MANIFEST.json: INVALID")
-        return sorted(violations)
-    expected_ids = [f"SYS-{index:02d}" for index in range(1, 15)]
-    dependencies = manifest.get("dependencies")
-    if (
-        manifest.get("schemaVersion") != "activity-plan-package.v1"
-        or manifest.get("packageId") != "01_SYSTEM_ENGINEERING"
-        or manifest.get("status") != "active"
-        or manifest.get("baseCommit")
-        != "19175f592697999b895d6d3ebdb25c6d06d39455"
-        or manifest.get("taskCount") != 14
-        or manifest.get("taskIds") != expected_ids
-        or not isinstance(manifest.get("workPackages"), list)
-        or not isinstance(dependencies, dict)
-        or set(dependencies) != set(expected_ids)
-        or any(not isinstance(dependencies[item], list) for item in expected_ids)
-    ):
-        violations.append("../plans/01_SYSTEM_ENGINEERING/PACK_MANIFEST.json: INVALID")
-    actual_ids = sorted(
-        path.name.split("_", 1)[0]
-        for path in (package / "tasks").glob("SYS-*.md")
-    )
-    if actual_ids != expected_ids:
-        violations.append("../plans/01_SYSTEM_ENGINEERING/tasks: TASK_INDEX_MISMATCH")
-    for path in package.rglob("*"):
-        if not path.is_file():
-            continue
-        content = path.read_text(encoding="utf-8", errors="replace")
-        if "plans/01_SOURCE_AUDIT.md" in content or "plans/03_GAP_MATRIX.md" in content:
-            violations.append(
-                f"../plans/{path.relative_to(plans).as_posix()}: RETIRED_PLAN_REFERENCE"
-            )
-        if "``" in content and "```" not in content:
-            violations.append(
-                f"../plans/{path.relative_to(plans).as_posix()}: BROKEN_MARKDOWN_QUOTE"
-            )
+    if not index.is_file() or index.is_symlink():
+        violations.append("../plans/README.md: PLAN_ARCHIVE_INDEX_INVALID")
     return sorted(violations)
 
 
