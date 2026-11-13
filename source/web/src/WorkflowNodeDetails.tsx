@@ -1,18 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ApiError, callApi } from './api';
+import { selectWorkflowNodeStatus } from './ui-selectors';
 import { ErrorNotice } from './ErrorNotice';
 import type { components } from './generated/public-api-v12';
 
 type Diagnostics = components['schemas']['kernel__WorkflowNodeDiagnosticsResponse'];
 type Node = Diagnostics['nodes'][number];
 type ReadState = { kind: 'loading' } | { kind: 'ready'; data: Diagnostics } | { kind: 'error'; error: ApiError };
-
-const nodeLabels: Record<Node['status'], string> = {
-  WAITING: '等待上游', READY: '等待调度', LEASED: '已领取', RUNNING: '正在运行',
-  SUCCEEDED: '节点已完成', FAILED: '节点失败', CANCELLED: '节点已取消', SKIPPED: '节点已跳过',
-};
+type ScopedRead = { runId: string; project: string; state: ReadState };
 
 type Graph = components['schemas']['kernel__WorkflowGraphResponse'];
+
+function matchesDiagnostics(graph: Graph, nodes: Node[]) {
+  const graphIds = new Set(graph.nodes.map(node => node.nodeId));
+  const diagnosticIds = new Set(nodes.map(node => node.nodeId));
+  return graphIds.size === graph.nodes.length && diagnosticIds.size === nodes.length
+    && graphIds.size === diagnosticIds.size && nodes.every(node => graphIds.has(node.nodeId));
+}
 
 function graphLayout(graph: Graph) {
   const positions = new Map<string, { x: number; y: number }>();
@@ -52,7 +56,7 @@ function RunDependencyGraph({ graph, nodes }: { graph: Graph; nodes: Node[] }) {
         {graph.nodes.map(node => <button key={node.nodeId} type="button" className="run-graph-node" aria-pressed={selection === node.nodeId}
           style={{ left: layout.positions.get(node.nodeId)!.x, top: layout.positions.get(node.nodeId)!.y }}
           onClick={() => setSelection(node.nodeId)}>
-          <strong>{node.nodeId}</strong><small>{nodeLabels[byId.get(node.nodeId)?.status ?? 'WAITING']}</small>
+          <strong>{node.nodeId}</strong><small>{selectWorkflowNodeStatus(byId.get(node.nodeId)?.status ?? null).label}</small>
           <span className="sr-only">{node.dependsOn.length ? `上游：${node.dependsOn.join('、')}` : '无上游节点'}</span>
         </button>)}
       </div>
@@ -63,7 +67,7 @@ function RunDependencyGraph({ graph, nodes }: { graph: Graph; nodes: Node[] }) {
 
 function NodeDetails({ node }: { node: Node }) {
   return <div>
-    <dt>{node.nodeId} · {nodeLabels[node.status]}</dt>
+    <dt>{node.nodeId} · {selectWorkflowNodeStatus(node.status).label}</dt>
     <dd>{node.operatorId} · {node.runtime}{node.attemptCount !== null && ` · 尝试 ${node.attemptCount} 次`}</dd>
     {(node.startedAt || node.finishedAt) && <dd>{formatTime(node.startedAt)} → {formatTime(node.finishedAt)}</dd>}
     {node.errorCode && <dd><code>{node.errorCode}</code></dd>}
@@ -78,7 +82,8 @@ export function WorkflowNodeDetails({ runId, project, status }: { runId: string;
   const [open, setOpen] = useState(false);
   const [request, setRequest] = useState(0);
   const [graph, setGraph] = useState<Graph | null>(null);
-  const [state, setState] = useState<ReadState>({ kind: 'loading' });
+  const [read, setRead] = useState<ScopedRead | null>(null);
+  const state: ReadState = read?.runId === runId && read.project === project ? read.state : { kind: 'loading' };
 
   useEffect(() => {
     if (!open) return;
@@ -90,11 +95,11 @@ export function WorkflowNodeDetails({ runId, project, status }: { runId: string;
         const data = await callApi('kernel_get_workflow_run_nodes', path, undefined, controller.signal);
         if (controller.signal.aborted) return;
         if (data.workflowRunId !== runId) throw new ApiError(200, 'API_RESPONSE_INVALID');
-        setState({ kind: 'ready', data });
+        setRead({ runId, project, state: { kind: 'ready', data } });
         if (status === 'QUEUED' || status === 'RUNNING') timer = setTimeout(() => void load(), 5000);
       } catch (error) {
         if (controller.signal.aborted) return;
-        setState({ kind: 'error', error: error instanceof ApiError ? error : new ApiError(0, 'WORKFLOW_NODE_DIAGNOSTICS_UNAVAILABLE') });
+        setRead({ runId, project, state: { kind: 'error', error: error instanceof ApiError ? error : new ApiError(0, 'WORKFLOW_NODE_DIAGNOSTICS_UNAVAILABLE') } });
       }
     }
     void load();
@@ -116,13 +121,13 @@ export function WorkflowNodeDetails({ runId, project, status }: { runId: string;
   }, [open, hasMultipleNodes, runId, project, request]);
 
   function reload() {
-    setState({ kind: 'loading' });
+    setRead(null);
     setRequest(value => value + 1);
   }
 
   return <details className="workflow-node-details" onToggle={event => {
     setOpen(event.currentTarget.open);
-    if (!event.currentTarget.open) setState({ kind: 'loading' });
+    if (!event.currentTarget.open) setRead(null);
   }}>
     <summary>节点详情</summary>
     {open && state.kind === 'loading' && <p role="status">正在读取节点状态…</p>}
@@ -135,8 +140,7 @@ export function WorkflowNodeDetails({ runId, project, status }: { runId: string;
       {state.data.availability === 'UNAVAILABLE' && <p>这次运行的节点记录不可用。</p>}
       {state.data.availability === 'AVAILABLE' && (state.data.nodes.length === 0 ? <p>暂无节点记录。</p>
         : graph && graph.workflowRunId === runId && graph.nodes.length > 1 &&
-          graph.nodes.length === state.data.nodes.length &&
-          graph.nodes.every(node => state.data.nodes.some(item => item.nodeId === node.nodeId))
+          matchesDiagnostics(graph, state.data.nodes)
           ? <RunDependencyGraph key={runId} graph={graph} nodes={state.data.nodes} />
           : <dl>{state.data.nodes.map(node => <NodeDetails key={node.nodeId} node={node} />)}</dl>)}
       <button type="button" onClick={reload}>刷新节点状态</button>

@@ -196,8 +196,8 @@ it('does not expose Data or Knowledge actions for an empty assembled service top
   expect(screen.queryByRole('button', { name: '添加附件' })).not.toBeInTheDocument();
 });
 
-it('attaches the current immutable version when no confirmation batch exists', async () => {
-  window.location.hash = '#/sessions/preparation';
+it.each(['current', 'other dataset', 'superseded', 'revised preparation'])('verifies the suggested current version before attaching (%s)', async status => {
+  window.location.hash = '#/sessions/preparation/workbench/inputs';
   const stale = dataRef({ versionId: 'stale-version' });
   const history = historyFixture({
     sessionId: 'preparation',
@@ -207,24 +207,40 @@ it('attaches the current immutable version when no confirmation batch exists', a
       taskId: null, baseTaskRevision: null, status: 'BLOCKED', freshForCurrentTurn: true, disposition: 'ACTIVE',
       entries: [{ targetKind: 'EXECUTABLE_MODEL', targetId: 'groundwater.summary', targetVersion: '3.0.0',
         selectionPolicy: 'CURRENT_REQUIRED', status: 'BLOCKED', inputs: { versionId: stale }, knowledgeRefs: [], parameters: {}, parameterSources: {},
-        checks: [{ kind: 'DATA_VERSION_NOT_CURRENT', input: 'versionId', status: 'FAIL', currentVersion: 'current-version' }], blockingReasons: [] }],
+        checks: [{ kind: 'SELECTION_POLICY', input: 'versionId', status: 'FAIL', versionId: stale.versionId, currentVersion: 'current-version' }], blockingReasons: [] }],
     },
   });
+  let releaseVersion: ((response: Response) => void) | undefined;
+  let snapshot = history;
   vi.stubGlobal('fetch', vi.fn(async (url: string) => {
     if (url.endsWith('/capabilities')) return json(capabilitiesFixture());
     if (url.endsWith('/sessions')) return json({ items: [], nextCursor: null });
     if (url.includes('/results')) return json(sessionResultsFixture());
-    if (url.endsWith('/messages')) return json(history);
+    if (url.endsWith('/messages')) return json(snapshot);
     if (url.endsWith('/data/versions/stale-version')) return json(dataDetail({ versionId: 'stale-version' }));
-    if (url.endsWith('/data/versions/current-version')) return json(dataDetail({ versionId: 'current-version' }));
+    if (url.endsWith('/data/versions/current-version')) {
+      if (status === 'revised preparation') return new Promise<Response>(resolve => { releaseVersion = resolve; });
+      return json(dataDetail({ versionId: 'current-version',
+        datasetId: status === 'other dataset' ? 'unrelated-dataset' : stale.datasetId,
+        currentVersion: status === 'superseded' ? 'newer-version' : 'current-version' }));
+    }
     throw new Error(`unexpected endpoint ${url}`);
   }));
   render(<App />);
-  await screen.findByTestId('recovered-active-session');
-  fireEvent.click(screen.getByRole('button', { name: '打开任务工作台' }));
-  await screen.findByText(/DATA_VERSION_NOT_CURRENT/);
-  fireEvent.click(screen.getByRole('button', { name: '使用当前版本' }));
-  expect(await screen.findByText(/测试数据 · current-version/)).toBeVisible();
+  fireEvent.click(await screen.findByRole('button', { name: '使用当前版本' }));
+  if (status === 'current') expect(await screen.findByText(/测试数据 · current-version/)).toBeVisible();
+  else if (status === 'revised preparation') {
+    await waitFor(() => expect(releaseVersion).toBeDefined());
+    snapshot = { ...history, eventCursor: 1, preparation: { ...history.preparation!, revision: 2 } };
+    act(() => TestEvents.latest.emit('task.preparation_revised', 1));
+    await screen.findByText(/准备修订 2/);
+    await act(async () => releaseVersion!(json(dataDetail({ versionId: 'current-version', currentVersion: 'current-version' }))));
+    expect(screen.queryByTestId('pending-attachments')).not.toBeInTheDocument();
+    expect(window.location.hash).toBe('#/sessions/preparation/workbench/inputs');
+  } else {
+    expect(await screen.findByText('无法附加建议的数据版本')).toBeVisible();
+    expect(screen.queryByTestId('pending-attachments')).not.toBeInTheDocument();
+  }
   expect(screen.queryByRole('dialog', { name: '数据库' })).not.toBeInTheDocument();
 });
 
@@ -336,7 +352,7 @@ it('preserves ordinary message text and separates connection status', async () =
     if (url.endsWith('/capabilities')) return json(capabilitiesFixture());
     if (url.endsWith('/sessions')) return json({ items: [], nextCursor: null });
     if (url.includes('/results')) return json(sessionResultsFixture());
-    if (url.endsWith('/messages')) return json(historyFixture({ items: [{ messageId: 1, goalRevision: 1, role: 'user', content }], turns: [{ goalRevision: 1, requestMode: 'DIALOGUE', status: 'COMPLETE' }] }));
+    if (url.endsWith('/messages')) return json(historyFixture({ sessionId: 'selection', items: [{ messageId: 1, goalRevision: 1, role: 'user', content }], turns: [{ goalRevision: 1, requestMode: 'DIALOGUE', status: 'COMPLETE' }] }));
     throw new Error(`unexpected endpoint ${url}`);
   }));
   render(<App />);
@@ -364,7 +380,7 @@ it('keeps a deep-linked older verification session visible and marks its confirm
     if (url.includes('/results')) return json(sessionResultsFixture());
     if (url.endsWith('/messages')) return json(historyFixture({ sessionId: 'older-verification',
       items: [{ messageId: 1, goalRevision: 1, role: 'user', content: 'SYNTHETIC_TEST_ONLY-P1：执行概览测试' }],
-      turns: [{ status: 'COMPLETE', confirmations: [confirmation] }],
+      turns: [{ agentRunId: confirmation.agentRunId, status: 'COMPLETE', confirmations: [confirmation] }],
     }));
     throw new Error(`unexpected endpoint ${url}`);
   }));
@@ -409,6 +425,7 @@ it('renders completed turns from Turn.reply and keeps folded activity before the
     if (url.endsWith('/sessions')) return json({ items: [], nextCursor: null });
     if (url.includes('/results')) return json(sessionResultsFixture());
     if (url.endsWith('/messages')) return json(historyFixture({
+      sessionId: 'structured',
       items: [
         { messageId: 1, goalRevision: 1, role: 'user', content: '问题' },
         { messageId: 2, goalRevision: 1, role: 'assistant', content: '不应作为展示输入的线性全文' },
@@ -435,7 +452,7 @@ it('does not scroll away from history when a new answer arrives', async () => {
     if (url.endsWith('/capabilities')) return json(capabilitiesFixture());
     if (url.endsWith('/sessions')) return json({ items: [], nextCursor: null });
     if (url.includes('/results')) return json(sessionResultsFixture());
-    if (url.endsWith('/messages')) return json(historyFixture({ items: [{ messageId: 1, goalRevision: 1, role: 'user', content: '之前的问题' }, ...(answered ? [{ messageId: 2, goalRevision: 1, role: 'assistant', content: '新的回答' }] : [])], turns: [{ status: answered ? 'COMPLETE' : 'RUNNING', reply: answered ? replyFixture('新的回答') : null }] }));
+    if (url.endsWith('/messages')) return json(historyFixture({ sessionId: 'scroll', eventCursor: answered ? 2 : 0, items: [{ messageId: 1, goalRevision: 1, role: 'user', content: '之前的问题' }, ...(answered ? [{ messageId: 2, goalRevision: 1, role: 'assistant', content: '新的回答' }] : [])], turns: [{ status: answered ? 'COMPLETE' : 'RUNNING', reply: answered ? replyFixture('新的回答') : null }] }));
     throw new Error(`unexpected endpoint ${url}`);
   }));
   render(<App />);

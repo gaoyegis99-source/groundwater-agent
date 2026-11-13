@@ -72,6 +72,7 @@ test('large air-quality confirmation keeps every product-defined parameter group
   });
   await mock(page, 'air-quality', history);
   await page.goto('/#/sessions/air-confirm');
+  await page.getByText('历史确认', { exact: true }).click();
   const card = page.getByTestId('confirmation-card');
   await card.getByText('查看本批次 1 项分析的资料与参数').click();
   await card.locator('summary').filter({ hasText: '气象校准' }).click();

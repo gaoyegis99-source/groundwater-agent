@@ -22,12 +22,16 @@ export function useProjectSessions(log: (entry: DebugEntry) => void) {
   const archivedRef = useRef(false);
   const filtersMounted = useRef(false);
   const identityRef = useRef('');
+  const projectRef = useRef('');
   const requestedFilterRef = useRef('');
   const requestSerial = useRef(0);
+  const connectionSerial = useRef(0);
+  const identityGeneration = useRef(0);
   const updatePending = useRef(false);
 
   const loadSessions = useCallback(async (before: number | null = null) => {
     const filterKey = `${queryRef.current.trim()}\0${archivedRef.current}`;
+    if (!identityRef.current || (before !== null && requestedFilterRef.current !== filterKey)) return;
     const serial = ++requestSerial.current;
     const identity = identityRef.current;
     const isCurrent = () => serial === requestSerial.current && identity === identityRef.current
@@ -44,7 +48,14 @@ export function useProjectSessions(log: (entry: DebugEntry) => void) {
         `/sessions${suffix}`,
       );
       if (!isCurrent()) return;
-      setSessions(previous => before === null ? page.items : [...previous, ...page.items.filter(item => !previous.some(existing => existing.sessionId === item.sessionId))]);
+      if (page.items.some(item => item.projectId !== projectRef.current)) {
+        throw new ApiError(409, 'API_RESPONSE_INVALID');
+      }
+      setSessions(previous => {
+        const merged = new Map((before === null ? [] : previous).map(item => [item.sessionId, item]));
+        for (const item of page.items) merged.set(item.sessionId, item);
+        return [...merged.values()];
+      });
       setSessionCursor(page.nextCursor);
       setSessionError(null);
     } catch (caught) {
@@ -60,18 +71,25 @@ export function useProjectSessions(log: (entry: DebugEntry) => void) {
   }, []);
 
   const setSessionQuery = useCallback((value: string) => {
-    if (value === queryRef.current) return;
-    requestSerial.current += 1;
+    const filterChanged = value.trim() !== queryRef.current.trim();
     queryRef.current = value;
-    requestedFilterRef.current = '';
-    setSessionsLoading(!!identityRef.current);
     setSessionQueryState(value);
+    if (!filterChanged) return;
+    requestSerial.current += 1;
+    requestedFilterRef.current = '';
+    setSessions([]);
+    setSessionCursor(null);
+    setSessionError(null);
+    setSessionsLoading(!!identityRef.current);
   }, []);
   const setShowArchived = useCallback((value: boolean) => {
     if (value === archivedRef.current) return;
     requestSerial.current += 1;
     archivedRef.current = value;
     requestedFilterRef.current = '';
+    setSessions([]);
+    setSessionCursor(null);
+    setSessionError(null);
     setSessionsLoading(!!identityRef.current);
     setShowArchivedState(value);
   }, []);
@@ -82,42 +100,63 @@ export function useProjectSessions(log: (entry: DebugEntry) => void) {
     if (updatePending.current) throw new ApiError(409, 'SESSION_UPDATE_IN_PROGRESS');
     updatePending.current = true;
     setUpdatingSessionId(sessionId);
-    const identity = identityRef.current;
+    const generation = identityGeneration.current;
     try {
-      await callApi(
+      const metadata = await callApi(
         'kernel_update_session', `/sessions/${encodeURIComponent(sessionId)}`,
         update, undefined, undefined, 'patch',
       );
-      if (identity !== identityRef.current) return;
+      if (generation !== identityGeneration.current) return false;
+      if (metadata.sessionId !== sessionId) throw new ApiError(409, 'API_RESPONSE_INVALID');
+      setSessions(previous => previous.flatMap(item => {
+        if (item.sessionId !== sessionId) return [item];
+        if (metadata.archived !== archivedRef.current) return [];
+        return [{ ...item, title: metadata.title ?? item.title, archived: metadata.archived }];
+      }));
       await loadSessions();
+      return generation === identityGeneration.current;
     } catch (caught) {
       if (!(caught instanceof ApiError)) throw caught;
-      if (identity === identityRef.current) setSessionError(caught);
+      if (generation !== identityGeneration.current) return false;
+      setSessionError(caught);
       throw caught;
     } finally {
-      updatePending.current = false;
-      setUpdatingSessionId(null);
+      if (generation === identityGeneration.current) {
+        updatePending.current = false;
+        setUpdatingSessionId(null);
+      }
     }
   }, [loadSessions]);
 
   const connectProject = useCallback(async () => {
+    const serial = ++connectionSerial.current;
     try {
       const value = await callApi('kernel_capabilities', '/capabilities') as Capabilities;
+      if (serial !== connectionSerial.current) return;
       try { verifyProductUi(value); } catch { throw new ApiError(409, 'PRODUCT_UI_IDENTITY_MISMATCH'); }
       const identity = `${value.productId}\0${value.projectId}\0${value.currentUser.subject}`;
       if (identityRef.current && identityRef.current !== identity) {
+        identityGeneration.current += 1;
+        updatePending.current = false;
+        setUpdatingSessionId(null);
+        setSessionError(null);
+        queryRef.current = '';
+        archivedRef.current = false;
+        setSessionQueryState('');
+        setShowArchivedState(false);
         setSessions([]);
         setSessionCursor(null);
         setActiveId('');
         window.location.hash = '#/';
       }
       identityRef.current = identity;
+      projectRef.current = value.projectId;
       setCapabilities(value);
       setCapabilityError(null);
       await loadSessions();
     } catch (caught) {
       if (!(caught instanceof ApiError)) throw caught;
-      setCapabilityError(caught);
+      if (serial === connectionSerial.current) setCapabilityError(caught);
     }
   }, [loadSessions]);
 
@@ -129,6 +168,9 @@ export function useProjectSessions(log: (entry: DebugEntry) => void) {
     return () => {
       stop();
       requestSerial.current += 1;
+      connectionSerial.current += 1;
+      identityGeneration.current += 1;
+      updatePending.current = false;
       window.removeEventListener('hashchange', onHash);
     };
   }, [connectProject, log]);

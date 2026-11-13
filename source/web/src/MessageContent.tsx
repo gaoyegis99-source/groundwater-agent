@@ -1,9 +1,12 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Markdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 import { Icon } from './Icon';
+import { contentUrl } from './api';
 import { shortVersion } from './format';
-import type { KnowledgeReference, ReplyPresentation, ReplySection, ReplySource } from './types';
+import type { KnowledgeReference, ReplyPresentation, ReplySection, ReplySource, ResourceReference } from './types';
 
 export function MessageContent({ content, onResource }: { content: string; onResource: (id: string) => void }) {
   // Only the exact attachment envelope produced by withReferences is a UI attachment.
@@ -20,22 +23,43 @@ export function MessageContent({ content, onResource }: { content: string; onRes
   </>;
 }
 
-function ReplyMarkdown({ section, onResource }: { section: ReplySection; onResource: (id: string) => void }) {
+const noImages: readonly ResourceReference[] = [];
+
+export function CopyMessage({ text, label }: { text: string; label: string }) {
+  const [feedback, setFeedback] = useState('');
+  return <div className="copy-message">
+    <button type="button" className="text-button" onClick={async () => {
+      try {
+        await navigator.clipboard.writeText(text);
+        setFeedback('已复制');
+      } catch {
+        setFeedback('复制失败，请手动选择文本。');
+      }
+    }}>{label}</button>
+    {feedback && <small role="status">{feedback}</small>}
+  </div>;
+}
+
+function ReplyMarkdown({ section, onResource, images }: {
+  section: ReplySection; onResource: (id: string) => void; images: readonly ResourceReference[];
+}) {
   const components = useMemo<Components>(() => ({
       a: ({ href, children }) => {
         const data = /^\/api\/v12\/data\/versions\/([a-zA-Z0-9-]+)$/.exec(href ?? '');
         if (data) return <button className="citation-link" onClick={() => onResource(data[1])}>{children}</button>;
         return href && /^(https?:|mailto:)/.test(href) ? <a href={href} target="_blank" rel="noreferrer">{children}</a> : <span>{children}</span>;
       },
-      img: ({ alt }) => <span>{alt}</span>,
+      img: ({ src, alt }) => images.some(ref => src === contentUrl('', ref.versionId, ref.objectId))
+        ? <img src={src} alt={alt || '本轮成果图片'} loading="lazy" />
+        : <span>{alt}</span>,
       pre: ({ children }) => <details className="technical-details"><summary>查看代码或结构化内容</summary><pre>{children}</pre></details>,
       table: ({ children }) => <div className="table-scroll" role="region" aria-label="分析表格，可横向滚动" tabIndex={0}><table>{children}</table></div>,
-  }), [onResource]);
-  return <div className="markdown-content"><Markdown remarkPlugins={[remarkGfm]} components={components}>{section.markdown}</Markdown></div>;
+  }), [onResource, images]);
+  return <div className="markdown-content"><Markdown skipHtml remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[[rehypeKatex, { trust: false, output: 'mathml', maxExpand: 200, maxSize: 16 }]]} components={components}>{section.markdown}</Markdown></div>;
 }
 
-export function AssistantContent({ reply, onKnowledge, onResource }: {
-  reply: ReplyPresentation; onKnowledge: (reference: KnowledgeReference) => void; onResource: (id: string) => void;
+export function AssistantContent({ reply, onKnowledge, onResource, images = noImages }: {
+  reply: ReplyPresentation; images?: readonly ResourceReference[]; onKnowledge: (reference: KnowledgeReference) => void; onResource: (id: string) => void;
 }) {
   const executionDetails = reply.executionSummary ? reply.details : [];
   const supportingDetails = reply.executionSummary ? [] : reply.details;
@@ -46,7 +70,7 @@ export function AssistantContent({ reply, onKnowledge, onResource }: {
   }
   function renderSection(section: ReplySection) {
     return <>
-      <ReplyMarkdown section={section} onResource={onResource} />
+      <ReplyMarkdown section={section} onResource={onResource} images={images} />
       {hasMultipleSources && section.sourceIndexes.length > 0 && <div className="reply-section-sources">
         {section.sourceIndexes.map(index => {
           const source = reply.sources[index];

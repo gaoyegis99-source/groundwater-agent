@@ -40,6 +40,12 @@ EXECUTOR_GET_JOB_NODES = Operation(
     media_type='application/json', side_effecting=False,
 )
 
+EXECUTOR_GET_JOB_PUBLICATION = Operation(
+    operation_id='executor_get_job_publication', method='GET', path='/jobs/{jobId}/publication',
+    response_model=models.JobPublicationResponse, success_statuses=frozenset([200]),
+    media_type='application/json', side_effecting=False,
+)
+
 OPERATIONS = {
     EXECUTOR_SUBMIT_JOB.operation_id: EXECUTOR_SUBMIT_JOB,
     EXECUTOR_GET_JOB_BY_REQUEST.operation_id: EXECUTOR_GET_JOB_BY_REQUEST,
@@ -47,4 +53,5 @@ OPERATIONS = {
     EXECUTOR_CANCEL_JOB.operation_id: EXECUTOR_CANCEL_JOB,
     EXECUTOR_GET_JOB_GRAPH.operation_id: EXECUTOR_GET_JOB_GRAPH,
     EXECUTOR_GET_JOB_NODES.operation_id: EXECUTOR_GET_JOB_NODES,
+    EXECUTOR_GET_JOB_PUBLICATION.operation_id: EXECUTOR_GET_JOB_PUBLICATION,
 }

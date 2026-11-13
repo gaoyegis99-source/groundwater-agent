@@ -89,6 +89,9 @@ class ExecutorControl:
     def get(self, job_id: str) -> JobStatusV6:
         return self.queries.get(job_id)
 
+    def publication(self, job_id: str) -> dict:
+        return self.queries.publication(job_id)
+
     def cancel(self, job_id: str) -> JobStatusV6:
         return self.queries.cancel(job_id)
 

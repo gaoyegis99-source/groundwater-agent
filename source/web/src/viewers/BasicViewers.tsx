@@ -28,16 +28,17 @@ function JsonNode({ value, path, label }: { value: unknown; path: string; label:
   return <div className="json-leaf"><button className="copy-path" title="复制字段路径" onClick={() => void navigator.clipboard.writeText(path)}>{label}</button>: <code>{JSON.stringify(value)}</code></div>;
 }
 
-export function ImageViewer({ url, name }: { url: string; name: string }) {
+export function ImageViewer({ url, name, allowDownload = true }: { url: string; name: string; allowDownload?: boolean }) {
   const [zoom, setZoom] = useState(1);
-  return <div className="artifact-image"><div className="artifact-toolbar"><label>缩放<input type="range" min="0.25" max="3" step="0.25" value={zoom} onChange={event => setZoom(Number(event.target.value))} /></label><button onClick={() => setZoom(1)}>适应窗口</button><a className="button secondary" href={url} download><Icon name="download" />下载</a></div><div className="image-viewport"><img style={{ transform: `scale(${zoom})` }} src={url} alt={name} /></div></div>;
+  return <div className="artifact-image"><div className="artifact-toolbar"><label>缩放<input type="range" min="0.25" max="3" step="0.25" value={zoom} onChange={event => setZoom(Number(event.target.value))} /></label><button onClick={() => setZoom(1)}>适应窗口</button>{allowDownload && <a className="button secondary" href={url} download><Icon name="download" />下载</a>}</div><div className="image-viewport"><img style={{ transform: `scale(${zoom})` }} src={url} alt={name} /></div></div>;
 }
 
-export function MetadataViewer({ resource, object, url, reason }: {
+export function MetadataViewer({ resource, object, url, reason, allowDownload = true }: {
   resource: ResourceDetail;
   object: ResourceDetail['objects'][number];
   url: string;
   reason?: string;
+  allowDownload?: boolean;
 }) {
-  return <div className="artifact-unsupported"><p>{reason ?? '此格式暂不支持交互预览。'}</p><dl className="argument-list"><div><dt>格式</dt><dd>{object.format}</dd></div><div><dt>媒体类型</dt><dd>{object.mediaType}</dd></div><div><dt>大小</dt><dd>{object.size.toLocaleString()} 字节</dd></div><div><dt>校验和</dt><dd>{object.checksum}</dd></div>{resource.descriptor.provenance && Object.entries(resource.descriptor.provenance).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}</dl>{object.format === 'pytorch-state-dict' && <p className="muted">为避免执行不受信任代码，系统不会反序列化模型权重。</p>}<a className="button secondary" href={url} download><Icon name="download" />下载原文件</a></div>;
+  return <div className="artifact-unsupported"><p>{reason ?? '此格式暂不支持交互预览。'}</p><dl className="argument-list"><div><dt>格式</dt><dd>{object.format}</dd></div><div><dt>媒体类型</dt><dd>{object.mediaType}</dd></div><div><dt>大小</dt><dd>{object.size.toLocaleString()} 字节</dd></div><div><dt>校验和</dt><dd>{object.checksum}</dd></div>{resource.descriptor.provenance && Object.entries(resource.descriptor.provenance).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}</dl>{object.format === 'pytorch-state-dict' && <p className="muted">为避免执行不受信任代码，系统不会反序列化模型权重。</p>}{allowDownload && <a className="button secondary" href={url} download><Icon name="download" />下载原文件</a>}</div>;
 }

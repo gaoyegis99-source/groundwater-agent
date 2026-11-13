@@ -35,7 +35,7 @@ beforeEach(() => {
     if (path.endsWith('/capabilities')) return json(capabilitiesFixture());
     if (path.endsWith('/sessions')) return json({ items: [], nextCursor: null });
     if (path.includes('/results')) return json(sessionResultsFixture([], { sessionId: 'routing' }));
-    if (path.endsWith('/messages')) return json(history);
+    if (path.endsWith('/messages')) return json({ ...history, sessionId: path.split('/')[4] });
     if (path.includes('/trace')) return json({});
     throw new Error(`Unexpected URL ${path}`);
   }));

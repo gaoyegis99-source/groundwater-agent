@@ -1447,6 +1447,143 @@ def test_preparation_marks_missing_field_descriptor_unknown_and_blocks(
     )
 
 
+@pytest.mark.parametrize("spatial_first", [False, True])
+def test_same_turn_preparation_candidates_survive_refresh_and_replay(kernel_settings, spatial_first):
+    from platform_kernel.database import connect_database, utc_now
+    from platform_kernel.interaction.persistence import create_session
+    from platform_kernel.tasks.preparation import get_preparation, save_preparation
+
+    settings = kernel_settings()
+    database = settings.data_root / "kernel.sqlite3"
+    session, agent = "preparation-session", "preparation-agent"
+    create_session(database, session, settings.project_id)
+    with connect_database(database) as connection:
+        connection.execute("UPDATE sessions SET goal_revision=1 WHERE session_id=?", (session,))
+        connection.execute(
+            """INSERT INTO agent_runs(agent_run_id,session_id,project_id,goal_revision,
+               provider,model,status,steps_json,input_tokens,output_tokens,total_tokens,
+               trace_id,created_at,started_at)
+               VALUES (?,?,?,1,'fixed','model','RUNNING','[]',0,0,0,'trace',?,?)""",
+            (agent, session, settings.project_id, utc_now(), utc_now()),
+        )
+
+    base = settings.models[0]
+    trend = replace(base, tool_name="prepare_trend", model_id="test.trend")
+    spatial = replace(
+        base, tool_name="prepare_spatial", model_id="test.spatial",
+        input_schema={**base.input_schema, "required": ["resource_id", "xField", "yField"],
+                      "properties": {**base.input_schema["properties"], "xField": {"type": "string"},
+                                     "yField": {"type": "string"}}},
+    )
+
+    async def check_branches():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(lambda request: httpx.Response(200, json={
+            "data": {"status": "OK", "versionId": "monitoring", "currentVersion": "monitoring",
+                     "datasetId": "observations", "semanticId": "semantics",
+                     "descriptor": {"fields": [{"fieldId": "time", "name": "time", "type": "string"},
+                                               {"fieldId": "level", "name": "level", "type": "double"}]},
+                     "objects": [{"objectId": "monitoring-object", "role": "raw", "mediaType": "text/csv",
+                                  "format": "csv", "size": 32, "checksum": "sha256:" + "a" * 64}]},
+        }))) as client:
+            tool = build_preparation_tool(
+                database, observations=settings.observation_tools, services_by_name=settings.services_by_name,
+                models=(trend, spatial), observation_client=ObservationClient(client),
+            )
+            branches = [(trend, "READY"), (spatial, "BLOCKED")]
+            if spatial_first:
+                branches.reverse()
+            for revision, (model, status) in enumerate(branches, start=1):
+                result = await tool.on_invoke_tool(
+                    SimpleNamespace(context={"agent_run_id": agent, "project_id": settings.project_id,
+                                             "trace_id": "trace", "governance": {"knowledge_evidence": []}},
+                                    tool_call_id=f"preparation-{revision}"),
+                    json.dumps({"target_tool": model.tool_name, "arguments": {"resource_id": "monitoring"}}),
+                )
+                assert result["status"] == status, result
+                if status == "BLOCKED":
+                    assert any(issue.get("path") in {"xField", "yField"} or issue.get("parameter") in {"xField", "yField"}
+                               for issue in result["blocking_issues"]), result
+                head = get_preparation(database, session, settings.project_id)
+                assert head["revision"] == revision
+                assert [(entry["target_id"], entry["status"]) for entry in head["entries"]] == [
+                    (checked.model_id, state) for checked, state in branches[:revision]
+                ]
+            first, status = branches[0]
+            replay = await tool.on_invoke_tool(
+                SimpleNamespace(context={"agent_run_id": agent, "project_id": settings.project_id,
+                                         "trace_id": "trace", "governance": {"knowledge_evidence": []}},
+                                tool_call_id="preparation-1"),
+                json.dumps({"target_tool": first.tool_name, "arguments": {"resource_id": "monitoring"}}),
+            )
+            assert (replay["target_id"], replay["status"], replay["revision"]) == (first.model_id, status, 1)
+            assert get_preparation(database, session, settings.project_id) == head
+
+    asyncio.run(check_branches())
+    with connect_database(database) as connection:
+        snapshots = connection.execute(
+            "SELECT snapshot_json FROM task_preparation_revisions WHERE agent_run_id=? ORDER BY revision", (agent,),
+        ).fetchall()
+    assert [(entry["target_id"], entry["status"]) for row in snapshots
+            for entry in json.loads(row["snapshot_json"])["entries"]] == (
+        [("test.spatial", "BLOCKED"), ("test.trend", "READY")] if spatial_first
+        else [("test.trend", "READY"), ("test.spatial", "BLOCKED")]
+    )
+    second = json.loads(snapshots[1]["snapshot_json"])
+    with connect_database(database) as connection:
+        # Simulate the head written by a deployment that stored only the latest check.
+        connection.execute(
+            "UPDATE task_preparations SET snapshot_json=?,status=? WHERE agent_run_id=?",
+            (snapshots[1]["snapshot_json"], second["status"], agent),
+        )
+    current = get_preparation(database, session, settings.project_id)
+    assert len(current["entries"]) == 2
+    assert current["status"] == "BLOCKED"
+
+    trend_entry = next(entry for entry in current["entries"] if entry["target_id"] == trend.model_id)
+    blocked_trend = {**trend_entry, "status": "BLOCKED", "blocking_reasons": ["DATA_UNAVAILABLE"]}
+    rechecked = save_preparation(
+        database, agent_run_id=agent, tool_call_id="recheck-trend", snapshot=blocked_trend,
+    )
+    updated = get_preparation(database, session, settings.project_id)
+    assert len(updated["entries"]) == 2
+    assert {entry["status"] for entry in updated["entries"]} == {"BLOCKED"}
+    with pytest.raises(ValueError, match="TASK_PREPARATION_REQUEST_CONFLICT"):
+        save_preparation(database, agent_run_id=agent, tool_call_id="recheck-trend", snapshot=trend_entry)
+    assert get_preparation(database, session, settings.project_id) == updated
+    evidence = collect_turn_evidence([
+        {"type": "function_call", "call_id": "latest", "name": "prepare_task_inputs"},
+        {"type": "function_call", "call_id": "earlier", "name": "prepare_task_inputs"},
+        {"type": "function_call_output", "call_id": "latest",
+         "output": preparation_tool_module._public_result(rechecked)},
+        {"type": "function_call_output", "call_id": "earlier",
+         "output": preparation_tool_module._public_result({
+             **trend_entry, "preparation_id": current["preparation_id"], "revision": 1,
+         })},
+    ])
+    assert evidence.prepared_targets == {trend.model_id}
+    assert not evidence.prepared_arguments[trend.model_id]
+
+    with connect_database(database) as connection:
+        connection.execute("UPDATE sessions SET goal_revision=2 WHERE session_id=?", (session,))
+        connection.execute(
+            """INSERT INTO agent_runs(agent_run_id,session_id,project_id,goal_revision,
+               provider,model,status,steps_json,input_tokens,output_tokens,total_tokens,
+               trace_id,created_at,started_at)
+               SELECT 'next-turn',session_id,project_id,2,provider,model,'RUNNING',
+               steps_json,0,0,0,trace_id,created_at,started_at FROM agent_runs WHERE agent_run_id=?""",
+            (agent,),
+        )
+    stale = get_preparation(database, session, settings.project_id)
+    assert stale["disposition"] == "STALE"
+    assert stale["fresh_for_current_turn"] is False
+    save_preparation(database, agent_run_id="next-turn", tool_call_id="new-check", snapshot=trend_entry)
+    save_preparation(database, agent_run_id=agent, tool_call_id="late-check", snapshot=trend_entry)
+    latest = get_preparation(database, session, settings.project_id)
+    assert latest["agent_run_id"] == "next-turn"
+    assert latest["entries"] == [trend_entry]
+    assert latest["fresh_for_current_turn"] is True
+
+
 def test_preparation_accepts_matching_field_and_preserves_snapshot_sections(
     kernel_settings, monkeypatch
 ) -> None:

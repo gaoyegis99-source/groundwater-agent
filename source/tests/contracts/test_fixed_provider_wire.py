@@ -16,6 +16,8 @@ from agents.models.openai_responses import OpenAIResponsesModel
 from openai import AsyncOpenAI
 from openai.types.shared import Reasoning
 from platform_kernel.agent_runtime.models import SubmittedReplyV6
+from platform_kernel.agent_runtime.tooling.replies import validate_clarification_reply
+from platform_kernel.tasks.models import TaskUpdate
 from scripts.checks.deepseek_data_knowledge_live import _disable_sdk_trace_export
 
 
@@ -64,6 +66,7 @@ def _append_result(items, name, value):
         ("请生成工作流草稿", "CREATE_WORKFLOW|NONE|NONE"),
         ("请比较分析方法", "CONSULT|NONE|NONE"),
         ("帮我处理一下", "UNKNOWN|NONE|REQUEST_KIND_AMBIGUOUS"),
+        ("监测表只有“水位（米）”一列，帮我分析这列水位。", "UNKNOWN|NONE|REQUEST_KIND_AMBIGUOUS"),
     ],
 )
 def test_fixed_deepseek_router_uses_v11_semantic_literal(
@@ -78,6 +81,93 @@ def test_fixed_deepseek_router_uses_v11_semantic_literal(
         chat=False,
     )
     assert action == (None, expected)
+
+
+def test_water_level_fixture_asks_one_question_with_two_ordinary_replies(fixed_provider):
+    name, reply = fixed_provider.provider_action(
+        {
+            "instructions": "This request is clarification-only.",
+            "input": [{"role": "user", "content": "监测表只有“水位（米）”一列，帮我分析这列水位。"}],
+            "tools": [{"name": "submit_reply"}],
+        },
+        chat=False,
+    )
+    assert name == "submit_reply"
+    parsed = SubmittedReplyV6.model_validate(reply)
+    assert validate_clarification_reply(parsed).endswith("从井口向下量的埋深？")
+    assert [option.label for option in parsed.interaction_options] == ["水位高程", "井口埋深"]
+    for option in parsed.interaction_options:
+        name, followup = fixed_provider.provider_action(
+            {
+                "input": [{"role": "user", "content": option.message}],
+                "tools": [{"name": "submit_reply"}],
+            },
+            chat=False,
+        )
+        assert name == "submit_reply"
+        parsed_followup = SubmittedReplyV6.model_validate(followup)
+        assert "同一高程基准" in parsed_followup.conclusion.text
+        assert parsed_followup.workflow_draft is None
+        assert parsed_followup.referenced_workflow_runs == []
+
+
+def test_reviewed_publication_fixture_binds_result_to_execution_and_review_to_user(fixed_provider):
+    objective = "请建立水位统计成果评审任务，交付水位统计汇总和对照统计汇总，最后由我确认统计汇总可用于复核。"
+    items = [{
+        "role": "user",
+        "content": objective + '\n[Evaluation case: task-published-review-case]\n'
+        '[Model execution] {"tool":"run_summary","arguments":{}}',
+    }]
+
+    def action():
+        return fixed_provider.provider_action(
+            {"input": items, "tools": [
+                {"name": "update_task"}, {"name": "get_execution_fact"}, {"name": "submit_reply"},
+            ]},
+            chat=False,
+        )
+
+    name, value = action()
+    assert name == "update_task"
+    task = TaskUpdate.model_validate(value)
+    assert task.objective_quote == objective
+    assert [(item.id, item.kind) for item in task.criteria] == [
+        ("summary", "RESULT"), ("comparison", "RESULT"), ("review", "USER_REVIEW"),
+    ]
+    _append_result(items, "update_task", {"status": "STAGED", "revision": 1})
+    _append_result(items, "run_summary", {"status": "COMPLETE", "workflow_run_id": "run-123", "outputs": []})
+    name, value = action()
+    assert name == "submit_reply"
+    assert SubmittedReplyV6.model_validate(value).referenced_workflow_runs == ["run-123"]
+
+    items[:] = [{"role": "user", "content": "请将已发布汇总登记为任务成果证据。AgentRun: agent-123，WorkflowRun: run-123。"}]
+    assert action() == ("get_execution_fact", {"workflow_run_id": "run-123"})
+    _append_result(items, "get_execution_fact", {"fact": {"status": "COMPLETE", "workflow_run_id": "run-123"}})
+    name, value = action()
+    assert name == "update_task"
+    update = TaskUpdate.model_validate(value)
+    assert update.expected_revision == 1
+    assert update.evidence[0].agent_run_id == "agent-123"
+    assert update.evidence[0].workflow_run_id == "run-123"
+
+    items[:] = [{"role": "user", "content": "请将已发布对照汇总登记为任务成果证据。AgentRun: agent-456，WorkflowRun: run-456。"}]
+    assert action() == ("get_execution_fact", {"workflow_run_id": "run-456"})
+    _append_result(items, "get_execution_fact", {"fact": {"status": "COMPLETE", "workflow_run_id": "run-456"}})
+    name, value = action()
+    assert name == "update_task"
+    comparison = TaskUpdate.model_validate(value)
+    assert comparison.expected_revision == 2
+    assert comparison.evidence[0].criterion_id == "comparison"
+    assert comparison.evidence[0].workflow_run_id == "run-456"
+
+    quote = "确认完成：统计汇总可用于复核"
+    items[:] = [{"role": "user", "content": quote}]
+    name, value = action()
+    assert name == "update_task"
+    review = TaskUpdate.model_validate(value)
+    assert review.expected_revision == 3
+    assert review.evidence[0].review_quote == quote
+    assert review.evidence[0].workflow_run_id is None
 
 
 def test_v11_multi_input_execution_inspects_versions_in_one_logical_stage(

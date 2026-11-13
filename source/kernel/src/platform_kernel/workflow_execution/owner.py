@@ -88,6 +88,32 @@ class WorkflowExecutionOwner:
     def get(self, project_id: str, run_id: str) -> WorkflowRun:
         return get_run(self.database, project_id, run_id)
 
+    async def run_publication(self, project_id: str, run_id: str) -> dict[str, object]:
+        run = self.get(project_id, run_id)
+        unknown = {"workflowRunId": run_id, "publicationId": None, "state": None}
+        service = self.services.get(run.execution_service)
+        if (
+            run.remote_job_id is None or service is None
+            or get_target_digest(self.database, run_id) != service_target_digest(service)
+        ):
+            return unknown
+        try:
+            publication = await self.execution_client.get_publication(service, run.remote_job_id)
+        except ExecutionClientError as error:
+            raise UpstreamServiceError("WORKFLOW_PUBLICATION_UNAVAILABLE") from error
+        if (
+            publication is None
+            or (publication.job_id, publication.request_id) != (run.remote_job_id, run_id)
+            or publication.publication_id is None
+            or publication.state is None
+        ):
+            return unknown
+        return {
+            "workflowRunId": run_id,
+            "publicationId": publication.publication_id,
+            "state": publication.state.value,
+        }
+
     async def node_diagnostics(self, project_id: str, run_id: str) -> WorkflowNodeDiagnosticsResponse:
         run = self.get(project_id, run_id)
         if run.remote_job_id is None:

@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import App from './App';
 import { activityFixture, capabilitiesFixture, dataDetail, dataRef, historyFixture, messageReceiptFixture, replyFixture, sessionResponseFixture, sessionResultsFixture, taskFixture, type HistoryFixture } from './test-fixtures';
@@ -173,6 +173,79 @@ it('keeps stop disabled while the server is processing the durable control reque
     : basics(url)));
   render(<App />);
   expect(await screen.findByRole('button', { name: '正在请求停止…' })).toBeDisabled();
+  expect(screen.getByText('正在处理停止', { exact: true })).toBeVisible();
+  expect(screen.queryByText('本轮已取消', { exact: true })).not.toBeInTheDocument();
+});
+
+it('allows the current turn to stop while a previous turn has a processing receipt', async () => {
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => url.endsWith('/messages')
+    ? json(snapshot({
+      goalRevision: 2,
+      turns: [{ goalRevision: 2, agentRunId: 'agent-2', status: 'RUNNING' }, { status: 'COMPLETE' }],
+      controlRequests: [{ requestId: 'stop-1', agentRunId: 'agent-1', status: 'PROCESSING' }],
+    }))
+    : basics(url)));
+  render(<App />);
+  expect(await screen.findByRole('button', { name: '停止当前处理' })).toBeEnabled();
+  expect(screen.getByText('正在处理停止', { exact: true })).toBeVisible();
+});
+
+it('keeps the current stop in flight across a snapshot that predates the receipt', async () => {
+  const stop = delayed();
+  let cursor = 10;
+  const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+    if (url.endsWith('/stop') && init?.method === 'POST') return stop.promise;
+    if (url.endsWith('/messages')) return json(snapshot({ eventCursor: cursor, turns: [{
+      status: 'RUNNING', reply: cursor === 11 ? replyFixture('仍在处理') : null,
+    }] }));
+    return basics(url);
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: '停止当前处理' }));
+  cursor = 11;
+  act(() => Events.instances[0].emit('agent.activity', cursor));
+  await screen.findByText('仍在处理');
+  expect(screen.getByRole('button', { name: '正在请求停止…' })).toBeDisabled();
+  expect(fetchMock.mock.calls.filter(([url]) => url.endsWith('/stop'))).toHaveLength(1);
+  await act(async () => stop.finish(new Response(JSON.stringify({ code: 'SERVICE_UNAVAILABLE' }), { status: 503 })));
+});
+
+it('reconciles an ambiguous stop response before releasing a queued correction', async () => {
+  let stopId = '';
+  let cursor = 10;
+  const messages: Record<string, unknown>[] = [];
+  vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+    if (init?.method === 'POST') {
+      const body = JSON.parse(String(init.body));
+      if (url.endsWith('/stop')) {
+        stopId = body.requestId;
+        cursor = 11;
+        return new Response(JSON.stringify({ code: 'SERVICE_UNAVAILABLE' }), { status: 503 });
+      }
+      if (url.endsWith('/messages')) { messages.push(body); return json(messageReceiptFixture({ requestId: body.requestId })); }
+    }
+    if (url.endsWith('/messages')) return json(snapshot({
+      eventCursor: cursor,
+      turns: [{ status: cursor === 12 ? 'CANCELLED' : 'RUNNING' }],
+      controlRequests: cursor === 10 ? [] : [{
+        requestId: stopId, agentRunId: 'agent-1', status: cursor === 12 ? 'COMPLETE' : 'PROCESSING',
+      }],
+    }));
+    return basics(url);
+  }));
+  render(<App />);
+  await screen.findByRole('button', { name: '停止当前处理' });
+  act(() => Events.instances[0].onopen?.());
+  fireEvent.change(screen.getByRole('textbox', { name: '消息输入框' }), { target: { value: '调整研究范围' } });
+  fireEvent.click(screen.getByRole('button', { name: '停止后按输入内容纠正' }));
+  expect(await screen.findByText('正在处理停止', { exact: true })).toBeVisible();
+  expect(messages).toHaveLength(0);
+  cursor = 12;
+  act(() => Events.instances[0].emit('control.complete', cursor));
+  expect(await screen.findByText('本轮已取消', { exact: true })).toBeVisible();
+  await waitFor(() => expect(messages).toEqual([expect.objectContaining({ message: '调整研究范围', correctsAgentRunId: 'agent-1' })]));
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 });
 
 it('retains a correction after stop failure and sends it once only after the stop is acknowledged', async () => {
@@ -228,7 +301,10 @@ it('submits a confirmation once during repeated activation and permits an explic
   fireEvent.click(confirm); fireEvent.click(confirm);
   await waitFor(() => expect(posts).toBe(1));
   await act(async () => pending.finish(new Response(JSON.stringify({ code: 'SERVICE_UNAVAILABLE' }), { status: 503 })));
-  fireEvent.click(await screen.findByRole('button', { name: /^确认执行/ }));
+  const retry = await screen.findByRole('button', { name: '重试同一操作' });
+  expect(screen.queryByRole('button', { name: /^确认执行/ })).not.toBeInTheDocument();
+  await waitFor(() => expect(retry).toBeEnabled());
+  fireEvent.click(retry);
   await waitFor(() => expect(posts).toBe(2));
   await waitFor(() => expect(screen.queryByRole('button', { name: /^确认执行/ })).not.toBeInTheDocument());
 });
@@ -368,15 +444,20 @@ it('ignores an older result response that finishes after a newer authoritative r
   expect(screen.queryByText('过时成果')).not.toBeInTheDocument();
 });
 
-it('publishes result files without a recommendation detail request', async () => {
+it('verifies the exact result identity before offering download without a recommendation request', async () => {
+  const output = dataRef({ versionId: 'output', outputName: 'summary' });
+  const verified = delayed();
   vi.stubGlobal('fetch', vi.fn(async (url: string) => {
     if (url.endsWith('/messages')) return json(snapshot({ eventCursor: 10, turns: [{ requestMode: 'DIALOGUE', executionTasks: [taskFixture({ status: 'SUCCEEDED', stage: null, outputCount: 1 })] }] }));
-    if (url.includes('/results')) return json(sessionResultsFixture([{ goalRevision: 1, agentRunId: 'agent-1', modelId: 'groundwater.summary', status: 'SUCCEEDED', workflowRunId: 'workflow-1', toolCallId: 'tool-1', remoteOutputs: [{ kind: 'data_version', service: 'data-primary', datasetId: 'dataset-output', versionId: 'output', semanticId: 'semantic-output', objectId: 'object-output', checksum: 'sha256:output', outputName: 'summary', mediaType: 'application/json', format: 'json', sizeBytes: 128 }] }]));
+    if (url.includes('/results')) return json(sessionResultsFixture([{ goalRevision: 1, agentRunId: 'agent-1', modelId: 'groundwater.summary', status: 'COMPLETE', workflowRunId: 'workflow-1', toolCallId: 'tool-1', remoteOutputs: [output] }]));
+    if (url.endsWith('/data/versions/output')) return verified.promise;
     return basics(url);
   }));
   render(<App />);
+  await screen.findByText('精确版本尚未通过读取核验。');
+  expect(screen.queryByRole('link', { name: '下载' })).not.toBeInTheDocument();
+  await act(async () => verified.finish(json(dataDetail({ versionId: output.versionId }))));
   await screen.findByRole('link', { name: '下载' });
-  expect(screen.queryByText('正在同步结果文件…')).not.toBeInTheDocument();
   expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes('/recommendations/'))).toBe(false);
 });
 
@@ -560,4 +641,122 @@ it('refreshes a recovered confirmation after the SSE connection reopens', async 
   expect(document.querySelector('[data-confirmation-id="recovered"]')).not.toBeNull();
   expect(reads).toBe(2);
   expect(screen.getAllByRole('button', { name: /^确认执行/ })).toHaveLength(1);
+});
+
+it('merges a user message from an older page into the same Turn without replacing its newer reply', async () => {
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    if (url.includes('/messages?cursor=2')) return json(snapshot({ eventCursor: 9, nextCursor: null,
+      items: [{ messageId: 1, goalRevision: 1, role: 'user', content: '分页前的提问' }],
+      turns: [{ status: 'RUNNING', reply: null }],
+    }));
+    if (url.endsWith('/messages')) return json(snapshot({ eventCursor: 10, nextCursor: 2,
+      items: [{ messageId: 2, goalRevision: 1, role: 'assistant', content: '已核验的结论' }],
+      turns: [{ status: 'COMPLETE', reply: replyFixture('已核验的结论') }],
+    }));
+    return basics(url);
+  }));
+  render(<App />);
+  await screen.findByText('已核验的结论');
+  fireEvent.click(screen.getByRole('button', { name: '更早消息' }));
+  const question = await screen.findByText('分页前的提问');
+  expect(question.closest('.turn')).toBe(screen.getByText('已核验的结论').closest('.turn'));
+  expect(screen.getAllByRole('region', { name: '第 1 轮' })).toHaveLength(1);
+  expect(screen.getByText('本轮已结束')).toBeVisible();
+});
+
+it('reconciles after reconnect, rejecting a lower watermarked snapshot', async () => {
+  let cursor = 10;
+  let reads = 0;
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    if (url.endsWith('/messages')) {
+      reads++;
+      return json(snapshot({ eventCursor: cursor, turns: [{ reply: replyFixture('权威结论 ' + cursor) }] }));
+    }
+    return basics(url);
+  }));
+  render(<App />);
+  await screen.findByText('权威结论 10');
+  const stream = Events.instances[0];
+  expect(stream.url).toContain('afterEventId=10');
+  act(() => { stream.onopen?.(); stream.onerror?.(); });
+  cursor = 9;
+  act(() => stream.onopen?.());
+  await waitFor(() => expect(reads).toBe(2));
+  expect(screen.getByText('权威结论 10')).toBeVisible();
+  expect(screen.queryByText('权威结论 9')).not.toBeInTheDocument();
+  cursor = 12;
+  act(() => stream.emit('agent.complete', 12));
+  await screen.findByText('权威结论 12');
+  act(() => { stream.emit('agent.complete', 12); stream.emit('agent.complete', 11); });
+  expect(reads).toBe(3);
+});
+
+it('keeps a previous Turn confirmation read-only and rejects a foreign Run and mismatched Result', async () => {
+  const confirmed: Confirmation = {
+    confirmationId: 'approved', revision: 1, goalRevision: 1, agentRunId: 'agent-1',
+    status: 'CONFIRMED', decision: 'CONFIRM', decisionState: null, reason: null, actions: [],
+  };
+  const pending: Confirmation = { ...confirmed, confirmationId: 'live', revision: 1, goalRevision: 2,
+    agentRunId: 'agent-2', status: 'PENDING', decision: null };
+  const first = taskFixture({ workflowRunId: 'first', status: 'SUCCEEDED', stage: null, outputCount: 1 });
+  const second = taskFixture({ workflowRunId: 'second', status: 'FAILED', stage: null, errorCode: 'WORKFLOW_FAILED', toolCallId: 'second-action' });
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    if (url.endsWith('/messages')) return json(snapshot({ goalRevision: 2,
+      items: [{ messageId: 1, goalRevision: 1, role: 'user', content: '旧请求' }, { messageId: 2, goalRevision: 2, role: 'user', content: '新请求' }],
+      turns: [
+        { goalRevision: 1, confirmations: [confirmed], executionTasks: [first, second, { ...first, workflowRunId: 'foreign', agentRunId: 'foreign-agent' }] },
+        { goalRevision: 2, agentRunId: 'agent-2', status: 'WAITING_CONFIRMATION', confirmations: [pending] },
+      ],
+    }));
+    if (url.includes('/results')) return json(sessionResultsFixture([{
+      workflowRunId: 'first', goalRevision: 2, agentRunId: 'agent-1', toolCallId: first.toolCallId,
+      modelId: first.modelId, status: 'COMPLETE', remoteOutputs: [dataRef({ outputName: '外部成果' })],
+    }]));
+    return basics(url);
+  }));
+  render(<App />);
+  const previous = await screen.findByRole('region', { name: '第 1 轮' });
+  fireEvent.click(within(previous).getByText('历史修订 1'));
+  expect(within(previous).queryByTestId('confirm-execution')).not.toBeInTheDocument();
+  expect(screen.getAllByTestId('confirm-execution')).toHaveLength(1);
+  expect(within(previous).getAllByTestId('result-card').map(node => node.dataset.workflowRunId)).toEqual(['first', 'second']);
+  expect(within(previous).queryByText('外部成果')).not.toBeInTheDocument();
+});
+
+it('rejects a late preview from an earlier Session even when the AgentRun ID is reused', async () => {
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    if (url.endsWith('/messages')) {
+      const sessionId = url.split('/')[4];
+      return json(snapshot({ sessionId, items: [{ messageId: 1, goalRevision: 1, role: 'user', content: sessionId }],
+        turns: [{ status: 'RUNNING' }],
+      }));
+    }
+    return basics(url);
+  }));
+  render(<App />);
+  await screen.findByText('session-1');
+  const previous = Events.previews[0];
+  await navigate('second');
+  await screen.findByText('second');
+  act(() => previous.listeners.get('preview.update')?.(new MessageEvent('preview.update', {
+    data: JSON.stringify({ agentRunId: 'agent-1', sequence: 12, text: '旧会话预览' }),
+  })));
+  expect(previous.closed).toBe(true);
+  expect(screen.queryByText('旧会话预览')).not.toBeInTheDocument();
+});
+
+it('holds approval after reconnect until the newer snapshot is verified', async () => {
+  const confirmation: Confirmation = { confirmationId: 'pending-resume', goalRevision: 1, agentRunId: 'agent-1',
+    status: 'PENDING', decision: null, decisionState: null, reason: null, actions: [] };
+  const pending = delayed();
+  const current = snapshot({ eventCursor: 10, turns: [{ status: 'WAITING_CONFIRMATION', confirmations: [confirmation] }] });
+  let reads = 0;
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => url.endsWith('/messages') ? (++reads === 1 ? json(current) : pending.promise) : basics(url)));
+  render(<App />);
+  await screen.findByTestId('confirm-execution');
+  act(() => { Events.instances[0].onopen?.(); Events.instances[0].onerror?.(); Events.instances[0].onopen?.(); });
+  await waitFor(() => expect(reads).toBe(2));
+  expect(screen.queryByTestId('confirm-execution')).not.toBeInTheDocument();
+  await act(async () => pending.finish(json({ ...current, eventCursor: 11 })));
+  expect(await screen.findByTestId('confirm-execution')).toBeEnabled();
 });

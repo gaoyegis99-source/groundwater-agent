@@ -191,6 +191,12 @@ Gateway 将 `/api/v12/data/*` 映射到 Data `/data/v3/*`。主要资源包括�
 - preview create、status、cancel（`xlsx_table`、`geopackage_layer`）
 - `GET /api/v12/data/versions/{versionId}/objects/{objectId}/content`
 
+`GET /api/v12/workflow-runs/{runId}/publication?projectId=...` 向当前运行的所有者返回
+`workflowRunId`、`publicationId` 与 Data 发布 `state`。尚无可核对关联时，后两个字段为
+`null`。关联上游暂不可用时返回 503。该接口只投影当前 Run 的发布身份和状态；
+成果读取和下载仍使用精确 Data 对象引用及其访问权限。Executor 在 Data 提交后报告成功，
+客户端成果列表的读取进度由 Web 独立显示。
+
 Data 查询只允许 CSV/Parquet。Preview 只提供 XLSX 工作表和 GeoPackage 图层的有界只读结果，不执行公式或任意 SQL。对象内容支持单段 `Range` 请求，供 COG/GeoTIFF 按需读取。发布支持装配算子目录声明的格式，并在提交时验证 format、MIME、大小和 checksum。内部 Agent 工具是 `get_data_inventory`、`discover_datasets`、`inspect_data_version` 和 `inspect_data_table`。目录概览与发现结果是当前服务状态的候选投影；执行仍以精确版本检查和冻结引用为准。
 
 ## Knowledge Next

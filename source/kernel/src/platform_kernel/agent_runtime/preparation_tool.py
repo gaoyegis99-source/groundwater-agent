@@ -1232,7 +1232,10 @@ def _blocked_snapshot(
         "status": "BLOCKED",
         "inputs": {},
         "knowledge_refs": [],
-        "parameters": supplied if isinstance(supplied, dict) else {},
+        "parameters": {
+            **(model.default_parameters if model is not None else {}),
+            **(supplied if isinstance(supplied, dict) else {}),
+        },
         "parameter_sources": {},
         "checks": [],
         "blocking_reasons": blocking_reasons or [reason + (f":{path}" if path else "")],

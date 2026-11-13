@@ -59,7 +59,7 @@ it('renders business steps, missing items and evidence without exposing raw grap
   expect(screen.getByText('quality_status')).toBeVisible();
   expect(screen.getByText('数据 · 根据已核对字段整理的嵌套规则。')).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: /wells · version-3/ }));
-  expect(readResource).toHaveBeenCalledExactlyOnceWith('version-3');
+  expect(readResource).toHaveBeenCalledExactlyOnceWith('version-3', draft.payload!.dataBindings[0].dataRef);
   fireEvent.click(screen.getByText('输入格式与知识依据'));
   fireEvent.click(screen.getByRole('button', { name: /知识依据 1 · unit-2/ }));
   expect(readKnowledge).toHaveBeenCalledExactlyOnceWith(draft.payload!.knowledgeRefs[0]);
@@ -71,9 +71,13 @@ it('renders business steps, missing items and evidence without exposing raw grap
   expect(screen.queryByRole('button', { name: /^确认执行/ })).not.toBeInTheDocument();
 });
 
-it('renders an accessible DAG with external inputs, missing callouts and expandable node facts', () => {
+it('renders an accessible DAG with external inputs, missing callouts and expandable node facts', async () => {
   const { container } = render(<WorkflowDraftCard draft={draft} onKnowledge={vi.fn()} onResource={vi.fn()} />);
-  const graph = screen.getByRole('group', { name: '工作流依赖图' });
+  const toggle = screen.getByText('查看工作流依赖图');
+  expect(toggle.closest('details')).not.toHaveAttribute('open');
+  expect(container.querySelector('.draft-graph')).not.toBeInTheDocument();
+  fireEvent.click(toggle);
+  const graph = await screen.findByRole('group', { name: '工作流依赖图' });
 
   expect(graph.querySelectorAll('[data-workflow-input]')).toHaveLength(2);
   expect(graph.querySelector('[data-workflow-input="wells"]')).toHaveTextContent('wells');
@@ -110,9 +114,38 @@ it('renders an accessible DAG with external inputs, missing callouts and expanda
   expect(detail).toHaveTextContent('节点 map');
   expect(detail).toHaveTextContent('title');
   expect(detail).toHaveTextContent('用户说明 · 用户指定图名');
+
+  fireEvent.click(toggle);
+  await waitFor(() => expect(container.querySelector('.draft-graph')).not.toBeInTheDocument());
+  fireEvent.click(toggle);
+  expect(await screen.findByRole('button', { name: '查看静态地图节点详情' })).toHaveAttribute('aria-expanded', 'false');
 });
 
-it('lays out fan-out and links each declared output to its exact node and port', () => {
+it('keeps a long workflow in the summary and mounts its full dependency graph on demand', async () => {
+  const payload = draft.payload!;
+  const nodes = Array.from({ length: 40 }, (_, index) => ({
+    ...payload.workflow.nodes[0], nodeId: `step-${index}`, parameters: {},
+    inputs: { data: index ? { nodeOutput: { nodeId: `step-${index - 1}`, port: 'table' } } : { workflowInput: 'wells' } },
+  }));
+  const { container } = render(<WorkflowDraftCard draft={{ ...draft, payload: {
+    ...payload,
+    workflow: { ...payload.workflow, nodes, outputs: [
+      { name: 'early-table', nodeOutput: { nodeId: 'step-4', port: 'table' } },
+      { name: 'final-table', nodeOutput: { nodeId: 'step-39', port: 'table' } },
+    ] },
+    operators: nodes.map(node => ({ ...payload.operators[0], nodeId: node.nodeId, title: node.nodeId })),
+    missingInputs: [],
+  } }} onKnowledge={vi.fn()} onResource={vi.fn()} />);
+  expect(within(screen.getByTestId('draft-nodes')).getAllByRole('listitem')).toHaveLength(40);
+  expect(screen.getByText('2 项预期输出')).toBeVisible();
+  expect(container.querySelector('.draft-graph')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByText('查看工作流依赖图'));
+  const graph = await screen.findByRole('group', { name: '工作流依赖图' });
+  expect(graph.querySelectorAll('[data-dag-edge-kind="node-output"]')).toHaveLength(39);
+  expect(graph.querySelector('[data-edge-source="step-39:table"][data-edge-target="output:final-table"]')).toBeInTheDocument();
+});
+
+it('lays out fan-out and links each declared output to its exact node and port', async () => {
   const fanout: WorkflowDraft = {
     ...draft,
     draftId: 'draft-fanout',
@@ -146,7 +179,10 @@ it('lays out fan-out and links each declared output to its exact node and port',
   };
 
   render(<WorkflowDraftCard draft={fanout} onKnowledge={vi.fn()} onResource={vi.fn()} />);
-  const graph = screen.getByRole('group', { name: '工作流依赖图' });
+  const toggle = screen.getByText('查看工作流依赖图');
+  expect(toggle.closest('details')).not.toHaveAttribute('open');
+  fireEvent.click(toggle);
+  const graph = await screen.findByRole('group', { name: '工作流依赖图' });
   const trend = graph.querySelector('[data-node-id="trend"]')!;
   const gaps = graph.querySelector('[data-node-id="gaps"]')!;
 
@@ -168,6 +204,7 @@ it('lays out fan-out and links each declared output to its exact node and port',
 
 it('dispatches known preparation blockers and leaves an unknown blocker read-only', () => {
   const onData = vi.fn(), onVersion = vi.fn(), onParameter = vi.fn();
+  const onUseCurrentVersion = vi.fn();
   const input = dataRef({ versionId: 'stale-version', format: 'csv', mediaType: 'text/csv' });
   const history = historyFixture({ preparation: {
     schemaVersion: 'task-preparation.v1', preparationId: 'preparation-1', revision: 1,
@@ -186,14 +223,14 @@ it('dispatches known preparation blockers and leaves an unknown blocker read-onl
         'FUTURE_UNKNOWN_BLOCKER',
       ] }],
   } });
-  render(<PreparationDetails history={history} onData={onData} onVersion={onVersion} onParameter={onParameter} />);
+  render(<PreparationDetails history={history} onData={onData} onVersion={onVersion} onUseCurrentVersion={onUseCurrentVersion} onParameter={onParameter} />);
   fireEvent.click(screen.getByRole('button', { name: '使用当前版本' }));
   fireEvent.click(screen.getByRole('button', { name: '查看数据详情' }));
   fireEvent.click(screen.getByRole('button', { name: '选择所需数据' }));
   fireEvent.click(screen.getByRole('button', { name: '补充参数' }));
   fireEvent.click(screen.getByRole('button', { name: '补充未解决事项' }));
-  expect(onVersion).toHaveBeenNthCalledWith(1, 'current-version', 'versionId');
-  expect(onVersion).toHaveBeenNthCalledWith(2, 'stale-version');
+  expect(onUseCurrentVersion).toHaveBeenCalledExactlyOnceWith('current-version', input.datasetId);
+  expect(onVersion).toHaveBeenCalledExactlyOnceWith('stale-version', input);
   expect(onData).toHaveBeenCalledExactlyOnceWith(['csv', 'json', 'parquet', 'arrow-ipc-file', 'npy']);
   expect(onParameter).toHaveBeenNthCalledWith(1, 'column');
   expect(onParameter).toHaveBeenNthCalledWith(2, '未解决事项');
@@ -227,15 +264,18 @@ it('shows semantic preflight facts and routes unknown metadata to the exact vers
   expect(screen.getByText(/高程字段 elevation；埋深字段 depth/)).toBeVisible();
   expect(screen.getAllByRole('button', { name: '查看数据详情' })).toHaveLength(3);
   fireEvent.click(screen.getAllByRole('button', { name: '查看数据详情' })[0]);
-  expect(onVersion).toHaveBeenCalledExactlyOnceWith('semantic-version');
+  expect(onVersion).toHaveBeenCalledExactlyOnceWith('semantic-version', input);
 });
 
 it.each([
   ['GENERATING', null, '正在查阅可用方法与当前资料，整理分析步骤。'],
-  ['COMPLETE', null, '未生成可用草稿，请查看本轮回复中的说明。'],
+  ['COMPLETE', null, '请查看本轮回复中的说明。'],
 ] as const)('never exports a %s draft without a payload', (status, errorCode, text) => {
   render(<WorkflowDraftCard draft={{ ...draft, status, errorCode, payload: null }} onKnowledge={vi.fn()} onResource={vi.fn()} />);
   expect(screen.getByRole('status')).toHaveTextContent(text);
+  if (status === 'COMPLETE') {
+    expect(screen.getByText('未生成可用草稿')).toHaveAttribute('data-tone', 'neutral');
+  }
   expect(screen.queryByRole('link', { name: '导出草稿 JSON' })).not.toBeInTheDocument();
 });
 
@@ -280,7 +320,8 @@ class TestEvents {
 }
 const json = (data: unknown) => new Response(JSON.stringify(data && typeof data === 'object' && 'turns' in data ? historyFixture({ eventCursor: TestEvents.cursor, ...data as HistoryFixture }) : data), { status: 200, headers: { 'Content-Type': 'application/json' } });
 
-it('keeps a readable draft visible when a sibling fails and retries only the failed detail', async () => {
+it.each(['503', 'wrong draft', 'wrong session', 'wrong run', 'wrong revision'])(
+  'keeps a readable draft visible and retries only the failed detail (%s)', async failure => {
   window.location.hash = '#/sessions/session-1';
   vi.stubGlobal('EventSource', TestEvents);
   let finishFailed!: (response: Response) => void;
@@ -294,7 +335,7 @@ it('keeps a readable draft visible when a sibling fails and retries only the fai
       { goalRevision: 1, agentRunId: 'agent-1', status: 'COMPLETE', requestMode: 'WORKFLOW_DRAFT', workflowDraftId: 'draft-1' },
       { goalRevision: 2, agentRunId: 'agent-2', status: 'COMPLETE', requestMode: 'WORKFLOW_DRAFT', workflowDraftId: 'draft-2' },
     ] });
-    if (url.endsWith('/workflow-drafts/draft-1')) { reads.first++; return json(draft); }
+    if (url.endsWith('/workflow-drafts/draft-1')) { reads.first++; return json({ ...draft, goalRevision: 1, agentRunId: 'agent-1' }); }
     if (url.endsWith('/workflow-drafts/draft-2')) {
       reads.second++;
       return reads.second === 1 ? new Promise<Response>(resolve => { finishFailed = resolve; })
@@ -305,7 +346,15 @@ it('keeps a readable draft visible when a sibling fails and retries only the fai
   render(<App />);
   await screen.findByText('插值与制图草稿');
   expect(screen.getByText('正在读取工作流草稿…')).toBeVisible();
-  await act(async () => finishFailed(new Response(JSON.stringify({ code: 'SERVICE_UNAVAILABLE' }), { status: 503 })));
+  const invalid = {
+    ...draft, draftId: failure === 'wrong draft' ? 'draft-1' : 'draft-2',
+    sessionId: failure === 'wrong session' ? 'other-session' : 'session-1',
+    agentRunId: failure === 'wrong run' ? 'agent-1' : 'agent-2',
+    goalRevision: failure === 'wrong revision' ? 1 : 2,
+  };
+  await act(async () => finishFailed(failure === '503'
+    ? new Response(JSON.stringify({ code: 'SERVICE_UNAVAILABLE' }), { status: 503 })
+    : json(invalid)));
   expect(screen.getByText('插值与制图草稿')).toBeVisible();
   fireEvent.click(await screen.findByRole('button', { name: '重试读取草稿' }));
   await screen.findByText('恢复读取的第二份草稿');
@@ -430,4 +479,34 @@ it('a delayed draft read from an older page cannot replace a newly published imm
   await screen.findByText('更早的问题片段');
   expect(screen.getByRole('link', { name: '导出草稿 JSON' })).toBeVisible();
   expect(screen.getByText('插值与制图草稿')).toBeVisible();
+});
+
+it('keeps preparation decisions local to each analysis and disables remedies for historical checks', () => {
+  const reference = dataRef();
+  const choose = vi.fn();
+  const history = historyFixture({ preparation: {
+    schemaVersion: 'task-preparation.v1', preparationId: 'mixed', revision: 1,
+    sessionId: 'session-1', agentRunId: 'agent-1', goalRevision: 1,
+    taskId: null, baseTaskRevision: null, status: 'BLOCKED', freshForCurrentTurn: true, disposition: 'ACTIVE',
+    entries: [
+      { targetKind: 'EXECUTABLE_MODEL', targetId: 'groundwater.summary', targetVersion: '3.0.0',
+        selectionPolicy: 'PINNED', status: 'READY', inputs: { versionId: reference }, knowledgeRefs: [],
+        parameters: {}, parameterSources: {}, checks: [{ kind: 'FIELD_UNIT', status: 'NEW' as 'PASS' }], blockingReasons: [] },
+      { targetKind: 'EXECUTABLE_MODEL', targetId: 'groundwater.flow-field', targetVersion: '3.0.0',
+        selectionPolicy: 'PINNED', status: 'BLOCKED', inputs: {}, knowledgeRefs: [], parameters: {}, parameterSources: {},
+        checks: [], blockingReasons: ['WORKFLOW_DRAFT_MISSING_DATA:versionId'] },
+    ],
+  } });
+  const props = { onData: choose, onVersion: vi.fn(), onParameter: vi.fn() };
+  const view = render(<PreparationDetails history={history} {...props} />);
+  expect(screen.getByText('可提案')).toBeVisible();
+  expect(screen.getByText('待补充')).toBeVisible();
+  expect(screen.getByText(/状态待核实.*FIELD_UNIT/)).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: '选择所需数据' }));
+  expect(choose).toHaveBeenCalledOnce();
+  view.rerender(<PreparationDetails history={{ ...history,
+    preparation: { ...history.preparation!, freshForCurrentTurn: false, disposition: 'STALE' },
+  }} {...props} />);
+  expect(screen.getByText(/需要本轮重新核验/)).toBeVisible();
+  expect(screen.queryByRole('button', { name: '选择所需数据' })).not.toBeInTheDocument();
 });

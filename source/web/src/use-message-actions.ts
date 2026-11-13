@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ApiError, callApi } from './api';
 import { canConfirm, isBusy } from './chat-state';
 import { inputReferences, isResourceItems, messageBody, newRequestId, savedSubmission, savedSubmissionForKey, saveSubmission, type SavedSubmission } from './message-routing';
@@ -7,6 +7,7 @@ import { readQueue, saveQueue, type QueuedMessage } from './task-state';
 import type { Confirmation, ConfirmationRevisionAction, History, ResourceItem, Session } from './types';
 import type { SessionStreamRefs } from './use-session-stream';
 import { scopedStorageKey } from './browser-scope';
+import { currentSessionId } from './use-project-sessions';
 
 const naturalControls = new Set(['批准', '同意', '确认执行', '批准执行', '拒绝', '不同意', '拒绝执行', '停止', '停下', '停止分析', '停止本次分析', '取消', '取消执行', '取消计算', '状态', '查看状态', '当前状态', '查询状态', '进度怎么样', '进度怎么样？', '现在怎么样了', '现在怎么样了？']);
 const statusQueries = new Set(['状态', '查看状态', '当前状态', '查询状态', '进度怎么样', '进度怎么样？', '现在怎么样了', '现在怎么样了？']);
@@ -50,14 +51,20 @@ type MessageActionOptions = {
   history: History | null;
   connected: boolean;
   loading: boolean;
-  stopping: boolean;
-  setStopping: Dispatch<SetStateAction<boolean>>;
   externalError: ApiError | null;
   clearExternalError: () => void;
   loadSessions: (before?: number | null) => Promise<void>;
   refresh: (id: string) => Promise<void>;
   refs: SessionStreamRefs;
   closeConfirmationEditor: () => void;
+};
+
+type StopRequest = {
+  sessionId: string;
+  scope: string;
+  generation: number;
+  agentRunId: string;
+  requestId: string;
 };
 
 export function useMessageActions({
@@ -67,8 +74,6 @@ export function useMessageActions({
   history,
   connected,
   loading,
-  stopping,
-  setStopping,
   externalError,
   clearExternalError,
   loadSessions,
@@ -94,13 +99,29 @@ export function useMessageActions({
   draftRef.current = draft;
   const mutationSerial = useRef(0);
   const optionSubmission = useRef(false);
+  const confirmationMutation = useRef<number | null>(null);
+  const stopMutation = useRef<StopRequest | null>(null);
+  const [pendingStop, setPendingStop] = useState<StopRequest | null>(null);
+  const [stopError, setStopError] = useState<{ request: StopRequest; error: ApiError } | null>(null);
   const pending = pendingOperation?.sessionId === activeId && pendingOperation.generation >= viewGeneration.current;
   const pendingLabel = pendingOperation?.label ?? '正在提交';
   const runtimeBusy = isBusy(history);
   const pendingControl = history?.controlProposals?.some(item => ['PENDING', 'CONFIRMED'].includes(item.status)) ?? false;
   const busy = pending || runtimeBusy || pendingControl || loading || !!currentUncertain;
   const lastTurn = history?.turns.find(turn => turn.goalRevision === history.goalRevision);
+  const stopControls = history?.sessionId === activeId ? history.controlRequests : undefined;
+  const stopping = (pendingStop?.sessionId === activeId && pendingStop.scope === storageScope
+    && pendingStop.generation === viewGeneration.current && pendingStop.agentRunId === lastTurn?.agentRunId)
+    || (stopControls?.some(item => item.agentRunId === lastTurn?.agentRunId && item.status !== 'COMPLETE') ?? false);
   const error = actionError ?? externalError;
+
+  useEffect(() => {
+    if (!stopError || stopError.request.sessionId !== activeId || stopError.request.scope !== storageScope) return;
+    const { request, error } = stopError;
+    if (!stopControls?.some(item => item.agentRunId === request.agentRunId && item.requestId === request.requestId)) return;
+    setActionError(previous => previous === error ? null : previous);
+    setStopError(null);
+  }, [activeId, storageScope, stopControls, stopError]);
 
   function showError(caught: unknown) {
     if (!(caught instanceof ApiError)) throw caught;
@@ -178,17 +199,32 @@ export function useMessageActions({
     changeQueue([...queue, item]); updateDraft(''); setAttachments([]);
   }
   async function stopRun(correct = false) {
-    if (!lastTurn || stopping) return;
+    if (!lastTurn || history?.sessionId !== activeId || stopping) return;
     const generation = viewGeneration.current;
+    const { agentRunId } = lastTurn;
+    if (stopMutation.current?.generation === generation && stopMutation.current.agentRunId === agentRunId) return;
     const current = () => activeRef.current === activeId && viewGeneration.current === generation;
-    if (correct) enqueue(lastTurn.agentRunId);
-    setStopping(true); setActionError(null);
-    const key = scopedStorageKey(storageScope, 'stop-request', `${activeId}:${lastTurn.agentRunId}`);
+    const key = scopedStorageKey(storageScope, 'stop-request', `${activeId}:${agentRunId}`);
     const requestId = localStorage.getItem(key) ?? newRequestId();
     localStorage.setItem(key, requestId);
-    try { await callApi('kernel_stop_run', `/sessions/${activeId}/stop`, { requestId, agentRunId: lastTurn.agentRunId }); }
-    catch (caught) { if (current()) { setStopping(false); showError(caught); } }
-    if (current()) await refresh(activeId);
+    const request = { sessionId: activeId, scope: storageScope, generation, agentRunId, requestId };
+    stopMutation.current = request;
+    setPendingStop(request); setActionError(null); setStopError(null);
+    if (correct) enqueue(agentRunId);
+    try {
+      try { await callApi('kernel_stop_run', `/sessions/${activeId}/stop`, { requestId, agentRunId }); }
+      catch (caught) {
+        if (current() && stopMutation.current === request) {
+          if (!(caught instanceof ApiError)) throw caught;
+          setActionError(caught);
+          setStopError({ request, error: caught });
+        }
+      }
+      if (current()) await refresh(activeId);
+    } finally {
+      if (stopMutation.current === request) stopMutation.current = null;
+      setPendingStop(previous => previous === request ? null : previous);
+    }
   }
   const awaitingConfirmation = lastTurn?.confirmations.some(item => item.status === 'PENDING') ?? false;
   useEffect(() => {
@@ -213,7 +249,10 @@ export function useMessageActions({
   async function createSession(operation: number, initialDraft?: { text: string; attachments: ResourceItem[]; submission?: SavedSubmission }) {
     const generation = viewGeneration.current;
     const created = await callApi('kernel_create_session', '/sessions', { projectId: project }) as Session;
-    if (viewGeneration.current !== generation) return null;
+    if (viewGeneration.current !== generation || currentSessionId() !== activeId) {
+      await loadSessions();
+      return null;
+    }
     if (initialDraft !== undefined) {
       sessionStorage.setItem(scopedStorageKey(storageScope, 'draft', created.sessionId), initialDraft.text);
       sessionStorage.setItem(scopedStorageKey(storageScope, 'draft-attachments', created.sessionId), JSON.stringify(initialDraft.attachments));
@@ -302,6 +341,8 @@ export function useMessageActions({
 
   async function runConfirmationMutation(mutation: ConfirmationMutation) {
     const generation = viewGeneration.current;
+    if (confirmationMutation.current === generation) return;
+    confirmationMutation.current = generation;
     const operation = ++mutationSerial.current;
     const current = () => activeRef.current === mutation.sessionId && viewGeneration.current === generation;
     setPendingOperation({ id: operation, sessionId: mutation.sessionId, generation, label: mutation.label });
@@ -316,7 +357,8 @@ export function useMessageActions({
     } catch (caught) {
       if (!(caught instanceof ApiError)) throw caught;
       if (current()) {
-        if (caught.status === 0 || (caught.status >= 200 && caught.status < 300)) {
+        // A gateway or server failure may follow a committed mutation.
+        if (caught.status === 0 || caught.status >= 500 || (caught.status >= 200 && caught.status < 300)) {
           setUncertain({ mutation, before: history });
         } else {
           setUncertain(null);
@@ -325,6 +367,7 @@ export function useMessageActions({
         await refresh(mutation.sessionId);
       }
     } finally {
+      if (confirmationMutation.current === generation) confirmationMutation.current = null;
       setPendingOperation(previous => previous?.id === operation ? null : previous);
     }
   }
@@ -395,6 +438,7 @@ export function useMessageActions({
     busy,
     lastTurn,
     awaitingConfirmation,
+    stopping,
     error,
     clearError,
     canSend,

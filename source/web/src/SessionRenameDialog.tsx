@@ -33,7 +33,7 @@ export function SessionRenameDialog({
           <Heading slot="title">重命名对话</Heading>
           <TextField value={value} onChange={setValue} isRequired isDisabled={saving}>
             <Label>对话名称</Label>
-            <Input autoFocus maxLength={160} />
+            <Input autoFocus maxLength={120} />
           </TextField>
           {error && <ErrorNotice error={error} title="名称未保存，请重试" />}
           <div className="dialog-actions"><Button isDisabled={saving} onPress={close}>取消</Button><button type="submit" disabled={saving || !value.trim()}>{saving ? '正在保存…' : '保存'}</button></div>

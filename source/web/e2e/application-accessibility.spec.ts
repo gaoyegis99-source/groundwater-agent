@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { capabilitiesForProfile, dataDetail, dataRef, historyFixture, replyFixture, sessionResultsFixture, taskFixture, turnFixture } from '../src/test-fixtures';
 import type { Confirmation } from '../src/types';
+import { identityStorageScope, scopedStorageKey } from '../src/browser-scope';
 
 const profile = JSON.parse(
   readFileSync(new URL('../../products/groundwater/ui/product-ui.json', import.meta.url), 'utf8'),
@@ -18,7 +19,16 @@ async function noHighImpactViolations(page: Page) {
   expect(violations, JSON.stringify(violations, null, 2)).toEqual([]);
 }
 
-async function mockApplication(page: Page, withSession = false, analysis?: string, pendingRevision = false) {
+async function mockApplication(page: Page, withSession = false, analysis?: string, pendingRevision = false, approved = false, capabilitiesReady?: Promise<void>) {
+  await page.addInitScript(() => {
+    // The layout fixture stays connected. Native SSE transport is tested separately.
+    class ConnectedEvents extends EventTarget {
+      onopen: (() => void) | null = null;
+      constructor() { super(); queueMicrotask(() => this.onopen?.()); }
+      close() {}
+    }
+    Object.assign(window, { EventSource: ConnectedEvents });
+  });
   const reference = dataRef({ outputName: pendingRevision ? '地下水监测观测井长周期水位与降水联合观测样本'.repeat(3) : 'summary',
     format: 'json', mediaType: 'application/json' });
   const confirmation: Confirmation = {
@@ -38,19 +48,23 @@ async function mockApplication(page: Page, withSession = false, analysis?: strin
       { ...confirmation, status: 'SUPERSEDED' },
       { ...confirmation, confirmationId: 'confirmation-2', revision: 2, kind: 'EDITED', replacesConfirmationId: 'confirmation-1',
         actions: confirmation.actions.map(action => ({ ...action, arguments: { ...action.arguments, axis: 'flatten' } })) },
-    ] })] : [turnFixture({ goalRevision: 1, status: analysis ? 'COMPLETE' : 'WAITING_EXECUTION', confirmations: [confirmation], executionTasks: [task], ...(analysis ? { reply: replyFixture(analysis) } : {}) })],
+    ] })] : [turnFixture({ goalRevision: 1, status: analysis ? 'COMPLETE' : 'WAITING_EXECUTION',
+      confirmations: [approved ? { ...confirmation, status: 'CONFIRMED', decision: 'CONFIRM' } : confirmation],
+      executionTasks: [approved ? { ...task, status: 'RUNNING', stage: 'EXECUTING', outputCount: 0, finishedAt: null } : task],
+      ...(analysis ? { reply: replyFixture(analysis) } : {}) })],
   });
   await page.route('**/product-ui.json', route => route.fulfill({ json: profile }));
   await page.route('**/product-icon.svg', route => route.fulfill({
     contentType: 'image/svg+xml',
     body: readFileSync(new URL('../../products/groundwater/ui/product-icon.svg', import.meta.url), 'utf8'),
   }));
-  await page.route('**/api/v12/**', route => {
+  await page.route('**/api/v12/**', async route => {
     const url = new URL(route.request().url());
     const reply = (value: unknown) => route.fulfill({ json: value });
-    if (url.pathname.endsWith('/capabilities') && !url.pathname.includes('/data/')) return reply(
-      capabilitiesForProfile(profile, { currentUser }),
-    );
+    if (url.pathname.endsWith('/capabilities') && !url.pathname.includes('/data/')) {
+      await capabilitiesReady;
+      return reply(capabilitiesForProfile(profile, { currentUser }));
+    }
     if (url.pathname.endsWith('/data/capabilities')) return reply({
       version: '1', productId: profile.productId, project: 'demo', currentUser,
       permissions: {
@@ -69,13 +83,14 @@ async function mockApplication(page: Page, withSession = false, analysis?: strin
       }] : [], nextCursor: null,
     });
     if (url.pathname.endsWith('/messages')) return reply(history);
-    if (url.pathname.endsWith('/results')) return reply(pendingRevision ? sessionResultsFixture([], {sessionId: 'application-session'}) : {
-      items: [{ goalRevision: 1, agentRunId: 'agent-1', toolCallId: 'tool-1', modelId: 'groundwater.summary', status: 'SUCCEEDED', workflowRunId: task.workflowRunId, remoteOutputs: [reference] }],
-      nextCursor: null,
-    });
+    if (url.pathname.endsWith('/results')) return reply(sessionResultsFixture(pendingRevision || approved ? [] : [
+      { goalRevision: 1, agentRunId: 'agent-1', toolCallId: 'tool-1', modelId: 'groundwater.summary',
+        status: 'COMPLETE', workflowRunId: task.workflowRunId, remoteOutputs: [reference] },
+    ], { sessionId: 'application-session' }));
     if (url.pathname.endsWith('/data/versions/version-1')) return reply(dataDetail());
     if (url.pathname.endsWith('/events') || url.pathname.endsWith('/preview')) {
-      return route.fulfill({ contentType: 'text/event-stream', body: ': connected\n\n' });
+      // These layout tests keep the initial snapshot. Native reconnect is exercised by the Turn timeline spec.
+      return route.fulfill({ status: 204 });
     }
     if (url.pathname.endsWith('/data/datasets')) return reply({ items: [], nextCursor: null });
     if (url.pathname.endsWith('/trace')) return reply({});
@@ -88,6 +103,9 @@ for (const viewport of [
   { width: 1366, height: 768 },
   { width: 720, height: 450 }, // 1440x900 at 200% CSS-pixel scale.
   { width: 1280, height: 800 },
+  { width: 1024, height: 768 },
+  { width: 768, height: 1024 },
+  { width: 390, height: 844 },
 ]) {
   test(`application home reflows and has no serious accessibility findings at ${viewport.width}x${viewport.height}`, async ({ page }, testInfo) => {
     await page.setViewportSize(viewport);
@@ -95,6 +113,8 @@ for (const viewport of [
     await page.goto('/');
     await expect(page.getByText('结果须结合输入、参数、lineage 和验收报告解释。')).toBeVisible();
     await expect(page.getByTestId('workspace-panel')).toBeAttached();
+    await expect(page.locator('html')).toHaveCSS('background-color', 'rgb(245, 248, 252)');
+    await expect(page.getByRole('textbox', { name: '消息输入框' })).toBeInViewport();
     await expect(page.getByText('正在读取会话', { exact: true })).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.keyboard.press('Tab');
@@ -201,11 +221,14 @@ test('session workbench routes have distinct pages and keep the conversation dra
   await page.setViewportSize({ width: 390, height: 844 });
   await mockApplication(page, true, undefined, true);
   await page.goto('/#/sessions/application-session');
-  const composer = page.locator('textarea').first();
+  const composer = page.getByRole('textbox', { name: '消息输入框' });
+  const parameters = page.getByRole('navigation', { name: '会话详情' }).getByRole('link', { name: '参数' });
+  await expect(parameters).toBeVisible();
   await composer.fill('保留的研究草稿');
-  await page.getByRole('navigation', { name: '会话详情' }).getByRole('link', { name: '参数' }).click();
+  await parameters.focus();
+  await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/workbench\/parameters$/);
-  await expect(page.getByRole('heading', { name: '参数', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '参数', exact: true })).toBeFocused();
   await expect(composer).toBeHidden();
   await page.screenshot({ path: info.outputPath('parameters-route.png') });
   await page.getByRole('tab', { name: '成果', exact: true }).click();
@@ -215,4 +238,51 @@ test('session workbench routes have distinct pages and keep the conversation dra
   await page.getByRole('button', { name: '返回对话', exact: true }).click();
   await expect(page).toHaveURL(/#\/sessions\/application-session$/);
   await expect(composer).toHaveValue('保留的研究草稿');
+  await expect(composer).toBeFocused();
+});
+
+test('a long pending queue keeps the composer and latest turn reachable in a short viewport', async ({ page }, info) => {
+  await page.setViewportSize({ width: 720, height: 450 });
+  const key = scopedStorageKey(identityStorageScope(profile.productId, 'demo', currentUser.subject), 'message-queue', 'application-session');
+  await page.addInitScript(storageKey => localStorage.setItem(storageKey, JSON.stringify(
+    Array.from({ length: 8 }, (_, index) => ({
+      id: String(index), text: `后续科研问题 ${index + 1}`, attachments: [], createdAt: '2026-10-17T01:00:00Z',
+    })),
+  )), key);
+  await mockApplication(page, true, undefined, false, true);
+  await page.goto('/#/sessions/application-session');
+  const queue = page.getByRole('region', { name: '稍后发送的消息' });
+  const composer = page.getByRole('textbox', { name: '消息输入框' });
+  await expect(queue.getByRole('textbox')).toHaveCount(8);
+  await expect(composer).toBeInViewport({ ratio: 1 });
+  const question = page.getByRole('region', { name: '第 1 轮' }).getByText('应用可访问性检查', { exact: true });
+  await question.scrollIntoViewIfNeeded();
+  await expect(question).toBeInViewport();
+  await composer.fill('补充一个观测条件');
+  await queue.getByRole('textbox', { name: '排队消息 8' }).focus();
+  await expect(queue.getByRole('textbox', { name: '排队消息 8' })).toBeInViewport();
+  await expect(composer).toBeInViewport({ ratio: 1 });
+  await noHighImpactViolations(page);
+  await page.screenshot({ path: info.outputPath('queued-conversation-short.png') });
+});
+
+test('narrow navigation releases focus when resized and leaves the conversation reachable on return', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  let release!: () => void;
+  await mockApplication(page, true, undefined, false, false, new Promise<void>(resolve => { release = resolve; }));
+  await page.goto('/#/sessions/application-session');
+  const open = page.getByRole('button', { name: '打开会话导航' });
+  try {
+    await expect(open).toBeDisabled();
+  } finally {
+    release();
+  }
+  await expect(open).toBeEnabled();
+  await open.click();
+  await expect(page.getByRole('button', { name: '关闭会话导航' })).toBeFocused();
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await expect(page.getByRole('button', { name: '折叠会话侧栏' })).toBeFocused();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(open).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.getByRole('textbox', { name: '消息输入框' })).toBeInViewport();
 });

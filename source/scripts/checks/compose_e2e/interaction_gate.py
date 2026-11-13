@@ -23,7 +23,7 @@ from .environment import ROOT, _run
 
 
 SPECS = ("v12-interaction-isolated.spec.ts", "v12-interaction-recovery.spec.ts")
-EXPECTED_TESTS = 3
+EXPECTED_TESTS = 7
 
 
 def _install_clients(directory: Path) -> tuple[Path, dict[str, str]]:
@@ -75,6 +75,11 @@ def run_interaction_gate(
     ).stdout.strip()
     if not worker or "\n" in worker:
         raise RuntimeError("INTERACTION_NATIVE_WORKER_NOT_UNIQUE")
+    data_worker = _run(
+        [*command, "ps", "-q", "data-worker"], capture_output=True,
+    ).stdout.strip()
+    if not data_worker or "\n" in data_worker:
+        raise RuntimeError("INTERACTION_DATA_WORKER_NOT_UNIQUE")
     env = {
         **os.environ,
         "PLATFORM_INTERACTION_GATE": "1",
@@ -86,6 +91,7 @@ def run_interaction_gate(
         "PLATFORM_API_PYTHON": str(programs / "python"),
         "PLATFORM_RECOVERY_DOCKER": command[0],
         "PLATFORM_RECOVERY_NATIVE_WORKER": worker,
+        "PLATFORM_PUBLICATION_DATA_WORKER": data_worker,
         "GROUNDWATER_API_TOKEN": os.environ[TOKEN_ENVIRONMENT],
     }
     for name in (TOKEN_ENVIRONMENT, "NO_COLOR", "PYTHONPATH"):

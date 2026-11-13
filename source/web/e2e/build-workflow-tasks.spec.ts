@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { capabilitiesForProfile, dataRef, historyFixture, sessionResponseFixture, sessionResultsFixture, sessionSummaryFixture, taskFixture } from '../src/test-fixtures';
+import { capabilitiesForProfile, dataDetail, dataRef, historyFixture, sessionResponseFixture, sessionResultsFixture, sessionSummaryFixture, taskFixture } from '../src/test-fixtures';
 import type { Confirmation } from '../src/types';
 
 const profile = JSON.parse(readFileSync(new URL('../../products/groundwater/ui/product-ui.json', import.meta.url), 'utf8'));
@@ -45,7 +45,7 @@ test('desktop recovery retries safely, confirms the failed scope, tracks publish
   let releaseRecovery!: () => void;
   const recoveryResponse = new Promise<void>(resolve => { releaseRecovery = resolve; });
   const source = taskFixture({ workflowRunId: 'failed-source', agentRunId: 'agent-2', goalRevision: 2, toolCallId: 'source',
-    position: 1, status: 'TIMED_OUT', stage: null, isLatestAttempt: true, attempt: 1, errorCode: 'WORKFLOW_TIMEOUT' });
+    position: 1, status: 'TIMED_OUT', stage: null, isLatestAttempt: true, attempt: 1, durationMs: 0, errorCode: 'WORKFLOW_TIMEOUT' });
   const downstream = taskFixture({ ...source, workflowRunId: 'blocked-downstream', toolCallId: 'downstream', position: 2,
     status: 'FAILED', blockedByWorkflowRunId: source.workflowRunId });
   const recovery: Confirmation = {
@@ -92,6 +92,9 @@ test('desktop recovery retries safely, confirms the failed scope, tracks publish
         startedAt: null, finishedAt: null, errorCode: original ? 'WORKER_LOST' : null,
       }] } });
     }
+    if (url.pathname.endsWith('/data/versions/recovered-output-version')) return route.fulfill({
+      json: dataDetail({ versionId: output.versionId }),
+    });
     if (url.pathname.endsWith('/results')) {
       resultReads++;
       return route.fulfill({ json: sessionResultsFixture(phase === 'complete' ? [{ goalRevision: 2, agentRunId: 'agent-2', toolCallId: 'source', modelId: source.modelId,
@@ -120,6 +123,11 @@ test('desktop recovery retries safely, confirms the failed scope, tracks publish
   await expect(page.locator('[data-workflow-run-id="blocked-downstream"]')).toContainText('因前项失败未执行');
   expect(nodeReads).toEqual([]);
   const failedNodes = workspace.locator('[data-execution-run-id="failed-source"]');
+  await failedNodes.getByText('运行标识与时间', { exact: true }).click();
+  await expect(failedNodes.getByText('failed-source', { exact: true })).toBeVisible();
+  await expect(failedNodes.getByText('工作流版本', { exact: true })).toBeVisible();
+  await expect(failedNodes.locator('time').first()).toHaveAttribute('datetime', source.createdAt);
+  await expect(failedNodes).toContainText('第 1 次 · 0 毫秒');
   await failedNodes.getByText('节点详情', { exact: true }).click();
   await expect(failedNodes.getByRole('alert')).toBeVisible();
   await failedNodes.getByRole('button', { name: '重新加载' }).click();
@@ -171,4 +179,13 @@ test('desktop recovery retries safely, confirms the failed scope, tracks publish
   await expect(page.getByRole('button', { name: /准备恢复未完成步骤/ })).toHaveCount(0);
   expect(pageErrors).toEqual([]);
   await page.screenshot({ path: info.outputPath('workflow-recovered-desktop.png'), fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole('navigation', { name: '会话详情' }).getByRole('link', { name: '运行' }).click();
+  await recoveredNodes.getByText('运行标识与时间', { exact: true }).click();
+  await recoveredNodes.getByText('节点详情', { exact: true }).click();
+  await expect(recoveredNodes).toContainText('summarize-recovered · 节点已完成');
+  await expect(recoveredNodes).not.toContainText('summarize-original');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await recoveredNodes.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: info.outputPath('workflow-recovered-mobile.png') });
 });

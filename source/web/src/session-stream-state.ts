@@ -14,7 +14,7 @@ export const connectStream = (state: StreamProgress, cursor: number): StreamProg
 });
 
 export const receiveStreamEvent = (state: StreamProgress, id: number): { state: StreamProgress; accepted: boolean } => {
-  if (id <= state.streamCursor) return { state, accepted: false };
+  if (!Number.isSafeInteger(id) || id <= state.streamCursor) return { state, accepted: false };
   return {
     state: { ...state, streamCursor: id, dirty: state.dirty || id > state.snapshotCursor },
     accepted: true,
@@ -26,7 +26,7 @@ export const forceStreamRefresh = (state: StreamProgress): StreamProgress => ({ 
 export const beginSnapshotRead = (state: StreamProgress): StreamProgress => ({ ...state, dirty: false, forced: false });
 
 export const applySnapshot = (state: StreamProgress, cursor: number): { state: StreamProgress; accepted: boolean } => {
-  if (cursor < state.snapshotCursor) return { state, accepted: false };
+  if (!Number.isSafeInteger(cursor) || cursor < 0 || cursor < state.snapshotCursor) return { state, accepted: false };
   return {
     state: {
       ...state,

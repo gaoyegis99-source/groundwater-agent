@@ -38,6 +38,7 @@ export default defineConfig({
           minSize: 10_000,
           groups: [
             { name: 'react', test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/ },
+            { name: 'math-renderer', test: /node_modules[\\/]katex[\\/]/ },
             { name: 'chart-renderer', test: /node_modules[\\/]zrender[\\/]/ },
           ],
         },

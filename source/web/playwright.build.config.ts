@@ -7,7 +7,7 @@ const output = validationOutput(sourceRoot, 'web-build-e2e');
 
 export default defineConfig({
   testDir: './e2e',
-  testMatch: ['build-viewers.spec.ts', 'build-result-formats.spec.ts', 'build-air-quality-product.spec.ts', 'application-accessibility.spec.ts', 'conversation-polish.spec.ts', 'build-workflow-tasks.spec.ts'],
+  testMatch: ['build-viewers.spec.ts', 'build-result-formats.spec.ts', 'build-air-quality-product.spec.ts', 'application-accessibility.spec.ts', 'conversation-polish.spec.ts', 'build-workflow-tasks.spec.ts', 'build-turn-timeline.spec.ts', 'build-task-overview.spec.ts'],
   workers: 1,
   retries: 0,
   timeout: 30_000,

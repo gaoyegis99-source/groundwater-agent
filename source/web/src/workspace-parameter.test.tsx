@@ -1,19 +1,25 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import App from './App';
-import { capabilitiesFixture, historyFixture, sessionResultsFixture } from './test-fixtures';
+import { capabilitiesFixture, historyFixture, sessionResponseFixture, sessionResultsFixture } from './test-fixtures';
 import type { Confirmation } from './types';
 
 const json = (body: unknown) => new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json' } });
+let disconnect: () => void;
 beforeEach(() => {
   sessionStorage.clear();
   window.history.replaceState({}, '', '/#/sessions/parameter-input');
   Element.prototype.scrollIntoView = vi.fn();
-  vi.stubGlobal('EventSource', class { addEventListener() {} close() {} });
+  vi.stubGlobal('EventSource', class {
+    onerror?: () => void;
+    constructor() { disconnect = () => this.onerror?.(); }
+    addEventListener() {}
+    close() {}
+  });
   vi.stubGlobal('matchMedia', vi.fn((query: string) => ({ matches: query === '(max-width: 1050px)', addEventListener: vi.fn(), removeEventListener: vi.fn() })));
 });
 
-function mockPreparation(confirmation?: Confirmation, loseRevisionReceipt = false) {
+function mockPreparation(confirmation?: Confirmation, failure?: 'network after commit' | '502 after commit' | '502 before commit') {
   const history = historyFixture({
     sessionId: 'parameter-input', turns: [{ status: confirmation ? 'WAITING_CONFIRMATION' : 'COMPLETE', confirmations: confirmation ? [confirmation] : [] }],
     preparation: {
@@ -27,11 +33,14 @@ function mockPreparation(confirmation?: Confirmation, loseRevisionReceipt = fals
   });
   const capabilities = capabilitiesFixture();
   capabilities.models.find(item => item.modelId === 'groundwater.summary')!.inputSchema = { type: 'object', properties: { axis: { type: 'string' } }, required: [] };
-  const revisions: string[] = [];
+  const revisions: { requestId: string; actions: unknown[] }[] = [];
   vi.stubGlobal('fetch', vi.fn(async (url: string, request?: RequestInit) => {
-    if (loseRevisionReceipt && confirmation && url.endsWith('/revisions')) {
+    if (failure && confirmation && url.endsWith('/revisions')) {
       const body = JSON.parse(String(request?.body));
-      revisions.push(body.requestId);
+      revisions.push(body);
+      if (failure === '502 before commit' && revisions.length === 1) {
+        return new Response(JSON.stringify({ code: 'BAD_GATEWAY' }), { status: 502 });
+      }
       history.turns[0].confirmations = [
         { ...confirmation, status: 'SUPERSEDED' },
         { ...confirmation, confirmationId: 'revision-2', revision: 2, kind: 'EDITED',
@@ -39,7 +48,9 @@ function mockPreparation(confirmation?: Confirmation, loseRevisionReceipt = fals
           actions: confirmation.actions.map((action, index) => ({ ...action, arguments: body.actions[index].arguments })) },
       ];
       history.eventCursor += 1;
-      throw new TypeError('lost committed revision receipt');
+      if (failure === 'network after commit') throw new TypeError('lost committed revision receipt');
+      if (failure === '502 after commit') return new Response(JSON.stringify({ code: 'BAD_GATEWAY' }), { status: 502 });
+      return json(sessionResponseFixture({ confirmation: history.turns[0].confirmations[1], sessionId: 'parameter-input' }));
     }
     if (url.endsWith('/capabilities')) return json(capabilities);
     if (url.endsWith('/sessions')) return json({ items: [], nextCursor: null });
@@ -88,21 +99,49 @@ it('keeps pending confirmation parameter editing inside the compact workspace', 
   expect(composer).toHaveValue('原有草稿');
 });
 
+it('keeps edited parameters but prevents saving against an unverified snapshot', async () => {
+  mockPreparation({
+    confirmationId: 'pending-1', goalRevision: 1, status: 'PENDING', agentRunId: 'agent-1',
+    reason: '', decision: null, decisionState: null,
+    actions: [{ toolCallId: 'summary', tool: 'run_summary', modelId: 'groundwater.summary', modelVersion: '1.0.0',
+      workflowId: 'summary', workflowVersion: '1.0.0', arguments: { axis: 'columns' } }],
+  });
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: '编辑参数' }));
+  const editor = await screen.findByTestId('confirmation-editor');
+  const input = within(editor).getByRole('textbox');
+  const save = within(editor).getByRole('button', { name: '保存为新修订' });
+  fireEvent.change(input, { target: { value: 'flatten' } });
+  expect(save).toBeEnabled();
+  act(disconnect);
+  expect(save).toBeDisabled();
+  expect(input).toHaveValue('flatten');
+});
 
-it('returns to the new approval after reconciling a lost revision receipt', async () => {
+
+it.each(['network after commit', '502 after commit', '502 before commit'] as const)(
+  'reconciles the revision receipt before another approval (%s)', async failure => {
   const revisions = mockPreparation({
     confirmationId: 'pending-1', goalRevision: 1, status: 'PENDING', agentRunId: 'agent-1', revision: 1,
     reason: '', decision: null, decisionState: null,
     actions: [{ toolCallId: 'summary', tool: 'run_summary', modelId: 'groundwater.summary', modelVersion: '1.0.0',
       workflowId: 'summary', workflowVersion: '1.0.0', arguments: { axis: 'columns' } }],
-  }, true);
+  }, failure);
   render(<App />);
   fireEvent.click(await screen.findByRole('button', { name: '编辑参数' }));
   const editor = await screen.findByTestId('confirmation-editor');
   fireEvent.change(within(editor).getByRole('textbox'), { target: { value: 'flatten' } });
   fireEvent.click(within(editor).getByRole('button', { name: '保存为新修订' }));
+  if (failure === '502 before commit') {
+    const retry = await screen.findByRole('button', { name: '重试同一操作' });
+    expect(revisions).toHaveLength(1);
+    expect(within(editor).getByRole('button', { name: '保存为新修订' })).toBeDisabled();
+    await waitFor(() => expect(retry).toBeEnabled());
+    fireEvent.click(retry);
+  }
   expect(await screen.findByRole('button', { name: '确认执行修订 2' })).toBeEnabled();
-  expect(revisions).toHaveLength(1);
+  expect(revisions).toHaveLength(failure === '502 before commit' ? 2 : 1);
+  if (revisions.length === 2) expect(revisions[1]).toEqual(revisions[0]);
   expect(screen.queryByText('操作结果待核对')).toBeNull();
   await waitFor(() => expect(document.getElementById('current-confirmation')).toHaveFocus());
 });

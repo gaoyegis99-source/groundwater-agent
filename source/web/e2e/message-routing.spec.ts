@@ -14,6 +14,20 @@ const assembledCapabilities = capabilitiesForProfile(assembledProductUi, {
 // Browser presentation and delivery recovery with explicit API fault injection.
 // Real routing/provider behavior is covered by the backend and Gateway suites.
 async function fixture(page: Page, { holdAutoRouting = false, clarification = false, debug = false } = {}) {
+  // This fixture drives snapshots directly. Keep the SSE connection stable so
+  // the production freshness guard can distinguish it from a real disconnect.
+  await page.addInitScript(() => {
+    class FixtureEventSource extends EventTarget {
+      onopen: (() => void) | null = null;
+      private closed = false;
+      constructor() {
+        super();
+        queueMicrotask(() => { if (!this.closed) this.onopen?.(); });
+      }
+      close() { this.closed = true; }
+    }
+    Object.assign(window, { EventSource: FixtureEventSource });
+  });
   let history: History = historyFixture({ sessionId: 'routing-browser', goalRevision: 0, turns: [] });
   const posts: MessageRequest[] = [];
   let fail = false;

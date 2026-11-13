@@ -74,7 +74,7 @@ export async function loadProductUi(): Promise<ProductUiProfile> {
   if (!response.ok || !response.headers.get('content-type')?.includes('json')) throw new TypeError('PRODUCT_UI_INVALID');
   return decodeProductUi(await response.json());
 }
-export function setProductUi(profile: ProductUiProfile) { active = profile; if (typeof document !== 'undefined') { document.documentElement.lang = profile.locale; document.title = profile.brand.workspaceName; } }
+export function setProductUi(profile: ProductUiProfile) { active = profile; if (typeof document !== 'undefined') { document.documentElement.lang = profile.locale; document.documentElement.dataset.product = profile.productId; document.title = profile.brand.workspaceName; } }
 export function productUi() { if (!active) throw new Error('PRODUCT_UI_NOT_LOADED'); return active; }
 export function verifyProductUi(capabilities: Capabilities) {
   const profile = productUi();

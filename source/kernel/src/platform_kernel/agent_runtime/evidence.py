@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 from dataclasses import dataclass
+import json
 from typing import Any
 
 from ..contracts import DataVersionRefV2
@@ -133,8 +134,8 @@ def collect_turn_evidence(input_items: list[dict[str, Any]]) -> TurnEvidence:
     knowledge: dict[KnowledgeKey, str] = {}
     data_versions: dict[str, DataVersionRefV2] = {}
     operators: dict[tuple[str, str], str] = {}
-    prepared_arguments: dict[
-        str, list[tuple[dict[str, object], str]]
+    latest_checks: dict[
+        str, dict[str, tuple[int, tuple[dict[str, object], str] | None]]
     ] = {}
     prepared_targets: set[str] = set()
     exact_retrievals: set[KnowledgeKey] = set()
@@ -167,24 +168,28 @@ def collect_turn_evidence(input_items: list[dict[str, Any]]) -> TurnEvidence:
             if status not in {"READY", "BLOCKED"}:
                 raise AgentRunError("OBSERVATION_RESPONSE_INVALID")
             prepared_targets.add(target_id)
-            if status == "BLOCKED":
-                continue
             references = payload.get("data_references")
             parameters = payload.get("parameters")
             if not isinstance(references, dict) or not isinstance(parameters, dict):
                 raise AgentRunError("OBSERVATION_RESPONSE_INVALID")
             try:
                 arguments = dict(parameters)
-                for raw in references.values():
-                    reference = DataVersionRefV2.from_storage_dict(raw)
-                    data_versions[reference.version_id] = reference
                 for parameter, raw in references.items():
                     if not isinstance(parameter, str):
                         raise ValueError("PREPARATION_PARAMETER_INVALID")
-                    arguments[parameter] = DataVersionRefV2.from_storage_dict(raw).version_id
-                prepared_arguments.setdefault(target_id, []).append(
-                    (arguments, selection_policy)
-                )
+                    reference = DataVersionRefV2.from_storage_dict(raw)
+                    arguments[parameter] = reference.version_id
+                    if status == "READY":
+                        data_versions[reference.version_id] = reference
+                identity = json.dumps(arguments, sort_keys=True, separators=(",", ":"))
+                revision = payload.get("revision", 0)
+                if type(revision) is not int or revision < 0:
+                    raise ValueError("PREPARATION_REVISION_INVALID")
+                checks = latest_checks.setdefault(target_id, {})
+                if identity not in checks or revision >= checks[identity][0]:
+                    checks[identity] = (
+                        revision, (arguments, selection_policy) if status == "READY" else None,
+                    )
             except (TypeError, ValueError) as error:
                 raise AgentRunError("OBSERVATION_RESPONSE_INVALID") from error
             continue
@@ -246,6 +251,9 @@ def collect_turn_evidence(input_items: list[dict[str, Any]]) -> TurnEvidence:
         knowledge=knowledge,
         data_versions=data_versions,
         operators=frozenset((*identity, revision) for identity, revision in operators.items()),
-        prepared_arguments=prepared_arguments,
+        prepared_arguments={
+            target: [candidate for _, candidate in checks.values() if candidate is not None]
+            for target, checks in latest_checks.items()
+        },
         prepared_targets=frozenset(prepared_targets),
     )

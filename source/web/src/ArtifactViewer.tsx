@@ -23,9 +23,11 @@ export function resolveViewerPreference(preferred: ViewerKind, object: ResourceD
   return 'auto';
 }
 
-export function ArtifactViewer({ resource, project, objectId, showIdentity = true, preferredViewer = 'auto', onResource = () => {} }: { resource: ResourceDetail; project: string; objectId?: string; showIdentity?: boolean; preferredViewer?: ViewerKind; onResource?: (id: string) => void }) {
+export function ArtifactViewer({ resource, project, objectId, showIdentity = true, allowDownload = true, preferredViewer = 'auto', onResource = () => {} }: { resource: ResourceDetail; project: string; objectId?: string; showIdentity?: boolean; allowDownload?: boolean; preferredViewer?: ViewerKind; onResource?: (id: string) => void }) {
   const [openedJson, setOpenedJson] = useState<string | null>(null);
-  const object = resource.objects.find(item => item.objectId === objectId) ?? resource.objects.find(item => item.role === 'raw') ?? resource.objects[0];
+  const object = objectId === undefined
+    ? resource.objects.find(item => item.role === 'raw') ?? resource.objects[0]
+    : resource.objects.find(item => item.objectId === objectId);
   if (!object) return <div className="artifact-unsupported"><p>该数据版本没有可读取对象。</p></div>;
   const format = object.format.toLowerCase();
   const url = contentUrl(project, resource.versionId, object.objectId);
@@ -34,15 +36,15 @@ export function ArtifactViewer({ resource, project, objectId, showIdentity = tru
   const showingJson = canOpenJson && openedJson === url;
   let viewer;
   if (showingJson) viewer = <JsonViewer url={url} />;
-  else if (preference === 'metadata') viewer = <MetadataViewer resource={resource} object={object} url={url} reason="产品建议首先查看元数据。" />;
-  else if (object.mediaType === 'image/png' || format === 'png') viewer = object.size <= 128 * 1024 ** 2 ? <ImageViewer url={url} name={resource.title || '数据图片'} /> : <MetadataViewer resource={resource} object={object} url={url} reason="图像超过 128 MiB，仅提供元数据和下载。" />;
-  else if (object.mediaType.includes('geo+json') || format === 'geojson') viewer = object.size <= 32 * 1024 ** 2 ? <GeoViewer url={url} /> : <MetadataViewer resource={resource} object={object} url={url} reason="GeoJSON 超过 32 MiB，在线地图已关闭。" />;
+  else if (preference === 'metadata') viewer = <MetadataViewer allowDownload={allowDownload} resource={resource} object={object} url={url} reason="产品建议首先查看元数据。" />;
+  else if (object.mediaType === 'image/png' || format === 'png') viewer = object.size <= 128 * 1024 ** 2 ? <ImageViewer allowDownload={allowDownload} url={url} name={resource.title || '数据图片'} /> : <MetadataViewer allowDownload={allowDownload} resource={resource} object={object} url={url} reason="图像超过 128 MiB，仅提供元数据和下载。" />;
+  else if (object.mediaType.includes('geo+json') || format === 'geojson') viewer = object.size <= 32 * 1024 ** 2 ? <GeoViewer url={url} /> : <MetadataViewer allowDownload={allowDownload} resource={resource} object={object} url={url} reason="GeoJSON 超过 32 MiB，在线地图已关闭。" />;
   else if (object.mediaType.includes('tiff') || ['geotiff', 'cog', 'tif', 'tiff'].includes(format)) viewer = <RasterViewer url={url} />;
   else if (['csv', 'parquet'].includes(format)) viewer = <TableViewer key={`${project}:${resource.versionId}`} resource={resource} project={project} initialChart={preference === 'chart'} />;
-  else if (format === 'xlsx') viewer = <XlsxPreviewViewer resource={resource} object={object} url={url} />;
-  else if (format === 'geopackage') viewer = <GeoPackagePreviewViewer resource={resource} object={object} url={url} />;
-  else if (object.mediaType.includes('json') || format === 'json') viewer = object.size <= 32 * 1024 ** 2 ? <JsonViewer url={url} /> : <MetadataViewer resource={resource} object={object} url={url} reason="JSON 超过 32 MiB，仅提供元数据和下载。" />;
-  else viewer = <MetadataViewer resource={resource} object={object} url={url} />;
+  else if (format === 'xlsx') viewer = <XlsxPreviewViewer allowDownload={allowDownload} resource={resource} object={object} url={url} />;
+  else if (format === 'geopackage') viewer = <GeoPackagePreviewViewer allowDownload={allowDownload} resource={resource} object={object} url={url} />;
+  else if (object.mediaType.includes('json') || format === 'json') viewer = object.size <= 32 * 1024 ** 2 ? <JsonViewer url={url} /> : <MetadataViewer allowDownload={allowDownload} resource={resource} object={object} url={url} reason="JSON 超过 32 MiB，仅提供元数据和下载。" />;
+  else viewer = <MetadataViewer allowDownload={allowDownload} resource={resource} object={object} url={url} />;
   return <div className="artifact-resource">
     {showIdentity && <dl className="argument-list"><div><dt>数据集</dt><dd>{resource.datasetId}</dd></div><div><dt>数据版本</dt><dd>{resource.versionId}</dd></div><div><dt>语义版本</dt><dd>{resource.semanticId}</dd></div><div><dt>数据对象</dt><dd>{object.objectId}</dd></div></dl>}
     {showIdentity && resource.inputVersions.length > 0 && <section className="lineage-section"><h4>血缘输入</h4><div className="citation-list">{resource.inputVersions.map(id => <button className="citation" key={id} onClick={() => onResource(id)}>{id}<Icon name="arrow-up-right" /></button>)}</div></section>}

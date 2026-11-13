@@ -64,7 +64,7 @@ export async function isolatedInteractionClients(page: Page, baseURL: string | u
 
 type Clients = Awaited<ReturnType<typeof isolatedInteractionClients>>;
 
-export async function observeInteractionPost(page: Page, path: string, click: () => Promise<void>, loseReceipt = false) {
+export async function observeInteractionPost(page: Page, path: string, click: () => Promise<void>, loseReceipt: boolean | '502' = false) {
   const matches = (request: Request) =>
     new URL(request.url()).pathname === path && request.method() === 'POST';
   if (!loseReceipt) {
@@ -78,11 +78,14 @@ export async function observeInteractionPost(page: Page, path: string, click: ()
   const handler = async (route: Route) => {
     if (!matches(route.request())) { await route.continue(); return; }
     receipt = await route.fetch({ timeout: 30_000 });
-    await route.abort('connectionreset');
+    if (loseReceipt === '502') await route.fulfill({ status: 502, json: { code: 'BAD_GATEWAY' } });
+    else await route.abort('connectionreset');
   };
   await page.route(url, handler);
   try {
-    const failed = page.waitForEvent('requestfailed', { predicate: matches, timeout: 40_000 });
+    const failed = loseReceipt === '502'
+      ? page.waitForResponse(item => matches(item.request()) && item.status() === 502, { timeout: 40_000 }).then(item => item.request())
+      : page.waitForEvent('requestfailed', { predicate: matches, timeout: 40_000 });
     await click();
     const request = await failed;
     if (!receipt) throw new Error(`Gateway response not captured for ${path}`);

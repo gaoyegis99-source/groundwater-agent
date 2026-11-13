@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { ConfirmationCard } from './ChatCards';
 import { canConfirm } from './chat-state';
-import { historyFixture } from './test-fixtures';
+import { dataRef, historyFixture } from './test-fixtures';
 import type { Confirmation } from './types';
 
 const recovery: Confirmation = {
@@ -54,4 +54,23 @@ describe('recovery confirmation after the original turn is terminal', () => {
   ])('rejects $description', ({ candidate, history, busy }) => {
     expect(canConfirm(candidate, history, busy)).toBe(false);
   });
+});
+
+it('shows the exact frozen input and the prior revision comparison on the current batch', () => {
+  const ref = dataRef({ versionId: 'checked-version' });
+  const before: Confirmation = { ...original, status: 'SUPERSEDED' };
+  const after: Confirmation = { ...recovery, kind: 'EDITED', replacesConfirmationId: before.confirmationId,
+    actions: [{ ...recovery.actions[0], arguments: { source: 'checked-version' }, inputReferences: { source: ref } }],
+  };
+  const history = historyFixture({ goalRevision: 2, turns: [{ goalRevision: 2, status: 'WAITING_CONFIRMATION',
+    agentRunId: 'agent-2', confirmations: [before, after] }] });
+  const resource = vi.fn();
+  render(<ConfirmationCard current confirmation={after} history={history} busy={false}
+    onDecision={vi.fn()} onResource={resource} project="demo" />);
+  const details = screen.getByText('核对本批次资料与参数').closest('details')!;
+  details.open = true;
+  fireEvent(details, new Event('toggle'));
+  expect(details).toHaveTextContent('已移除');
+  fireEvent.click(screen.getByRole('button', { name: '查看冻结资料 source' }));
+  expect(resource).toHaveBeenCalledExactlyOnceWith(ref.versionId, ref);
 });

@@ -333,6 +333,27 @@ def _execute(
     assert [item["output_name"] for item in workflow["outputs"]] == model[
         "final_outputs"
     ]
+    node_evidence = None
+    if model_id in {"groundwater.monitoring-trend", "groundwater.flow-field"}:
+        run_path = f"/api/v12/workflow-runs/{workflow['run_id']}"
+        graph = _request(client, "GET", run_path + "/graph", params={"projectId": PROJECT})
+        diagnostics = _request(client, "GET", run_path + "/nodes", params={"projectId": PROJECT})
+        assert graph["availability"] == diagnostics["availability"] == "AVAILABLE", (graph, diagnostics)
+        assert graph["workflow_run_id"] == diagnostics["workflow_run_id"] == workflow["run_id"], (graph, diagnostics)
+        dependencies = {node["node_id"]: set(node["depends_on"]) for node in graph["nodes"]}
+        if model_id == "groundwater.monitoring-trend":
+            assert len(dependencies) == 10 and not any(dependencies.values()), graph
+        else:
+            assert dependencies == {
+                "head": set(), "snapshot": {"head"}, "idw": {"snapshot"},
+                "gradient": {"idw"}, "velocity": {"gradient"},
+            }, graph
+        assert {node["node_id"] for node in graph["nodes"]} == {
+            node["node_id"] for node in diagnostics["nodes"]
+        }, (graph, diagnostics)
+        assert all(node["status"] in {"SUCCEEDED", "SKIPPED"} for node in diagnostics["nodes"]), diagnostics
+        assert sum(node["status"] == "SUCCEEDED" for node in diagnostics["nodes"]) > 1, diagnostics
+        node_evidence = {"graph": graph, "diagnostics": diagnostics}
     headers = {"X-Project-ID": PROJECT, "X-Client-Type": "cli"}
     publication_ids = set()
     output_references = []
@@ -399,6 +420,7 @@ def _execute(
         "input_version_ids": sorted(input_versions),
         "output_references": output_references,
         "publication_group": next(iter(publication_ids)),
+        **({"node_evidence": node_evidence} if node_evidence is not None else {}),
         "status": "PASS",
     }
 

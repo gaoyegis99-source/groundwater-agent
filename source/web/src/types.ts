@@ -19,9 +19,9 @@ export interface Action {
 }
 export interface Confirmation {
   confirmationId: string; goalRevision: number; status: string; agentRunId: string;
-  reason: string; actions: Action[]; decision: string | null; decisionState: string | null;
+  reason: string | null; actions: Action[]; decision: string | null; decisionState: string | null;
   revision?: number; kind?: 'INITIAL' | 'EDITED' | 'RECOVERY'; replacesConfirmationId?: string | null;
-  sourceWorkflowRunId?: string | null; requestId?: string | null; createdAt?: string;
+  sourceWorkflowRunId?: string | null; requestId?: string | null; createdAt?: string | null;
 }
 export interface Session {
   sessionId: string; projectId: string; goalRevision: number; agentRunId: string | null;
@@ -129,7 +129,7 @@ export interface Turn {
 export interface History {
   task?: TaskContext | null;
   preparation?: TaskPreparation | null;
-  controlRequests?: { requestId: string; agentRunId: string; status: 'REQUESTED' | 'COMPLETE' }[];
+  controlRequests?: { requestId: string; agentRunId: string; status: 'REQUESTED' | 'PROCESSING' | 'COMPLETE' }[];
   controlProposals?: ControlProposal[]; controlMessages?: ControlMessage[];
   sessionId: string; goalRevision: number; items: Message[]; turns: Turn[]; nextCursor: number | null;
   eventCursor: number; snapshotAt: string;
@@ -196,7 +196,7 @@ export interface AgentPlan {
   steps: { stepId: string; tool: string; purpose: string }[];
 }
 export interface ExecutionTask {
-  workflowRunId: string; agentRunId: string; goalRevision: number; confirmationId: string;
+  workflowRunId: string; agentRunId: string; goalRevision: number; confirmationId: string | null;
   toolCallId: string; position: number; modelId: string; modelVersion: string;
   workflowId: string; workflowVersion: string; status: string;
   stage: 'QUEUED' | 'EXECUTING' | 'PUBLISHING' | null;
@@ -340,13 +340,19 @@ export interface TaskContext {
   spec: {
     taskId: string; sessionId?: string; revision: number; objective: string;
     constraints: { id: string; text: string; interpretation?: string | null }[];
-    criteria: { id: string; text: string; interpretation?: string | null; kind: 'REPLY' | 'RESULT' | 'DRAFT' | 'USER_REVIEW' }[];
+    criteria: {
+      id: string; text: string; interpretation?: string | null; kind: 'REPLY' | 'RESULT' | 'DRAFT' | 'USER_REVIEW';
+      modelId?: string | null; outputNames?: string[];
+    }[];
     unresolvedItems: string[]; suggestions: string[];
     steps: { id: string; title: string; dependsOn: string[]; criterionIds: string[]; gaps: string[] }[];
   };
   progress: {
     lifecycle: 'ACTIVE' | 'COMPLETE'; state: string;
-    criteria: { id: string; satisfied: boolean; evidence?: { workflowDraftId?: string } | null }[];
+    criteria: { id: string; satisfied: boolean; evidence?: {
+      criterionId?: string; agentRunId?: string; workflowRunId?: string | null;
+      reviewQuote?: string | null; reviewGoalRevision?: number; workflowDraftId?: string;
+    } | null }[];
     steps: { id: string; complete: boolean }[];
     results: ResourceReference[];
     blockingReasons?: string[]; metrics: { totalTokens: number; durationMs: number; requestCount?: number; observationCallCount?: number };

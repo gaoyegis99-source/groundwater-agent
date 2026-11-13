@@ -854,10 +854,15 @@ def test_lost_commit_response_recovers_after_deadline(tmp_path):
     job = _completed_job(control, config)
     resources = DurableResults()
     control.data_client = resources
+    assert control.publication(job.job_id) == {"jobId": job.job_id, "requestId": job.request_id}
     resources.lose_response = True
     publisher = ResultPublisher(control.database, control.artifacts, config, resources)
     publisher.publish_ready()
     assert control.get(job.job_id).status == "RUNNING"
+    assert control.publication(job.job_id) == {
+        "jobId": job.job_id, "requestId": job.request_id,
+        "publicationId": job.job_id, "state": "READY",
+    }
     publisher.publish_ready()
     assert control.get(job.job_id).status == "RUNNING"
     with connect_database(control.database) as connection:
@@ -887,6 +892,7 @@ def test_lost_commit_response_recovers_after_deadline(tmp_path):
         control.database, control.artifacts, config, resources
     ).publish_ready()
     assert control.get(job.job_id).status == "SUCCEEDED"
+    assert control.publication(job.job_id)["state"] == "PUBLISHED"
     assert resources.stage_calls == 2
     assert len(control.node_diagnostics(job.job_id)) == 1
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import Field
 from platform_protocol_contracts import CamelModel, to_camel
@@ -46,6 +46,13 @@ class JobStatusResponseV6(CamelModel):
     created_at: str | None
     started_at: str | None
     finished_at: str | None
+
+
+class JobPublicationResponse(CamelModel):
+    job_id: str
+    request_id: str
+    publication_id: str | None = None
+    state: Literal["OPEN", "PREPARING", "READY", "PUBLISHED", "FAILED", "ABORTED"] | None = None
 
 
 class HealthResponse(CamelModel):

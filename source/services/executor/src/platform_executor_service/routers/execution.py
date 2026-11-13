@@ -7,7 +7,7 @@ from fastapi import FastAPI, Path, Query, Request
 from ..composition import ExecutorApplication
 from ..contracts import JobRequestV6
 from ..errors import ExecutionServiceError, JobNotFoundError
-from ..worker_contracts import JobGraphResponse, JobRequestBodyV6, JobStatusResponseV6, NodeDiagnosticsResponse, lease_to_wire
+from ..worker_contracts import JobGraphResponse, JobPublicationResponse, JobRequestBodyV6, JobStatusResponseV6, NodeDiagnosticsResponse, lease_to_wire
 
 
 def register_execution_routes(app: FastAPI, application: ExecutorApplication) -> None:
@@ -44,6 +44,14 @@ def register_execution_routes(app: FastAPI, application: ExecutorApplication) ->
     @app.get("/internal/execution/v6/jobs/{jobId}", response_model=JobStatusResponseV6, operation_id="executor_get_job")
     def get_status(job_id: Annotated[str, Path(alias="jobId")]):
         return application.control.get(job_id).as_dict()
+
+    @app.get(
+        "/internal/execution/v6/jobs/{jobId}/publication",
+        response_model=JobPublicationResponse,
+        operation_id="executor_get_job_publication",
+    )
+    def get_publication(job_id: Annotated[str, Path(alias="jobId")]):
+        return application.control.publication(job_id)
 
     @app.post(
         "/internal/execution/v6/jobs/{jobId}/cancel",

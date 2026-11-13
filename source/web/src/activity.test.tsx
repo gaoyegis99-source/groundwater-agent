@@ -78,16 +78,17 @@ describe('actual activity and task presentation', () => {
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 
-  it('uses the first request time for the initial summary instead of the enclosing segment time', () => {
+  it('reports the recorded segment duration independently of model requests', () => {
     const activities = [
-      activityFixture({ activityId: 'segment', kind: 'SEGMENT', purpose: 'INITIAL', status: 'COMPLETE', createdAt: '2026-10-09T01:00:00.000Z', finishedAt: '2026-10-09T01:00:04.000Z', title: '处理当前请求' }),
-      activityFixture({ activityId: 'model', kind: 'MODEL_REQUEST', purpose: 'PROCESSING', status: 'COMPLETE', createdAt: '2026-10-09T01:00:00.100Z', finishedAt: '2026-10-09T01:00:00.500Z', title: '生成下一步处理决策' }),
+      activityFixture({ activityId: 'segment', kind: 'SEGMENT', purpose: 'INITIAL', status: 'COMPLETE', createdAt: '2026-10-09T01:00:00.000Z', startedAt: '2026-10-09T01:00:00.000Z', finishedAt: '2026-10-09T01:00:04.000Z', title: '处理当前请求' }),
+      activityFixture({ activityId: 'model', kind: 'MODEL_REQUEST', purpose: 'PROCESSING', status: 'COMPLETE', createdAt: '2026-10-09T01:00:00.100Z', startedAt: '2026-10-09T01:00:00.100Z', finishedAt: '2026-10-09T01:00:00.500Z', title: '生成下一步处理决策' }),
     ];
     render(<ActivityPanel turn={turnFixture({ status: 'COMPLETE', activities })} snapshotAt="2026-10-09T01:00:04Z" connected />);
     openActivityDetails();
     const initial = screen.getByText('生成下一步处理决策').closest('li')!;
     expect(initial).toHaveTextContent('少于 1 秒');
     expect(initial).not.toHaveTextContent('4 秒');
+    expect(screen.getByText('处理当前请求').closest('li')).toHaveTextContent('4 秒');
   });
 
   it('renders the persisted server summary without decorating it from reply fields', () => {
@@ -186,10 +187,10 @@ describe('actual activity and task presentation', () => {
     expect(screen.queryByText('已并行核验 19 项数据版本及其对象。')).not.toBeInTheDocument();
   });
 
-  it('uses queue admission time for complete segment duration and keeps connection uncertainty separate', () => {
+  it('uses recorded start time for execution duration and keeps connection uncertainty separate', () => {
     render(<ActivityPanel turn={turnFixture({ status: 'RUNNING', activities: [activityFixture({ kind: 'SEGMENT', purpose: 'INITIAL', createdAt: instant, startedAt: '2026-10-09T01:01:00Z', title: '处理当前请求' })] })} snapshotAt="2026-10-09T01:02:00Z" connected={false} />);
     openActivityDetails();
-    expect(screen.getByText('2 分 0 秒')).toBeVisible();
+    expect(screen.getByText('1 分 0 秒')).toBeVisible();
     expect(screen.getByText('实时更新尚未连接，当前显示最后收到的状态。')).toBeVisible();
     expect(screen.getByRole('status')).toHaveTextContent('处理当前请求');
   });

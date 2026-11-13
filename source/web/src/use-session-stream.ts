@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 
 import { allResults, ApiError, callApi, projectQuery } from './api';
 import { prependHistory, refreshHistory } from './chat-state';
 import { allDetails, applySnapshot, beginSnapshotRead, connectStream, detailsAfterEvent, forceStreamRefresh, hasDetails, initialStreamProgress, isMetadataEvent, mergeDetails, noDetails, receiveStreamEvent, type DetailScope } from './session-stream-state';
+import type { ResultsRead } from './ui-selectors';
 import type { DebugEntry, History, Result, WorkflowDraft } from './types';
 
 const eventTypes = [
@@ -16,6 +17,20 @@ const eventTypes = [
   ...['queued', 'running', 'succeeded', 'failed', 'cancelled', 'timed_out'].map(status => `job.${status}`),
   'agent.activity', 'agent.plan_recorded', 'workflow.stage_changed', 'workflow.communication_changed',
 ];
+
+function eventFacts(data: string): Record<string, unknown> | undefined {
+  try {
+    const value: unknown = JSON.parse(data);
+    if (value && typeof value === 'object' && 'data' in value && value.data && typeof value.data === 'object') {
+      return value.data as Record<string, unknown>;
+    }
+  } catch { /* The durable cursor still triggers a snapshot read. */ }
+}
+
+function eventAgentRunId(data: string) {
+  const id = eventFacts(data)?.agentRunId;
+  return typeof id === 'string' ? id : null;
+}
 
 export type InteractionTiming = {
   requestId: string;
@@ -35,20 +50,23 @@ export type SessionStreamRefs = {
 
 type DraftRead = { status: 'loading' | 'ready' } | { status: 'error'; error: ApiError };
 
-export function useSessionStream(activeId: string, project: string, log: (entry: DebugEntry) => void) {
+export function useSessionStream(activeId: string, project: string, storageScope: string, log: (entry: DebugEntry) => void) {
   const [preview, setPreview] = useState<{ agentRunId: string; text: string | null } | null>(null);
-  const [stopping, setStopping] = useState(false);
   const [history, setHistory] = useState<History | null>(null);
   const [workflowDrafts, setWorkflowDrafts] = useState<Record<string, WorkflowDraft>>({});
   const [workflowDraftReads, setWorkflowDraftReads] = useState<Record<string, DraftRead>>({});
   const [results, setResults] = useState<Result[]>([]);
+  const [resultsRead, setResultsRead] = useState<ResultsRead>({ status: 'not-requested' });
   const [loading, setLoading] = useState(false);
+  const [snapshotCurrent, setSnapshotCurrent] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
   const [connection, setConnection] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
   const [trace, setTrace] = useState<unknown>(null);
   const activeRef = useRef(activeId);
   activeRef.current = activeId;
+  const scopeRef = useRef(storageScope);
+  scopeRef.current = storageScope;
   const viewGeneration = useRef(0);
   const viewAbort = useRef<AbortController | null>(null);
   const refreshRequest = useRef<(() => Promise<void>) | null>(null);
@@ -70,8 +88,8 @@ export function useSessionStream(activeId: string, project: string, log: (entry:
     const generation = ++viewGeneration.current;
     const controller = new AbortController();
     viewAbort.current = controller;
-    setPreview(null); setStopping(false);
-    setHistory(null); setResults([]); setWorkflowDrafts({}); setWorkflowDraftReads({}); setTrace(null); setError(null); setConnection('connecting'); setLoadingOlder(false);
+    setPreview(null); setSnapshotCurrent(false);
+    setHistory(null); setResults([]); setResultsRead({ status: 'not-requested' }); setWorkflowDrafts({}); setWorkflowDraftReads({}); setTrace(null); setError(null); setConnection('connecting'); setLoadingOlder(false);
     if (!activeId) { setLoading(false); return; }
     setLoading(true);
     let cancelled = false;
@@ -101,22 +119,29 @@ export function useSessionStream(activeId: string, project: string, log: (entry:
     let latestMessages: History | null = null;
     let olderBefore: number | null = null;
     const draftCache = new Map<string, WorkflowDraft>();
+    const draftOwners = new Map<string, Pick<History['turns'][number], 'agentRunId' | 'goalRevision'>>();
     const draftReadSequences = new Map<string, number>();
     const draftValidatedEpochs = new Map<string, number>();
     let draftRefreshEpoch = 0;
     let resultReadSequence = 0;
-    const current = () => !cancelled && viewGeneration.current === generation && activeRef.current === activeId;
+    const current = () => !cancelled && viewGeneration.current === generation && activeRef.current === activeId && scopeRef.current === storageScope;
     const reportError = (caught: unknown) => {
       if (caught instanceof DOMException && caught.name === 'AbortError') return;
       if (current()) showError(caught);
     };
     const readDraft = (id: string) => {
+      const owner = draftOwners.get(id);
+      if (!owner) return;
       const epoch = draftRefreshEpoch;
       const sequence = (draftReadSequences.get(id) ?? 0) + 1;
       draftReadSequences.set(id, sequence);
       setWorkflowDraftReads(previous => ({ ...previous, [id]: { status: 'loading' } }));
       void (callApi('kernel_get_workflow_draft', `/sessions/${activeId}/workflow-drafts/${id}`, undefined, controller.signal) as Promise<WorkflowDraft>).then(item => {
         if (!current() || draftReadSequences.get(id) !== sequence) return;
+        if (item.draftId !== id || item.sessionId !== activeId
+          || item.agentRunId !== owner.agentRunId || item.goalRevision !== owner.goalRevision) {
+          throw new ApiError(409, 'WORKFLOW_DRAFT_IDENTITY_MISMATCH');
+        }
         const cached = draftCache.get(id);
         const next = cached && cached.status !== 'GENERATING' && item.status === 'GENERATING' ? cached : item as WorkflowDraft;
         draftCache.set(id, next);
@@ -130,6 +155,9 @@ export function useSessionStream(activeId: string, project: string, log: (entry:
       });
     };
     const loadDetails = (messages: History, scope: DetailScope) => {
+      for (const { workflowDraftId, agentRunId, goalRevision } of messages.turns) {
+        if (workflowDraftId) draftOwners.set(workflowDraftId, { agentRunId, goalRevision });
+      }
       const draftIds = [...new Set(messages.turns.map(turn => turn.workflowDraftId).filter((id): id is string => !!id))]
         .filter(id => {
           const cached = draftCache.get(id);
@@ -141,10 +169,16 @@ export function useSessionStream(activeId: string, project: string, log: (entry:
       }
       if (scope.results) {
         const sequence = ++resultReadSequence;
+        setResultsRead({ status: 'loading' });
         void allResults(activeId, controller.signal).then(outcomes => {
           if (!current() || sequence !== resultReadSequence) return;
           setResults(outcomes);
-        }).catch(reportError);
+          setResultsRead({ status: 'loaded', items: outcomes });
+        }).catch(caught => {
+          if (!current() || sequence !== resultReadSequence) return;
+          setResultsRead({ status: 'failed' });
+          reportError(caught);
+        });
       }
     };
     const scheduleRefresh = (immediate = false) => {
@@ -165,8 +199,13 @@ export function useSessionStream(activeId: string, project: string, log: (entry:
         const received = receiveStreamEvent(progress, id);
         if (!received.accepted) return;
         progress = received.state;
-        if (event.type === 'control.complete') { setStopping(false); setPreview(null); }
-        if (['agent.complete', 'agent.failed', 'agent.superseded', 'agent.cancelled'].includes(event.type)) setPreview(null);
+        if (id > progress.snapshotCursor) setSnapshotCurrent(false);
+        if (id > progress.snapshotCursor && [
+          'control.complete', 'agent.complete', 'agent.failed', 'agent.superseded', 'agent.cancelled',
+        ].includes(event.type)) {
+          const runId = eventAgentRunId(event.data);
+          if (runId) setPreview(value => value?.agentRunId === runId ? null : value);
+        }
         log({ kind: 'SSE', time: new Date().toLocaleTimeString(), name: event.type, eventId: event.lastEventId });
         const timing = interactionTiming.current;
         if (timing !== null && !['session.created', 'turn.accepted', 'intent_routing.requested'].includes(event.type)) {
@@ -178,8 +217,8 @@ export function useSessionStream(activeId: string, project: string, log: (entry:
             log({ kind: 'METRIC', time: new Date().toLocaleTimeString(), name: '首次有效反馈', elapsedMs: Math.round(now - timing.startedAt), requestId: timing.requestId });
           }
           if (event.type === 'agent.activity') {
-            const payload = JSON.parse(event.data) as { data?: { kind?: string; status?: string } };
-            if (payload.data?.kind === 'MODEL_REQUEST' && payload.data.status === 'QUEUED') timing.modelRequests += 1;
+            const facts = eventFacts(event.data);
+            if (facts?.kind === 'MODEL_REQUEST' && facts.status === 'QUEUED') timing.modelRequests += 1;
           }
           if (['agent.complete', 'agent.failed'].includes(event.type)) {
             log({ kind: 'METRIC', time: new Date().toLocaleTimeString(), name: `总完成时间；最长无反馈 ${Math.round(timing.maxSilenceMs)} 毫秒；快照 ${timing.snapshotRequests}；模型请求 ${timing.modelRequests}`, elapsedMs: Math.round(now - timing.startedAt), requestId: timing.requestId });
@@ -193,7 +232,7 @@ export function useSessionStream(activeId: string, project: string, log: (entry:
       eventTypes.forEach(type => source!.addEventListener(type, receive as EventListener));
       let opened = false;
       source.onopen = () => { if (current()) { setConnection('connected'); log({ kind: 'STATE', time: new Date().toLocaleTimeString(), name: opened ? 'sse.reconnected' : 'sse.connected' }); if (opened) { progress = forceStreamRefresh(progress); detailsDirty = allDetails(); draftRefreshEpoch += 1; scheduleRefresh(); } opened = true; } };
-      source.onerror = () => { if (current()) { setConnection('disconnected'); log({ kind: 'STATE', time: new Date().toLocaleTimeString(), name: 'sse.disconnected' }); } };
+      source.onerror = () => { if (current()) { setConnection('disconnected'); setSnapshotCurrent(false); setPreview(null); log({ kind: 'STATE', time: new Date().toLocaleTimeString(), name: 'sse.disconnected' }); } };
     };
     const readMessages = (): Promise<void> => {
       if (inFlight !== null) return inFlight;
@@ -219,9 +258,11 @@ export function useSessionStream(activeId: string, project: string, log: (entry:
               if (applied.accepted) {
                 progress = applied.state;
                 latestMessages = messages;
+                const turn = messages.turns.find(item => item.goalRevision === messages.goalRevision);
+                setPreview(value => value && turn?.agentRunId === value.agentRunId && turn.status === 'RUNNING' && !turn.reply ? value : null);
                 setHistory(previous => previous ? refreshHistory(previous, messages) : messages);
                 setLoading(false);
-                setStopping(messages.controlRequests?.some(item => ['REQUESTED', 'PROCESSING'].includes(item.status)) ?? false);
+                setSnapshotCurrent(!progress.dirty);
                 log({ kind: 'STATE', time: new Date().toLocaleTimeString(), name: 'snapshot.applied' });
                 // Subscribe before optional detail reads; events after this snapshot are durable.
                 if (source === undefined) connect(messages.eventCursor);
@@ -260,7 +301,7 @@ export function useSessionStream(activeId: string, project: string, log: (entry:
       if (timer !== undefined) clearTimeout(timer);
       finishDelay?.();
     };
-  }, [activeId, log, showError]);
+  }, [activeId, storageScope, log, showError]);
 
   async function olderMessages() {
     if (history?.nextCursor && !loadingOlder) await olderRequest.current?.(history.nextCursor);
@@ -280,13 +321,13 @@ export function useSessionStream(activeId: string, project: string, log: (entry:
 
   return {
     preview,
-    stopping,
-    setStopping,
     history,
     workflowDrafts,
     workflowDraftReads,
     retryWorkflowDraft: (id: string) => draftRequest.current?.(id),
     results,
+    resultsRead,
+    snapshotCurrent,
     loading,
     loadingOlder,
     error,

@@ -3,8 +3,12 @@ from __future__ import annotations
 import json
 import sqlite3
 
+from fastapi.testclient import TestClient
+import httpx
 import pytest
 
+from platform_kernel.api import create_app
+from platform_kernel.composition import PlatformApplication
 from platform_kernel.contracts import JobStatusV6, DataVersionRefV2
 from platform_kernel.database import connect_database, read_session_events, utc_now
 from platform_kernel.interaction.persistence import create_session
@@ -17,9 +21,9 @@ from platform_kernel.workflow_execution.persistence import (
 )
 
 
-def _batch(settings, *, session_id="session", run_id="agent", count=2, project_id="p"):
+def _batch(settings, *, session_id="session", run_id="agent", count=2, project_id="p", **session_options):
     database = settings.data_root / "kernel.sqlite3"
-    create_session(database, session_id, project_id)
+    create_session(database, session_id, project_id, **session_options)
     model = settings.models[0]
     actions = tuple(ConfirmedAction(
         tool_call_id=f"call-{run_id}-{index}", position=index, tool=model.tool_name,
@@ -64,6 +68,43 @@ def _tasks(database, run_ids=("agent",), session_id="session", project_id="p"):
     with connect_database(database) as connection:
         connection.execute("BEGIN")
         return session_execution_tasks(connection, session_id, project_id, run_ids)
+
+
+def test_publication_lookup_checks_run_ownership_and_job_identity(kernel_settings):
+    settings = kernel_settings()
+    database, (run,) = _batch(settings, count=1)
+    calls = []
+    reply = {"jobId": f"job-{run.run_id}", "requestId": run.run_id,
+             "publicationId": "publication-1", "state": "READY"}
+    upstream_status = 200
+
+    def executor(request):
+        calls.append(request.url.path)
+        return httpx.Response(upstream_status, json=reply)
+
+    application = PlatformApplication(settings=settings, client=httpx.AsyncClient(
+        transport=httpx.MockTransport(executor),
+    ))
+    client = TestClient(create_app(application=application))
+    path = f"/api/v12/workflow-runs/{run.run_id}/publication"
+    project = {"projectId": "p"}
+    unknown = {"workflowRunId": run.run_id, "publicationId": None, "state": None}
+    assert client.get(path, params=project).json() == unknown
+    assert calls == []
+    _save(database, run, "RUNNING", stage="COMMIT_PENDING")
+    assert client.get(path, params=project).json() == {
+        **unknown, "publicationId": "publication-1", "state": "READY",
+    }
+    reply["requestId"] = "different-run"
+    assert client.get(path, params=project).json() == unknown
+    upstream_status = 503
+    assert client.get(path, params=project).status_code == 503
+    assert client.get(path, params={"projectId": "other"}).status_code == 404
+    _, (other,) = _batch(
+        settings, count=1, session_id="other-session", run_id="other-agent", owner_subject="other-owner",
+    )
+    assert client.get(f"/api/v12/workflow-runs/{other.run_id}/publication", params=project).status_code == 404
+    assert len(calls) == 3
 
 
 def test_enqueue_freezes_service_endpoint_digest(kernel_settings):

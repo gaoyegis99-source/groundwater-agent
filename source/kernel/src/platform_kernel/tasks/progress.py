@@ -8,6 +8,7 @@ import re
 from typing import Any
 
 from .models import TaskProgressV1
+from .preparation import preparation_in_connection
 
 
 _BLOCKING_CONTINUATION_REASONS = {
@@ -150,16 +151,11 @@ def _runtime_facts(connection, spec) -> _RuntimeFacts:
            WHERE agent_run_id=? AND status='REJECTED'""",
         (current["agent_run_id"],),
     ).fetchone()
-    preparation_row = connection.execute(
-        """SELECT status,snapshot_json FROM task_preparations WHERE task_id=?
-           ORDER BY updated_at DESC,rowid DESC LIMIT 1""",
-        (spec["task_id"],),
-    ).fetchone()
-    preparation = (
-        None
-        if preparation_row is None
-        else json.loads(preparation_row["snapshot_json"])
+    preparation = preparation_in_connection(
+        connection, spec["session_id"], current_goal_revision=current["goal_revision"],
     )
+    if preparation is not None and preparation["task_id"] != spec["task_id"]:
+        preparation = None
     blocked_entries = (
         []
         if preparation is None

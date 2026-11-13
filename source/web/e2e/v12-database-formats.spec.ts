@@ -49,14 +49,14 @@ test('数据库工作台显示表格、工作簿、结构树和模型安全元�
   const field = detail.descriptor.fields.find((item: { name: string }) => item.name === 'hydraulic_head_m');
   expect(detail.descriptor.rowCount).toBe(2);
   expect(detail.descriptor.profile).toMatchObject({ statisticsScope: 'all_rows', sampleScope: 'first_non_null_values', sampleLimitPerField: 5 });
-  expect(field.profile).toMatchObject({ nonNullCount: 2, sampleValues: ['81.2', '82.4'], numericString: { checkedCount: 2, parsedCount: 2 } });
+  expect(field.profile).toMatchObject({ nonNullCount: 2, sampleValues: [81.2, 82.4], valueRange: { minimum: 81.2, maximum: 82.4 } });
   expect(detail.semantics.fields[field.fieldId].unit).toBe('m');
   await expect(workbench.getByRole('link', { name: '下载对象' })).toHaveAttribute('href', new RegExp(`/data/versions/${detail.versionId}/objects/`));
   const quality = workbench.getByRole('region', { name: '字段与质量' });
   const row = quality.getByRole('row', { name: /hydraulic_head_m/ });
   await expect(workbench.getByText('全量统计 · 2 行')).toBeVisible();
   await expect(row.getByRole('cell', { name: 'm', exact: true })).toBeVisible();
-  await expect(row.getByText('可解析为数字 2 / 2')).toBeVisible();
+  await expect(row.getByText('81.2 – 82.4')).toBeVisible();
   await row.getByText('查看样例').click();
   await expect(row.getByText('82.4', { exact: true })).toBeVisible();
   await quality.scrollIntoViewIfNeeded();
@@ -68,7 +68,7 @@ test('数据库工作台显示表格、工作簿、结构树和模型安全元�
     await expect(dataPage.getByText('全量统计 · 2 行')).toBeVisible();
     const profile = dataPage.getByTestId(`field-profile-${field.fieldId}`);
     await expect(profile).toContainText('单位 m');
-    await expect(profile).toContainText('2 / 2 可解析为数字');
+    await expect(profile).toContainText('81.2 – 82.4');
     await profile.scrollIntoViewIfNeeded();
     await dataPage.screenshot({ path: testInfo.outputPath('standalone-field-profile.png') });
   } finally {

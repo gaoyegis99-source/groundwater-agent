@@ -652,6 +652,12 @@ KERNEL_GET_WORKFLOW_RUN_NODES = Operation(
     media_type='application/json', side_effecting=False,
 )
 
+KERNEL_GET_WORKFLOW_RUN_PUBLICATION = Operation(
+    operation_id='kernel_get_workflow_run_publication', method='GET', path='/workflow-runs/{runId}/publication',
+    response_model=models.KernelWorkflowPublicationResponse, success_statuses=frozenset([200]),
+    media_type='application/json', side_effecting=False,
+)
+
 OPERATIONS = {
     ADMIN_USERS_API_V12_ADMIN_USERS_GET.operation_id: ADMIN_USERS_API_V12_ADMIN_USERS_GET,
     ADMIN_USER_CREATE_API_V12_ADMIN_USERS_POST.operation_id: ADMIN_USER_CREATE_API_V12_ADMIN_USERS_POST,
@@ -761,4 +767,5 @@ OPERATIONS = {
     KERNEL_GET_WORKFLOW_RUN.operation_id: KERNEL_GET_WORKFLOW_RUN,
     KERNEL_GET_WORKFLOW_RUN_GRAPH.operation_id: KERNEL_GET_WORKFLOW_RUN_GRAPH,
     KERNEL_GET_WORKFLOW_RUN_NODES.operation_id: KERNEL_GET_WORKFLOW_RUN_NODES,
+    KERNEL_GET_WORKFLOW_RUN_PUBLICATION.operation_id: KERNEL_GET_WORKFLOW_RUN_PUBLICATION,
 }

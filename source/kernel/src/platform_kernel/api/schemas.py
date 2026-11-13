@@ -381,6 +381,12 @@ class WorkflowRunResponse(CamelModel):
     duration_ms: int | None
 
 
+class WorkflowPublicationResponse(CamelModel):
+    workflow_run_id: str
+    publication_id: str | None
+    state: Literal["OPEN", "PREPARING", "READY", "PUBLISHED", "FAILED", "ABORTED"] | None
+
+
 PROBLEM_RESPONSE = {
     "model": ProblemDetailsV11,
     "content": {

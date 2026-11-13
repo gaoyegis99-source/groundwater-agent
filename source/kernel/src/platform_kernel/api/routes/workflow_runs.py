@@ -9,7 +9,7 @@ from ...workflow_execution.api_projection import (
     workflow_run_response,
 )
 from ..dependencies import platform_application
-from ..schemas import PROBLEM_RESPONSE, WorkflowRunResponse
+from ..schemas import PROBLEM_RESPONSE, WorkflowPublicationResponse, WorkflowRunResponse
 from ..wire import to_wire
 
 
@@ -25,6 +25,20 @@ def get_run(
     return to_wire(
         workflow_run_response(application.workflow_execution.get(project_id, run_id))
     )
+
+
+@router.get(
+    "/api/v12/workflow-runs/{runId}/publication",
+    response_model=WorkflowPublicationResponse,
+    responses={503: PROBLEM_RESPONSE},
+    operation_id="kernel_get_workflow_run_publication",
+)
+async def get_publication(
+    run_id: Annotated[str, Path(alias="runId")],
+    project_id: Annotated[str, Query(alias="projectId")],
+    application: PlatformApplication = Depends(platform_application),
+):
+    return await application.workflow_execution.run_publication(project_id, run_id)
 
 
 @router.get(

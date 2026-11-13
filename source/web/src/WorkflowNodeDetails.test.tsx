@@ -10,6 +10,26 @@ const diagnostics = { workflowRunId: 'run-2', availability: 'AVAILABLE', nodes: 
     startedAt: null, finishedAt: null, errorCode: 'WORKER_LOST' },
 ] };
 
+it('clears diagnostics while reading a different run or project', async () => {
+  let finish!: (value: unknown) => void;
+  const next = new Promise(resolve => { finish = resolve; });
+  const read = vi.spyOn(api, 'callApi').mockResolvedValueOnce({ ...diagnostics, nodes: diagnostics.nodes.slice(1) })
+    .mockImplementationOnce(() => next);
+  const view = render(<WorkflowNodeDetails runId="run-2" project="p" status="FAILED" />);
+  try {
+    fireEvent.click(screen.getByText('节点详情'));
+    await screen.findByText('WORKER_LOST');
+    view.rerender(<WorkflowNodeDetails runId="run-3" project="q" status="RUNNING" />);
+    expect(screen.queryByText('WORKER_LOST')).not.toBeInTheDocument();
+    expect(screen.getByText('正在读取节点状态…')).toBeVisible();
+    await act(async () => finish({ workflowRunId: 'run-3', availability: 'AVAILABLE', nodes: [] }));
+    expect(await screen.findByText('暂无节点记录。')).toBeVisible();
+  } finally {
+    view.unmount();
+    read.mockRestore();
+  }
+});
+
 it('aborts a hidden run read and ignores the response if it arrives after reopening', async () => {
   let finishFirst!: (value: unknown) => void;
   const first = new Promise(resolve => { finishFirst = resolve; });
@@ -52,13 +72,21 @@ it('uses the frozen dependency graph and shows selected node diagnostics', async
   }
 });
 
-it('keeps multiple node diagnostics available when the older Gateway has no graph route', async () => {
-  const read = vi.spyOn(api, 'callApi').mockResolvedValueOnce(diagnostics)
-    .mockRejectedValueOnce(new api.ApiError(404, 'HTTP_404'));
+it.each(['unavailable', 'different run', 'different nodes', 'duplicate nodes'])(
+  'keeps diagnostics visible when the dependency graph is %s', async condition => {
+  const read = vi.spyOn(api, 'callApi').mockResolvedValueOnce(diagnostics);
+  if (condition === 'unavailable') read.mockRejectedValueOnce(new api.ApiError(404, 'HTTP_404'));
+  else read.mockResolvedValueOnce({
+    workflowRunId: condition === 'different run' ? 'run-1' : 'run-2',
+    availability: 'AVAILABLE',
+    nodes: [{ nodeId: 'read', dependsOn: [] },
+      { nodeId: condition === 'duplicate nodes' ? 'read' : condition === 'different nodes' ? 'other' : 'analyze', dependsOn: [] }],
+  });
   const view = render(<WorkflowNodeDetails runId="run-2" project="p" status="FAILED" />);
   try {
     fireEvent.click(screen.getByText('节点详情'));
     await waitFor(() => expect(read).toHaveBeenCalledTimes(2));
+    await act(async () => {});
     expect(screen.getByText('read · 节点已完成')).toBeVisible();
     expect(screen.getByText('analyze · 节点失败')).toBeVisible();
     expect(screen.getByText('WORKER_LOST')).toBeVisible();

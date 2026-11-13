@@ -1,29 +1,26 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import type { FormEvent } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import type { FormEvent, MouseEvent } from 'react';
 import { useDrawerController } from './use-drawer-controller';
 import { useWorkspaceController } from './use-workspace-controller';
 import { useMessageActions } from './use-message-actions';
 import { currentSessionId, useProjectSessions } from './use-project-sessions';
 import { useSessionStream } from './use-session-stream';
 import { hasVerificationMarker, isVerificationHistory, turnPhase } from './chat-state';
-import { ActivityPanel } from './ActivityPanel';
+import { TurnTimeline } from './TurnTimeline';
 import { MessageComposer } from './MessageComposer';
-import { IntentOptions, RoutingDebug } from './RoutingDetails';
-import { ConfirmationCard, ResultCard } from './ChatCards';
+import { RoutingDebug } from './RoutingDetails';
+import { ConfirmationCard } from './ChatCards';
 import { resourceItemFromDetail } from './resource-item';
 import { UploadDialog } from './UploadDialog';
-import { AssistantContent, MessageContent } from './MessageContent';
 import { ErrorNotice } from './ErrorNotice';
 import { Icon } from './Icon';
-import { WorkflowDraftCard } from './WorkflowDraftCard';
 import { productIconUrl, productUi } from './product-ui';
-import { TaskUpdateCard } from './TaskCard';
+import { sessionTask, TaskHeader } from './TaskCard';
 import { MessageQueue } from './MessageQueue';
 import { ControlProposalCard } from './ControlProposalCard';
 import type { DebugEntry, KnowledgeReference, ResourceItem, ResourceReference } from './types';
-import { ApiError, callApi, loginResearch, logoutResearch } from './api';
-import { SessionRenameDialog } from './SessionRenameDialog';
-import { decodeResourceDetail } from './api-contract';
+import { ApiError, callApi, loginResearch, logoutResearch, readDataVersion } from './api';
+import { localizedSessionTitle, SessionNavigation } from './SessionNavigation';
 import { identityStorageScope } from './browser-scope';
 import { shortVersion } from './format';
 import './conversation-polish.css';
@@ -33,14 +30,6 @@ const DatabaseWorkbench = lazy(() => import('./DatabaseWorkbench').then(module =
 const KnowledgeDrawer = lazy(() => import('./Drawers').then(module => ({ default: module.KnowledgeDrawer })));
 const CapabilityDrawer = lazy(() => import('./ProductDrawers').then(module => ({ default: module.CapabilityDrawer })));
 const ReadinessDrawer = lazy(() => import('./ProductDrawers').then(module => ({ default: module.ReadinessDrawer })));
-
-function localizedSessionTitle(title: string | null) {
-  return (title || '新的对话')
-    .replace(/Dataset:/gi, '数据集:')
-    .replace(/Version:/gi, '版本:')
-    .replace(/Semantics:/gi, '语义:')
-    .replace(/checksum:/gi, '校验和:');
-}
 
 export default function App() {
   const ui = productUi();
@@ -60,6 +49,37 @@ export default function App() {
   ) ?? false;
   const configuredServices = new Set(capabilities?.services ?? []);
   const [leftCollapsed, setLeftCollapsed] = useState(false);
+  const [mobileSessionsScope, setMobileSessionsScope] = useState<string | null>(null);
+  const mobileSessionsOpen = mobileSessionsScope === storageScope;
+  const mobileSessionsTrigger = useRef<HTMLButtonElement>(null);
+  const mobileSessionsClose = useRef<HTMLButtonElement>(null);
+  const desktopSessionsToggle = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!mobileSessionsOpen) return;
+    mobileSessionsClose.current?.focus();
+    if (typeof window.matchMedia !== 'function') return;
+    const narrow = window.matchMedia('(max-width: 800px)');
+    function closeOnDesktop() {
+      if (narrow.matches) return;
+      setMobileSessionsScope(null);
+      const focused = document.activeElement;
+      if (focused === document.body || focused === mobileSessionsClose.current) {
+        desktopSessionsToggle.current?.focus();
+      }
+    }
+    narrow.addEventListener('change', closeOnDesktop);
+    closeOnDesktop();
+    return () => narrow.removeEventListener('change', closeOnDesktop);
+  }, [mobileSessionsOpen]);
+
+  function closeMobileSessions() {
+    setMobileSessionsScope(null);
+    requestAnimationFrame(() => mobileSessionsTrigger.current?.focus());
+  }
+
+  function openSessionLink(event: MouseEvent<HTMLAnchorElement>) {
+    if (mobileSessionsOpen && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) closeMobileSessions();
+  }
   const {
     drawer, closeDrawer, openDatabase, openKnowledge,
     openCapabilities, openReadiness,
@@ -79,29 +99,29 @@ export default function App() {
     if (previouslyInWorkbench.current) {
       previouslyInWorkbench.current = false;
       const frame = requestAnimationFrame(() => {
-        if (document.activeElement?.id === 'current-confirmation') return;
+        if (document.activeElement?.matches('#current-confirmation, .turn')) return;
         if (composerAfterRoute.current) {
           composerAfterRoute.current = false;
           composer.current?.focus();
           return;
         }
         if (workspaceOpener.current?.isConnected && workspaceOpener.current.getClientRects().length) workspaceOpener.current.focus();
-        else document.querySelector<HTMLElement>('.workspace-panel .panel-toggle')?.focus();
+        else composer.current?.focus();
       });
       return () => cancelAnimationFrame(frame);
     }
   }, [viewingWorkbench]);
   const confirmationFocusAfterSave = useRef(false);
   const turnAfterRoute = useRef<number | null>(null);
-  const stream = useSessionStream(activeId, project, log);
+  const stream = useSessionStream(storageScope ? activeId : '', project, storageScope, log);
   const {
-    preview, stopping, history, workflowDrafts, workflowDraftReads, retryWorkflowDraft, results, loading, loadingOlder,
+    preview, history, workflowDrafts, workflowDraftReads, retryWorkflowDraft, results, resultsRead, snapshotCurrent, loading, loadingOlder,
     connection, connected, trace, refresh, olderMessages, loadTrace,
   } = stream;
   const {
     queue, changeQueue, enqueue, draft, updateDraft, attachments, setAttachments,
     submission, receiptPending, canRetryReceipt, retryReceipt, pending, pendingLabel, continuationVersionId, runtimeBusy, pendingControl, busy, lastTurn,
-    awaitingConfirmation, error, clearError, canSend, stopRun, newChat, send,
+    awaitingConfirmation, stopping, error, clearError, canSend, stopRun, newChat, send,
     decision, controlDecision, reviseConfirmation, recoverWorkflow, newChatWithAttachments,
   } = useMessageActions({
     activeId,
@@ -110,8 +130,6 @@ export default function App() {
     history,
     connected,
     loading,
-    stopping,
-    setStopping: stream.setStopping,
     externalError: stream.error ?? sessionError,
     clearExternalError: () => { stream.clearError(); clearSessionError(); },
     loadSessions,
@@ -124,7 +142,9 @@ export default function App() {
     },
   });
   const latestConfirmation = lastTurn?.confirmations.at(-1);
-  const currentConfirmation = latestConfirmation?.status === 'PENDING' ? latestConfirmation : null;
+  const currentConfirmation = latestConfirmation?.status === 'PENDING'
+    && latestConfirmation.agentRunId === lastTurn?.agentRunId && latestConfirmation.goalRevision === lastTurn?.goalRevision
+    ? latestConfirmation : null;
   useEffect(() => {
     if (confirmationFocusAfterSave.current && currentConfirmation && !workspace.routeTab) {
       confirmationFocusAfterSave.current = false;
@@ -151,12 +171,43 @@ export default function App() {
   const [loginError, setLoginError] = useState('');
   const [loggingIn, setLoggingIn] = useState(false);
   const bottom = useRef<HTMLDivElement>(null);
+  const chatScroll = useRef<HTMLDivElement>(null);
+  const olderAnchor = useRef<{ element: HTMLElement; top: number } | null>(null);
+
+  function readOlderMessages() {
+    const scroller = chatScroll.current;
+    const bounds = scroller?.getBoundingClientRect();
+    const element = scroller && bounds && [...scroller.querySelectorAll<HTMLElement>('.turn')]
+      .find(turn => turn.getBoundingClientRect().bottom > bounds.top);
+    olderAnchor.current = element ? { element, top: element.getBoundingClientRect().top } : null;
+    void olderMessages();
+  }
+
+  useLayoutEffect(() => {
+    const anchor = olderAnchor.current;
+    if (loadingOlder || !anchor) return;
+    olderAnchor.current = null;
+    if (anchor.element.isConnected && chatScroll.current) {
+      chatScroll.current.scrollTop += anchor.element.getBoundingClientRect().top - anchor.top;
+    }
+  }, [loadingOlder, history?.items.length]);
   const atBottom = useRef(true);
   const [newMessages, setNewMessages] = useState(false);
+  const latestVisible = useRef<{ key: string; signature: string } | null>(null);
+  const latestMessage = history?.items.at(-1);
+  const liveTurn = history?.turns.find(turn => turn.goalRevision === history.goalRevision);
+  const liveSignature = JSON.stringify([
+    latestMessage?.messageId, latestMessage?.content, liveTurn?.status, liveTurn?.reply,
+    liveTurn?.confirmations.at(-1)?.confirmationId, liveTurn?.executionTasks.map(run => [run.workflowRunId, run.status, run.outputCount]),
+    liveTurn?.workflowDraftId ? workflowDrafts[liveTurn.workflowDraftId]?.status : null, preview?.text,
+    results.filter(result => result.agentRunId === liveTurn?.agentRunId && result.goalRevision === liveTurn?.goalRevision)
+      .map(result => [result.workflowRunId, result.status, result.remoteOutputs]),
+  ]);
   const fileInput = useRef<HTMLInputElement>(null);
   const composer = useRef<HTMLTextAreaElement>(null);
   const [templateChange, setTemplateChange] = useState<{ scope: string; sessionId: string; before: string; after: string; title: string } | null>(null);
-  const [sessionNotice, setSessionNotice] = useState('');
+  const [sessionFeedback, setSessionFeedback] = useState<{ scope: string; text: string } | null>(null);
+  const sessionNotice = sessionFeedback?.scope === storageScope ? sessionFeedback.text : '';
 
   useEffect(() => { setTemplateChange(null); }, [activeId, storageScope]);
 
@@ -169,16 +220,34 @@ export default function App() {
 
   useEffect(() => {
     atBottom.current = true;
+    latestVisible.current = null;
+    olderAnchor.current = null;
     setNewMessages(false);
-  }, [activeId]);
+  }, [activeId, storageScope]);
   useEffect(() => {
-    if (currentConfirmation || viewingWorkbench) return;
-    if (atBottom.current) bottom.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    if (history?.sessionId !== activeId || viewingWorkbench) return;
+    const key = `${storageScope}/${activeId}`;
+    if (latestVisible.current?.key === key && latestVisible.current.signature === liveSignature) return;
+    const initial = latestVisible.current === null;
+    latestVisible.current = { key, signature: liveSignature };
+    if (currentConfirmation && initial) return;
+    if (atBottom.current) bottom.current?.scrollIntoView({ block: 'end' });
     else setNewMessages(true);
-  }, [history?.items.at(-1)?.messageId, results.length, currentConfirmation?.confirmationId, viewingWorkbench]);
+  }, [activeId, storageScope, history?.sessionId, liveSignature, currentConfirmation, viewingWorkbench]);
+
+  const currentVersionRead = useRef<AbortController | null>(null);
+  const [currentVersionError, setCurrentVersionError] = useState<ApiError | null>(null);
+  const preparation = history?.preparation;
+  useLayoutEffect(() => {
+    setCurrentVersionError(null);
+    return () => currentVersionRead.current?.abort();
+  }, [activeId, storageScope, history?.goalRevision, preparation?.preparationId,
+    preparation?.revision, preparation?.disposition, preparation?.freshForCurrentTurn, snapshotCurrent]);
 
   function attach(resource: ResourceItem) {
     if (currentSessionId() !== activeId) return;
+    currentVersionRead.current?.abort();
+    setCurrentVersionError(null);
     setAttachments(previous => [...previous.filter(item => item.versionId !== resource.versionId), resource]);
     setFile(null);
     closeDrawer();
@@ -214,14 +283,26 @@ export default function App() {
   }
   const openResource = workspace.openResource;
   const openInputResource = useCallback((id: string, reference?: ResourceReference) => openDatabase({ id, reference }), [openDatabase]);
-  async function attachCurrentVersion(id: string) {
+  async function attachCurrentVersion(id: string, datasetId: string) {
+    currentVersionRead.current?.abort();
+    setCurrentVersionError(null);
+    const controller = new AbortController();
+    currentVersionRead.current = controller;
+    const generation = stream.refs.viewGeneration.current;
+    const current = () => !controller.signal.aborted && currentSessionId() === activeId && stream.refs.viewGeneration.current === generation;
     try {
-      const detail = await callApi('data_get_version', `/data/versions/${encodeURIComponent(id)}`, undefined, undefined, decodeResourceDetail);
+      const detail = await readDataVersion(id, controller.signal);
+      if (!current()) return;
+      if (detail.datasetId !== datasetId || detail.currentVersion !== id) {
+        throw new ApiError(409, 'DATA_VERSION_IDENTITY_MISMATCH');
+      }
       const object = detail.objects.find(item => item.role === 'raw') ?? detail.objects[0];
-      if (!object) throw new TypeError('DATA_VERSION_HAS_NO_OBJECT');
+      if (!object) throw new ApiError(409, 'DATA_VERSION_IDENTITY_MISMATCH');
       attach(resourceItemFromDetail(detail, object));
-    } catch {
-      openInputResource(id);
+    } catch (caught) {
+      if (!current()) return;
+      if (!(caught instanceof ApiError)) throw caught;
+      setCurrentVersionError(caught);
     }
   }
   const showKnowledge = useCallback((reference: KnowledgeReference) => openKnowledge(reference), [openKnowledge]);
@@ -229,7 +310,9 @@ export default function App() {
     if (workspace.routeTab || turnAfterRoute.current === null) return;
     const revision = turnAfterRoute.current;
     turnAfterRoute.current = null;
-    document.getElementById(`turn-${revision}`)?.scrollIntoView({ block: 'start' });
+    const turn = document.getElementById(`turn-${revision}`);
+    turn?.focus({ preventScroll: true });
+    turn?.scrollIntoView({ block: 'start' });
   }, [workspace.routeTab]);
 
   function jumpToTurn(revision: number) {
@@ -238,7 +321,9 @@ export default function App() {
       workspace.returnToConversation();
       return;
     }
-    document.getElementById(`turn-${revision}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const turn = document.getElementById(`turn-${revision}`);
+    turn?.focus({ preventScroll: true });
+    turn?.scrollIntoView({ block: 'start' });
   }
   function exampleButton(index: number) {
     const example = ui.examples[index];
@@ -249,23 +334,38 @@ export default function App() {
     updateDraft(prompt); composer.current?.focus();
   }
   const undoTemplate = templateChange?.scope === storageScope && templateChange.sessionId === activeId && templateChange.after === draft ? templateChange : null;
-  async function archiveSession() {
-    if (!activeSummary || updatingSessionId) return;
-    const { sessionId, archived } = activeSummary;
-    setSessionNotice('');
+  async function renameSession(sessionId: string, title: string) {
+    if (await updateSession(sessionId, { title })) {
+      setSessionFeedback({ scope: storageScope, text: '对话名称已保存。' });
+    }
+  }
+
+  async function archiveSession(sessionId: string, archived: boolean) {
+    setSessionFeedback(null);
     try {
-      await updateSession(sessionId, { archived: !archived });
-      setSessionNotice(archived ? '已恢复到最近对话。' : '对话已归档，可在“显示归档”中找回。');
-      if (!archived && currentSessionId() === sessionId) window.location.hash = '#/';
+      if (!await updateSession(sessionId, { archived })) return;
+      setSessionFeedback({ scope: storageScope, text: archived ? '对话已归档，可在“显示归档”中找回。' : '已恢复到最近对话。' });
+      if (archived && currentSessionId() === sessionId) window.location.hash = '#/';
     } catch (caught) {
       if (!(caught instanceof ApiError)) throw caught;
-      // The session owner keeps the error and the existing list for retry.
     }
   }
 
   const activeSummary = sessions.find(item => item.sessionId === activeId);
+  const activeTask = sessionTask(history, activeId);
+  const activeHistory = history?.sessionId === activeId ? history : null;
+  const confirmationWriteDisabled = !canResearch || !snapshotCurrent || connection === 'disconnected';
+  const taskReviewDisabled = confirmationWriteDisabled || !!submission;
+  function requestTaskChanges() {
+    if (!activeTask || !canResearch || currentSessionId() !== activeId) return;
+    if (!draft.trim()) updateDraft('请修改本任务的以下内容：');
+    if (workspace.routeTab) {
+      composerAfterRoute.current = true;
+      workspace.returnToConversation();
+    } else composer.current?.focus();
+  }
   const verificationSession = hasVerificationMarker(activeSummary?.title) || isVerificationHistory(history);
-  const recoveredTitle = localizedSessionTitle(history?.items.find(item => item.role === 'user')?.content.slice(0, 120) ?? '当前对话');
+  const recoveredTitle = localizedSessionTitle(activeHistory?.items.find(item => item.role === 'user')?.content.slice(0, 120) ?? '当前对话');
   const recoveredSessionTitle = `当前会话 · ${verificationSession && !recoveredTitle.startsWith('【验证会话】') ? `【验证会话】${recoveredTitle}` : recoveredTitle}`;
 
   async function submitLogin(event: FormEvent<HTMLFormElement>) {
@@ -290,28 +390,37 @@ export default function App() {
   const receiptFeedback = receiptPending && <div className="submission-recovery confirmation-receipt" role="status">
         <span>操作结果待核对</span>
         <button disabled={pending} onClick={() => void refresh(activeId)}>重新读取状态</button>
-        {canRetryReceipt && <button disabled={pending} onClick={retryReceipt}>重试同一操作</button>}
+        {canRetryReceipt && <button disabled={pending || !canResearch || !snapshotCurrent} onClick={retryReceipt}>重试同一操作</button>}
       </div>;
   const operationFeedback = error && <div className="error-banner"><ErrorNotice error={error} /><button className="icon-button" aria-label="关闭提示" onClick={clearError}><Icon name="close" /></button></div>;
-  return <div className={`app-shell${activeId ? " has-session" : ""}${workspace.routeTab ? " workspace-route" : ""}`} data-testid="chat-app">
+  const submissionFeedback = submission && !pending && <div className="submission-recovery" role="status">
+    <span>这条消息的发送状态待确认，草稿已保留。</span>
+    <button disabled={loading || !project || !canResearch} onClick={() => void send(submission)}>重试发送</button>
+  </div>;
+  return <div className={`app-shell${activeId ? " has-session" : ""}${workspace.routeTab ? " workspace-route" : ""}${mobileSessionsOpen ? " mobile-sessions-open" : ""}`} data-testid="chat-app">
     {currentConfirmation && !workspace.routeTab && <button type="button" className="current-confirmation-skip" onClick={focusCurrentConfirmation}>查看当前确认</button>}
-    <aside id="conversation-sidebar" className={`sidebar ${leftCollapsed ? 'is-collapsed' : ''}`} aria-label="会话侧栏">
-      <div className="sidebar-heading"><a className="brand" href="#/" aria-label={`${ui.brand.productName}首页`}><img src={mark} alt="" /><span>{ui.brand.productName}</span></a><button className="icon-button panel-toggle" aria-label={leftCollapsed ? '展开会话侧栏' : '折叠会话侧栏'} aria-expanded={!leftCollapsed} onClick={() => setLeftCollapsed(value => !value)}><Icon name={leftCollapsed ? 'arrow-right' : 'arrow-left'} /></button></div>
-      <button aria-label="新建对话" className="new-chat" onClick={() => void newChat()} disabled={!project || pending || !!continuationVersionId || !canResearch}><Icon name="plus" /><span className="new-chat-label">新建对话</span><span className="key-hint"><Icon name="arrow-up-right" /></span></button>
-      <div className="sidebar-label">{showArchived ? '已归档对话' : '最近对话'}</div>
-      <div className="session-filters"><label><span className="sr-only">搜索对话</span><input type="search" value={sessionQuery} onChange={event => setSessionQuery(event.target.value)} placeholder="搜索对话" /></label><label className="archive-toggle"><input type="checkbox" checked={showArchived} onChange={event => setShowArchived(event.target.checked)} />显示归档</label></div>
-      <nav className="session-list" data-testid="session-list" aria-label="历史对话" aria-busy={sessionsLoading}>{activeId && history && !activeSummary && <a className="session-link active" aria-current="page" data-testid="recovered-active-session" href={`#/sessions/${activeId}`} aria-label={recoveredSessionTitle} title={recoveredSessionTitle}><span className="chat-symbol"><Icon name="chat" /></span><span className="session-title">{recoveredSessionTitle}</span></a>}{sessions.map(item => { const title = localizedSessionTitle(item.title); return <a className={`session-link ${item.sessionId === activeId ? 'active' : ''} ${item.archived ? 'is-archived' : ''}`} key={item.sessionId} href={`#/sessions/${item.sessionId}`} aria-current={item.sessionId === activeId ? 'page' : undefined} aria-label={title} title={title}><span className="chat-symbol"><Icon name="chat" /></span><span className="session-title">{title}</span>{item.archived && <small className="session-archive-label">已归档</small>}</a>; })}
-        {sessionsLoading && <p className="sidebar-empty session-loading">正在读取对话…</p>}
-        {!sessionsLoading && !sessionError && !sessions.length && !(activeId && history) && <p className="sidebar-empty">{sessionQuery.trim() ? '没有匹配的对话，试试其他关键词。' : showArchived ? '暂无归档对话' : '暂无对话'}</p>}
-        {sessionError && <div className="session-list-error"><p>对话列表或操作未完成，已有记录已保留。</p><button onClick={() => void loadSessions()} disabled={sessionsLoading}>重新读取对话</button></div>}
-        {sessionCursor !== null && <button className="text-button" disabled={sessionsLoading} onClick={() => void loadSessions(sessionCursor)}>更早的对话</button>}
-      </nav>
-      {activeSummary && <div className="session-actions"><SessionRenameDialog key={activeSummary.sessionId} title={activeSummary.title ?? ''} disabled={!!updatingSessionId} onRename={async title => { await updateSession(activeSummary.sessionId, { title }); setSessionNotice('对话名称已保存。'); }} /><button disabled={!!updatingSessionId} onClick={() => void archiveSession()}>{updatingSessionId === activeSummary.sessionId ? '正在保存…' : activeSummary.archived ? '取消归档' : '归档'}</button></div>}
-      {sessionNotice && <p className="session-notice" role="status">{sessionNotice}</p>}
+    <aside id="conversation-sidebar" className={`sidebar session-navigation ${leftCollapsed ? 'is-collapsed' : ''}`}
+      aria-label="会话侧栏" onKeyDown={event => { if (mobileSessionsOpen && event.key === 'Escape' && !event.defaultPrevented) closeMobileSessions(); }}>
+      <div className="sidebar-heading">
+        <a className="brand" href="#/" onClick={openSessionLink} aria-label={`${ui.brand.productName}首页`}><img src={mark} alt="" /><span>{ui.brand.productName}</span></a>
+        <button className="icon-button panel-toggle desktop-session-toggle" ref={desktopSessionsToggle} aria-label={leftCollapsed ? '展开会话侧栏' : '折叠会话侧栏'}
+          aria-expanded={!leftCollapsed} onClick={() => setLeftCollapsed(value => !value)}><Icon name={leftCollapsed ? 'arrow-right' : 'arrow-left'} /></button>
+        <button className="icon-button mobile-session-close" ref={mobileSessionsClose} aria-label="关闭会话导航"
+          onClick={closeMobileSessions}><Icon name="close" /></button>
+      </div>
+      <SessionNavigation key={storageScope} activeId={activeId} recoveredTitle={activeHistory ? recoveredSessionTitle : null}
+        sessions={sessions} query={sessionQuery} showArchived={showArchived} cursor={sessionCursor}
+        loading={sessionsLoading} error={sessionError} notice={sessionNotice} updatingId={updatingSessionId}
+        canCreate={!!project && !pending && !continuationVersionId && canResearch} canWrite={canResearch}
+        onCreate={() => { if (mobileSessionsOpen) closeMobileSessions(); void newChat(); }}
+        onQuery={setSessionQuery} onArchiveFilter={setShowArchived} onRead={cursor => void loadSessions(cursor)}
+        onOpen={openSessionLink} onRename={renameSession} onArchive={(id, archived) => void archiveSession(id, archived)} />
       <div className="sidebar-tools"><button aria-label="能力目录" title="能力目录" onClick={openCapabilities} disabled={!capabilities}><Icon name="layers" /><span className="sidebar-tool-label">能力</span><Icon name="arrow-up-right" /></button>{configuredServices.has('data') && <button aria-label="数据库" title="数据库" onClick={() => openDatabase()} disabled={!project}><Icon name="folder" /><span className="sidebar-tool-label">数据库</span><Icon name="arrow-up-right" /></button>}{configuredServices.has('knowledge-next') && <button aria-label="知识库" title="知识库" onClick={() => openKnowledge()} disabled={!project}><Icon name="book" /><span className="sidebar-tool-label">知识库</span><Icon name="arrow-up-right" /></button>}</div>
     </aside>
     <main className="main-panel" hidden={!!workspace.routeTab}>
-      <header className="topbar"><div><span className="product-title" title={project ? `项目：${project}` : '正在连接项目…'}>{ui.brand.workspaceName}</span><span className="environment-badge">项目环境</span><span className="current-user">{capabilities?.currentUser.displayName ?? '正在验证身份'}</span><button className="text-button" onClick={() => void logoutResearch().finally(() => window.location.reload())}>退出</button></div><button className="connection-state" data-testid="connection-status" onClick={openReadiness}><span className={`status-dot ${project && (!activeId || connected) ? 'online' : ''}`} />{capabilityError ? '服务未连接' : !project ? '正在连接项目' : activeId ? ({ connecting: '正在连接实时更新', connected: '实时更新已连接', disconnected: '正在恢复连接 · 显示最近状态' })[connection] : '项目已连接'}</button></header>
+      <header className="topbar"><div><button type="button" className="icon-button mobile-session-trigger" ref={mobileSessionsTrigger}
+        aria-label="打开会话导航" aria-expanded={mobileSessionsOpen} aria-controls="conversation-sidebar" disabled={!storageScope}
+        onClick={() => setMobileSessionsScope(storageScope)}><Icon name="menu" /></button><span className="product-title" title={project ? `项目：${project}` : '正在连接项目…'}>{ui.brand.workspaceName}</span><span className="environment-badge">项目环境</span><span className="current-user">{capabilities?.currentUser.displayName ?? '正在验证身份'}</span><button className="text-button" onClick={() => void logoutResearch().finally(() => window.location.reload())}>退出</button></div><button className="connection-state" data-testid="connection-status" onClick={openReadiness}><span className={`status-dot ${project && (!activeId || connected) ? 'online' : ''}`} />{capabilityError ? '服务未连接' : !project ? '正在连接项目' : activeId ? ({ connecting: '正在连接实时更新', connected: '实时更新已连接', disconnected: '正在恢复连接 · 显示最近状态' })[connection] : '项目已连接'}</button></header>
       {activeId && <nav className="session-detail-nav" aria-label="会话详情">
         <a href={`#/sessions/${activeId}/workbench/inputs`}>数据</a>
         <a href={`#/sessions/${activeId}/workbench/parameters`}>参数</a>
@@ -320,65 +429,42 @@ export default function App() {
       </nav>}
       <div className="result-notice" role="note">结果须结合输入、参数、lineage 和验收报告解释。</div>
       {!viewingWorkbench && receiptFeedback}
+      {activeTask && <TaskHeader task={activeTask} name={activeSummary?.title} onOpen={() => workspace.focus('tasks')}
+        onSupplement={!taskReviewDisabled && !busy ? () => composer.current?.focus() : undefined}
+        onConfirmation={snapshotCurrent && activeHistory && currentConfirmation ? focusCurrentConfirmation : undefined} />}
       {currentConfirmation && <div className="current-confirmation">
         <ConfirmationCard key={currentConfirmation.confirmationId} confirmation={currentConfirmation} history={history}
-          busy={busy} verificationSession={verificationSession} onDecision={(id, kind, reason) => void decision(id, kind, reason)}
+          busy={busy || !snapshotCurrent || connection === 'disconnected' || !canResearch} verificationSession={verificationSession} onDecision={(id, kind, reason) => void decision(id, kind, reason)}
           onEdit={id => workspace.editConfirmation(id)} onResource={openInputResource} project={project} current capabilities={capabilities} />
       </div>}
-      <div className="chat-scroll" data-testid="message-list" onScroll={event => { const node = event.currentTarget; atBottom.current = node.scrollHeight - node.scrollTop - node.clientHeight < 80; if (atBottom.current) setNewMessages(false); }}>
-        {!history?.items.length && !history?.controlMessages?.length && !history?.task && !loading ? <section className="welcome" aria-labelledby="welcome-title"><h1 id="welcome-title">{ui.brand.welcome}</h1><details className="usage-guide"><summary>使用说明</summary><p>PRIVATE 资料仅 owner 和 admin 可读；PROJECT 资料可供项目成员共享。归档前请复核输入 checksum、参数、随机种子、模型实现和 lineage。</p></details>{capabilityError && <div className="connection-notice" role="alert"><strong>业务服务尚未连接</strong><p>{capabilityError.code === 'PRODUCT_UI_IDENTITY_MISMATCH' ? '产品配置与当前服务不一致，业务操作已停用。' : capabilityError.code === 'API_RESPONSE_INVALID' ? '当前仅提供前端预览，暂不能发送。' : '无法连接业务接口，暂不能发送。'}</p><button onClick={() => void connectProject()}>重试连接</button></div>}<section className="example-group" aria-label="常用任务"><h2>常用任务</h2><div className="example-grid">{ui.examples.map((item, index) => item.featured ? exampleButton(index) : null)}</div><details className="more-examples"><summary>更多场景<Icon name="arrow-down" /></summary><div className="example-grid">{ui.examples.map((item, index) => !item.featured ? exampleButton(index) : null)}</div></details></section></section> : <div className="conversation">
-          {history && <TaskUpdateCard history={history} taskAction={lastTurn?.taskAction} onOpen={() => workspace.focus(history.task?.spec.unresolvedItems.length || lastTurn?.reply?.unresolvedItems.length ? 'inputs' : 'tasks')} />}
+      <div className="chat-scroll" ref={chatScroll} data-testid="message-list" onScroll={event => { const node = event.currentTarget; atBottom.current = node.scrollHeight - node.scrollTop - node.clientHeight < 80; if (atBottom.current) setNewMessages(false); }}>
+        {!history?.items.length && !history?.controlMessages?.length && !activeTask && !loading ? <section className="welcome" aria-labelledby="welcome-title"><h1 id="welcome-title">{ui.brand.welcome}</h1><details className="usage-guide"><summary>使用说明</summary><p>PRIVATE 资料仅 owner 和 admin 可读；PROJECT 资料可供项目成员共享。归档前请复核输入 checksum、参数、随机种子、模型实现和 lineage。</p></details>{capabilityError && <div className="connection-notice" role="alert"><strong>业务服务尚未连接</strong><p>{capabilityError.code === 'PRODUCT_UI_IDENTITY_MISMATCH' ? '产品配置与当前服务不一致，业务操作已停用。' : capabilityError.code === 'API_RESPONSE_INVALID' ? '当前仅提供前端预览，暂不能发送。' : '无法连接业务接口，暂不能发送。'}</p><button onClick={() => void connectProject()}>重试连接</button></div>}<section className="example-group" aria-label="常用任务"><h2>常用任务</h2><div className="example-grid">{ui.examples.map((item, index) => item.featured ? exampleButton(index) : null)}</div><details className="more-examples"><summary>更多场景<Icon name="arrow-down" /></summary><div className="example-grid">{ui.examples.map((item, index) => !item.featured ? exampleButton(index) : null)}</div></details></section></section> : <div className="conversation">
           {history?.controlMessages?.map(message => <ControlProposalCard
             key={message.requestId} message={message}
             proposal={history.controlProposals?.find(item => item.sourceRequestId === message.requestId)}
             disabled={pending} onDecision={(id, action) => void controlDecision(id, action)} onResource={openResource}
           />)}
-          {history?.nextCursor !== null && history?.nextCursor !== undefined && <button className="older-messages" disabled={loadingOlder} onClick={() => void olderMessages()}><Icon name="arrow-up" />更早消息</button>}
-          {history?.turns.map(turn => {
-            const draftId = turn.workflowDraftId;
-            const draftRead = draftId ? workflowDraftReads[draftId] : undefined;
-            return <section className="turn" id={`turn-${turn.goalRevision}`} key={turn.goalRevision} data-goal-revision={turn.goalRevision}>
-            {history.items.filter(message => message.goalRevision === turn.goalRevision && message.role === 'user').map(message => <div className="user-message" key={message.messageId}><div className="user-message-content"><MessageContent content={message.content} onResource={openInputResource} />{(message.inputReferences?.length ?? 0) > 0 && <div className="message-input-references">{message.inputReferences!.map(item => { const label = item.outputName ?? item.datasetId; return <button aria-label={`查看附件 ${label} · ${shortVersion(item.versionId)}`} title={`数据版本 ${item.versionId}`} key={`${item.versionId}/${item.objectId}`} onClick={() => openInputResource(item.versionId, item)}><Icon name="file" />{label} · {shortVersion(item.versionId)}</button>; })}</div>}</div></div>)}
-            <div className="assistant-message"><img className="assistant-avatar" src={mark} alt={ui.brand.assistantName} /><div className="assistant-body">
-              <ActivityPanel turn={turn} snapshotAt={history.snapshotAt} connected={connected} />
-              {preview?.agentRunId === turn.agentRunId && !turn.reply && !turn.errorCode && <div className="reply-preview" role="status"><small>生成中 · 尚未核验</small><p>{preview.text}</p></div>}
-              {turn.reply && <AssistantContent reply={turn.reply} onResource={openResource} onKnowledge={showKnowledge} />}
-              <IntentOptions turn={turn} actionable={turn.goalRevision === history.goalRevision} busy={busy || !!submission} onChoose={choice => void send(undefined, choice)} />
-              {turn.requestMode === 'WORKFLOW_DRAFT' && draftId && <>
-                {workflowDrafts[draftId] && <WorkflowDraftCard draft={workflowDrafts[draftId]} onKnowledge={showKnowledge} onResource={openResource} />}
-                {draftRead?.status === 'loading' && <p className="muted" role="status">正在读取工作流草稿…</p>}
-                {draftRead?.status === 'error' && <section className="workflow-draft-card" aria-label="工作流草稿读取失败">
-                  <ErrorNotice title="草稿暂时无法读取" error={draftRead.error} />
-                  <button onClick={() => retryWorkflowDraft(draftId)}>重试读取草稿</button>
-                </section>}
-              </>}
-              {turn.confirmations.filter(confirmation => confirmation.confirmationId !== currentConfirmation?.confirmationId).map(confirmation => {
-                const card = <ConfirmationCard confirmation={confirmation} history={history} busy={busy} verificationSession={verificationSession}
-                  onDecision={(id, kind, reason) => void decision(id, kind, reason)} onEdit={id => workspace.editConfirmation(id)} onResource={openResource} project={project} />;
-                return confirmation.status === 'SUPERSEDED'
-                  ? <details key={confirmation.confirmationId} className="historical-confirmation"><summary>历史修订 {confirmation.revision ?? 1} · 已被替代</summary>{card}</details>
-                  : <div key={confirmation.confirmationId}>{card}</div>;
-              })}
-              {turn.executionTasks.map(task => <ResultCard
-                key={task.workflowRunId} task={task} result={results.find(result => result.workflowRunId === task.workflowRunId)} project={project}
-                onResource={resource => openResource(resource.versionId, resource)}
-                onAttach={resource => attach(resultItem(resource))} continueDisabled={pending || !canResearch}
-                continuationVersionId={continuationVersionId}
-                onContinue={resource => void newChatWithAttachments([resultItem(resource)], '请基于已附加成果继续分析。')}
-                onCompare={resource => openDatabase({ id: resource.versionId, reference: resource, compare: true })}
-              />)}
-              {turn.errorCode && <ErrorNotice title="本轮未完成" code={turn.errorCode}
-                agentDiagnostics={turn.diagnostics} agentMetrics={turn.agentMetrics} />}
-            </div></div>
-          </section>})}
-          {loading && <p className="muted">正在恢复对话…</p>}<div ref={bottom} />
+          {history?.nextCursor !== null && history?.nextCursor !== undefined && <button className="older-messages" disabled={loadingOlder} onClick={readOlderMessages}><Icon name="arrow-up" />{loadingOlder ? '正在读取更早消息…' : '更早消息'}</button>}
+          {history?.sessionId === activeId && <TurnTimeline key={`${storageScope}/${activeId}`} history={history}
+            scope={`${storageScope}/${activeId}`} project={project} assistant={{ name: ui.brand.assistantName, image: mark }}
+            connected={connected} currentConfirmationId={currentConfirmation?.confirmationId} busy={busy || !!submission || !snapshotCurrent || connection === 'disconnected'}
+            canWrite={canResearch} verificationSession={verificationSession} preview={preview}
+            drafts={workflowDrafts} draftReads={workflowDraftReads} retryDraft={retryWorkflowDraft}
+            results={resultsRead} retryResults={() => void refresh(activeId)}
+            onJump={jumpToTurn} onChoose={choice => void send(undefined, choice)} onResource={openResource}
+            onInputResource={openInputResource} onKnowledge={showKnowledge} onAttach={resource => attach(resultItem(resource))}
+            continueDisabled={pending || !canResearch} continuationVersionId={continuationVersionId}
+            onContinue={resource => void newChatWithAttachments([resultItem(resource)], '请基于已附加成果继续分析。')}
+            onCompare={resource => openDatabase({ id: resource.versionId, reference: resource, compare: true })}
+          />}
+          {loading && <p className="muted" role="status">正在恢复对话…</p>}<div ref={bottom} />
         </div>}
       </div>
       <div className="composer-region">
         {newMessages && <button className="new-messages" onClick={() => { atBottom.current = true; setNewMessages(false); bottom.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }}>查看最新消息<Icon name="arrow-down" /></button>}
         {!viewingWorkbench && operationFeedback}
         {uploadConfigError && <div className="error-banner"><ErrorNotice error={uploadConfigError} title="上传配置不可用" /><button disabled={preparingUpload} onClick={() => { if (uploadCandidate.current) void prepareUpload(uploadCandidate.current); }}>重试读取上传配置</button><button className="icon-button" aria-label="关闭上传提示" onClick={() => setUploadConfigError(null)}><Icon name="close" /></button></div>}
-        {submission && !pending && <div className="submission-recovery" role="status"><span>这条消息的发送状态待确认，草稿已保留。</span><button disabled={loading || !project} onClick={() => void send(submission)}>重试发送</button></div>}
+        {!viewingWorkbench && submissionFeedback}
         <MessageQueue items={queue} onChange={changeQueue} />
         {activeId && (runtimeBusy || awaitingConfirmation) && !loading && <div className="run-controls"><button disabled={stopping || pending} onClick={() => void stopRun()}>{stopping ? '正在请求停止…' : awaitingConfirmation && !runtimeBusy ? '撤回本轮待确认请求' : '停止当前处理'}</button>{(runtimeBusy || draft.trim()) && <button disabled={stopping || pending || !draft.trim()} onClick={() => lastTurn?.status === 'WAITING_EXECUTION' ? enqueue(lastTurn.agentRunId) : void stopRun(true)}>{lastTurn?.status === 'WAITING_EXECUTION' ? '将纠正排为后续消息' : '停止后按输入内容纠正'}</button>}</div>}
         <div className="composer" data-testid="composer">
@@ -396,12 +482,22 @@ export default function App() {
         <div className="composer-caption">{capabilityError && history?.items.length ? <span>业务服务尚未连接，暂不能发送。</span> : busy && <span>{`${loading ? '正在恢复对话' : pendingControl ? '等待控制确认' : lastTurn && runtimeBusy ? turnPhase(lastTurn) : pendingLabel} · 草稿会保留`}</span>}{debugEnabled && <details className="debug-panel" onToggle={event => { if (event.currentTarget.open) void loadTrace(); }}><summary>调试信息</summary><div className="debug-content"><h3>请求、事件与交互延迟</h3><p>不展示提示词、工具正文或模型服务商配置。</p><pre>{debug.map(entry => `${entry.time} ${entry.kind} ${entry.name} ${entry.status ?? entry.eventId ?? ''}${entry.code ? ` code=${entry.code}` : ''}${entry.elapsedMs !== undefined ? ` ${entry.elapsedMs}ms` : ''}${entry.requestId ? ` request=${entry.requestId}` : ''}`).join('\n')}</pre><RoutingDebug turns={history?.turns ?? []} />{trace !== null && <details><summary>当前运行追踪元数据</summary><pre>{JSON.stringify(trace, null, 2)}</pre></details>}</div></details>}</div>
       </div>
     </main>
-    <Suspense fallback={<p className="muted workspace-loading">正在加载工作台…</p>}><WorkspacePanel history={history} results={results} activeId={activeId} storageScope={storageScope} project={project} capabilities={capabilities} dataAvailable={configuredServices.has('data')} collapsed={workspace.collapsed || Boolean(drawer || file)} pendingInputs={attachments} selectedResourceId={workspace.resourceId} selectedResourceReference={workspace.resourceReference} editingConfirmationId={workspace.editingConfirmationId} confirmationFocus={workspace.confirmationFocus} focusRequest={workspace.focusRequest} busy={busy} onToggle={workspace.toggleCollapsed} onJump={jumpToTurn} onCurrentConfirmation={focusCurrentConfirmation} routedTab={workspace.routeTab} onRouteTab={workspace.focus}
-      feedback={<>{receiptFeedback}{operationFeedback}</>}
+    <Suspense fallback={<p className="muted workspace-loading">正在加载工作台…</p>}><WorkspacePanel history={activeHistory} results={activeHistory ? results : []} resultsRead={activeHistory ? resultsRead : { status: 'not-requested' }} activeId={activeId} storageScope={storageScope} project={project} capabilities={capabilities} dataAvailable={configuredServices.has('data')} collapsed={workspace.collapsed || Boolean(drawer || file)} pendingInputs={attachments} selectedResourceId={workspace.resourceId} selectedResourceReference={workspace.resourceReference} editingConfirmationId={workspace.editingConfirmationId} confirmationFocus={workspace.confirmationFocus} focusRequest={workspace.focusRequest} busy={busy} onToggle={workspace.toggleCollapsed} onJump={jumpToTurn} onCurrentConfirmation={focusCurrentConfirmation} routedTab={workspace.routeTab} onRouteTab={workspace.focus}
+      feedback={<>{receiptFeedback}{operationFeedback}{submissionFeedback}</>}
+      dataFeedback={currentVersionError && <ErrorNotice error={currentVersionError} title="无法附加建议的数据版本" />}
+      onRetryResults={() => void refresh(activeId)}
       onAttachResult={resource => attach(resultItem(resource))}
       onContinueResult={resource => void newChatWithAttachments([resultItem(resource)], '请基于已附加成果继续分析。')}
       continueResultDisabled={pending || !canResearch || !!continuationVersionId}
-      onCompareResult={resource => openDatabase({ id: resource.versionId, reference: resource, compare: true })} onResource={openResource} onInputResource={(id, input, reference) => { const pendingConfirmation = input ? history?.turns.flatMap(turn => turn.confirmations).find(item => item.status === 'PENDING') : null; if (pendingConfirmation && input) workspace.editConfirmation(pendingConfirmation.confirmationId, { field: input, value: id }); else if (input) void attachCurrentVersion(id); else openInputResource(id, reference); }} onOpenDatabase={formats => openDatabase({ formats })} onRemovePending={id => setAttachments(previous => previous.filter(item => item.versionId !== id))} onEdit={id => workspace.editConfirmation(id)} onResolveParameter={name => { const pendingConfirmation = history?.turns.flatMap(turn => turn.confirmations).find(item => item.status === 'PENDING'); if (pendingConfirmation) workspace.editConfirmation(pendingConfirmation.confirmationId, { field: name }); else { updateDraft(`${draft}${draft.trim() ? '\n' : ''}补充参数 ${name}：`); if (workspace.routeTab) { composerAfterRoute.current = true; workspace.returnToConversation(); } else requestAnimationFrame(() => composer.current?.focus()); } }} onEditClose={workspace.closeConfirmation} onRevision={(confirmation, actions) => void reviseConfirmation(confirmation, actions)} onRecover={id => void recoverWorkflow(id)} onReview={text => void send(undefined, text)} /></Suspense>
+      onRequestTaskChanges={canResearch ? requestTaskChanges : undefined}
+      onReview={text => {
+        if (activeTask && !taskReviewDisabled && currentSessionId() === activeId) void send(undefined, text);
+      }}
+      taskReviewDisabled={taskReviewDisabled}
+      confirmationWriteDisabled={confirmationWriteDisabled}
+      onCompareResult={resource => openDatabase({ id: resource.versionId, reference: resource, compare: true })} onResource={openResource} onInputResource={openInputResource}
+      onUseCurrentVersion={canResearch ? (id, datasetId) => void attachCurrentVersion(id, datasetId) : undefined}
+      onOpenDatabase={formats => openDatabase({ formats })} onRemovePending={id => setAttachments(previous => previous.filter(item => item.versionId !== id))} onEdit={id => workspace.editConfirmation(id)} onResolveParameter={name => { if (currentConfirmation) workspace.editConfirmation(currentConfirmation.confirmationId, { field: name }); else { updateDraft(`${draft}${draft.trim() ? '\n' : ''}补充参数 ${name}：`); if (workspace.routeTab) { composerAfterRoute.current = true; workspace.returnToConversation(); } else requestAnimationFrame(() => composer.current?.focus()); } }} onEditClose={workspace.closeConfirmation} onRevision={(confirmation, actions) => void reviseConfirmation(confirmation, actions)} onRecover={id => void recoverWorkflow(id)} /></Suspense>
     {drawer && <button className="drawer-shade" aria-label="关闭浮层" onClick={closeDrawer} />}
     {drawer?.kind === 'database' && <Suspense fallback={<p className="muted drawer-loading">正在加载数据库…</p>}><DatabaseWorkbench key={`database:${drawer.id ?? ''}:${drawer.reference?.semanticId ?? ''}:${drawer.reference?.objectId ?? ''}:${drawer.compare ? 'compare' : ''}:${drawer.formats?.join(',') ?? ''}`} project={project} initialId={drawer.id} reference={drawer.reference} compare={drawer.compare} allowedFormats={drawer.formats} onClose={closeDrawer} onAttach={attach} /></Suspense>}
     {drawer?.kind === 'knowledge' && <Suspense fallback={<p className="muted drawer-loading">正在加载知识库…</p>}><KnowledgeDrawer key={`knowledge:${drawer.reference?.versionId ?? ''}:${drawer.reference?.unitId ?? ''}`} project={project} reference={drawer.reference} onClose={closeDrawer} /></Suspense>}

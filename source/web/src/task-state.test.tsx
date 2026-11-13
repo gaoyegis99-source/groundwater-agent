@@ -38,3 +38,7 @@ it('keeps model interpretation separate from the authoritative review text', () 
   fireEvent.click(screen.getByRole('button', { name: '确认此项满足' }));
   expect(review).toHaveBeenCalledWith('确认完成：交付报告');
 });
+it('explains that unsent messages resume after reopening the session', () => {
+  render(<MessageQueue items={[{ id: 'one', text: '分析', attachments: [], createdAt: 'now' }]} onChange={vi.fn()} />);
+  expect(screen.getByText('关闭页面后暂停，重新打开本会话后可继续发送。')).toBeVisible();
+});

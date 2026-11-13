@@ -3,7 +3,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { createServer, request as forwardRequest } from 'node:http';
 import { once } from 'node:events';
 import { expect, test, type Locator } from '@playwright/test';
-import { capabilitiesForProfile, dataDetail, dataRef, historyFixture, sessionResultsFixture, taskFixture } from '../src/test-fixtures';
+import { capabilitiesForProfile, dataDetail, dataRef, historyFixture, sessionResponseFixture, sessionResultsFixture, taskFixture } from '../src/test-fixtures';
 
 const fixture = (name: string) => readFile(new URL(`../../packages/operator-pack/catalog/fixtures/data/${name}`, import.meta.url));
 const sha256 = (bytes: Buffer) => `sha256:${createHash('sha256').update(bytes).digest('hex')}`;
@@ -17,7 +17,7 @@ test('published result actions preserve identity across the Groundwater output f
     { type: 'Feature', properties: { reading: 42 }, geometry: { type: 'Point', coordinates: [116.4, 39.9] } },
   ] }));
   const table = (panel: Locator) => panel.getByRole('cell', { name: '42', exact: true });
-  const metadata = (panel: Locator) => panel.getByRole('link', { name: '下载原文件' });
+  const metadata = (panel: Locator) => panel.getByText('校验和', { exact: true });
   const rasterControl = (panel: Locator) => panel.getByLabel('栅格探针');
   const cases: [string, string, Buffer, (panel: Locator) => Locator][] = [
     ['csv', 'text/csv', Buffer.from('reading\n42\n'), table],
@@ -52,6 +52,7 @@ test('published result actions preserve identity across the Groundwater output f
   });
   const task = taskFixture({ status: 'SUCCEEDED', stage: null, outputCount: artifacts.length });
   let sentMessages = 0;
+  const newSessions: unknown[] = [];
   const now = '2026-10-09T01:00:00Z';
   await page.route('**/product-ui.json', route => route.fulfill({ json: product }));
   await page.route('**/api/v12/**', async route => {
@@ -60,15 +61,21 @@ test('published result actions preserve identity across the Groundwater output f
     const tail = path.split('/').at(-1);
     const json = (value: unknown) => route.fulfill({ json: value });
     if (tail === 'capabilities') return json(capabilitiesForProfile({ productId: 'groundwater', models: product.models }));
+    if (tail === 'sessions' && request.method() === 'POST') {
+      newSessions.push(request.postDataJSON());
+      return route.fulfill({ status: 201, json: sessionResponseFixture({ sessionId: 'continued-study', goalRevision: 0 }) });
+    }
     if (tail === 'sessions') return json({ items: [], nextCursor: null });
     if (tail === 'events' || tail === 'preview') return route.fulfill({ contentType: 'text/event-stream', body: ': ready\n\n' });
     if (tail === 'messages') {
       if (request.method() === 'POST') sentMessages += 1;
+      if (path.includes('/continued-study/')) return json(historyFixture({ sessionId: 'continued-study', goalRevision: 0, turns: [] }));
       return json(historyFixture({
         items: [{ messageId: 1, goalRevision: 1, role: 'user', content: '查看发布成果' }],
         turns: [{ executionTasks: [task] }],
       }));
     }
+    if (tail === 'results' && path.includes('/continued-study/')) return json(sessionResultsFixture([], { sessionId: 'continued-study' }));
     if (tail === 'results') return json(sessionResultsFixture([{
       goalRevision: 1, agentRunId: task.agentRunId, toolCallId: task.toolCallId, modelId: task.modelId,
       status: 'COMPLETE', workflowRunId: task.workflowRunId, remoteOutputs: artifacts.map(item => item.reference),
@@ -139,8 +146,10 @@ test('published result actions preserve identity across the Groundwater output f
       await output.locator('.output-heading').getByRole('button').click();
       await expect(panel.getByText(reference.objectId, { exact: true })).toBeVisible();
       await expect(preview(panel)).toBeVisible();
+      await expect(panel.getByText('科学验证状态未提供', { exact: true })).toBeVisible();
       const download = page.waitForEvent('download');
       const downloadLink = panel.locator('.result-route-actions').getByRole('link', { name: '下载' });
+      await expect(panel.locator('a[download]')).toHaveCount(1);
       const filename = `${reference.outputName}.${extensions[format] ?? format}`;
       await expect(downloadLink).toHaveAttribute('download', filename);
       await downloadLink.click();
@@ -165,6 +174,25 @@ test('published result actions preserve identity across the Groundwater output f
       await pending.getByRole('button', { name: `移除附件 ${reference.outputName}` }).click();
       evidence.push({ format, filename, versionId: reference.versionId, objectId: reference.objectId, checksum: reference.checksum, comparisonVersionId: second.versionId });
     }
+    const first = artifacts[0].reference;
+    await resultCard.locator(`[data-resource-id="${first.versionId}"] .output-heading`).getByRole('button').click();
+    await expect(panel.getByText('科学验证状态未提供', { exact: true })).toBeVisible();
+    for (const [width, height] of [[1440, 900], [1024, 768], [768, 1024], [390, 844]]) {
+      await page.setViewportSize({ width, height });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      await expect(panel.getByRole('button', { name: '返回对话' })).toBeInViewport();
+      await expect(panel.getByText('科学验证状态未提供', { exact: true })).toBeVisible();
+      await page.screenshot({ path: info.outputPath(`result-review-${width}x${height}.png`) });
+    }
+    await panel.getByRole('button', { name: '带成果打开新会话' }).click();
+    await expect(page).toHaveURL(/sessions\/continued-study$/);
+    const attached = page.getByTestId('pending-attachments');
+    await attached.getByText('附件版本详情').click();
+    await expect(attached.getByText(first.objectId, { exact: true })).toBeVisible();
+    await expect(attached.getByText(first.checksum, { exact: true })).toBeVisible();
+    await expect(page.getByTestId('confirmation-card')).toHaveCount(0);
+    await expect(page.getByTestId('result-card')).toHaveCount(0);
+    expect(newSessions).toEqual([{ projectId: 'demo' }]);
     expect(sentMessages).toBe(0);
     await writeFile(info.outputPath('result-format-matrix.json'), JSON.stringify({ fixtureMode: 'browser route fixtures', sentMessages, evidence }, null, 2) + '\n');
   } finally {

@@ -1,0 +1,88 @@
+/* Session directory palette and sizing follow the research workspace design. */
+.sidebar.session-navigation {
+  --session-blue: #2563eb;
+  --session-deep: #163b73;
+  --session-ink: #172b4d;
+  --session-muted: #64748b;
+  --session-line: #dce5f0;
+  --session-surface: #f5f8fc;
+  --session-hover: #f0f5fb;
+  width: 240px;
+  min-height: 0;
+  padding: 16px 12px 8px;
+  border: 1px solid var(--session-line);
+  border-radius: 12px;
+  background: var(--session-surface);
+  font-family: system-ui, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+}
+
+.session-navigation .sidebar-heading { padding-bottom: 20px; }
+.session-navigation .brand { color: var(--session-deep); }
+.session-navigation .brand span { overflow: hidden; text-overflow: ellipsis; }
+.session-navigation .brand img { box-shadow: none; }
+.session-navigation .new-chat {
+  background: var(--session-blue);
+  border-color: var(--session-blue);
+  color: white;
+  font-size: 14px;
+}
+.session-navigation .new-chat:hover:not(:disabled) { background: #1d4ed8; border-color: #1d4ed8; }
+.session-navigation .new-chat:disabled { color: var(--session-muted); background: var(--session-hover); border-color: var(--session-line); }
+.sidebar.session-navigation .sidebar-label { margin: 20px 4px 8px; color: var(--session-ink); font-size: 16px; letter-spacing: 0; }
+.session-navigation .session-filters { padding: 0 2px 12px; }
+.session-navigation .session-filters input[type="search"] {
+  min-height: 36px;
+  margin-top: 0;
+  border: 1px solid var(--session-line);
+  border-radius: 8px;
+  font-size: 14px;
+}
+.session-navigation .archive-toggle { min-height: 24px; color: var(--session-muted); }
+.session-navigation .archive-toggle input { accent-color: var(--session-blue); }
+.session-navigation .session-list { padding: 3px; }
+.session-navigation .session-link { color: var(--session-ink); font-size: 14px; min-height: 44px; }
+.sidebar.session-navigation .session-link:hover { background: var(--session-hover); }
+.sidebar.session-navigation .session-link.active {
+  color: var(--session-deep);
+  border-color: #c7dafc;
+  background: #e8f0ff;
+  box-shadow: inset 3px 0 var(--session-blue);
+}
+.session-navigation .session-link.active .chat-symbol { color: var(--session-blue); }
+.session-navigation .session-link .session-archive-label {
+  padding: 1px 6px;
+  border-radius: 8px;
+  color: #475569;
+  background: #e7edf5;
+}
+.session-navigation .session-more { min-height: 36px; margin: 4px 0; color: var(--session-deep); }
+.session-navigation .sidebar-tools { border-color: var(--session-line); }
+.session-navigation .session-actions button { border-color: var(--session-line); font-size: 13px; }
+.session-navigation .session-notice { color: var(--session-deep); background: var(--session-hover); }
+.session-navigation :is(a, button, input):focus-visible { outline-color: var(--session-blue); }
+.sidebar.session-navigation.is-collapsed { width: 58px; padding-inline: 6px; }
+.session-navigation .mobile-session-close, .topbar .mobile-session-trigger { display: none; }
+
+@media (min-width: 801px) and (max-width: 1279px) {
+  .sidebar.session-navigation:not(.is-collapsed) { width: 208px; }
+}
+
+@media (max-width: 800px) {
+  .sidebar.session-navigation { display: none; }
+  .topbar .mobile-session-trigger { display: inline-flex; flex-shrink: 0; }
+  .mobile-sessions-open > :is(.main-panel, .workspace-panel, .current-confirmation-skip) { display: none; }
+  .mobile-sessions-open:not(.workspace-route) > .sidebar.session-navigation {
+    display: flex;
+    width: 100%;
+    padding: 12px;
+  }
+  .mobile-sessions-open .sidebar.session-navigation .sidebar-heading { justify-content: space-between; }
+  .mobile-sessions-open .session-navigation :is(.brand, .archive-toggle, .session-actions) { display: flex; }
+  .mobile-sessions-open .session-navigation .session-actions > button { flex: 1; }
+  .mobile-sessions-open .session-navigation :is(.sidebar-label, .session-filters, .session-title, .sidebar-empty,
+    .session-list > button, .session-notice, .session-list-error, .sidebar-tool-label, .new-chat-label, .session-archive-label) { display: block; }
+  .mobile-sessions-open .session-navigation :is(.new-chat, .session-link, .sidebar-tools button) { justify-content: flex-start; }
+  .mobile-sessions-open .session-navigation .desktop-session-toggle { display: none; }
+  .mobile-sessions-open .session-navigation .mobile-session-close { display: inline-flex; }
+  .session-navigation .session-actions button, .session-navigation .session-more { min-height: 40px; }
+}

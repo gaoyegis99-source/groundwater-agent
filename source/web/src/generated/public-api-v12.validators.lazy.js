@@ -145,6 +145,7 @@ const responseLoaders = {
   "kernel_get_workflow_run": () => import('./public-api-v12.validators/response_kernel_get_workflow_run.js').then(module => module.response_kernel_get_workflow_run),
   "kernel_get_workflow_run_graph": () => import('./public-api-v12.validators/response_kernel_get_workflow_run_graph.js').then(module => module.response_kernel_get_workflow_run_graph),
   "kernel_get_workflow_run_nodes": () => import('./public-api-v12.validators/response_kernel_get_workflow_run_nodes.js').then(module => module.response_kernel_get_workflow_run_nodes),
+  "kernel_get_workflow_run_publication": () => import('./public-api-v12.validators/response_kernel_get_workflow_run_publication.js').then(module => module.response_kernel_get_workflow_run_publication),
 };
 export function loadRequestValidator(operationId) { return requestLoaders[operationId]?.(); }
 export function loadResponseValidator(operationId) { return responseLoaders[operationId]?.(); }

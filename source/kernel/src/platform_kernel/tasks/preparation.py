@@ -11,6 +11,40 @@ from ..errors import ResourceNotFoundError
 from .models import TaskPreparationEntryV1, TaskPreparationV1
 
 
+def _candidate_identity(entry: dict[str, object]) -> tuple[str, str, str | None, str]:
+    arguments = {
+        **entry["parameters"],
+        **{name: reference["version_id"] for name, reference in entry["inputs"].items()},
+    }
+    return (
+        entry["target_kind"],
+        entry["target_id"],
+        entry["target_version"],
+        json.dumps(arguments, sort_keys=True, separators=(",", ":")),
+    )
+
+
+def _candidate_entries(connection, agent_run_id: str) -> list[dict[str, object]]:
+    candidates = {}
+    revisions = connection.execute(
+        """SELECT tool_call_id,snapshot_json FROM task_preparation_revisions
+           WHERE agent_run_id=? ORDER BY revision""",
+        (agent_run_id,),
+    )
+    for revision in revisions:
+        call_id = revision["tool_call_id"]
+        if call_id.startswith("task-bind:"):
+            continue
+        for entry in json.loads(revision["snapshot_json"])["entries"]:
+            identity = _candidate_identity(entry)
+            # An action adds a fallback entry only when no explicit check exists.
+            if call_id.startswith("proposal-boundary:"):
+                candidates.setdefault(identity, entry)
+            else:
+                candidates[identity] = entry
+    return list(candidates.values())
+
+
 def save_preparation(
     database: Path,
     *,
@@ -18,7 +52,7 @@ def save_preparation(
     tool_call_id: str,
     snapshot: dict[str, object],
 ) -> dict[str, object]:
-    """Replace the run head with one explicit preparation entry."""
+    """Persist one explicit check and return that call's result."""
     with connect_database(database) as connection:
         connection.execute("BEGIN IMMEDIATE")
         preparation = save_preparation_connection(
@@ -91,9 +125,7 @@ def save_preparation_connection(
         "fresh_for_current_turn": True,
         "disposition": "ACTIVE",
     }).model_dump()
-    encoded = json.dumps(
-        value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-    )
+    encoded = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     if current is None:
         connection.execute(
             """INSERT INTO task_preparations VALUES (
@@ -104,18 +136,22 @@ def save_preparation_connection(
                 value["status"], encoded, now, now,
             ),
         )
-    else:
-        connection.execute(
-            """UPDATE task_preparations SET revision=?,status=?,snapshot_json=?,updated_at=?
-               WHERE preparation_id=?""",
-            (
-                revision, value["status"], encoded, now, preparation_id,
-            ),
-        )
     connection.execute(
         "INSERT INTO task_preparation_revisions VALUES (?,?,?,?,?,?)",
         (preparation_id, revision, agent_run_id, tool_call_id, encoded, now),
     )
+    head = value if current is None else _with_candidate_entries(connection, value)
+    if current is not None:
+        connection.execute(
+            """UPDATE task_preparations
+               SET task_id=?,base_task_revision=?,revision=?,status=?,snapshot_json=?,updated_at=?
+               WHERE preparation_id=?""",
+            (
+                head["task_id"], head["base_task_revision"], revision, head["status"],
+                json.dumps(head, ensure_ascii=False, sort_keys=True, separators=(",", ":")),
+                now, preparation_id,
+            ),
+        )
     append_event(
         connection,
         run["session_id"],
@@ -123,11 +159,20 @@ def save_preparation_connection(
         {
             "preparation_id": preparation_id,
             "preparation_revision": revision,
-            "status": value["status"],
-            "entry_count": len(entries),
+            "status": head["status"],
+            "entry_count": len(head["entries"]),
         },
     )
     return value
+
+
+def _with_candidate_entries(connection, value: dict[str, object]) -> dict[str, object]:
+    entries = _candidate_entries(connection, value["agent_run_id"])
+    return {
+        **value,
+        "entries": entries,
+        "status": "BLOCKED" if any(entry["status"] == "BLOCKED" for entry in entries) else "READY",
+    }
 
 
 def preparation_in_connection(
@@ -137,12 +182,15 @@ def preparation_in_connection(
         """SELECT p.snapshot_json,p.agent_run_id,a.status AS agent_status
            FROM task_preparations AS p
            JOIN agent_runs AS a ON a.agent_run_id=p.agent_run_id
-           WHERE p.session_id=? ORDER BY p.updated_at DESC,p.rowid DESC LIMIT 1""",
-        (session_id,),
+           WHERE p.session_id=? AND (? IS NULL OR a.goal_revision<=?)
+           ORDER BY a.goal_revision DESC,a.rowid DESC LIMIT 1""",
+        (session_id, current_goal_revision, current_goal_revision),
     ).fetchone()
     if row is None:
         return None
-    value = json.loads(row["snapshot_json"])
+    # Older heads contain only the latest call. Their revision rows still
+    # hold the earlier checks and use the same format as new revision rows.
+    value = _with_candidate_entries(connection, json.loads(row["snapshot_json"]))
     value["fresh_for_current_turn"] = (
         current_goal_revision is None
         or value["goal_revision"] == current_goal_revision

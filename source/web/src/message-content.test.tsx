@@ -177,3 +177,22 @@ it('distinguishes unavailable provider usage from a measured zero', () => {
   expect(screen.queryByText(/本地上下文估算/)).not.toBeInTheDocument();
   expect(screen.queryByText(/词元：0/)).not.toBeInTheDocument();
 });
+
+it('renders inline and display LaTeX as MathML with trusted commands disabled', () => {
+  const markdown = '水头为 $h=z+\\psi$。\n\n$$\nq=-K\\frac{dh}{dx}\n$$\n\n$\\href{javascript:alert(1)}{unsafe}$';
+  const { container } = render(<AssistantContent reply={reply({ conclusion: { markdown, sourceIndexes: [] }, sources: [] })}
+    onKnowledge={vi.fn()} onResource={vi.fn()} />);
+  expect(container.querySelectorAll('math').length).toBeGreaterThanOrEqual(2);
+  expect(container.querySelector('mfrac')).not.toBeNull();
+  expect(container.querySelector('a[href^="javascript:"]')).toBeNull();
+});
+
+it('loads only an image with a verified exact result reference', async () => {
+  const { dataRef } = await import('./test-fixtures');
+  const image = dataRef({ mediaType: 'image/png', format: 'png' });
+  const markdown = '![水位图](/api/v12/data/versions/version-1/objects/object-1/content) ![另一对象](/api/v12/data/versions/version-1/objects/other/content)';
+  render(<AssistantContent reply={reply({ conclusion: { markdown, sourceIndexes: [] } })}
+    images={[image]} onKnowledge={vi.fn()} onResource={vi.fn()} />);
+  expect(screen.getByRole('img', { name: '水位图' })).toHaveAttribute('src', '/api/v12/data/versions/version-1/objects/object-1/content');
+  expect(screen.queryByRole('img', { name: '另一对象' })).not.toBeInTheDocument();
+});

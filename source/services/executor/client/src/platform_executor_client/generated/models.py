@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from enum import Enum
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -51,6 +52,27 @@ class JobGraphResponse(BaseModel):
     )
     workflow_id: str = Field(..., alias='workflowId', title='Workflowid')
     workflow_version: str = Field(..., alias='workflowVersion', title='Workflowversion')
+
+
+class State(Enum):
+    open = 'OPEN'
+    preparing = 'PREPARING'
+    ready = 'READY'
+    published = 'PUBLISHED'
+    failed = 'FAILED'
+    aborted = 'ABORTED'
+
+
+class JobPublicationResponse(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    job_id: str = Field(..., alias='jobId', title='Jobid')
+    publication_id: str | None = Field(
+        None, alias='publicationId', title='Publicationid'
+    )
+    request_id: str = Field(..., alias='requestId', title='Requestid')
+    state: State | None = Field(None, title='State')
 
 
 class JobRequestBodyV6(BaseModel):

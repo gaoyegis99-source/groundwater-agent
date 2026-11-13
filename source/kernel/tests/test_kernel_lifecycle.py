@@ -1058,6 +1058,80 @@ def test_unknown_replay_action_fails_with_stable_error(
     assert run.error == "AGENT_RUN_STATE_INVALID"
 
 
+@pytest.mark.parametrize("spatial_first", [False, True])
+def test_blocked_spatial_candidate_does_not_enter_ready_confirmation(
+    tmp_path, kernel_settings, spatial_first,
+):
+    def with_spatial_model(settings):
+        summary, = settings.models
+        schema = summary.input_schema
+        spatial = replace(
+            summary,
+            tool_name="run_spatial",
+            model_id="groundwater.spatial-test",
+            input_schema={
+                **schema,
+                "properties": {**schema["properties"], "xField": {"type": "string"}},
+                "required": [*schema["required"], "xField"],
+            },
+        )
+        return replace(settings, models=(summary, spatial))
+
+    spatial = ModelStep(output=[function_call(
+        "prepare_task_inputs",
+        {"target_tool": "run_spatial", "arguments": {"resource_id": "a"}},
+        call_id="prepare-spatial",
+    )])
+    checks = [_prepare("a"), spatial]
+    if spatial_first:
+        checks.reverse()
+    model = ScriptedModel([
+        *checks,
+        ModelStep(output=[_plan(["run_summary"])]),
+        ModelStep(output=[function_call("run_summary", {"resource_id": "a"}, call_id="summary")]),
+        ModelStep(output=[_final("完成汇总，空间分析仍缺坐标。")]),
+    ])
+    submissions = []
+
+    def executor(request):
+        if request.method == "POST":
+            submissions.append(json.loads(request.content))
+        return httpx.Response(
+            202 if request.method == "POST" else 200,
+            json=_job(submissions[0]["requestId"], "QUEUED" if request.method == "POST" else "SUCCEEDED"),
+        )
+
+    application, app = _application(
+        tmp_path, kernel_settings, model, executor, settings_transform=with_spatial_model,
+    )
+    client = TestClient(app)
+    session_id = client.post("/api/v12/sessions", json={"projectId": "p"}).json()["sessionId"]
+    path = f"/api/v12/sessions/{session_id}"
+    _, response = _turn(client, application, session_id, "run")
+    payload = response.json()
+    assert payload["agentSteps"][-1] == "WAITING_CONFIRMATION"
+    assert payload["workflowRunIds"] == []
+    assert submissions == []
+    confirmation = payload["confirmation"]
+    assert [action["tool"] for action in confirmation["actions"]] == ["run_summary"]
+    prepared = client.get(path + "/preparation").json()
+    assert prepared == client.get(path + "/messages").json()["preparation"]
+    entries = {entry["targetId"]: entry for entry in prepared["entries"]}
+    assert {target: entry["status"] for target, entry in entries.items()} == {
+        "groundwater.summary": "READY", "groundwater.spatial-test": "BLOCKED",
+    }
+    assert entries["groundwater.spatial-test"]["blockingIssues"][0]["parameter"] == "xField"
+
+    approved = client.post(path + "/confirm", json={"confirmationId": confirmation["confirmationId"]})
+    assert approved.status_code == 202
+    run_id, = approved.json()["workflowRunIds"]
+    assert _tick(application) == (payload["agentRunId"],)
+    assert [body["modelId"] for body in submissions] == ["groundwater.summary"]
+    run = client.get(f"/api/v12/workflow-runs/{run_id}", params={"projectId": "p"}).json()
+    assert run["status"] == "SUCCEEDED"
+    assert client.get(path + "/preparation").json()["entries"] == prepared["entries"]
+
+
 def test_first_failed_action_prevents_second_remote_submission(
     tmp_path, kernel_settings
 ) -> None:

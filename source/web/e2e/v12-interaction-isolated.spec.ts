@@ -214,13 +214,14 @@ for (const scenario of [
       await editor.locator('summary').filter({ hasText: /^统计字段$/ }).click();
       await editor.locator('[data-parameter-field="unit"] input').fill(unit);
       const { receipt, request } = await observeInteractionPost(page, `${path}/confirmations/${confirmationId}/revisions`,
-        () => editor.getByRole('button', { name: '保存为新修订' }).click(), true);
+        () => editor.getByRole('button', { name: '保存为新修订' }).click(), '502');
       expect(receipt.status()).toBe(201);
       const revisionRequest = request.postDataJSON();
       const revised = (await receipt.json() as InteractionSession).confirmation!;
       expect(revised).toMatchObject({ revision: 2, status: 'PENDING', requestId: revisionRequest.requestId,
         replacesConfirmationId: confirmationId, actions: [{ arguments: { ...proposal.arguments, unit } }] });
       await expect(page.getByRole('button', { name: '确认执行修订 2', exact: true })).toBeEnabled();
+      await expect(page.getByText('操作结果待核对', { exact: true })).toHaveCount(0);
       await expect(page.getByRole('button', { name: '确认执行修订 1', exact: true })).toHaveCount(0);
       const checked = JSON.parse(await clients.cli('--session', sessionId, 'status')) as InteractionSession;
       expect(checked.confirmation).toEqual(revised);
@@ -288,6 +289,40 @@ for (const scenario of [
     await expect(cards).toHaveAttribute('data-status', 'SUCCEEDED');
     await expect(page.getByTestId('confirm-execution')).toHaveCount(0);
     await page.screenshot({ path: info.outputPath('shared-result.png') });
+    if (scenario.revise) {
+      const output = result.outputs.find(item => item.outputName === 'summary')!;
+      await cards.locator(`[data-resource-id="${output.versionId}"] .output-heading`).getByRole('button').click();
+      const panel = page.getByTestId('workspace-panel');
+      await expect(panel.getByText('科学验证状态未提供', { exact: true })).toBeVisible();
+      await expect(panel.getByRole('link', { name: '下载', exact: true })).toHaveAttribute('href',
+        `/api/v12/data/versions/${output.versionId}/objects/${output.objectId}/content`);
+      await panel.getByText('查看运行身份', { exact: true }).click();
+      await expect(panel.getByText(result.workflowRunId, { exact: true })).toBeVisible();
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await page.screenshot({ path: info.outputPath('result-review-desktop.png') });
+      await page.setViewportSize({ width: 390, height: 844 });
+      await expect(panel.getByRole('button', { name: '带成果打开新会话' })).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      await page.screenshot({ path: info.outputPath('result-review-mobile.png') });
+      const created = page.waitForResponse(response => new URL(response.url()).pathname === '/api/v12/sessions'
+        && response.request().method() === 'POST');
+      await panel.getByRole('button', { name: '带成果打开新会话' }).click();
+      const receipt = await created;
+      expect(receipt.status()).toBe(200);
+      expect(receipt.request().postDataJSON()).toEqual({ projectId });
+      const { sessionId: nextId } = await receipt.json() as InteractionSession;
+      await expect(page).toHaveURL(new RegExp(`#/sessions/${nextId}$`));
+      const attached = page.getByTestId('pending-attachments');
+      await attached.getByText('附件版本详情').click();
+      for (const value of [output.versionId, output.semanticId, output.objectId, output.checksum]) {
+        await expect(attached.getByText(value, { exact: true })).toBeVisible();
+      }
+      const next = await clients.get<InteractionSession>(`/api/v12/sessions/${nextId}`);
+      expect(next).toMatchObject({ goalRevision: 0, task: null, agentRunId: null,
+        confirmation: null, workflowRunIds: [], remoteOutputs: [] });
+      expect(await clients.get<{ items: unknown[] }>(`/api/v12/sessions/${nextId}/messages`)).toMatchObject({ items: [] });
+      await page.screenshot({ path: info.outputPath('continued-result-mobile.png') });
+    }
     writeFileSync(info.outputPath('interaction-verification.json'), JSON.stringify({
       status: 'PASS', ...result, projectId, versionId, browserDownloads: 2, tliDownloads: 2, sdkDownloads: 2,
     }, null, 2));

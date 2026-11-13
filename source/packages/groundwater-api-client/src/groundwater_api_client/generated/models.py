@@ -1880,6 +1880,26 @@ class KernelWorkflowNodeDiagnosticsResponse(BaseModel):
     workflow_run_id: str = Field(..., alias='workflowRunId', title='Workflowrunid')
 
 
+class State4(Enum):
+    open = 'OPEN'
+    preparing = 'PREPARING'
+    ready = 'READY'
+    published = 'PUBLISHED'
+    failed = 'FAILED'
+    aborted = 'ABORTED'
+
+
+class KernelWorkflowPublicationResponse(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    publication_id: str | None = Field(
+        ..., alias='publicationId', title='Publicationid'
+    )
+    state: State4 | None = Field(..., title='State')
+    workflow_run_id: str = Field(..., alias='workflowRunId', title='Workflowrunid')
+
+
 class KernelWorkflowRecoveryRequest(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -2413,7 +2433,7 @@ class KnowledgeNextOperatorActivityPage(BaseModel):
     items: list[KnowledgeNextOperatorActivityItem] = Field(..., title='Items')
 
 
-class State4(Enum):
+class State5(Enum):
     passed = 'PASSED'
     failed = 'FAILED'
     pending = 'PENDING'
@@ -2425,7 +2445,7 @@ class KnowledgeNextPreflightCheck(BaseModel):
     )
     detail: str = Field(..., title='Detail')
     name: str = Field(..., title='Name')
-    state: State4 = Field(..., title='State')
+    state: State5 = Field(..., title='State')
 
 
 class KnowledgeNextReadinessResponse(BaseModel):

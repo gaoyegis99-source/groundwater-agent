@@ -414,7 +414,71 @@ def next_action(items: list[dict], tool_names: set[str]) -> tuple[str | None, di
             "unresolved_items": unresolved,
         }
 
+    if "水位描述统计工作流草稿" in plain_text:
+        if "list_operators" not in results and "list_operators" in tool_names:
+            return "list_operators", {"query": "描述统计", "domain": None, "capability": None, "after": None, "limit": 20}
+        if "get_operator" not in results and "get_operator" in tool_names:
+            operator = next(item for item in results["list_operators"]["items"] if item["operator_id"] == "statistics.describe")
+            return "get_operator", {"operator_id": operator["operator_id"], "version": operator["operator_version"]}
+        if "retrieve_evidence" not in results and "retrieve_evidence" in tool_names:
+            return "retrieve_evidence", {"query": "地下水时间聚合方法", "mode": "lexical"}
+        if "read_evidence" not in results and "read_evidence" in tool_names:
+            data = results["retrieve_evidence"]["data"]
+            matches = data if isinstance(data, list) else data["items"]
+            match = next(item for item in matches if item["knowledgeId"] == "gw-aggregation-choice")
+            return "read_evidence", {"refs": [{
+                "version_id": match["versionId"], "unit_id": match["unitId"], "checksum": match["checksum"],
+            }]}
+        if {"get_operator", "read_evidence"} <= results.keys():
+            operator = results["get_operator"]
+            message = "先检查水位字段与有效样本，再按列汇总描述统计。"
+            return None, {
+                "message": message,
+                "workflow_runs": [],
+                "unresolved_items": [],
+                "workflow_draft": {
+                    "title": "水位描述统计草稿",
+                    "summary": message,
+                    "graph": {
+                        "inputs": [{"name": "observations", "cardinality": "one", "mediaTypes": ["text/csv"], "formats": ["csv"]}],
+                        "parameters": ["axis"],
+                        "nodes": [{
+                            "nodeId": "describe", "operatorId": operator["operator_id"], "operatorVersion": operator["operator_version"],
+                            "inputs": {"data": {"workflowInput": "observations"}},
+                            "parameters": {"axis": {"workflowParameter": "axis"}},
+                        }],
+                        "outputs": [{"name": "summary", "nodeOutput": {"nodeId": "describe", "port": "summary"}}],
+                    },
+                    "data_bindings": [],
+                    "parameter_values": {"axis": "columns"},
+                    "parameter_sources": [{"name": "axis", "source": "OPERATOR_DEFAULT", "explanation": "按列汇总。"}],
+                    "unresolved_items": ["请提供带明确单位的监测表。"],
+                    "limitations": ["描述统计不用于判定水位变化成因。"],
+                },
+            }
+
     execution = re.search(r"\[Model execution\]\s*(\{.*\})", plain_text, re.DOTALL)
+    if (execution and "[Evaluation case: task-published-review-" in plain_text
+            and "update_task" in tool_names and "update_task" not in results
+            and "run_summary" not in results):
+        return "update_task", {
+            "expected_revision": 0,
+            "objective_quote": plain_text.splitlines()[0],
+            "criteria": [
+                {
+                    "id": "summary", "text": "水位统计汇总", "source_quote": "水位统计汇总",
+                    "kind": "RESULT", "model_id": "groundwater.summary", "output_names": ["summary"],
+                },
+                {
+                    "id": "comparison", "text": "对照统计汇总", "source_quote": "对照统计汇总",
+                    "kind": "RESULT", "model_id": "groundwater.summary", "output_names": ["summary"],
+                },
+                {
+                    "id": "review", "text": "统计汇总可用于复核", "source_quote": "统计汇总可用于复核",
+                    "kind": "USER_REVIEW",
+                },
+            ],
+        }
     if execution is None and {"retrieve_evidence", "read_evidence"} & (tool_names | set(results)) and (
         "知识" in plain_text or "evidence" in plain_text.lower()
     ):
@@ -518,7 +582,27 @@ def next_action(items: list[dict], tool_names: set[str]) -> tuple[str | None, di
             final["workflow_runs"] = [result["workflow_run_id"]]
             return None, final
         assert tool in tool_names, "MODEL_TOOL_NOT_EXPOSED"
-        if "inspect_data_version" in tool_names:
+        if marker and marker[1].startswith("g18-partial-"):
+            checks = [item for name, item in result_events if name == "prepare_task_inputs"]
+            if not checks:
+                return "prepare_task_inputs", {
+                    "target_tool": "run_flow_field",
+                    "arguments": {
+                        "versionId": requested["arguments"]["versionId"],
+                        "wellField": "well", "timeField": "time",
+                        "referenceElevationField": "elevation", "depthToWaterField": "depth",
+                        "targetTime": "2025-06-01", "sourceCrs": "EPSG:32650",
+                        "targetCrs": "EPSG:32650", "pixelSize": 250,
+                        "hydraulicConductivityMetersPerDay": 2, "effectivePorosity": 0.25,
+                    },
+                }
+            if len(checks) == 1:
+                assert checks[0]["status"] == "BLOCKED"
+                return "prepare_task_inputs", {
+                    "target_tool": tool, "arguments": requested["arguments"],
+                }
+            assert [item["status"] for item in checks] == ["BLOCKED", "READY"]
+        elif "inspect_data_version" in tool_names:
             requested_versions = list(
                 dict.fromkeys(
                     value
@@ -716,6 +800,7 @@ def _submit_reply(value, items):
                 }
     citations = list(reads.values())
     include_execution_status = bool(value["workflow_runs"] or execution_terminal)
+    draft = value.get("workflow_draft")
     return {
         "conclusion": (
             None
@@ -732,8 +817,13 @@ def _submit_reply(value, items):
         "referenced_workflow_runs": value["workflow_runs"],
         "include_execution_status": include_execution_status,
         "interaction_options": value.get("interaction_options", []),
-        "workflow_draft": None,
+        "workflow_draft": {**draft, "knowledge_refs": citations} if draft is not None else None,
     }
+
+
+_WATER_LEVEL_QUESTION = "监测表只有“水位（米）”一列，帮我分析这列水位。"
+_WATER_LEVEL_DEPTH_REPLY = "这列是从井口向下量的埋深，请先说明换算方法。"
+_WATER_LEVEL_ELEVATION_REPLY = "这列是基于统一基准的水位高程，请先说明比较方法。"
 
 
 def _intent_router_action(body, *, chat):
@@ -783,7 +873,7 @@ def _intent_router_action(body, *, chat):
     ):
         decision = "DIALOGUE"
         dialogue_policy = "READ_ONLY"
-    elif any(term in text for term in ("帮我处理一下", "弄一下这个")):
+    elif _WATER_LEVEL_QUESTION in text or any(term in text for term in ("帮我处理一下", "弄一下这个")):
         decision = "NEEDS_CLARIFICATION"
         dialogue_policy = None
     elif any(
@@ -924,6 +1014,51 @@ def provider_action(body, *, chat):
         ),
         "",
     )
+    current_text = json.dumps(user_text, ensure_ascii=False)
+    result_evidence = re.fullmatch(
+        r"请将已发布(汇总|对照汇总)登记为任务成果证据。AgentRun: ([\w-]+)，WorkflowRun: ([\w-]+)。",
+        user_text,
+    ) if isinstance(user_text, str) else None
+    if (result_evidence or user_text == "确认完成：统计汇总可用于复核") and "update_task" in names:
+        recent = items[
+            max(i for i, item in enumerate(items) if item.get("role") == "user") + 1:
+        ]
+        calls = {
+            item.get("call_id"): item.get("name")
+            for item in recent if item.get("type") == "function_call"
+        }
+        if result_evidence and "get_execution_fact" not in calls.values():
+            return _add_progress_intent("get_execution_fact", {
+                "workflow_run_id": result_evidence[3],
+            }, tools, chat=chat)
+        if "update_task" not in calls.values():
+            if result_evidence:
+                facts = next(
+                    _parse_tool_output(item["output"]) for item in recent
+                    if item.get("type") == "function_call_output"
+                    and calls.get(item.get("call_id")) == "get_execution_fact"
+                )
+                fact = facts["fact"]
+                assert fact["status"] == "COMPLETE" and fact["workflow_run_id"] == result_evidence[3]
+                comparison = result_evidence[1] == "对照汇总"
+                return "update_task", {
+                    "expected_revision": 2 if comparison else 1,
+                    "evidence": [{
+                        "criterion_id": "comparison" if comparison else "summary", "agent_run_id": result_evidence[2],
+                        "workflow_run_id": fact["workflow_run_id"],
+                    }],
+                }
+            return "update_task", {
+                "expected_revision": 3,
+                "evidence": [{"criterion_id": "review", "review_quote": user_text}],
+            }
+        return "submit_reply", _submit_reply(
+            {
+                "message": "已登记水位统计汇总。" if result_evidence else "已记录你对水位统计汇总的评审。",
+                "workflow_runs": [], "unresolved_items": [],
+            },
+            items,
+        )
     if (
         isinstance(user_text, str)
         and user_text.strip() == "你好"
@@ -1002,6 +1137,27 @@ def provider_action(body, *, chat):
         "This request is clarification-only." in instructions
         and "submit_reply" in names
     ):
+        if _WATER_LEVEL_QUESTION in current_text:
+            return "submit_reply", _submit_reply(
+                {
+                    "message": "",
+                    "workflow_runs": [],
+                    "unresolved_items": ["表中的水位是相对于统一基准的水位高程还是从井口向下量的埋深？"],
+                    "interaction_options": [
+                        {
+                            "label": "水位高程",
+                            "description": "采用统一高程基准的水位值",
+                            "message": _WATER_LEVEL_ELEVATION_REPLY,
+                        },
+                        {
+                            "label": "井口埋深",
+                            "description": "从井口测量点向下的距离",
+                            "message": _WATER_LEVEL_DEPTH_REPLY,
+                        },
+                    ],
+                },
+                items,
+            )
         return "submit_reply", _submit_reply(
             {
                 "message": "",
@@ -1031,7 +1187,22 @@ def provider_action(body, *, chat):
         )
     # Keep routing on the latest user request during contract-repair turns.  The
     # final item is then a function result, not the user's original intent.
-    current_text = json.dumps(user_text, ensure_ascii=False)
+    if "submit_reply" in names and (
+        _WATER_LEVEL_DEPTH_REPLY in current_text or _WATER_LEVEL_ELEVATION_REPLY in current_text
+    ):
+        message = (
+            "先将各井的井口测量点高程统一到同一高程基准，再用测量点高程减去埋深。缺少测量点高程时，先核对原始记录。"
+            if _WATER_LEVEL_DEPTH_REPLY in current_text
+            else "核对各井是否采用同一高程基准与单位，再对齐观测时间和工况比较水位高程。"
+        )
+        return "submit_reply", _submit_reply(
+            {
+                "message": message,
+                "workflow_runs": [],
+                "unresolved_items": [],
+            },
+            items,
+        )
     if (
         "请说明这个附件的数据结构" in current_text
         and "不要执行计算" in current_text

@@ -6917,6 +6917,52 @@
         "title": "WorkflowNodeDiagnosticsResponse",
         "type": "object"
       },
+      "kernel__WorkflowPublicationResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "publicationId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publicationid"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "enum": [
+                  "OPEN",
+                  "PREPARING",
+                  "READY",
+                  "PUBLISHED",
+                  "FAILED",
+                  "ABORTED"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State"
+          },
+          "workflowRunId": {
+            "title": "Workflowrunid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "workflowRunId",
+          "publicationId",
+          "state"
+        ],
+        "title": "WorkflowPublicationResponse",
+        "type": "object"
+      },
       "kernel__WorkflowRecoveryRequest": {
         "additionalProperties": false,
         "properties": {
@@ -22443,6 +22489,95 @@
           }
         },
         "summary": "Get Nodes",
+        "x-source-service": "kernel"
+      }
+    },
+    "/api/v12/workflow-runs/{runId}/publication": {
+      "get": {
+        "operationId": "kernel_get_workflow_run_publication",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "runId",
+            "required": true,
+            "schema": {
+              "title": "Runid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "title": "Projectid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/kernel__WorkflowPublicationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/kernel__ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/kernel__ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/kernel__ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/kernel__HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/kernel__ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Get Publication",
         "x-source-service": "kernel"
       }
     }

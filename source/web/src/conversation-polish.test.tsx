@@ -188,7 +188,7 @@ it('creates one continuation session for duplicate clicks and permits an explici
     }
     if (url.endsWith('/capabilities')) return json(capabilitiesFixture());
     if (url.endsWith('/sessions')) return json({ items: [], nextCursor: null });
-    if (url.includes('/results')) return json(sessionResultsFixture([{ goalRevision: 1, agentRunId: 'agent-1', toolCallId: 'tool-1', modelId: task.modelId, status: 'SUCCEEDED', workflowRunId: task.workflowRunId, remoteOutputs: [output] }]));
+    if (url.includes('/results')) return json(sessionResultsFixture([{ goalRevision: 1, agentRunId: 'agent-1', toolCallId: 'tool-1', modelId: task.modelId, status: 'COMPLETE', workflowRunId: task.workflowRunId, remoteOutputs: [output] }]));
     if (url.endsWith('/messages')) {
       if (init?.method === 'POST') messagesSent += 1;
       return json(historyFixture({ sessionId: url.includes('/continued-session/') ? 'continued-session' : 'session-1', items: [{ messageId: 1, goalRevision: 1, role: 'user', content: '上一轮分析' }], turns: [{ executionTasks: [task] }] }));
@@ -291,4 +291,106 @@ it('keeps control message sending disabled while another local mutation is pendi
   expect(screen.getByRole('button', { name: /发送消息/ })).toBeDisabled();
   expect(screen.getByRole('button', { name: /发送消息/ })).toHaveAttribute('title', '正在创建对话 · 草稿会保留');
   await act(async () => creation.resolve(json(sessionResponseFixture())));
+});
+
+it('deduplicates overlaps within and across pages and discards a page from the previous filter', async () => {
+  const older = deferred<Response>();
+  const first = sessionSummaryFixture({ sessionId: 'session-1', title: '首页会话' });
+  const second = sessionSummaryFixture({ sessionId: 'session-2', title: '第二页会话' });
+  const calls = vi.fn(async (url: string) => {
+    if (url.endsWith('/capabilities')) return json(capabilitiesFixture());
+    if (url.includes('cursor=8')) return json({ items: [first, second, second], nextCursor: 4 });
+    if (url.includes('cursor=4')) return older.promise;
+    if (url.includes('query=')) return json({ items: [], nextCursor: null });
+    return json({ items: [first, first], nextCursor: 8 });
+  });
+  vi.stubGlobal('fetch', calls);
+  render(<App />);
+  await screen.findByRole('link', { name: '首页会话' });
+  const directory = within(screen.getByTestId('session-list'));
+  expect(directory.getAllByRole('link', { name: '首页会话' })).toHaveLength(1);
+  fireEvent.click(await directory.findByRole('button', { name: '更早的对话' }));
+  expect(await directory.findAllByRole('link', { name: '第二页会话' })).toHaveLength(1);
+  expect(directory.getAllByRole('link')).toHaveLength(2);
+  fireEvent.click(directory.getByRole('button', { name: '更早的对话' }));
+  await waitFor(() => expect(calls.mock.calls.some(([url]) => url.includes('cursor=4'))).toBe(true));
+  fireEvent.change(screen.getByRole('searchbox'), { target: { value: '不匹配的关键词' } });
+  expect(directory.queryByRole('button', { name: '更早的对话' })).not.toBeInTheDocument();
+  expect(await directory.findByText(/没有匹配/)).toBeVisible();
+  await act(async () => older.resolve(json({ items: [second], nextCursor: 2 })));
+  expect(directory.queryAllByRole('link')).toHaveLength(0);
+  expect(directory.queryByRole('button', { name: '更早的对话' })).not.toBeInTheDocument();
+});
+
+it('drops directory and mutation responses from an earlier project even if the same Session ID is reused', async () => {
+  const stalePage = deferred<Response>();
+  const stalePatch = deferred<Response>();
+  let projectId = 'demo';
+  const item = () => sessionSummaryFixture({ projectId, title: projectId === 'demo' ? '旧项目' : '新项目' });
+  const calls = vi.fn(async (url: string, init?: RequestInit) => {
+    if (url.endsWith('/capabilities')) return json(capabilitiesFixture({ projectId }));
+    if (init?.method === 'PATCH') return stalePatch.promise;
+    if (url.includes('query=')) return stalePage.promise;
+    return json({ items: [item()], nextCursor: null });
+  });
+  vi.stubGlobal('fetch', calls);
+  const log = vi.fn();
+  const { result } = renderHook(() => useProjectSessions(log));
+  await waitFor(() => expect(result.current.sessions[0]?.title).toBe('旧项目'));
+  let mutation: Promise<boolean> | undefined;
+  act(() => { mutation = result.current.updateSession('session-1', { archived: true }); });
+  act(() => result.current.setSessionQuery('旧项目'));
+  await waitFor(() => expect(calls.mock.calls.some(([url]) => url.includes('query='))).toBe(true));
+  projectId = 'other-project';
+  await act(async () => result.current.connectProject());
+  expect(result.current.sessionQuery).toBe('');
+  expect(result.current.sessions[0]?.title).toBe('新项目');
+  await act(async () => {
+    stalePage.resolve(json({ items: [sessionSummaryFixture({ title: '旧查询' })], nextCursor: 2 }));
+    stalePatch.resolve(json({ sessionId: 'session-1', title: '旧修改', archived: true }));
+    expect(await mutation).toBe(false);
+  });
+  expect(result.current.sessions[0]?.title).toBe('新项目');
+  expect(result.current.sessionCursor).toBeNull();
+  expect(result.current.updatingSessionId).toBeNull();
+});
+
+it('keeps the selected Session and its snapshot when earlier history and creation finish late', async () => {
+  const oldMessages = deferred<Response>();
+  const create = deferred<Response>();
+  const calls = vi.fn(async (url: string, init?: RequestInit) => {
+    if (url.endsWith('/capabilities')) return json(capabilitiesFixture());
+    if (url.endsWith('/sessions') && init?.method === 'POST') return create.promise;
+    if (url.endsWith('/sessions')) return json({ items: [
+      sessionSummaryFixture({ title: '旧会话' }),
+      sessionSummaryFixture({ sessionId: 'session-2', title: '当前会话' }),
+    ], nextCursor: null });
+    if (url.endsWith('/session-1/messages')) return oldMessages.promise;
+    if (url.endsWith('/session-2/messages')) return json(historyFixture({
+      sessionId: 'session-2', items: [{ messageId: 2, goalRevision: 1, role: 'user', content: '新会话用户内容' }],
+    }));
+    if (url.includes('/results')) return json(sessionResultsFixture([], { sessionId: 'session-2' }));
+    throw new Error(`unexpected endpoint ${url}`);
+  });
+  window.history.replaceState({}, '', '/#/sessions/session-1');
+  vi.stubGlobal('fetch', calls);
+  render(<App />);
+  const current = await screen.findByRole('link', { name: '当前会话' });
+  await waitFor(() => expect(calls.mock.calls.some(([url]) => url.endsWith('/session-1/messages'))).toBe(true));
+  fireEvent.click(screen.getByRole('button', { name: '新建对话' }));
+  await waitFor(() => expect(calls.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(true));
+  act(() => {
+    window.history.replaceState({}, '', current.getAttribute('href')!);
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+  });
+  expect(await screen.findByText('新会话用户内容')).toBeVisible();
+  await act(async () => {
+    oldMessages.resolve(json(historyFixture({
+      items: [{ messageId: 1, goalRevision: 1, role: 'user', content: '迟到的旧会话内容' }],
+    })));
+    create.resolve(json(sessionResponseFixture({ sessionId: 'new-session' })));
+  });
+  expect(screen.queryByText('迟到的旧会话内容')).not.toBeInTheDocument();
+  expect(current).toHaveAttribute('aria-current', 'page');
+  expect(window.location.hash).toBe('#/sessions/session-2');
 });

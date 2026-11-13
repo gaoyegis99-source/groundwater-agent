@@ -3,9 +3,10 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 import json
 
-from ..contracts import JobStatusV6
+from ..contracts import JobRequestV6, JobStatusV6
+from ..data_client import DataUnavailableError
 from ..database import connect_database, utc_now
-from ..errors import JobNotFoundError
+from ..errors import ExecutionServiceError, JobNotFoundError
 from .shared import ControlComponent
 
 
@@ -25,13 +26,34 @@ class ExecutionQueries(ControlComponent):
         return self._visible_status(row)
 
     def get(self, job_id: str) -> JobStatusV6:
+        return self._visible_status(self._job(job_id))
+
+    def _job(self, job_id: str):
         with connect_database(self.database) as connection:
             row = connection.execute(
                 "SELECT * FROM executor_jobs WHERE job_id = ?", (job_id,)
             ).fetchone()
         if row is None or json.loads(row["request_json"])["project_id"] != self.project_id:
             raise JobNotFoundError("JOB_NOT_FOUND")
-        return self._visible_status(row)
+        return row
+
+    def publication(self, job_id: str) -> dict:
+        row = self._job(job_id)
+        result = {"jobId": job_id, "requestId": row["request_id"]}
+        publication_id = row["publication_id"]
+        if publication_id is None:
+            return result
+        request = JobRequestV6.from_storage_dict(json.loads(row["request_json"]))
+        try:
+            publication = self.data_client.publication_status(publication_id, request)
+        except ExecutionServiceError as error:
+            raise DataUnavailableError("DATA_PUBLICATION_UNAVAILABLE") from error
+        if publication is None or publication.get("publicationId") != publication_id:
+            raise DataUnavailableError("DATA_PUBLICATION_UNAVAILABLE")
+        state = publication.get("state")
+        if state not in {"OPEN", "PREPARING", "READY", "PUBLISHED", "FAILED", "ABORTED"}:
+            raise DataUnavailableError("DATA_SERVICE_RESPONSE_INVALID")
+        return {**result, "publicationId": publication_id, "state": state}
 
     def cancel(self, job_id: str) -> JobStatusV6:
         with connect_database(self.database) as connection:

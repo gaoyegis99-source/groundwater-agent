@@ -36,3 +36,11 @@ it('tracks only the details affected by business events', () => {
   expect(hasDetails(mergeDetails(detailsAfterEvent(empty, 'agent.failed'), empty))).toBe(true);
   expect(mergeDetails(allDetails(), empty)).toEqual(allDetails());
 });
+
+it('ignores out-of-order and malformed event IDs without poisoning the resume cursor', () => {
+  const state = receiveStreamEvent(connectStream(initialStreamProgress(), 10), 12).state;
+  for (const id of [11, 12, NaN, Infinity, 12.5]) {
+    expect(receiveStreamEvent(state, id)).toEqual({ state, accepted: false });
+  }
+  expect(receiveStreamEvent(state, 13).state.streamCursor).toBe(13);
+});
