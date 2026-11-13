@@ -7,7 +7,7 @@
 
 ## 安装位置
 建议放置为：
-`/home/mtd/liweigis/workflow/groundwater-v6/plans/01_SYSTEM_ENGINEERING/`
+`plans/01_SYSTEM_ENGINEERING/`
 
 ## 阅读顺序
 1. `01_CODEX_MASTER_PROMPT.md`

@@ -2,13 +2,15 @@
 
 ## 快速反馈
 
+从仓库的 `source/` 运行命令。执行 `real-case` 前，将 `GROUNDWATER_CASE_SOURCE_ROOT` 设为包含案例资料的目录。
+
 ```bash
 ../bin/bootstrap --status
 ../bin/bootstrap --sync
 ../bin/dev compile --product groundwater
 ../bin/dev operator-smoke --operator-id timeseries.gap_runs --operator-version 1.0.0
 ../bin/dev workflow-golden --case monitoring-trend
-../bin/dev real-case --case all --source-root /home/mtd/liweigis/workflow \
+../bin/dev real-case --case all --source-root "$GROUNDWATER_CASE_SOURCE_ROOT" \
   --runtime-image source-groundwater-executor-native-worker:latest
 ../bin/dev agent-replay --case all
 ../bin/dev capability-inventory --verify
@@ -19,8 +21,7 @@
 
 装配、Vite、Playwright、wheel 和 E2E 工作目录默认位于 `$XDG_CACHE_HOME/groundwater-v6/build/`，并按 linked worktree 摘要隔离。测试必须使用临时目录或该 cache，不得创建源码 `.generated`、`dist` 或 `build`。
 `bootstrap --status` 是只读检查；`--sync` 才会联网并写入摘要绑定工具链。所有 `dev` 子命令都会先
-验证该工具链并使用其中的锁定 Python，缺失时返回 `PROJECT_TOOLCHAIN_NOT_READY`。当前 checkout 的
-逐命令实测与 `NOT_RUN` 清单见 [Vibecoding 本地快速参考](../development/vibecoding-quick-reference.md)。
+验证该工具链并使用其中的锁定 Python，缺失时返回 `PROJECT_TOOLCHAIN_NOT_READY`。逐命令用法和前置条件见 [Vibecoding 本地快速参考](../development/vibecoding-quick-reference.md)。
 
 需要连续开发时使用[交互式增量开发模式](../development/interactive-incremental-mode.md)。它在源码树外生成开发 Compose 覆盖和状态，前端使用宿主 Vite HMR，Python API 使用显式 `/workspace/.../src` 监视目录，worker 只做受影响服务重启；默认 Native/QGIS/root runtime 和产品装配不承载控制器代码。
 
@@ -35,7 +36,7 @@ workflow/catalog/fixture/output identity 与关键值同签入 snapshot 比较�
 定位到具体字段或数值，证据写入 `$XDG_CACHE_HOME/groundwater-v6/workflow-golden-runs/`。需要
 GDAL 的 case 可显式传入 `--runtime-image <local-image>`；CLI 只使用项目 rootless daemon 中已验证的
 本地 Linux/amd64 image，以 no-network、read-only、no-pull 边界提供系统工具，不使用其中的 Python
-或源码，也不修改默认 root/Native/QGIS runtime。完整命令、当前三条重复 PASS 和 NOT_RUN 边界见
+或源码，也不修改默认 root/Native/QGIS runtime。完整命令、前置条件和输出位置见
 [Vibecoding 本地快速参考](../development/vibecoding-quick-reference.md)。
 
 真实数据案例入口使用产品开发目录中的签入清单，允许读取调用者显式给出的本地数据根，并且只从

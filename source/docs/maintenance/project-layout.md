@@ -4,7 +4,7 @@
 
 | 角色 | 实际默认路径 |
 | --- | --- |
-| 源码 | `/home/mtd/liweigis/workflow/groundwater-v6/source` |
+| 源码 | `<仓库根>/source` |
 | 配置 | `$XDG_CONFIG_HOME/groundwater-v6` |
 | 实例数据 | `$XDG_DATA_HOME/groundwater-v6/instances` |
 | 状态与审计 | `$XDG_STATE_HOME/groundwater-v6/{instances,audit,logs}` |
