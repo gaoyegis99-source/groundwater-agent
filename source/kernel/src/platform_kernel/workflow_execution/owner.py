@@ -13,6 +13,7 @@ from platform_protocol_contracts import (
 
 from ..contracts import JobRequestV6
 from ..database import duration_ms, utc_now
+from ..errors import UpstreamServiceError
 from ..application.workflow_api import dispatch_confirmation_current
 
 from .persistence.status import save_cancelled
@@ -21,6 +22,7 @@ from ..settings import ExecutableModelDefinition, ServiceBinding
 from .execution_client import ExecutionClient, ExecutionClientError, ExecutionRejectedError
 from ..application.query_dtos import ConfirmedAction
 from .models import DispatchWork, WorkflowRun, WorkflowTickResult
+from .node_diagnostics import WorkflowGraphNode, WorkflowGraphResponse, WorkflowNodeDiagnosticsResponse
 from .persistence import (
     claim_dispatch_batch,
     enqueue_batch,
@@ -85,6 +87,50 @@ class WorkflowExecutionOwner:
 
     def get(self, project_id: str, run_id: str) -> WorkflowRun:
         return get_run(self.database, project_id, run_id)
+
+    async def node_diagnostics(self, project_id: str, run_id: str) -> WorkflowNodeDiagnosticsResponse:
+        run = self.get(project_id, run_id)
+        if run.remote_job_id is None:
+            return WorkflowNodeDiagnosticsResponse(workflowRunId=run_id, availability="NOT_DISPATCHED", nodes=[])
+        service = self.services.get(run.execution_service)
+        target = get_target_digest(self.database, run_id)
+        if service is None or target != service_target_digest(service):
+            return WorkflowNodeDiagnosticsResponse(workflowRunId=run_id, availability="UNAVAILABLE", nodes=[])
+        try:
+            nodes = await self.execution_client.get_nodes(service, run.remote_job_id)
+        except ExecutionClientError as error:
+            raise UpstreamServiceError("WORKFLOW_NODE_DIAGNOSTICS_UNAVAILABLE") from error
+        return WorkflowNodeDiagnosticsResponse(
+            workflowRunId=run_id,
+            availability="AVAILABLE" if nodes is not None else "UNAVAILABLE",
+            nodes=nodes or [],
+        )
+
+    async def run_graph(self, project_id: str, run_id: str) -> WorkflowGraphResponse:
+        run = self.get(project_id, run_id)
+        unavailable = WorkflowGraphResponse(workflowRunId=run_id, availability="UNAVAILABLE", nodes=[])
+        if run.remote_job_id is None:
+            return WorkflowGraphResponse(workflowRunId=run_id, availability="NOT_DISPATCHED", nodes=[])
+        service = self.services.get(run.execution_service)
+        if service is None or get_target_digest(self.database, run_id) != service_target_digest(service):
+            return unavailable
+        try:
+            graph = await self.execution_client.get_graph(service, run.remote_job_id)
+        except ExecutionClientError:
+            return unavailable
+        if graph is None or (
+            graph.request_id, graph.workflow_id, graph.workflow_version, graph.workflow_checksum
+        ) != (run.run_id, run.workflow_id, run.workflow_version, run.workflow_checksum):
+            return unavailable
+        node_ids = {node.node_id for node in graph.nodes}
+        if not node_ids or len(node_ids) != len(graph.nodes) or any(
+            node.node_id in node.depends_on or set(node.depends_on) - node_ids for node in graph.nodes
+        ):
+            return unavailable
+        return WorkflowGraphResponse(
+            workflowRunId=run_id, availability="AVAILABLE",
+            nodes=[WorkflowGraphNode(nodeId=node.node_id, dependsOn=node.depends_on) for node in graph.nodes],
+        )
 
     def for_agent(self, agent_run_id: str) -> tuple[WorkflowRun, ...]:
         return runs_for_agent(self.database, agent_run_id)

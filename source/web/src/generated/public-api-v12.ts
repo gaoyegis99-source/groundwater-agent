@@ -1614,6 +1614,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v12/workflow-runs/{runId}/graph": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Graph */
+        get: operations["kernel_get_workflow_run_graph"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v12/workflow-runs/{runId}/nodes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Nodes */
+        get: operations["kernel_get_workflow_run_nodes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3321,6 +3355,13 @@ export interface components {
             arguments: {
                 [key: string]: unknown;
             };
+            /**
+             * Expectedinputreferences
+             * @description Exact Data references selected for this action, keyed by model input parameter.
+             */
+            expectedInputReferences?: {
+                [key: string]: components["schemas"]["kernel__MessageInputReference"];
+            } | null;
             /** Toolcallid */
             toolCallId: string;
         };
@@ -3966,6 +4007,62 @@ export interface components {
             sessionId: string;
             /** Status */
             status: string;
+        };
+        /** WorkflowGraphNode */
+        kernel__WorkflowGraphNode: {
+            /** Dependson */
+            dependsOn: string[];
+            /** Nodeid */
+            nodeId: string;
+        };
+        /** WorkflowGraphResponse */
+        kernel__WorkflowGraphResponse: {
+            /**
+             * Availability
+             * @enum {string}
+             */
+            availability: "NOT_DISPATCHED" | "UNAVAILABLE" | "AVAILABLE";
+            /** Nodes */
+            nodes: components["schemas"]["kernel__WorkflowGraphNode"][];
+            /** Workflowrunid */
+            workflowRunId: string;
+        };
+        /** WorkflowNodeDiagnostic */
+        kernel__WorkflowNodeDiagnostic: {
+            /** Attemptcount */
+            attemptCount: number | null;
+            /** Errorcode */
+            errorCode: string | null;
+            /** Finishedat */
+            finishedAt: string | null;
+            /** Nodeid */
+            nodeId: string;
+            /** Operatorid */
+            operatorId: string;
+            /**
+             * Runtime
+             * @enum {string}
+             */
+            runtime: "native" | "qgis" | "remote_http";
+            /** Startedat */
+            startedAt: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "WAITING" | "READY" | "LEASED" | "RUNNING" | "SUCCEEDED" | "FAILED" | "CANCELLED" | "SKIPPED";
+        };
+        /** WorkflowNodeDiagnosticsResponse */
+        kernel__WorkflowNodeDiagnosticsResponse: {
+            /**
+             * Availability
+             * @enum {string}
+             */
+            availability: "NOT_DISPATCHED" | "UNAVAILABLE" | "AVAILABLE";
+            /** Nodes */
+            nodes: components["schemas"]["kernel__WorkflowNodeDiagnostic"][];
+            /** Workflowrunid */
+            workflowRunId: string;
         };
         /** WorkflowRecoveryRequest */
         kernel__WorkflowRecoveryRequest: {
@@ -15020,6 +15117,135 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["kernel__HTTPValidationError"];
+                };
+            };
+        };
+    };
+    kernel_get_workflow_run_graph: {
+        parameters: {
+            query: {
+                projectId: string;
+            };
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["kernel__WorkflowGraphResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["kernel__ProblemDetailsV11"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["kernel__ProblemDetailsV11"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["kernel__ProblemDetailsV11"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["kernel__HTTPValidationError"];
+                };
+            };
+        };
+    };
+    kernel_get_workflow_run_nodes: {
+        parameters: {
+            query: {
+                projectId: string;
+            };
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["kernel__WorkflowNodeDiagnosticsResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["kernel__ProblemDetailsV11"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["kernel__ProblemDetailsV11"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["kernel__ProblemDetailsV11"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["kernel__HTTPValidationError"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["kernel__ProblemDetailsV11"];
                 };
             };
         };

@@ -37,6 +37,7 @@ _maintenance_sys.path.insert(0, str(_maintenance_source))
 from scripts.checks.v6_test_suite import (  # noqa: E402
     V6_PYTEST_SLICES,
     V6_UI_WORKSPACES,
+    isolated_pytest_command,
     pytest_command,
 )
 from scripts.maintenance.project_environment import (  # noqa: E402
@@ -48,6 +49,7 @@ from scripts.maintenance.dependency_materializer import (  # noqa: E402
     root as dependency_material_root,
 )
 from scripts.maintenance.xdg_layout import resolve_lifecycle_paths  # noqa: E402
+from scripts.maintenance.worktree_identity import worktree_identity  # noqa: E402
 from scripts.operations.render_full_project_report import (  # noqa: E402
     write_markdown_report,
 )
@@ -114,6 +116,18 @@ def _git_status() -> list[str]:
 
 def _status_sha256(status: list[str]) -> str:
     return hashlib.sha256(("\n".join(status) + "\n").encode("utf-8")).hexdigest()
+
+
+def _validation_source(output: Path) -> tuple[str, str]:
+    report = output.resolve()
+    markdown = report.with_suffix(".md")
+    generated = (report, markdown, report.with_suffix(report.suffix + ".tmp"),
+                 markdown.with_suffix(markdown.suffix + ".tmp"))
+    repository = Path(subprocess.check_output(
+        ["git", "rev-parse", "--show-toplevel"], cwd=ROOT, text=True,
+    ).strip())
+    head, _, digest = worktree_identity(repository, exclude=generated)
+    return head, digest
 
 
 def _version(command: Sequence[str]) -> str:
@@ -519,12 +533,14 @@ class Runner:
         self._last_output = output
         output_log: Path | None = None
         if any(Path(item).name == "check_compose_e2e.py" for item in command):
-            output_log = (
+            report_directory = (
+                Path(command[command.index("--webui-report") + 1]).parent
+                if "--webui-report" in command else
                 validation_cache_root(ROOT)
                 / "full-project-e2e"
                 / self.run_id
-                / "final-compose.log"
             )
+            output_log = report_directory / "final-compose.log"
             output_log.parent.mkdir(parents=True, exist_ok=True)
             # Keep the evidence bounded while retaining both stdout and stderr.
             output_log.write_text(output[:10_000_000], encoding="utf-8")
@@ -575,7 +591,8 @@ class Runner:
         self._stage = stage
         try:
             for command in commands:
-                self.command(command)
+                with isolated_pytest_command(command) as isolated:
+                    self.command(isolated)
             stage.status = "PASS"
         except subprocess.CalledProcessError as error:
             stage.status = (
@@ -588,6 +605,13 @@ class Runner:
                 "returnCode": error.returncode,
                 "failureClass": stage.commands[-1].failure_class,
                 "minimalReproduction": " ".join(error.cmd),
+            }
+            raise
+        except OSError as error:
+            stage.status = "FAIL"
+            stage.failure = {
+                "failureClass": "VALIDATION_STAGE_IO_FAILURE",
+                "error": str(error),
             }
             raise
         except KeyboardInterrupt as error:
@@ -693,7 +717,26 @@ class Runner:
         temporary.replace(self.output)
 
     def checkpoint(self, *, baseline: dict[str, Any], extra: dict[str, Any]) -> None:
+        if not self.verify_source(baseline=baseline, extra=extra):
+            raise RuntimeError("VALIDATION_SOURCE_CHANGED")
         self.write_report(status="IN_PROGRESS", baseline=baseline, extra=extra)
+
+    def verify_source(self, *, baseline: dict[str, Any], extra: dict[str, Any]) -> bool:
+        if extra.get("sourceVerification", {}).get("status") == "FAIL":
+            return False
+        try:
+            head, digest = _validation_source(self.output)
+        except (OSError, subprocess.CalledProcessError):
+            extra["sourceVerification"] = {"status": "FAIL", "reason": "VALIDATION_SOURCE_UNREADABLE"}
+            return False
+        if (head, digest) != (baseline["head"], baseline["sourceDigest"]):
+            extra["sourceVerification"] = {
+                "status": "FAIL", "reason": "VALIDATION_SOURCE_CHANGED",
+                "head": head, "sourceDigest": digest,
+            }
+            return False
+        extra["sourceVerification"] = {"status": "PASS", "head": head, "sourceDigest": digest}
+        return True
 
 
 def _wheel_projects() -> dict[str, Path]:
@@ -806,6 +849,19 @@ def _run_stage(
     runner.checkpoint(baseline=baseline, extra=extra)
 
 
+def _stage_evidence_dir(
+    runner: Runner, stage: str, root: Path, attempts: dict[str, str], *, resume: bool,
+) -> Path:
+    if resume and runner.completed(stage):
+        attempt = attempts.get(stage, "")
+        if re.fullmatch(r"[0-9a-f]{12}", attempt) is None:
+            raise RuntimeError("VALIDATION_EVIDENCE_ATTEMPT_MISSING:" + stage)
+    else:
+        attempt = uuid.uuid4().hex[:12]
+        attempts[stage] = attempt
+    return root / "full-project-e2e" / runner.run_id / stage / attempt
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--product", default="groundwater")
@@ -837,12 +893,22 @@ def main() -> int:
         if existing.get("product") != args.product:
             parser.error("--resume product does not match the checkpoint")
         run_id = str(existing["runId"])
+        if re.fullmatch(r"[0-9a-f]{12}", run_id) is None:
+            parser.error("--resume checkpoint has an invalid run ID")
         baseline = dict(existing["baseline"])
+        if not baseline.get("sourceDigest"):
+            parser.error("--resume checkpoint has no source digest. Start a new report with --output.")
+        if existing.get("sourceVerification", {}).get("status") == "FAIL" or (
+            baseline.get("head"), baseline["sourceDigest"]
+        ) != _validation_source(output):
+            parser.error("--resume source differs from the checkpoint. Start a new report with --output.")
     else:
         run_id = uuid.uuid4().hex[:12]
+        head, digest = _validation_source(output)
         baseline = {
             "startedAt": _now(),
-            "head": _version(["git", "rev-parse", "HEAD"]),
+            "head": head,
+            "sourceDigest": digest,
             "worktree": _git_status(),
             "versions": {
                 "python": _version([PYTHON, "--version"]),
@@ -883,19 +949,14 @@ def main() -> int:
         },
     }
     validation_root = validation_cache_root(ROOT)
-    evidence_sources: dict[str, Path] = {
-        "data-knowledge-e2e-current.json": validation_root
-        / "data-knowledge-e2e-current.json",
-        "v12-six-model-lifecycle.json": validation_root
-        / "transfer-evidence/v12-six-model-lifecycle.json",
-        "webui-results.json": validation_root / "webui-evidence/results.json",
-    }
+    evidence_sources: dict[str, Path] = {}
+    evidence_attempts: dict[str, str] = dict(existing.get("evidenceAttempts", {})) if existing else {}
+    extra["evidenceAttempts"] = evidence_attempts
     if existing is not None:
         for key in (
             "isolation",
             "assembly",
             "simulation",
-            "evidence",
             "reportPolicy",
             "failureHandling",
         ):
@@ -1000,21 +1061,19 @@ def main() -> int:
                 extra=extra,
             )
 
+        joint_dir = _stage_evidence_dir(
+            runner, "data_knowledge_joint", validation_root, evidence_attempts, resume=args.resume,
+        )
+        joint_report = joint_dir / "data-knowledge-e2e-current.json"
+        evidence_sources["data-knowledge-e2e-current.json"] = joint_report
         joint_command = [
             PYTHON,
             "scripts/checks/check_data_knowledge_e2e.py",
             "--output",
-            str(validation_root / "data-knowledge-e2e-current.json"),
-        ]
-        compose_command = [
-            PYTHON,
-            "scripts/checks/check_compose_e2e.py",
-            "--product",
-            args.product,
+            str(joint_report),
         ]
         if args.network_subnet:
             joint_command.extend(["--network-subnet", args.network_subnet])
-            compose_command.extend(["--network-subnet", args.network_subnet])
         _run_stage(
             runner,
             "data_knowledge_joint",
@@ -1040,6 +1099,22 @@ def main() -> int:
                 runner._stage = None
             runner.checkpoint(baseline=baseline, extra=extra)
 
+        compose_dir = _stage_evidence_dir(
+            runner, "final_compose", validation_root, evidence_attempts, resume=args.resume,
+        )
+        webui_report = compose_dir / "webui-evidence"
+        transfer_evidence = compose_dir / "transfer-evidence"
+        evidence_sources.update({
+            "v12-six-model-lifecycle.json": transfer_evidence / "v12-six-model-lifecycle.json",
+            "webui-results.json": webui_report / "results.json",
+            "final-compose.log": compose_dir / "final-compose.log",
+        })
+        compose_command = [
+            PYTHON, "scripts/checks/check_compose_e2e.py", "--product", args.product,
+            "--webui-report", str(webui_report), "--transfer-evidence", str(transfer_evidence),
+        ]
+        if args.network_subnet:
+            compose_command.extend(["--network-subnet", args.network_subnet])
         _run_stage(
             runner,
             "final_compose",
@@ -1048,48 +1123,16 @@ def main() -> int:
             baseline=baseline,
             extra=extra,
         )
-        final_compose_log = (
-            validation_root / "full-project-e2e" / run_id / "final-compose.log"
-        )
-        if final_compose_log.is_file():
-            evidence_sources["final-compose.log"] = final_compose_log
-        joint_report = validation_root / "data-knowledge-e2e-current.json"
         extra["evidence"] = {
             "dataKnowledge": str(joint_report),
-            "sixModelLifecycle": str(
-                validation_root / "transfer-evidence/v12-six-model-lifecycle.json"
-            ),
-            "webUi": str(validation_root / "webui-evidence/results.json"),
+            "sixModelLifecycle": str(evidence_sources["v12-six-model-lifecycle.json"]),
+            "webUi": str(evidence_sources["webui-results.json"]),
             "dataKnowledgeStatus": (
                 json.loads(joint_report.read_text(encoding="utf-8")).get("status")
                 if joint_report.is_file()
                 else "MISSING"
             ),
         }
-        # The joint runner persists its service logs under the run-specific
-        # directory. Include them in the immutable snapshot when available.
-        joint_run_id = (
-            json.loads(joint_report.read_text(encoding="utf-8"))
-            .get("isolation", {})
-            .get("runId")
-            if joint_report.is_file()
-            else None
-        )
-        if isinstance(joint_run_id, str):
-            joint_log_dir = validation_root / "data-knowledge-e2e" / joint_run_id
-            for name in (
-                "data.log",
-                "knowledge.log",
-                "knowledge-restored.log",
-                "data-ui-e2e.log",
-                "knowledge-ui-e2e.log",
-            ):
-                evidence_sources[f"data-knowledge-{name}"] = joint_log_dir / name
-            joint_details = json.loads(joint_report.read_text(encoding="utf-8"))
-            for item in joint_details.get("commandLogs", []):
-                command_log = Path(item)
-                if command_log.is_file():
-                    evidence_sources[f"data-knowledge-{command_log.name}"] = command_log
         joint_isolation = (
             json.loads(joint_report.read_text(encoding="utf-8")).get("isolation", {})
             if joint_report.is_file()
@@ -1124,7 +1167,7 @@ def main() -> int:
         ):
             if not any(stage.name == name for stage in runner.stages):
                 runner.record_not_run(name, "UPSTREAM_STAGE_INTERRUPTED")
-    except (subprocess.CalledProcessError, RuntimeError) as error:
+    except (OSError, subprocess.CalledProcessError, RuntimeError) as error:
         current = runner.stages[-1] if runner.stages else None
         if current is not None and current.status == "RUNNING":
             current.status = "FAIL"
@@ -1151,8 +1194,8 @@ def main() -> int:
             # The joint gate can fail before the success-path evidence wiring
             # runs. Discover its run-scoped service/UI logs here as well so a
             # failed fresh run remains diagnosable and immutable.
-            joint_report = validation_root / "data-knowledge-e2e-current.json"
-            if joint_report.is_file():
+            joint_report = evidence_sources.get("data-knowledge-e2e-current.json")
+            if joint_report is not None and joint_report.is_file():
                 joint_details = json.loads(joint_report.read_text(encoding="utf-8"))
                 joint_run_id = joint_details.get("isolation", {}).get("runId")
                 if isinstance(joint_run_id, str):
@@ -1175,11 +1218,6 @@ def main() -> int:
                             evidence_sources[f"data-knowledge-{command_log.name}"] = (
                                 command_log
                             )
-            final_compose_log = (
-                validation_root / "full-project-e2e" / run_id / "final-compose.log"
-            )
-            if final_compose_log.is_file():
-                evidence_sources["final-compose.log"] = final_compose_log
             snapshot = _snapshot_evidence(run_id, evidence_sources)
             extra["evidenceSnapshot"] = snapshot
             if "evidence" in extra:
@@ -1209,6 +1247,8 @@ def main() -> int:
                 "status": "FAIL",
                 "error": f"{type(error).__name__}: {error}",
             }
+        if not runner.verify_source(baseline=baseline, extra=extra):
+            stage_status = "FAIL"
         runner.write_report(
             status=stage_status,
             baseline=baseline,

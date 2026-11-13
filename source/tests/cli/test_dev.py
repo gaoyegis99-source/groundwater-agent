@@ -46,6 +46,7 @@ def test_clean_dry_run_and_clean_preserve_active_assembly_and_protected_paths(
     root = _repository(tmp_path)
     generated = tmp_path / "external-build"
     monkeypatch.setenv("PLATFORM_GENERATED_ROOT", str(generated))
+    monkeypatch.setattr(dev, "_container_bind_sources", lambda: set())
     active = generated / ".releases/groundwater/active"
     stale = generated / ".releases/groundwater/stale"
     active.mkdir(parents=True)
@@ -116,6 +117,49 @@ def test_clean_dry_run_and_clean_preserve_active_assembly_and_protected_paths(
             ".env",
         )
     )
+
+
+@pytest.mark.parametrize("inspect_available", [True, False])
+def test_clean_preserves_releases_in_use_by_containers(
+    tmp_path: Path, monkeypatch, inspect_available: bool,
+) -> None:
+    root = _repository(tmp_path)
+    generated = tmp_path / "external-build"
+    monkeypatch.setenv("PLATFORM_GENERATED_ROOT", str(generated))
+    releases = generated / ".releases" / "groundwater"
+    mounted = releases / "mounted"
+    unmounted = releases / "unmounted"
+    for directory in (mounted, unmounted):
+        directory.mkdir(parents=True)
+        (directory / "kernel-config.json").write_text("{}")
+    (generated / "disposable").mkdir()
+    monkeypatch.setattr(dev, "docker_arguments", lambda args: ["test-docker", *args])
+    original_check_output = subprocess.check_output
+
+    def check_output(command, **kwargs):
+        if command[0] != "test-docker":
+            return original_check_output(command, **kwargs)
+        if command[1] == "ps":
+            assert "--all" in command
+            return "created-container\n"
+        assert command[1] == "inspect"
+        assert command[-1] == "created-container"
+        if not inspect_available:
+            raise subprocess.CalledProcessError(1, command)
+        return json.dumps([
+            {"Type": "bind", "Source": str(mounted / "kernel-config.json")},
+            {"Type": "volume", "Source": str(unmounted)},
+        ]) + "\n"
+
+    monkeypatch.setattr(subprocess, "check_output", check_output)
+    expected = {"@build/disposable"}
+    if inspect_available:
+        expected.add("@build/.releases/groundwater/unmounted")
+    assert set(clean_workspace(root, dry_run=True)) == expected
+    assert set(clean_workspace(root)) == expected
+    assert mounted.is_dir()
+    assert unmounted.is_dir() is not inspect_available
+    assert not (generated / "disposable").exists()
 
 
 def test_clean_refuses_a_tracked_candidate(tmp_path: Path) -> None:
@@ -402,3 +446,50 @@ def test_bootstrap_failure_records_specific_service_error(tmp_path: Path, monkey
     assert recorded["errorCode"] == (
         "KNOWLEDGE_BOOTSTRAP_FAILED:VERSION_CONFLICT"
     )
+
+
+def test_status_uses_running_release_and_matching_bootstrap_receipt(tmp_path, monkeypatch):
+    generated = tmp_path / 'assemblies'
+    releases = generated / '.releases' / 'groundwater'
+    running = releases / ('a' * 64)
+    compiled = releases / ('b' * 64)
+    services = ['kernel-service', 'data-service', 'knowledge-next-service', 'executor-control']
+    for root, names in [(running, services), (compiled, [*services, 'future-worker'])]:
+        root.mkdir(parents=True)
+        (root / 'compose.json').write_text(json.dumps({'services': dict.fromkeys(names, {})}))
+    records = [
+        {'Name': name, 'Service': name, 'State': 'running', 'Health': 'healthy', 'Image': f'{name}:latest'}
+        for name in services
+    ]
+    inspected = [
+        {'Name': name, 'Config': {'Labels': {'com.docker.compose.service': name}}, 'Mounts': [
+            {'Destination': f'/config/{filename}', 'Source': str(running / filename), 'Type': 'bind'},
+        ]}
+        for name, filename in [('kernel-service', 'kernel-config.json'), ('executor-control', 'executor-config.json')]
+    ]
+    monkeypatch.setattr(dev, 'generated_root', lambda _root: generated)
+    monkeypatch.setattr(dev, 'current_bundle', lambda *_args: compiled)
+    monkeypatch.setattr(dev, 'lifecycle', lambda: SimpleNamespace(state=tmp_path / 'state'))
+    monkeypatch.setattr(dev, '_worktree_identity', lambda _root: ('test-head', True, 'f' * 64))
+    monkeypatch.setattr(dev, '_research_runtime', lambda _product: (compiled / 'compose.json', None, None, None, 'source-groundwater'))
+    monkeypatch.setattr(dev, 'docker_arguments', lambda args: args)
+    monkeypatch.setattr(dev.subprocess, 'run', lambda args, **_kwargs: subprocess.CompletedProcess(args, 0, json.dumps(inspected), ''))
+    monkeypatch.setattr(dev, '_run_compose', lambda _product, args: subprocess.CompletedProcess(
+        args, 0, json.dumps(records if args[0] == 'ps' else {'status': 'UP', 'components': {'native': 'UP', 'qgis': 'UP'}}), ''
+    ))
+    receipt = {'status': 'PASS', 'state': 'ALREADY_APPLIED', 'documentCount': 111, 'assemblyDigest': running.name}
+    path = dev._bootstrap_status_path('groundwater')
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps(receipt))
+
+    report = dev._status('groundwater')
+    assert report['status'] == 'PASS'
+    assert report['initialization']['knowledgeBootstrap'] == receipt
+    assert report['runningAssemblyDigest'] == running.name
+    assert report['compiledAssemblyDigest'] == compiled.name
+
+    inspected[1]['Mounts'][0]['Source'] = str(compiled / 'executor-config.json')
+    mixed = dev._status('groundwater')
+    assert mixed['status'] != 'PASS'
+    assert mixed['initialization']['knowledgeBootstrap']['status'] == 'UNKNOWN'
+    assert any(issue['code'] == 'RESEARCH_RUNNING_ASSEMBLY_UNKNOWN' for issue in mixed['issues'])

@@ -24,7 +24,12 @@ export function WorkflowDraftCard({ draft, onKnowledge, onResource }: {
       <h3>{payload.title}</h3><p className="prose">{payload.summary}</p>
       <div className="draft-overview"><span>{payload.workflow.nodes.length} 个分析步骤</span><span>{payload.workflow.inputs.length} 份所需资料</span><span>{payload.workflow.outputs.length} 项预期输出</span></div>
       {(payload.missingInputs.length > 0 || payload.unresolvedItems.length > 0) && <section className="draft-missing" data-testid="draft-missing"><h4>待补充与待核实</h4>
-        {payload.missingInputs.length > 0 && <ul>{payload.missingInputs.map(input => <li key={`${input.kind}:${input.name}`}><strong>{input.kind === 'DATA' ? '缺少数据' : '缺少参数'}：{argumentLabel(input.name)}</strong><p className="muted">用于 {input.requiredBy.map(item => nodeName(item.nodeId)).join('、')}</p></li>)}</ul>}
+        {payload.missingInputs.length > 0 && <ul>{payload.missingInputs.map(input => <li key={`${input.kind}:${input.name}`}>
+          <strong>{input.kind === 'DATA' ? '缺少数据' : '缺少参数'}：{argumentLabel(input.name)}</strong>
+          <ul className="muted">{input.requiredBy.map(item => <li key={`${item.nodeId}:${item.port}`}>
+            <span>用于 {nodeName(item.nodeId)}</span> · {input.kind === 'DATA' ? '输入端口' : '参数'} <code>{item.port}</code>
+          </li>)}</ul>
+        </li>)}</ul>}
         {payload.unresolvedItems.length > 0 && <ul>{payload.unresolvedItems.map((item, index) => <li key={index}>{item}</li>)}</ul>}
       </section>}
       <h4>依赖关系图</h4><WorkflowDraftGraph draftId={draft.draftId} payload={payload} />

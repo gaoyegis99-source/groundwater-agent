@@ -3,7 +3,7 @@ import Markdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Icon } from './Icon';
 import { shortVersion } from './format';
-import type { KnowledgeReference, ReplyPresentation, ReplySection } from './types';
+import type { KnowledgeReference, ReplyPresentation, ReplySection, ReplySource } from './types';
 
 export function MessageContent({ content, onResource }: { content: string; onResource: (id: string) => void }) {
   // Only the exact attachment envelope produced by withReferences is a UI attachment.
@@ -40,20 +40,36 @@ export function AssistantContent({ reply, onKnowledge, onResource }: {
   const executionDetails = reply.executionSummary ? reply.details : [];
   const supportingDetails = reply.executionSummary ? [] : reply.details;
   const hasSources = reply.sources.length > 0;
+  const hasMultipleSources = reply.sources.length > 1;
+  function openSource({ versionId, unitId, checksum }: ReplySource) {
+    onKnowledge({ versionId, unitId, checksum });
+  }
+  function renderSection(section: ReplySection) {
+    return <>
+      <ReplyMarkdown section={section} onResource={onResource} />
+      {hasMultipleSources && section.sourceIndexes.length > 0 && <div className="reply-section-sources">
+        {section.sourceIndexes.map(index => {
+          const source = reply.sources[index];
+          return source && <button type="button" className="citation-link" key={index}
+            aria-label={`查看依据 ${index + 1} · ${source.title}`} onClick={() => openSource(source)}>依据 {index + 1}</button>;
+        })}
+      </div>}
+    </>;
+  }
   return <div className="reply-text">
-    {reply.conclusion && <div className="reply-conclusion"><ReplyMarkdown section={reply.conclusion} onResource={onResource} /></div>}
-    {reply.executionSummary && <section className="reply-execution" aria-label="执行摘要"><h3>执行摘要</h3><ReplyMarkdown section={reply.executionSummary} onResource={onResource} /></section>}
-    {executionDetails.length > 0 && <section className="reply-result-explanation" aria-label="结果说明"><h3>结果说明</h3>{executionDetails.map((detail, index) => <div className="reply-detail" key={index}><ReplyMarkdown section={detail} onResource={onResource} /></div>)}</section>}
-    {reply.unresolvedItems.length > 0 && <section className="reply-unresolved" aria-label="需要补充"><h3>需要补充</h3><ul>{reply.unresolvedItems.map((item, index) => <li key={index}><ReplyMarkdown section={item} onResource={onResource} /></li>)}</ul></section>}
+    {reply.conclusion && <div className="reply-conclusion">{renderSection(reply.conclusion)}</div>}
+    {reply.executionSummary && <section className="reply-execution" aria-label="执行摘要"><h3>执行摘要</h3>{renderSection(reply.executionSummary)}</section>}
+    {executionDetails.length > 0 && <section className="reply-result-explanation" aria-label="结果说明"><h3>结果说明</h3>{executionDetails.map((detail, index) => <div className="reply-detail" key={index}>{renderSection(detail)}</div>)}</section>}
+    {reply.unresolvedItems.length > 0 && <section className="reply-unresolved" aria-label="需要补充"><h3>需要补充</h3><ul>{reply.unresolvedItems.map((item, index) => <li key={index}>{renderSection(item)}</li>)}</ul></section>}
     {(supportingDetails.length > 0 || hasSources) && <details className="reply-details"><summary>更多信息</summary>
-      {supportingDetails.map((detail, index) => <div className="reply-detail" key={index}><ReplyMarkdown section={detail} onResource={onResource} /></div>)}
+      {supportingDetails.map((detail, index) => <div className="reply-detail" key={index}>{renderSection(detail)}</div>)}
       {hasSources && <section className="reply-sources" aria-label="回答依据"><h3>回答依据</h3><div className="citation-list">{reply.sources.map((source, index) => <span
         className="citation-entry" key={JSON.stringify([source.versionId, source.unitId, source.checksum])}
-      ><button className="citation"
+      ><button type="button" className="citation"
           data-knowledge-version-id={source.versionId} data-knowledge-unit-id={source.unitId}
-          aria-label={`打开依据：${source.title}`}
-          onClick={() => onKnowledge({ versionId: source.versionId, unitId: source.unitId, checksum: source.checksum })}
-        ><Icon name="book" />{source.title}</button>{index < reply.sources.length - 1 && <span aria-hidden="true">；</span>}</span>)}</div></section>}
+          aria-label={hasMultipleSources ? `打开依据 ${index + 1} · ${source.title}` : `打开依据：${source.title}`}
+          onClick={() => openSource(source)}
+        ><Icon name="book" />{hasMultipleSources ? `${index + 1}. ${source.title}` : source.title}</button>{index < reply.sources.length - 1 && <span aria-hidden="true">；</span>}</span>)}</div></section>}
     </details>}
   </div>;
 }

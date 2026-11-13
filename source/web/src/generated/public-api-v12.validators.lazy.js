@@ -143,6 +143,8 @@ const responseLoaders = {
   "kernel_export_workflow_draft": () => import('./public-api-v12.validators/response_kernel_export_workflow_draft.js').then(module => module.response_kernel_export_workflow_draft),
   "kernel_recover_workflow": () => import('./public-api-v12.validators/response_kernel_recover_workflow.js').then(module => module.response_kernel_recover_workflow),
   "kernel_get_workflow_run": () => import('./public-api-v12.validators/response_kernel_get_workflow_run.js').then(module => module.response_kernel_get_workflow_run),
+  "kernel_get_workflow_run_graph": () => import('./public-api-v12.validators/response_kernel_get_workflow_run_graph.js').then(module => module.response_kernel_get_workflow_run_graph),
+  "kernel_get_workflow_run_nodes": () => import('./public-api-v12.validators/response_kernel_get_workflow_run_nodes.js').then(module => module.response_kernel_get_workflow_run_nodes),
 };
 export function loadRequestValidator(operationId) { return requestLoaders[operationId]?.(); }
 export function loadResponseValidator(operationId) { return responseLoaders[operationId]?.(); }

@@ -14,6 +14,7 @@ from platform_workflow_compiler import (
     list_operators,
     validate_catalog,
 )
+from scripts.development.product_selection import load_selected_product_by_id
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -144,9 +145,10 @@ def convert_render_graph():
 
 
 def test_all_static_workflows_keep_model_pinned_checksums(catalog):
-    directory = ROOT / "domains/groundwater/5.0.0"
+    selected = load_selected_product_by_id(ROOT, "groundwater")
+    directory = selected.domain.root
     workflows = sorted((directory / "workflows").glob("*.workflow.json"))
-    assert len(workflows) == 6
+    assert len(workflows) == len(selected.domain.manifest["workflowDefinitions"])
     for path in workflows:
         raw = json.loads(path.read_text())
         model = json.loads(
@@ -417,6 +419,21 @@ def test_raw_graph_rejects_untrusted_nested_fields_and_types(catalog, mutation):
 @pytest.mark.parametrize(
     "mutation,code,path",
     [
+        (
+            lambda g: g["inputs"].append(deepcopy(g["inputs"][0])),
+            "WORKFLOW_INPUT_INVALID",
+            "/graph/inputs/1/name",
+        ),
+        (
+            lambda g: g["nodes"].append(deepcopy(g["nodes"][0])),
+            "WORKFLOW_NODE_INVALID",
+            "/graph/nodes/1/nodeId",
+        ),
+        (
+            lambda g: g["outputs"].append(deepcopy(g["outputs"][0])),
+            "WORKFLOW_OUTPUT_INVALID",
+            "/graph/outputs/1/name",
+        ),
         (
             lambda g: g["nodes"][0].update(operatorId="unknown.operator"),
             "WORKFLOW_OPERATOR_UNKNOWN",

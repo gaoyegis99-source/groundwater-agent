@@ -15,11 +15,11 @@ ROOT = Path(__file__).resolve().parents[2]
 REQUIRED_IGNORE_RULES = {
     ".generated/",
     "**/.venv/",
+    "**/.mypy_cache/",
     "node_modules/",
     "test-results/",
     "playwright-report/",
     "**/.v6-agent-runs.sqlite*",
-    "/migration-assets/yaozhanbao-transfer-case/payload/",
 }
 FORBIDDEN_PATH_PARTS = {
     ".generated",
@@ -41,7 +41,6 @@ IGNORED_DIRECTORIES = {
     ".venv",
     "__pycache__",
     "docs",
-    "migration-assets",
     "node_modules",
     "tests",
 }
@@ -87,8 +86,10 @@ def check_paths(paths: list[str]) -> list[str]:
         ):
             violations.append(f"{raw_path}: TRACKED_SECRET_CONFIGURATION")
             continue
-        if path.parts[:3] == (
-            "migration-assets",
+        if path.parts[:5] == (
+            "products",
+            "groundwater",
+            "development",
             "yaozhanbao-transfer-case",
             "payload",
         ):
@@ -99,6 +100,92 @@ def check_paths(paths: list[str]) -> list[str]:
         )
         if blocked is not None:
             violations.append(f"{raw_path}: TRACKED_EPHEMERAL_PATH:{blocked}")
+    return sorted(violations)
+
+
+def _activity_plan_violations(root: Path) -> list[str]:
+    plans = root.parent / "plans"
+    allowed = {"README.md", "01_SYSTEM_ENGINEERING"}
+    if not plans.is_dir() or plans.is_symlink():
+        return ["../plans: ACTIVITY_PLAN_ROOT_INVALID"]
+    violations = [
+        f"../plans/{child.name}: EXTRA_ACTIVITY_PLAN_CONTENT"
+        for child in plans.iterdir()
+        if child.name not in allowed
+    ]
+    package = plans / "01_SYSTEM_ENGINEERING"
+    manifest_path = package / "PACK_MANIFEST.json"
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        violations.append("../plans/01_SYSTEM_ENGINEERING/PACK_MANIFEST.json: INVALID")
+        return sorted(violations)
+    expected_ids = [f"SYS-{index:02d}" for index in range(1, 15)]
+    dependencies = manifest.get("dependencies")
+    if (
+        manifest.get("schemaVersion") != "activity-plan-package.v1"
+        or manifest.get("packageId") != "01_SYSTEM_ENGINEERING"
+        or manifest.get("status") != "active"
+        or manifest.get("baseCommit")
+        != "19175f592697999b895d6d3ebdb25c6d06d39455"
+        or manifest.get("taskCount") != 14
+        or manifest.get("taskIds") != expected_ids
+        or not isinstance(manifest.get("workPackages"), list)
+        or not isinstance(dependencies, dict)
+        or set(dependencies) != set(expected_ids)
+        or any(not isinstance(dependencies[item], list) for item in expected_ids)
+    ):
+        violations.append("../plans/01_SYSTEM_ENGINEERING/PACK_MANIFEST.json: INVALID")
+    actual_ids = sorted(
+        path.name.split("_", 1)[0]
+        for path in (package / "tasks").glob("SYS-*.md")
+    )
+    if actual_ids != expected_ids:
+        violations.append("../plans/01_SYSTEM_ENGINEERING/tasks: TASK_INDEX_MISMATCH")
+    for path in package.rglob("*"):
+        if not path.is_file():
+            continue
+        content = path.read_text(encoding="utf-8", errors="replace")
+        if "plans/01_SOURCE_AUDIT.md" in content or "plans/03_GAP_MATRIX.md" in content:
+            violations.append(
+                f"../plans/{path.relative_to(plans).as_posix()}: RETIRED_PLAN_REFERENCE"
+            )
+        if "``" in content and "```" not in content:
+            violations.append(
+                f"../plans/{path.relative_to(plans).as_posix()}: BROKEN_MARKDOWN_QUOTE"
+            )
+    return sorted(violations)
+
+
+def _groundwater_version_violations(root: Path) -> list[str]:
+    product_path = root / "products/groundwater/product-manifest.json"
+    try:
+        product = json.loads(product_path.read_text(encoding="utf-8"))
+        selected = product["domainPackage"]
+        if selected["domainId"] != "groundwater":
+            raise ValueError("groundwater domain not selected")
+        version = selected["version"]
+    except (OSError, ValueError, KeyError, StopIteration, TypeError):
+        return ["products/groundwater/product-manifest.json: DOMAIN_SELECTION_INVALID"]
+    domain_root = root / "domains/groundwater"
+    actual = sorted(path.name for path in domain_root.iterdir() if path.is_dir())
+    violations = []
+    if actual != [version]:
+        violations.append(
+            "domains/groundwater: SELECTED_VERSION_ONLY_REQUIRED:"
+            + ",".join(actual)
+        )
+    legacy_path = re.compile(r"domains/groundwater/(?:5[.]0[.]0|6[.]0[.]0)")
+    for base in (root, root.parent / "plans"):
+        for path in base.rglob("*"):
+            if not path.is_file() or ".git" in path.parts:
+                continue
+            if path.suffix not in {".json", ".md", ".py", ".sh", ".toml", ".yaml", ".yml"}:
+                continue
+            content = path.read_text(encoding="utf-8", errors="replace")
+            if legacy_path.search(content):
+                relative = path.relative_to(root.parent).as_posix()
+                violations.append(f"../{relative}: RETIRED_DOMAIN_PATH_REFERENCE")
     return sorted(violations)
 
 
@@ -253,6 +340,8 @@ def check(root: Path = ROOT, tracked_paths: list[str] | None = None) -> list[str
             *_symlink_violations(root),
             *_project_bin_violations(root),
             *_layout_violations(root),
+            *_activity_plan_violations(root),
+            *_groundwater_version_violations(root),
         ]
     )
 

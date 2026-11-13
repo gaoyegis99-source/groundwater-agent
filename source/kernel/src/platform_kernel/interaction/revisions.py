@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 import hashlib
 import json
 from pathlib import Path
@@ -7,6 +8,7 @@ from uuid import uuid4
 
 import httpx
 from jsonschema import ValidationError, validate
+from platform_protocol_contracts import encode_display_name_header
 
 from ..application.task_api import bind_confirmation
 from ..database import append_event, connect_database, utc_now
@@ -16,7 +18,6 @@ from ..errors import (
     UpstreamServiceError,
 )
 from ..contracts import DataVersionRefV2
-from .actors import DEFAULT_LOCAL_ACTOR_SUBJECT
 from .state_projection import confirmation_from_row
 
 
@@ -66,7 +67,9 @@ async def revise_confirmation(
     request_id: str,
     expected_goal_revision: int,
     actions: tuple[dict[str, object], ...],
-    decision_subject: str = DEFAULT_LOCAL_ACTOR_SUBJECT,
+    decision_subject: str,
+    decision_display_name: str,
+    decision_roles: frozenset[str],
 ):
     fingerprint = hashlib.sha256(
         _canonical(
@@ -100,6 +103,7 @@ async def revise_confirmation(
         if (
             source is None
             or source["status"] != "PENDING"
+            or source["decision"] is not None
             or source["goal_revision"] != session["goal_revision"]
         ):
             raise ConfirmationConflictError("CONFIRMATION_NOT_CURRENT")
@@ -112,6 +116,13 @@ async def revise_confirmation(
     ):
         raise ConfirmationConflictError("CONFIRMATION_ACTION_SET_INVALID")
     model_by_id = {item.model_id: item for item in models}
+    data_headers = {
+        "X-Project-ID": project_id,
+        "X-Client-Type": "agent",
+        "X-Platform-Subject": decision_subject,
+        "X-Platform-Display-Name": encode_display_name_header(decision_display_name),
+        "X-Platform-Roles": ",".join(sorted(decision_roles)),
+    }
     validated: list[
         tuple[object, dict[str, object], str, dict[str, DataVersionRefV2]]
     ] = []
@@ -124,6 +135,12 @@ async def revise_confirmation(
             validate(arguments, model.input_schema)
         except ValidationError:
             raise ConfirmationConflictError("CONFIRMATION_ARGUMENTS_INVALID") from None
+        expected_references = submitted.get("expected_input_references", {})
+        if not isinstance(expected_references, dict) or expected_references.keys() - set(
+            model.data_input_parameters
+        ):
+            raise ConfirmationConflictError("CONFIRMATION_DATA_VERSION_INVALID")
+        frozen_references = json.loads(old["input_references_json"])
         input_references: dict[str, DataVersionRefV2] = {}
         for parameter in model.data_input_parameters:
             value = arguments.get(parameter)
@@ -133,13 +150,7 @@ async def revise_confirmation(
             try:
                 response = await client.get(
                     f"{resource_service.internal_base_url}/data/v3/versions/{version_id}",
-                    headers={
-                        "X-Project-ID": project_id,
-                        "X-Client-Type": "agent",
-                        "X-Platform-Subject": "platform-kernel",
-                        "X-Platform-Display-Name": "Platform Kernel",
-                        "X-Platform-Roles": "researcher",
-                    },
+                    headers=data_headers,
                     timeout=10,
                 )
             except httpx.RequestError:
@@ -149,6 +160,17 @@ async def revise_confirmation(
             reference = _data_reference(response.json())
             if reference.version_id != version_id:
                 raise ConfirmationConflictError("CONFIRMATION_DATA_VERSION_INVALID")
+            if (
+                parameter in expected_references
+                and expected_references[parameter] != reference.as_storage_dict()
+            ):
+                raise ConfirmationConflictError("CONFIRMATION_DATA_VERSION_INVALID")
+            frozen_value = frozen_references.get(parameter)
+            if frozen_value is not None and frozen_value["version_id"] == version_id:
+                frozen = DataVersionRefV2.from_storage_dict(frozen_value)
+                if replace(frozen, output_name=None) != reference:
+                    raise ConfirmationConflictError("CONFIRMATION_DATA_VERSION_INVALID")
+                reference = frozen
             input_references[parameter] = reference
         action_fingerprint = hashlib.sha256(
             f"{source['agent_run_id']}:{old['tool']}:{_canonical(arguments)}".encode()
@@ -169,7 +191,12 @@ async def revise_confirmation(
             "SELECT * FROM confirmations WHERE confirmation_id=?",
             (confirmation_id,),
         ).fetchone()
-        if current is None or current["status"] != "PENDING":
+        # A decision can be recorded while the Data service validates the edit.
+        if (
+            current is None
+            or current["status"] != "PENDING"
+            or current["decision"] is not None
+        ):
             raise ConfirmationConflictError("CONFIRMATION_NOT_CURRENT")
         new_kind = "RECOVERY" if current["kind"] == "RECOVERY" else "EDITED"
         connection.execute(

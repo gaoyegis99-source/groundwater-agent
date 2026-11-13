@@ -42,6 +42,80 @@ SDK 提供 `send_message`、`input_reference`、`confirm`、`reject`、`events`�
 
 使用 `client.workflow_run(run_id, project_id=session.project_id)` 读取类型化工作流状态。若提交确认后连接断开，可先读取原会话和确认状态，再以同一个确认 ID 复核处理结果。
 
+### 从 HTTP 或 SDK 接续一次分析
+
+准备已有会话的 `GROUNDWATER_SESSION_ID`、项目的 `GROUNDWATER_PROJECT_ID` 和个人 `GROUNDWATER_API_TOKEN`。在 `GROUNDWATER_MESSAGE` 填入本次分析请求，`GROUNDWATER_REQUEST_ID` 使用由调用方保存的唯一标识。以下命令使用 `curl` 和 `jq`。
+
+```bash
+origin=${GROUNDWATER_ORIGIN:-http://127.0.0.1:28186}
+session="$origin/api/v12/sessions/$GROUNDWATER_SESSION_ID"
+auth="Authorization: Bearer $GROUNDWATER_API_TOKEN"
+body=$(jq -cn --arg id "$GROUNDWATER_REQUEST_ID" --arg message "$GROUNDWATER_MESSAGE" \
+  '{requestId:$id,message:$message,requestedMode:"AUTO"}')
+curl --fail-with-body -i -H "$auth" -H 'Content-Type: application/json' \
+  --data "$body" "$session/messages"
+
+snapshot=$(curl --fail-with-body -sS -H "$auth" "$session/messages")
+cursor=$(jq -r '.eventCursor' <<< "$snapshot")
+jq '.turns[-1] | {status,confirmations,executionTasks}' <<< "$snapshot"
+curl --fail-with-body -NsS -H "$auth" -H "Last-Event-ID: $cursor" "$session/events"
+```
+
+`202` 表示已受理。连接断开后，先重新读取快照并判断是否仍需等待。若提交回执不明，按原 `requestId` 在历史中核对，确需重试时复用原 `body`。流结束也先读取快照。
+
+人工核对当前 `PENDING` 批次中的冻结资料和参数后，把确认 ID 填入 `GROUNDWATER_CONFIRMATION_ID`。批准后继续观察快照，直至 `executionTasks` 包含终态运行。用该运行的 ID 设置 `GROUNDWATER_RUN_ID` 并核对成果。
+
+```bash
+jq -cn --arg id "$GROUNDWATER_CONFIRMATION_ID" '{confirmationId:$id}' |
+  curl --fail-with-body -i -H "$auth" -H 'Content-Type: application/json' \
+    --data-binary @- "$session/confirm"
+
+curl --fail-with-body -sS -G -H "$auth" \
+  --data-urlencode "projectId=$GROUNDWATER_PROJECT_ID" \
+  "$origin/api/v12/workflow-runs/$GROUNDWATER_RUN_ID" |
+  jq '{status, outputs}'
+curl --fail-with-body -sS -H "$auth" "$session/results" |
+  jq --arg run "$GROUNDWATER_RUN_ID" '.items[] | select(.workflowRunId == $run) | .remoteOutputs'
+```
+
+`409 CONFIRMATION_NOT_CURRENT` 时读取最新快照并由人工复核。`409 CONFIRMATION_DATA_VERSION_INVALID` 时重新核对选择的精确输入。`429` 按响应的 `Retry-After` 等待。
+
+同样的步骤可用 Python SDK。先运行提交和观察段，再单独批准。查询成果段可在运行结束后执行。
+
+```python
+import os
+from contextlib import closing
+
+from groundwater_api_client import GroundwaterClient, models
+
+session_id = os.environ["GROUNDWATER_SESSION_ID"]
+with GroundwaterClient(
+    os.getenv("GROUNDWATER_ORIGIN", "http://127.0.0.1:28186"),
+    api_token=os.environ["GROUNDWATER_API_TOKEN"],
+) as client:
+    print(client.send_message(session_id, models.KernelMessageCreate(
+        requestId=os.environ["GROUNDWATER_REQUEST_ID"],
+        message=os.environ["GROUNDWATER_MESSAGE"], requestedMode="AUTO",
+    )))
+    snapshot = client.history(session_id)
+    print(snapshot.turns[-1] if snapshot.turns else "等待提交进入快照")
+    with closing(client.events(session_id, cursor=snapshot.event_cursor)) as events:
+        for chunk in events:
+            print(chunk.decode("utf-8", errors="replace"), end="")
+    snapshot = client.history(session_id)
+    print(snapshot.turns[-1] if snapshot.turns else "暂无对话轮次")
+
+    confirmation_id = input("核对最新冻结参数后，输入要批准的批次 ID（回车跳过）：").strip()
+    if confirmation_id:
+        print(client.confirm(session_id, confirmation_id))
+
+    run_id = os.environ.get("GROUNDWATER_RUN_ID")
+    if run_id:
+        run = client.workflow_run(run_id, project_id=os.environ["GROUNDWATER_PROJECT_ID"])
+        print(run.status, run.outputs)
+        print([item for item in client.results(session_id).items if item["workflowRunId"] == run_id])
+```
+
 ## 健康与能力
 
 | Method | Path | 含义 |
@@ -94,6 +168,7 @@ SDK 提供 `send_message`、`input_reference`、`confirm`、`reject`、`events`�
 | GET | `/api/v12/agent-runs/{agentRunId}/trace` | 已脱敏的顺序 Trace。 |
 | GET | `/api/v12/agent-runs/{agentRunId}/provider-requests` | Provider 阶段、尝试、结果、错误类、Token 和时延。 |
 | GET | `/api/v12/workflow-runs/{workflowRunId}` | WorkflowRun 权威执行状态和 Data 输出引用。 |
+| GET | `/api/v12/workflow-runs/{workflowRunId}/graph` | 已派发作业的冻结节点和依赖；需 `projectId`。旧 Executor 或无法核对时返回 `UNAVAILABLE`。 |
 
 Provider 请求记录不保存 API key、原始提示、工具参数、观察正文、模型推理或上游私有错误正文。
 

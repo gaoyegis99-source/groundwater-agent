@@ -7,7 +7,13 @@ of relying on a broad pytest discovery command whose omissions are hard to see.
 
 from __future__ import annotations
 
+from collections.abc import Iterator, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass
+import os
+from pathlib import Path
+import shlex
+from tempfile import TemporaryDirectory
 
 
 @dataclass(frozen=True)
@@ -104,3 +110,17 @@ def pytest_command(
     return (
         "-m", "pytest", *options, *test_slice.pytest_arguments, *test_slice.paths
     )
+
+
+@contextmanager
+def isolated_pytest_command(command: Sequence[str]) -> Iterator[Sequence[str]]:
+    """Keep each validation attempt out of pytest's shared temporary tree."""
+    if list(command[1:3]) != ["-m", "pytest"]:
+        yield command
+        return
+    options = [*command[3:], *shlex.split(os.getenv("PYTEST_ADDOPTS", ""))]
+    if any(option == "--basetemp" or option.startswith("--basetemp=") for option in options):
+        yield command
+        return
+    with TemporaryDirectory(prefix="groundwater-v6-pytest-") as directory:
+        yield (*command, "--basetemp", str(Path(directory) / "tests"))

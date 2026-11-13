@@ -204,8 +204,10 @@ async def revise_confirmation(
             confirmation_id,
             request.request_id,
             request.expected_goal_revision,
-            tuple(item.model_dump() for item in request.actions),
-            identity.subject,
+            tuple(item.model_dump(by_alias=False, exclude_none=True) for item in request.actions),
+            decision_subject=identity.subject,
+            decision_display_name=identity.display_name,
+            decision_roles=identity.roles,
         )
     )
 

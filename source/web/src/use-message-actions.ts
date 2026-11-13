@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { ApiError, callApi } from './api';
-import { isBusy } from './chat-state';
+import { canConfirm, isBusy } from './chat-state';
 import { inputReferences, isResourceItems, messageBody, newRequestId, savedSubmission, savedSubmissionForKey, saveSubmission, type SavedSubmission } from './message-routing';
 import { readJsonCache } from './browser-cache';
 import { readQueue, saveQueue, type QueuedMessage } from './task-state';
-import type { Confirmation, History, ResourceItem, Session } from './types';
+import type { Confirmation, ConfirmationRevisionAction, History, ResourceItem, Session } from './types';
 import type { SessionStreamRefs } from './use-session-stream';
 import { scopedStorageKey } from './browser-scope';
 
@@ -14,6 +14,33 @@ export function isNaturalControl(message: string, hasAttachments = false) { retu
 function isStatusQuery(message: string, hasAttachments = false) { return !hasAttachments && statusQueries.has(message.trim()); }
 function savedAttachments(scope: string, id: string): ResourceItem[] {
   return readJsonCache(scopedStorageKey(scope, 'draft-attachments', id), isResourceItems) ?? [];
+}
+
+type ConfirmationMutation = {
+  scope: string;
+  sessionId: string;
+  goalRevision: number;
+  label: string;
+  send: () => Promise<unknown>;
+} & (
+  { kind: 'confirm' | 'reject'; confirmationId: string } |
+  { kind: 'revision'; confirmationId: string; requestId: string } |
+  { kind: 'recovery'; requestId: string }
+);
+
+function reconcileConfirmation(mutation: ConfirmationMutation, history: History) {
+  const confirmations = history.turns.flatMap(turn => turn.confirmations);
+  if ('requestId' in mutation && confirmations.some(item => item.requestId === mutation.requestId)) return 'applied';
+  const original = 'confirmationId' in mutation ? confirmations.find(item => item.confirmationId === mutation.confirmationId) : undefined;
+  if (mutation.kind === 'confirm' && original?.status === 'CONFIRMED') return 'applied';
+  if (mutation.kind === 'reject' && original?.status === 'REJECTED') return 'applied';
+  if (history.goalRevision !== mutation.goalRevision) return 'stale';
+  if (original?.decisionState) return 'checking';
+  if (mutation.kind === 'recovery') {
+    const current = history.turns.find(turn => turn.goalRevision === history.goalRevision);
+    return current?.confirmations.at(-1)?.status === 'PENDING' ? 'stale' : 'retry';
+  }
+  return original && canConfirm(original, history, false) ? 'retry' : 'stale';
 }
 
 type MessageActionOptions = {
@@ -58,6 +85,8 @@ export function useMessageActions({
   const [pendingOperation, setPendingOperation] = useState<{ id: number; sessionId: string; generation: number; label: string } | null>(null);
   const [continuationVersionId, setContinuationVersionId] = useState<string | null>(null);
   const sessionCreationPending = useRef(false);
+  const [uncertain, setUncertain] = useState<{ mutation: ConfirmationMutation; before: History | null } | null>(null);
+  const currentUncertain = uncertain?.mutation.scope === storageScope && uncertain.mutation.sessionId === activeId ? uncertain : null;
   const [actionError, setActionError] = useState<ApiError | null>(null);
   const draftRef = useRef(draft);
   const previousStorageScope = useRef(storageScope);
@@ -69,7 +98,7 @@ export function useMessageActions({
   const pendingLabel = pendingOperation?.label ?? '正在提交';
   const runtimeBusy = isBusy(history);
   const pendingControl = history?.controlProposals?.some(item => ['PENDING', 'CONFIRMED'].includes(item.status)) ?? false;
-  const busy = pending || runtimeBusy || pendingControl || loading;
+  const busy = pending || runtimeBusy || pendingControl || loading || !!currentUncertain;
   const lastTurn = history?.turns.find(turn => turn.goalRevision === history.goalRevision);
   const error = actionError ?? externalError;
 
@@ -258,14 +287,55 @@ export function useMessageActions({
     }
     finally { if (id && current()) await refresh(id); await loadSessions(); if (suggestedMessage) optionSubmission.current = false; setPendingOperation(previous => previous?.id === operation ? null : previous); }
   }
-  async function decision(id: string, kind: 'confirm' | 'reject', reason?: string) {
+  const receiptState = currentUncertain && history?.sessionId === activeId && history !== currentUncertain.before
+    ? reconcileConfirmation(currentUncertain.mutation, history) : 'checking';
+  useEffect(() => {
+    if (!currentUncertain) return;
+    if (receiptState === 'applied') {
+      setUncertain(null);
+      if (currentUncertain.mutation.kind === 'revision' || currentUncertain.mutation.kind === 'recovery') closeConfirmationEditor();
+    } else if (receiptState === 'stale') {
+      setUncertain(null);
+      setActionError(new ApiError(409, 'CONFIRMATION_NOT_CURRENT'));
+    }
+  }, [receiptState, currentUncertain, closeConfirmationEditor]);
+
+  async function runConfirmationMutation(mutation: ConfirmationMutation) {
     const generation = viewGeneration.current;
     const operation = ++mutationSerial.current;
-    const current = () => activeRef.current === activeId && viewGeneration.current === generation;
-    setPendingOperation({ id: operation, sessionId: activeId, generation, label: '正在提交确认决定' }); setActionError(null);
-    try { await callApi(kind === 'reject' ? 'kernel_reject' : 'kernel_confirm', `/sessions/${activeId}/${kind}`, { confirmationId: id, ...(kind === 'reject' ? { reason } : {}) }); }
-    catch (caught) { if (current()) showError(caught); }
-    finally { if (current()) await refresh(activeId); setPendingOperation(previous => previous?.id === operation ? null : previous); }
+    const current = () => activeRef.current === mutation.sessionId && viewGeneration.current === generation;
+    setPendingOperation({ id: operation, sessionId: mutation.sessionId, generation, label: mutation.label });
+    setActionError(null);
+    try {
+      await mutation.send();
+      if (current()) {
+        setUncertain(null);
+        await refresh(mutation.sessionId);
+        if (current() && (mutation.kind === 'revision' || mutation.kind === 'recovery')) closeConfirmationEditor();
+      }
+    } catch (caught) {
+      if (!(caught instanceof ApiError)) throw caught;
+      if (current()) {
+        if (caught.status === 0 || (caught.status >= 200 && caught.status < 300)) {
+          setUncertain({ mutation, before: history });
+        } else {
+          setUncertain(null);
+          showError(caught);
+        }
+        await refresh(mutation.sessionId);
+      }
+    } finally {
+      setPendingOperation(previous => previous?.id === operation ? null : previous);
+    }
+  }
+
+  async function decision(id: string, kind: 'confirm' | 'reject', reason?: string) {
+    if (!history) return;
+    await runConfirmationMutation({
+      scope: storageScope, sessionId: activeId, goalRevision: history.goalRevision,
+      kind, confirmationId: id, label: '正在提交确认决定',
+      send: () => callApi(kind === 'reject' ? 'kernel_reject' : 'kernel_confirm', `/sessions/${activeId}/${kind}`, { confirmationId: id, ...(kind === 'reject' ? { reason } : {}) }),
+    });
   }
   async function controlDecision(id: string, action: 'confirm' | 'dismiss') {
     const generation = viewGeneration.current;
@@ -276,25 +346,23 @@ export function useMessageActions({
     catch (caught) { if (current()) showError(caught); }
     finally { if (current()) await refresh(activeId); setPendingOperation(previous => previous?.id === operation ? null : previous); }
   }
-  async function reviseConfirmation(confirmation: Confirmation, actions: { toolCallId: string; arguments: Record<string, unknown> }[]) {
+  async function reviseConfirmation(confirmation: Confirmation, actions: ConfirmationRevisionAction[]) {
     if (!history) return;
-    const generation = viewGeneration.current; const operation = ++mutationSerial.current;
-    const current = () => activeRef.current === activeId && viewGeneration.current === generation;
-    setPendingOperation({ id: operation, sessionId: activeId, generation, label: '正在保存确认修订' }); setActionError(null);
-    try {
-      await callApi('kernel_revise_confirmation', `/sessions/${activeId}/confirmations/${confirmation.confirmationId}/revisions`, { requestId: newRequestId(), expectedGoalRevision: history.goalRevision, actions });
-      if (current()) { closeConfirmationEditor(); await refresh(activeId); }
-    }
-    catch (caught) { if (current()) showError(caught); }
-    finally { setPendingOperation(previous => previous?.id === operation ? null : previous); }
+    const body = { requestId: newRequestId(), expectedGoalRevision: history.goalRevision, actions };
+    await runConfirmationMutation({
+      scope: storageScope, sessionId: activeId, goalRevision: history.goalRevision, kind: 'revision',
+      confirmationId: confirmation.confirmationId, requestId: body.requestId, label: '正在保存确认修订',
+      send: () => callApi('kernel_revise_confirmation', `/sessions/${activeId}/confirmations/${confirmation.confirmationId}/revisions`, body),
+    });
   }
   async function recoverWorkflow(workflowRunId: string) {
     if (!history) return;
-    const generation = viewGeneration.current; const operation = ++mutationSerial.current;
-    setPendingOperation({ id: operation, sessionId: activeId, generation, label: '正在创建恢复批次' }); setActionError(null);
-    try { await callApi('kernel_recover_workflow', `/sessions/${activeId}/workflow-runs/${workflowRunId}/recoveries`, { requestId: newRequestId(), expectedGoalRevision: history.goalRevision }); await refresh(activeId); }
-    catch (caught) { if (viewGeneration.current === generation) showError(caught); }
-    finally { setPendingOperation(previous => previous?.id === operation ? null : previous); }
+    const body = { requestId: newRequestId(), expectedGoalRevision: history.goalRevision };
+    await runConfirmationMutation({
+      scope: storageScope, sessionId: activeId, goalRevision: history.goalRevision, kind: 'recovery',
+      requestId: body.requestId, label: '正在创建恢复批次',
+      send: () => callApi('kernel_recover_workflow', `/sessions/${activeId}/workflow-runs/${workflowRunId}/recoveries`, body),
+    });
   }
 
   function clearError() {
@@ -314,6 +382,11 @@ export function useMessageActions({
     attachments,
     setAttachments,
     submission,
+    receiptPending: !!currentUncertain,
+    canRetryReceipt: receiptState === 'retry',
+    retryReceipt: () => {
+      if (currentUncertain && receiptState === 'retry' && !pending) void runConfirmationMutation(currentUncertain.mutation);
+    },
     pending,
     pendingLabel,
     continuationVersionId,

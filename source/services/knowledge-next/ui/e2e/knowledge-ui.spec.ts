@@ -126,11 +126,18 @@ async function routeWorkspace(page: Page, withDocument = false, capabilityOverri
 }
 
 test("renders the catalog and resets the lifecycle action after an update", async ({ page }) => {
+  const bulkValidators: string[] = [];
+  page.on("request", request => {
+    if (/\/(?:data|knowledge)-api-v3\.validators-/.test(request.url())) bulkValidators.push(request.url());
+  });
   await routeWorkspace(page, true);
   await page.goto("/knowledge/");
   await page.getByText("系统信息").click();
   await expect(page.getByText(/operator-1/)).toBeVisible();
-  await page.getByRole("button", { name: /运行手册/ }).click();
+  const documentButton = page.getByRole("button", { name: /运行手册/ });
+  await expect(documentButton).toBeVisible();
+  expect(bulkValidators).toEqual([]);
+  await documentButton.click();
   await expect(page.locator("#version-body")).toContainText("1.0.0");
   await assertNoSeriousAxe(page);
   await page.getByText("生命周期与变更记录", { exact: true }).click();
@@ -333,10 +340,21 @@ test("previews append or replace effects before applying one binding to every do
   };
   let datasetRequests = 0;
   let versionRequests = 0;
+  let releaseSearch: () => void = () => {};
+  const pendingSearch = new Promise<void>(resolve => { releaseSearch = resolve; });
+  let releaseVersions: () => void = () => {};
+  const pendingVersions = new Promise<void>(resolve => { releaseVersions = resolve; });
   await page.route("**/data/v3/**", async route => {
-    const path = new URL(route.request().url()).pathname.replace("/data/v3/", "");
-    if (path === "datasets") datasetRequests += 1;
-    if (path === "datasets/data-1/versions") versionRequests += 1;
+    const url = new URL(route.request().url());
+    const path = url.pathname.replace("/data/v3/", "");
+    if (path === "datasets") {
+      datasetRequests += 1;
+      if (url.searchParams.get("query") === "水位") await pendingSearch;
+    }
+    if (path === "datasets/data-1/versions") {
+      versionRequests += 1;
+      await pendingVersions;
+    }
     const response = path === "capabilities" ? dataCapabilities
       : path === "activity" ? emptyActivity
       : path === "datasets" ? { items: [{ datasetId: "data-1", project: "project-1", title: "水位观测", tags: [], currentVersion: "data-v1", createdAt, semantics: { description: "水位观测" }, formats: ["csv"] }], nextCursor: null, matchBasis: "catalog" }
@@ -363,18 +381,30 @@ test("previews append or replace effects before applying one binding to every do
   const importPreview = page.locator(".package-preview");
   const datasetCombo = importPreview.getByRole("combobox", { name: "数据集" });
   await datasetCombo.fill("水位");
-  await datasetCombo.press("ArrowDown");
+  try {
+    await expect.poll(() => datasetRequests).toBe(2);
+    await expect(importPreview.locator(".binding-catalog-state")).toHaveText("正在搜索 Data 目录…");
+    await datasetCombo.press("ArrowDown");
+    await expect(datasetCombo).toHaveAttribute("aria-expanded", "true");
+  } finally {
+    releaseSearch();
+  }
   const datasetOption = page.getByRole("option", { name: /水位观测/ });
   await expect(datasetOption).toBeVisible();
   await datasetOption.click();
-  await expect.poll(() => versionRequests).toBe(1);
+  const versionSelect = importPreview.getByRole("combobox", { name: "不可变版本", exact: true });
+  try {
+    await expect.poll(() => versionRequests).toBe(1);
+    await expect(importPreview.locator(".binding-version-state")).toHaveText("正在读取不可变版本…");
+    await expect(versionSelect).toBeDisabled();
+  } finally {
+    releaseVersions();
+  }
   await expect(importPreview.locator(".binding-version-state")).toHaveText("已加载 1 个不可变版本");
-  const versionCombo = importPreview.getByRole("combobox", { name: "不可变版本" });
-  await versionCombo.fill("data-v1");
-  await versionCombo.press("ArrowDown");
-  const versionOption = page.getByRole("option", { name: /data-v1/ });
-  await expect(versionOption).toBeVisible();
-  await versionOption.click();
+  await importPreview.getByRole("searchbox", { name: "搜索不可变版本" }).fill("other");
+  await expect(versionSelect.getByRole("option", { name: "没有匹配的不可变版本" })).toBeAttached();
+  await importPreview.getByRole("searchbox", { name: "搜索不可变版本" }).fill("data-v1");
+  await versionSelect.selectOption("data-v1");
   await expect(importPreview.getByRole("button", { name: "预览并应用到全部文档" })).toBeEnabled();
   await page.getByLabel("应用方式").selectOption("replace");
   await page.getByRole("button", { name: "预览并应用到全部文档" }).click();

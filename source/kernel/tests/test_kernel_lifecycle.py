@@ -443,6 +443,87 @@ def test_explicit_preparation_rejects_later_argument_drift(
         ).fetchone()[0] == 0
 
 
+@pytest.mark.parametrize(
+    ("structured", "provider_group", "expected_status"),
+    [
+        (False, None, "WAITING_CONFIRMATION"),
+        (False, "", "WAITING_CONFIRMATION"),
+        (True, "well", "WAITING_CONFIRMATION"),
+        (False, "well", "FAILED"),
+    ],
+)
+def test_ungrouped_summary_preserves_prepared_arguments(
+    tmp_path, kernel_settings, structured, provider_group, expected_status,
+) -> None:
+    def optional_grouping(settings):
+        base = settings.models[0]
+        schema = {**base.input_schema, "properties": {
+            **base.input_schema["properties"],
+            "groupField": {"type": "string", "minLength": 1},
+        }}
+        checksum = "sha256:" + hashlib.sha256(
+            json.dumps(schema, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+        return replace(settings, models=(replace(
+            base, input_schema=schema, input_schema_checksum=checksum,
+            field_requirements=(ExecutableModelFieldRequirement(
+                parameter="groupField", input_parameter="resource_id",
+                identifier="name", allowed_types=("string",),
+            ),),
+        ),))
+
+    arguments = {"resource_id": "resource-1"}
+    model = ScriptedModel([
+        _inspect(), _prepare(), ModelStep(output=[_plan(["run_summary"])]),
+        ModelStep(output=[function_call(
+            "run_summary", {**arguments, "groupField": provider_group},
+            call_id="summary-proposal",
+        )]),
+        ModelStep(output=[_final()]),
+    ])
+    submitted = []
+
+    def executor(request):
+        if request.method == "POST":
+            submitted.append(json.loads(request.content))
+            return httpx.Response(202, json=_job(submitted[-1]["requestId"], "QUEUED"))
+        return httpx.Response(200, json=_job(submitted[-1]["requestId"], "SUCCEEDED"))
+
+    application, app = _application(
+        tmp_path, kernel_settings, model, executor,
+        settings_transform=optional_grouping,
+    )
+    client = TestClient(app)
+    session_id = client.post("/api/v12/sessions", json={"projectId": "p"}).json()["sessionId"]
+    message = "run"
+    if structured:
+        message = "调用工具 run_summary\n[Model execution] " + json.dumps({
+            "tool": "run_summary", "arguments": arguments,
+        })
+    _, response = _turn(client, application, session_id, message)
+    state = response.json()
+    assert state["agentSteps"][-1] == expected_status
+    assert state["workflowRunIds"] == []
+    assert submitted == []
+    if expected_status == "FAILED":
+        assert state["confirmation"] is None
+        return
+
+    confirmation = state["confirmation"]
+    assert confirmation["status"] == "PENDING"
+    expected_arguments = {**arguments, "axis": "columns"}
+    assert confirmation["actions"][0]["arguments"] == expected_arguments
+    approved = client.post(
+        f"/api/v12/sessions/{session_id}/confirm",
+        json={"confirmationId": confirmation["confirmationId"]},
+    )
+    assert approved.status_code == 202
+    assert _tick(application) == (state["agentRunId"],)
+    assert [job["arguments"] for job in submitted] == [expected_arguments]
+    finished = client.get(f"/api/v12/sessions/{session_id}").json()
+    assert finished["agentSteps"][-1] == "COMPLETE"
+
+
 def test_minimax_aliases_are_canonicalized_at_preparation_and_confirmation(
     tmp_path, kernel_settings,
 ) -> None:

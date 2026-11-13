@@ -10,8 +10,9 @@
 | 架构与服务边界 | [架构总览](architecture/architecture-overview.md)、[结构与运行流](architecture/architecture-structure-and-flow.md)、[协议与存储](reference/contracts.md) |
 | HTTP、身份和权限 | [HTTP API](capabilities/http-api.md)、[WebUI](capabilities/webui.md) |
 | 科研验收与归档 | [科研验收](operations/acceptance-gates.md)、[地下水研究证据链](capabilities/groundwater-research-evidence.md) |
-| 部署、依赖和密钥 | [部署维护](operations/deployment/README.md) |
+| 部署、依赖和密钥 | [部署维护](operations/deployment/README.md)、[Groundwater 实时监控](operations/live-monitor.md) |
 | 代码与文件整理 | [仓库目录与归属](maintenance/repository-layout.md)、[命令目录](maintenance/command-directory.md) |
+| 当前工程活动 | [唯一活动计划包](../../plans/01_SYSTEM_ENGINEERING/README.md)（仅组织待办；不作为产品事实源） |
 
 能力服务说明：
 

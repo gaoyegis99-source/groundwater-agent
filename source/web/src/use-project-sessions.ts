@@ -4,7 +4,7 @@ import type { Capabilities, DebugEntry, SessionSummary } from './types';
 import { verifyProductUi } from './product-ui';
 
 export function currentSessionId() {
-  return /^#\/sessions\/([a-zA-Z0-9-]+)$/.exec(window.location.hash)?.[1] ?? '';
+  return /^#\/sessions\/([a-zA-Z0-9-]+)(?:\/workbench\/(?:inputs|parameters|tasks|results))?$/.exec(window.location.hash)?.[1] ?? '';
 }
 
 export function useProjectSessions(log: (entry: DebugEntry) => void) {

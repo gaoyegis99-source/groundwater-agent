@@ -298,6 +298,83 @@ def test_table_query_preserves_ids_and_evidence(client, worker):
     assert download.headers["content-type"] == "application/octet-stream"
 
 
+def test_dataset_cursor_preserves_search_matches_and_exact_versions(client, worker):
+    def publish_table(title):
+        return publish(client, worker, [{
+            "name": "table", "title": title, "format": "csv", "policy": "FILE_QUERYABLE",
+        }])
+
+    expected = sorted(
+        (output["datasetId"], output["versionId"])
+        for output in (publish_table("Observation A"), publish_table("OBSERVATION B"))
+    )
+    publish_table("Unrelated table")
+
+    first = client.get("/data/v3/datasets", params={"query": "observation", "limit": 1})
+    assert first.status_code == 200, first.text
+    first_page = first.json()
+    assert first_page["nextCursor"] == expected[0][0]
+    second = client.get("/data/v3/datasets", params={
+        "query": "observation", "limit": 1, "cursor": first_page["nextCursor"],
+    })
+    assert second.status_code == 200, second.text
+    second_page = second.json()
+    assert second_page["nextCursor"] is None
+    assert [
+        (item["datasetId"], item["currentVersion"])
+        for item in first_page["items"] + second_page["items"]
+    ] == expected
+
+
+def test_sorted_query_pages_keep_source_order_within_ties(client, worker):
+    output = publish(client, worker, content=b"well,value\n001,2\n002,4\n003,4\n004,1\n")
+    result = query(client, worker, output["versionId"], sort=[{"field": "f1", "direction": "desc"}])
+    path = f"/data/v3/queries/{result['queryId']}"
+    first = client.get(path, params={"limit": 1}).json()["result"]
+    second = client.get(path, params={"limit": 3, "offset": first["nextOffset"]}).json()["result"]
+
+    assert first["rows"] + second["rows"] == [["002", "4"], ["003", "4"], ["001", "2"], ["004", "1"]]
+    assert second["nextOffset"] is None
+
+
+def test_large_table_query_keeps_coverage_and_a_stable_page_window(client, worker, settings):
+    source_rows = 100_000
+    content = ("row_id,category\n" + "".join(
+        f"{index:06d},{'skip' if index % 2 else 'keep'}\n" for index in range(source_rows)
+    )).encode()
+    start_time = time.perf_counter()
+    published = publish(client, worker, content=content)
+    publication_ms = (time.perf_counter() - start_time) * 1000
+
+    start_time = time.perf_counter()
+    result = query(
+        client, worker, published["versionId"],
+        semantic_ids={published["versionId"]: published["semanticId"]},
+        filters=[{"field": "f1", "op": "eq", "value": "keep"}],
+        sort=[{"field": "f0", "direction": "desc"}],
+    )
+    query_ms = (time.perf_counter() - start_time) * 1000
+    assert result["receipt"]["coverage"] == {
+        "sourceRows": source_rows, "matchedRows": source_rows // 2, "calculation": "all_matching_rows",
+    }
+    assert result["receipt"]["returnedRows"] == settings.result_rows
+    assert result["receipt"]["truncated"] is True
+    assert result["receipt"]["inputs"][0]["semanticId"] == published["semanticId"]
+
+    start_time = time.perf_counter()
+    page = client.get(
+        f"/data/v3/queries/{result['queryId']}", params={"offset": 100, "limit": 100}
+    ).json()["result"]
+    page_ms = (time.perf_counter() - start_time) * 1000
+    assert page["rows"] == [[f"{index:06d}", "keep"] for index in range(99_798, 99_598, -2)]
+    assert page["nextOffset"] == 200
+    print("DATA_QUERY_PERF", json.dumps({
+        "sourceRows": source_rows, "sourceBytes": len(content), "matchedRows": source_rows // 2,
+        "persistedRows": settings.result_rows, "publicationMs": round(publication_ms, 2),
+        "submitWorkerAndFirstReadMs": round(query_ms, 2), "secondPageMs": round(page_ms, 2),
+    }))
+
+
 def test_object_content_supports_single_byte_ranges(client, worker):
     out = publish(client, worker)
     detail = client.get("/data/v3/versions/" + out["versionId"]).json()
@@ -309,7 +386,30 @@ def test_object_content_supports_single_byte_ranges(client, worker):
     assert partial.headers["content-type"] == "application/octet-stream"
     assert partial.headers["content-range"] == f"bytes 0-3/{raw['size']}"
     assert partial.headers["accept-ranges"] == "bytes"
+    assert partial.headers["content-disposition"] == f'attachment; filename="{raw["objectId"]}.csv"'
     assert client.get(path, headers={"Range": "bytes=0-1,3-4"}).status_code == 416
+
+
+def test_workflow_output_download_uses_its_published_name(client, worker):
+    publication = start(client, [
+        {"name": "summary", "title": "统计摘要", "format": "json", "policy": "FILE_ONLY"},
+    ], provenance={"model_id": "groundwater.summary", "workflow_id": "groundwater.summary"})
+    content = b'{"count":2}'
+    upload(client, publication, name="summary", content=content)
+    ready(client, worker, publication)
+    out = client.post(f"/data/v3/publications/{publication}/commit").json()["outputs"][0]
+    version_id = out["versionId"]
+    detail = client.get(f"/data/v3/versions/{version_id}").json()
+    raw = next(item for item in detail["objects"] if item["role"] == "raw")
+    path = f"/data/v3/versions/{version_id}/objects/{raw['objectId']}/content"
+    response = client.get(path)
+    assert response.status_code == 200
+    assert response.content == content
+    assert response.headers["content-disposition"] == 'attachment; filename="summary.json"'
+    partial = client.get(path, headers={"Range": "bytes=0-3"})
+    assert partial.status_code == 206
+    assert partial.content == content[:4]
+    assert partial.headers["content-disposition"] == response.headers["content-disposition"]
 
 
 def test_xlsx_preview_is_bounded_and_keeps_formula_as_text(client, worker):

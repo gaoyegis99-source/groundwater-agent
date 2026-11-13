@@ -44,8 +44,10 @@ GDAL 的 case 可显式传入 `--runtime-image <local-image>`；CLI 只使用项
 这些状态。入口重新验证 size、MD5（清单声明时）和 SHA-256，安全解包后才调用真实 workflow compiler
 与生产 task 子进程。`--runtime-image` 必须是项目 rootless daemon 中已验证的本地 Linux/amd64 Native
 镜像；运行时 no-network、read-only、no-pull。`--case all` 运行完整案例集，单案例 ID 用于快速复核。
-当前数据选择、质量边界、外部核验结果和可复现运行证据见仓库级
-`plans/REAL_DATA_VALIDATION_2026-11-11.md`。
+当前案例选择由 `products/groundwater/development/real-data-cases.v2.json` 中的稳定
+`workflowId` 和产品清单选择的领域包共同决定。质量边界与可复现命令见
+[Vibecoding 本地快速参考](../development/vibecoding-quick-reference.md)，运行证据写入 XDG cache/state，
+不写回活动计划目录。
 
 Agent 级反馈入口复用真实 Kernel 状态机，以签入 `ScriptedModel` 步骤和进程内 `MockTransport` 回放
 六个关键边界；默认每个 case 重复三轮，核对逐项不变量、Confirmation/WorkflowRun 计数和稳定
@@ -64,6 +66,8 @@ snapshot identity。运行证据原子写入 `$XDG_CACHE_HOME/groundwater-v6/age
 按改动范围运行 `../bin/dev check --scope <scope>`；不确定影响范围时使用 `--scope all`。该入口按组件拥有者定义的检查拓扑运行，不允许以手工挑选的单测替代适用检查。
 
 `--scope all` 将 Python 套件拆为 foundation、Kernel、Data、Knowledge、Executor、跨服务合同和产品装配七个互不重叠的切片，并分别报告结果与显式 skip 原因；同时运行主界面、Data 界面和 Knowledge 界面的测试、类型检查与构建。切片清单由 `scripts/checks/v6_test_suite.py` 单点维护，架构测试会核对根 Pytest 收集范围内的每个测试文件恰好属于一个切片，避免新增组件或产品测试被静默漏掉。Native 套件始终使用 `toolchain.lock.json` 指定的精确 CPython 版本创建离线环境，不继承调用入口的宿主 Python ABI。
+
+`dev check` 与完整项目报告为各 Pytest 调用分配独立临时目录，调用结束后清理。显式传入的 `--basetemp` 或 `PYTEST_ADDOPTS` 中的同名参数由调用方管理。
 
 ## 锁与静态门禁
 
@@ -99,6 +103,8 @@ npm run typecheck
 npm run build
 python -m scripts.operations.test_full_project --product groundwater
 ```
+
+完整项目报告记录 Git HEAD 和工作区内容指纹，包括跟踪文件改动和未忽略的新文件。`--resume --output <原报告>` 仅复用同一源码指纹的已通过阶段。源码变动或旧报告缺少指纹时，用新的 `--output` 启动验收。联合验收和最终 Compose 的证据按报告运行及阶段尝试存放。用 `--rerun-stage` 重跑阶段时会生成独立的证据目录。
 
 根 `pytest.ini` 的普通 Python 套件不收集 Operator Pack 测试，因为它们需要独立 Native 锁域。
 `check_native_tests` 先验证已物化的 Python wheelhouse，再用锁定的 Native/build wheel 离线创建

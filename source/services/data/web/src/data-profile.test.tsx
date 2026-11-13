@@ -105,6 +105,40 @@ it("labels spatial preview facts as sampled when the preview is truncated", () =
   expect(profile).toHaveTextContent("范围与几何类型仅基于当前受限预览，不代表全量空间范围");
 });
 
+it("reports non-null and non-finite counts without treating non-finite values as valid", () => {
+  const field = version.descriptor.fields[2];
+  render(<FieldProfile version={{ ...version, descriptor: { ...version.descriptor, fields: [
+    { ...field, profile: { ...field.profile!, nonFiniteCount: 2 } },
+  ] } }} />);
+  const profile = within(screen.getByTestId("field-profile-f2"));
+  expect(profile.getByText("非空值")).toBeVisible();
+  expect(profile.getByText("非有限数")).toBeVisible();
+  expect(profile.queryByText("有效值")).not.toBeInTheDocument();
+});
+
+it("renders exact large integers and marks legacy rounded values", () => {
+  const rounded = 2 ** 53;
+  const exact = "9007199254740993";
+  render(<FieldProfile version={{ ...version, descriptor: { ...version.descriptor, fields: [
+    { fieldId: "f2", name: "序号", type: "int64", nullCount: 4, profile: {
+      nonNullCount: 2, sampleValues: [rounded, rounded], valueRange: { minimum: rounded, maximum: rounded },
+      exactIntegers: { sampleValues: ["9007199254740992", exact], maximum: exact },
+    } },
+  ] } }} />);
+  const profile = within(screen.getByTestId("field-profile-f2"));
+  expect(profile.getByText(exact)).toBeVisible();
+  expect(profile.getByText(`精度不可确认 – ${exact}`)).toBeVisible();
+});
+
+it("rejects exact integer metadata inconsistent with the numeric sample", () => {
+  const invalid = { ...version, descriptor: { ...version.descriptor, fields: [
+    { fieldId: "f2", name: "序号", type: "int64", nullCount: 5, profile: {
+      nonNullCount: 1, sampleValues: [2 ** 53], exactIntegers: { sampleValues: ["9007199254740994"] },
+    } },
+  ] } };
+  expect(() => decodeVersion(invalid)).toThrowError(expect.objectContaining({ code: "API_RESPONSE_INVALID" }));
+});
+
 it("rejects an internally inconsistent persisted profile at the UI boundary", () => {
   const invalid = {
     ...version,

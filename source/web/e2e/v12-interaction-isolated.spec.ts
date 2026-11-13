@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import type { ResourceReference } from '../src/types';
-import { isolatedInteractionClients, openSummaryProposal } from './interaction-isolated-helpers';
+import { isolatedInteractionClients, observeInteractionPost, openSummaryProposal, type InteractionSession } from './interaction-isolated-helpers';
 
 test.use({ trace: 'off', extraHTTPHeaders: {}, actionTimeout: 20_000 });
 
@@ -24,7 +24,7 @@ import groundwater_api_client as sdk
 import httpx
 from platform_protocol_contracts import ApiProblem, TransportError
 
-origin, session, project, confirmation, version, cursor, lose_response, out_dir = sys.argv[1:]
+origin, session, project, confirmation, version, cursor, lose_response, out_dir, unit, superseded = sys.argv[1:]
 cursor = int(cursor)
 lose_response = lose_response == '1'
 out_dir = Path(out_dir)
@@ -93,6 +93,13 @@ def events_until(client, after, terminal):
 
 
 with sdk.GroundwaterClient(origin, api_token=token, timeout=15) as client:
+    if superseded:
+        try:
+            client.confirm(session, superseded)
+        except ApiProblem as error:
+            assert error.problem.status == 409 and error.problem.code == 'CONFIRMATION_NOT_CURRENT', error.problem
+        else:
+            raise AssertionError('Superseded revision remained approvable')
     before = client.session(session)
     assert before.project_id == project and before.agent_steps[-1] == 'WAITING_CONFIRMATION'
     assert before.confirmation['confirmationId'] == confirmation and before.confirmation['status'] == 'PENDING'
@@ -101,7 +108,7 @@ with sdk.GroundwaterClient(origin, api_token=token, timeout=15) as client:
     action, = before.confirmation['actions']
     assert action['tool'] == 'run_summary' and action['modelId'] == 'groundwater.summary'
     assert action['modelVersion'] == '3.1.0' and action['workflowVersion'] == '1.1.0'
-    assert action['arguments'] == {'versionId': version, 'axis': 'columns', 'column': 'hydraulic_head_m', 'unit': ''}
+    assert action['arguments'] == {'versionId': version, 'axis': 'columns', 'column': 'hydraulic_head_m', 'unit': unit}
     reference = client.input_reference(version).model_dump(mode='json', by_alias=True, exclude_none=True)
     assert list(action['inputReferences']) == ['versionId']
     assert all(action['inputReferences']['versionId'][key] == value for key, value in reference.items())
@@ -188,20 +195,46 @@ interface SdkEvidence {
 }
 
 for (const scenario of [
-  { marker: 'isolated-interaction-summary', title: 'Web, installed SDK and TLI share a successful workflow', loseResponse: false },
-  { marker: 'isolated-interaction-confirmation-loss', title: 'losing an accepted confirmation response does not execute twice', loseResponse: true },
+  { marker: 'isolated-interaction-summary', title: 'Web, installed SDK and TLI share a revised workflow after receipt loss', revise: true, loseResponse: false },
+  { marker: 'isolated-interaction-confirmation-loss', title: 'losing an accepted confirmation response does not execute twice', revise: false, loseResponse: true },
 ]) {
   test(scenario.title, async ({ page, baseURL }, info) => {
     test.skip(process.env.PLATFORM_INTERACTION_GATE !== '1', 'Requires the isolated interaction Compose gate.');
     test.setTimeout(240_000);
     const clients = await isolatedInteractionClients(page, baseURL);
-    const proposal = await openSummaryProposal(page, clients, scenario.marker);
+    const proposal = await openSummaryProposal(page, clients, scenario.marker, scenario.revise);
+    const { sessionId, projectId, versionId } = proposal;
+    const path = `/api/v12/sessions/${sessionId}`;
+    let { confirmationId, cursor } = proposal;
+    let superseded = '';
+    const unit = scenario.revise ? 'm' : '';
+    if (scenario.revise) {
+      await page.getByRole('button', { name: '编辑参数', exact: true }).click();
+      const editor = page.getByTestId('confirmation-editor');
+      await editor.locator('summary').filter({ hasText: /^统计字段$/ }).click();
+      await editor.locator('[data-parameter-field="unit"] input').fill(unit);
+      const { receipt, request } = await observeInteractionPost(page, `${path}/confirmations/${confirmationId}/revisions`,
+        () => editor.getByRole('button', { name: '保存为新修订' }).click(), true);
+      expect(receipt.status()).toBe(201);
+      const revisionRequest = request.postDataJSON();
+      const revised = (await receipt.json() as InteractionSession).confirmation!;
+      expect(revised).toMatchObject({ revision: 2, status: 'PENDING', requestId: revisionRequest.requestId,
+        replacesConfirmationId: confirmationId, actions: [{ arguments: { ...proposal.arguments, unit } }] });
+      await expect(page.getByRole('button', { name: '确认执行修订 2', exact: true })).toBeEnabled();
+      await expect(page.getByRole('button', { name: '确认执行修订 1', exact: true })).toHaveCount(0);
+      const checked = JSON.parse(await clients.cli('--session', sessionId, 'status')) as InteractionSession;
+      expect(checked.confirmation).toEqual(revised);
+      expect(checked.workflowRunIds).toEqual([]);
+      superseded = confirmationId;
+      confirmationId = revised.confirmationId;
+      cursor = (await clients.get<{ eventCursor: number }>(`${path}/messages`)).eventCursor;
+      writeFileSync(info.outputPath('revised-proposal.json'), JSON.stringify(revised, null, 2));
+    }
     await page.screenshot({ path: info.outputPath('shared-confirmation.png') });
     writeFileSync(info.outputPath('frozen-proposal.json'), JSON.stringify(proposal, null, 2));
-    const { sessionId, projectId, confirmationId, versionId, cursor } = proposal;
     const sdkOutput = info.outputPath('sdk-downloads');
     const result = await clients.python<SdkEvidence>(sdkWorkflow, sessionId, projectId, confirmationId,
-      versionId, String(cursor), scenario.loseResponse ? '1' : '0', sdkOutput);
+      versionId, String(cursor), scenario.loseResponse ? '1' : '0', sdkOutput, unit, superseded);
     expect(result.sessionId).toBe(sessionId);
     expect(result.confirmation.confirmationId).toBe(confirmationId);
     expect(result.statistics.count).toBe(2);
@@ -236,9 +269,12 @@ for (const scenario of [
       const tliPath = info.outputPath(`tli-${output.outputName}.json`);
       const link = cards.locator(`[data-resource-id="${output.versionId}"]`).getByRole('link', { name: '下载', exact: true });
       await expect(link).toHaveAttribute('href', `/api/v12/data/versions/${output.versionId}/objects/${output.objectId}/content`);
+      await expect(link).toHaveAttribute('download', `${output.outputName}.json`);
       const downloading = page.waitForEvent('download');
       await link.click();
-      await (await downloading).saveAs(webPath);
+      const download = await downloading;
+      expect(download.suggestedFilename()).toMatch(/\.json$/);
+      await download.saveAs(webPath);
       await clients.cli('download', output.versionId, output.objectId, tliPath);
       for (const path of [webPath, tliPath]) {
         const bytes = readFileSync(path);

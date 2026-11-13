@@ -46,6 +46,10 @@ _WATCHED_SUFFIXES = frozenset(
 )
 
 
+def is_container_build_file(name: str) -> bool:
+    return name in {"Dockerfile", ".dockerignore"} or name.startswith("Dockerfile.")
+
+
 @dataclass(frozen=True)
 class FileStamp:
     size: int
@@ -84,7 +88,10 @@ class SourceSnapshot:
             )
             for name in sorted(names):
                 path = Path(current) / name
-                if path.suffix.lower() not in _WATCHED_SUFFIXES or path.is_symlink():
+                if path.is_symlink() or (
+                    path.suffix.lower() not in _WATCHED_SUFFIXES
+                    and not is_container_build_file(name)
+                ):
                     continue
                 try:
                     metadata = path.stat()

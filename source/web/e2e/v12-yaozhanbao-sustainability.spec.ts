@@ -214,7 +214,7 @@ test('desktop imports and completes the synthetic Yaozhanbao assessment', async 
   }, 0);
   const candidate = prepared.completed.remoteOutputs.find(item => item.outputName === 'assessment-input-candidate')!;
   expect(candidate).toBeTruthy();
-  await prepared.card.locator(`[data-resource-id="${candidate.versionId}"]`).getByRole('button', { name: '作为下一步输入' }).click();
+  await prepared.card.locator(`[data-resource-id="${candidate.versionId}"]`).getByRole('button', { name: '附加到当前草稿' }).click();
   await expect(page.getByTestId('pending-attachments')).toBeVisible();
   const evaluated = await execute('groundwater.source-sustainability', 'run_source_sustainability', {
     assessmentVersionId: candidate.versionId,

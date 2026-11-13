@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable
+import hashlib
+import json
 from pathlib import Path
 import os
 import signal
@@ -59,12 +61,16 @@ class LocalUiProcesses:
             ) in self._specifications.items():
                 if not working_directory.is_dir() or not config.is_file():
                     raise RuntimeError(f"DEV_UI_INPUT_MISSING:{name}")
+                receipt = self._receipt_path(name)
+                receipt.unlink(missing_ok=True)
                 log = (logs / f"{name}.log").open("ab", buffering=0)
                 process = subprocess.Popen(
                     [
                         str(vite),
                         "--config",
                         str(config),
+                        "--configLoader",
+                        "runner",
                         "--host",
                         "127.0.0.1",
                         "--port",
@@ -72,6 +78,12 @@ class LocalUiProcesses:
                         "--strictPort",
                     ],
                     cwd=working_directory,
+                    env={
+                        **os.environ,
+                        "GW_DEV_SOURCE_ROOT": str(self.root),
+                        "GW_DEV_HMR_RECEIPT": str(receipt),
+                        "GW_DEV_VITE_CACHE": str(self.state_directory / "vite-cache" / name),
+                    },
                     stdin=subprocess.DEVNULL,
                     stdout=log,
                     stderr=subprocess.STDOUT,
@@ -102,6 +114,31 @@ class LocalUiProcesses:
             self.stop()
             raise
 
+    def _receipt_path(self, name: str) -> Path:
+        return self.state_directory / "logs" / f"{name}.hmr.json"
+
+    def _observations(self, name: str) -> dict[str, Any]:
+        try:
+            value = json.loads(self._receipt_path(name).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return {}
+        return value if isinstance(value, dict) else {}
+
+    def observe(self, target: str, paths: Iterable[str]) -> dict[str, object]:
+        receipts = self._observations(target)
+        matches = {}
+        for path in paths:
+            receipt = receipts.get(path)
+            if not isinstance(receipt, dict):
+                continue
+            try:
+                digest = hashlib.sha256((self.root / path).read_bytes()).hexdigest()
+            except OSError:
+                continue
+            if receipt.get("sourceDigest") == "sha256:" + digest:
+                matches[path] = receipt
+        return matches
+
     def status(self) -> dict[str, object]:
         processes: dict[str, object] = {}
         for name, (
@@ -118,6 +155,7 @@ class LocalUiProcesses:
                 "returnCode": return_code,
                 "url": url,
                 "log": str(self.state_directory / "logs" / f"{name}.log"),
+                "hmrObservations": self._observations(name),
             }
         return processes
 
@@ -157,12 +195,13 @@ class CallbackRuntime:
         product_id: str,
         prepare_runtime: Callable[[], None],
         reconcile_runtime: Callable[[], None],
-        restart_services: Callable[[tuple[str, ...]], None],
+        restart_services: Callable[[tuple[str, ...]], tuple[str, ...] | None],
         runtime_status: Callable[[], dict[str, object]],
         validate_target: Callable[[str], None],
         ui_enabled: bool,
         validation_enabled: bool,
         service_metrics_target: Callable[[str], str | None] | None = None,
+        observe_apis: Callable[[tuple[str, ...] | None], dict[str, object]] | None = None,
     ) -> None:
         self.root = root.resolve()
         self.state_directory = state_directory.resolve()
@@ -175,6 +214,7 @@ class CallbackRuntime:
         self.ui_enabled = ui_enabled
         self.validation_enabled = validation_enabled
         self._service_metrics_target = service_metrics_target
+        self._observe_apis = observe_apis
         self._closed = False
         self._ui = LocalUiProcesses(
             root=self.root, state_directory=self.state_directory
@@ -187,18 +227,37 @@ class CallbackRuntime:
         if self.ui_enabled:
             self._ui.start()
 
-    def apply(self, plan: ChangePlan) -> None:
+    def apply(self, plan: ChangePlan) -> dict[str, object]:
         if plan.reconcile:
             self._reconcile_runtime()
-            return
-        if plan.restart_services:
-            self._restart_services(plan.restart_services)
+        restarted = (
+            self._restart_services(plan.restart_services) if plan.restart_services else ()
+        )
+        api_proof = (
+            self._observe_apis(None if plan.reconcile else plan.reload_services)
+            if self._observe_apis is not None
+            else {}
+        )
+        return {
+            "apiGenerations": api_proof,
+            "composeReconciled": plan.reconcile,
+            "restartedServices": list(restarted or ()),
+            "browserHmr": {
+                target: {
+                    "status": "VITE_MANAGED" if self.ui_enabled else "DISABLED",
+                    "observations": self._ui.observe(target, plan.paths) if self.ui_enabled else {},
+                }
+                for target in plan.hmr
+            },
+        }
 
-    def validate(self, scopes: Iterable[str]) -> None:
+    def validate(self, scopes: Iterable[str]) -> tuple[str, ...]:
         if not self.validation_enabled:
-            return
-        for scope in dict.fromkeys(scopes):
+            return ()
+        unique_scopes = tuple(dict.fromkeys(scopes))
+        for scope in unique_scopes:
             self._validate_target(scope)
+        return unique_scopes
 
     def status(self) -> dict[str, object]:
         status: dict[str, Any] = dict(self._runtime_status())

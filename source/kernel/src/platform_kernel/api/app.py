@@ -162,6 +162,11 @@ def create_app(
                         "Persisted queue items by service, queue and state.",
                     )
                 )
+        for name, value in snapshot["intent_routing"].items():
+            samples.append(GaugeSample(
+                f"platform_intent_routing_{name}", float(value), {},
+                "Durable intent-routing queue counts and oldest pending age in seconds.",
+            ))
         for phase, count in snapshot["scheduled"].items():
             samples.append(
                 GaugeSample(

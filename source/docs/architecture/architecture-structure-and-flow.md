@@ -14,11 +14,13 @@
 
 ## 运行拓扑
 
-统一 Gateway 是唯一的主机端口入口，默认绑定 loopback 的 `28186`。V12 常驻能力由 Kernel、Data、Knowledge Next、Executor Control、Native/QGIS Worker 及其 PostgreSQL/对象卷组成；初始化和 bootstrap 是一次性任务。常驻服务 readiness 与一次性任务分开判定：Knowledge bootstrap 失败会形成明确的初始化失败状态，但不能阻断 Kernel/Gateway 的登录、状态和诊断接口。
+统一 Gateway 是唯一的主机端口入口，默认绑定 loopback 的 `28186`。V12 常驻能力包括 Kernel、Data、Knowledge Next、Executor Control 和 Native、QGIS、`remote_http` Worker。Data 和 Knowledge Next 分别拥有各自的 PostgreSQL，Data 同时拥有数据对象卷。初始化和 bootstrap 是一次性任务。常驻服务 readiness 与一次性任务分开判定：Knowledge bootstrap 失败会形成明确的初始化失败状态，但不能阻断 Kernel/Gateway 的登录、状态和诊断接口。
 
 Knowledge bootstrap 先用 preflight 对比当前目录，只对语义内容变化的条目提交带当前版本 CAS 的原子导入；完全一致时返回 `ALREADY_APPLIED`。`expectedVersion` 只属于导入并发控制，不进入不可变知识正文。`gw dev up` 先等待常驻服务，再单独运行 bootstrap；`gw dev status` 同时报告两部分，因此不会把一次性任务误当作常驻容器健康检查。
 
 服务只能通过声明的 HTTP 合同交换身份和数据，不能导入其他服务实现、读取其他服务数据库或挂载其他服务的持久目录。所有公开与内部请求都绑定固定 `project_id`。
+
+Kernel SQLite 保存 Session、Task、AgentRun、Confirmation、Session Event 和 WorkflowRun。Executor SQLite 保存 Job、节点尝试、Worker 心跳和检查点对象索引。WorkflowRun 记录用户授权和跨服务执行关系，通过 Executor 合同读取 Job 状态。Data 的发布事务决定成果是否公开；Knowledge Next 的证据版本和检索回执由其数据库保存。Web 根据 API 快照和 Session Event 更新视图。Workflow Compiler 由 Assembler 与 Kernel 草稿路径调用，Operator Pack 提供静态声明及 Worker 使用的实现。
 
 ## 消息、确认与执行
 

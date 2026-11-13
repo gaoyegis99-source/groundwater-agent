@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "activity-plan-package.v1",
+  "packageId": "01_SYSTEM_ENGINEERING",
+  "status": "active",
+  "baseCommit": "19175f592697999b895d6d3ebdb25c6d06d39455",
+  "taskCount": 14,
+  "taskIds": [
+    "SYS-01", "SYS-02", "SYS-03", "SYS-04", "SYS-05", "SYS-06", "SYS-07",
+    "SYS-08", "SYS-09", "SYS-10", "SYS-11", "SYS-12", "SYS-13", "SYS-14"
+  ],
+  "workPackages": [
+    {"id": "E1", "name": "Architecture", "taskIds": ["SYS-01", "SYS-02", "SYS-03"]},
+    {"id": "E2", "name": "Agent Runtime", "taskIds": ["SYS-04", "SYS-05"]},
+    {"id": "E3", "name": "Data & Knowledge", "taskIds": ["SYS-06", "SYS-07"]},
+    {"id": "E4", "name": "Workflow & Executor", "taskIds": ["SYS-08", "SYS-09"]},
+    {"id": "E5", "name": "Web Workbench", "taskIds": ["SYS-10", "SYS-11", "SYS-12", "SYS-13"]},
+    {"id": "E6", "name": "Testing & Performance", "taskIds": ["SYS-14"]}
+  ],
+  "dependencies": {
+    "SYS-01": [],
+    "SYS-02": ["SYS-01"],
+    "SYS-03": ["SYS-01", "SYS-02"],
+    "SYS-04": ["SYS-01", "SYS-02"],
+    "SYS-05": ["SYS-04"],
+    "SYS-06": ["SYS-01", "SYS-02"],
+    "SYS-07": ["SYS-01", "SYS-02"],
+    "SYS-08": ["SYS-02", "SYS-05"],
+    "SYS-09": ["SYS-08"],
+    "SYS-10": ["SYS-06"],
+    "SYS-11": ["SYS-08"],
+    "SYS-12": ["SYS-01", "SYS-06"],
+    "SYS-13": ["SYS-06", "SYS-07", "SYS-09"],
+    "SYS-14": ["SYS-03", "SYS-04", "SYS-05", "SYS-06", "SYS-07", "SYS-08", "SYS-09", "SYS-10", "SYS-11", "SYS-12", "SYS-13"]
+  }
+}

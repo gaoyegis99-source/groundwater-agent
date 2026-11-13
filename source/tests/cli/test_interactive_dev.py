@@ -11,6 +11,7 @@ import pytest
 from scripts.development.interactive.events import EventStore
 from scripts.development.interactive.controller import InteractiveController
 from scripts.development.interactive.command import InteractiveCommand, InteractiveHooks
+from scripts.development.interactive.generation import source_digest
 from scripts.development.interactive.profile import (
     ChangePlan,
     build_compose_override,
@@ -110,6 +111,7 @@ def test_build_inputs_reconcile_instead_of_pretending_to_hot_reload() -> None:
         "services/executor/Dockerfile.native",
         "services/knowledge-next/pyproject.toml",
         "environments/common/requirements.lock",
+        "web/package.json",
     ):
         plan = classify_changes((path,))
         assert plan.reconcile is True
@@ -128,8 +130,11 @@ def test_snapshot_detects_add_modify_delete_and_ignores_generated_trees(
     ignored = tmp_path / "node_modules/package/index.js"
     ignored.parent.mkdir(parents=True)
     ignored.write_text("old", encoding="utf-8")
+    dockerfile = tmp_path / "Dockerfile"
+    dockerfile.write_text("FROM scratch\n", encoding="utf-8")
 
     before = SourceSnapshot.capture(tmp_path)
+    dockerfile.write_text("FROM scratch\nLABEL stage=test\n", encoding="utf-8")
     source.write_text("value = 2\n", encoding="utf-8")
     added = tmp_path / "web/src/new.ts"
     added.parent.mkdir(parents=True)
@@ -139,6 +144,7 @@ def test_snapshot_detects_add_modify_delete_and_ignores_generated_trees(
     changes = diff_snapshots(before, after)
 
     assert [(item.kind, item.path) for item in changes] == [
+        ("modified", "Dockerfile"),
         ("modified", "kernel/src/example.py"),
         ("added", "web/src/new.ts"),
     ]
@@ -218,6 +224,32 @@ def test_incremental_supervisor_serializes_and_coalesces_superseded_batches(
         ("web/src/three.tsx", "web/src/two.tsx"),
     ]
     assert supervisor.status()["supersededBatches"] == 1
+
+
+def test_validation_failure_preserves_observed_runtime_update(tmp_path: Path) -> None:
+    class Adapter:
+        def apply(self, _plan):
+            return {"apiGenerations": {"kernel-service": {"sourceDigest": "sha256:new"}}}
+
+        def validate(self, _scopes):
+            raise RuntimeError("DEV_VALIDATION_FAILED:kernel:1")
+
+    events = EventStore(root=tmp_path)
+    supervisor = IncrementalSupervisor(adapter=Adapter(), events=events)
+    supervisor.start()
+    try:
+        supervisor.submit(classify_changes(("kernel/src/example.py",)))
+        assert supervisor.wait_idle(3)
+    finally:
+        supervisor.stop()
+
+    batch = supervisor.status()["latestBatch"]
+    assert batch["phase"] == "FAILED"
+    assert batch["failedStage"] == "validation"
+    assert batch["runtimeUpdate"]["apiGenerations"]["kernel-service"]["sourceDigest"] == "sha256:new"
+    assert [event["kind"] for event in events.snapshot()] == [
+        "increment.started", "runtime.api-observed", "increment.applied", "increment.failed",
+    ]
 
 
 def test_observability_server_exposes_status_events_metrics_and_service_proxy(
@@ -304,6 +336,7 @@ def test_callback_runtime_keeps_reload_in_process_and_restarts_only_workers(
         ("restart", ("data-worker",)),
         ("validate", "data"),
         "reconcile",
+        ("restart", ("data-worker",)),
     ]
     assert runtime.status()["reloadMode"] == "uvicorn-stat-reload"
 
@@ -464,3 +497,149 @@ def test_interactive_command_generates_override_only_in_xdg_state(
     metrics_call = compose_calls[-1]
     assert metrics_call[0][:4] == ["exec", "-T", "kernel-service", "python"]
     assert metrics_call[1:] == ((override,), False)
+
+
+def test_api_probe_waits_until_server_reports_current_source(tmp_path: Path) -> None:
+    root = tmp_path / "source"
+    module = root / "kernel/src/probe.py"
+    module.parent.mkdir(parents=True)
+    module.write_text("value = 1\n", encoding="utf-8")
+    before = source_digest(root, "kernel-service")
+    module.write_text("value = 2\n", encoding="utf-8")
+    after = source_digest(root, "kernel-service")
+    assert before != after
+    replies = iter((
+        {"sourceDigest": before, "generation": "0" * 32},
+        {"sourceDigest": after, "generation": "1" * 32},
+    ))
+
+    def run_compose(arguments, _extra, _check):
+        assert arguments[:4] == ["exec", "-T", "kernel-service", "python"]
+        return subprocess.CompletedProcess(arguments, 0, json.dumps(next(replies)), "")
+
+    command = InteractiveCommand(
+        root=root,
+        state_directory=tmp_path / "state",
+        product_id="alpha",
+        hooks=InteractiveHooks(
+            ensure_dependencies=lambda: None,
+            compile_product=lambda: root,
+            run_compose=run_compose,
+            runtime_status=dict,
+            record_bootstrap=lambda _completed: None,
+        ),
+    )
+    command.override_path.parent.mkdir()
+    command.override_path.write_text('{"services":{"kernel-service":{}}}')
+    assert command._observe_apis(("kernel-service",)) == {
+        "kernel-service": {"sourceDigest": after, "generation": "1" * 32},
+    }
+
+
+@pytest.mark.parametrize("failure_stage", ["apply", "validation"])
+def test_later_batch_reconciles_failed_work_without_reapplying_valid_runtime(
+    failure_stage: str,
+) -> None:
+    class Adapter:
+        def __init__(self):
+            self.applied = []
+            self.validated = []
+
+        def apply(self, plan):
+            self.applied.append(plan.paths)
+            if failure_stage == "apply" and len(self.applied) == 1:
+                raise RuntimeError("DEV_RUNTIME_UPDATE_FAILED")
+
+        def validate(self, scopes):
+            self.validated.append(scopes)
+            if failure_stage == "validation" and len(self.validated) == 1:
+                raise RuntimeError("DEV_VALIDATION_FAILED:kernel:1")
+
+    adapter = Adapter()
+    supervisor = IncrementalSupervisor(adapter=adapter)
+    supervisor.start()
+    try:
+        kernel_path = "kernel/src/example.py"
+        web_path = "web/src/example.tsx"
+        supervisor.submit(classify_changes((kernel_path,)))
+        assert supervisor.wait_idle(3)
+        assert supervisor.status()["latestBatch"]["phase"] == "FAILED"
+        supervisor.submit(classify_changes((web_path,)))
+        assert supervisor.wait_idle(3)
+        assert supervisor.status()["latestBatch"]["phase"] == "COMPLETED"
+    finally:
+        supervisor.stop()
+
+    assert adapter.applied == [
+        (kernel_path,), (kernel_path, web_path) if failure_stage == "apply" else (web_path,),
+    ]
+    assert adapter.validated[-1] == ("kernel", "web")
+
+
+def test_controller_observes_source_changes_during_runtime_preparation(tmp_path: Path) -> None:
+    root = tmp_path / "source"
+    edited = root / "web" / "src" / "App.tsx"
+    edited.parent.mkdir(parents=True)
+    edited.write_text("before", encoding="utf-8")
+
+    class Runtime:
+        checked = ()
+
+        def prepare(self):
+            edited.write_text("changed while starting", encoding="utf-8")
+
+        def apply(self, plan):
+            assert plan.paths == ("web/src/App.tsx",)
+
+        def validate(self, scopes):
+            self.checked = scopes
+            controller.request_stop()
+            return scopes
+
+        def status(self):
+            return {"status": "PASS"}
+
+        def service_metrics(self, _alias):
+            return None
+
+        def close(self):
+            pass
+
+    runtime = Runtime()
+    controller = InteractiveController(
+        root=root, state_directory=tmp_path / "state", runtime=runtime,
+        dashboard_port=0, poll_interval=0.01, debounce_seconds=0.01,
+    )
+    watchdog = threading.Timer(1.5, controller.request_stop)
+    watchdog.start()
+    try:
+        result = controller.run()
+    finally:
+        watchdog.cancel()
+    assert runtime.checked == ("web",)
+    assert result["supervisor"]["completedBatches"] == 1
+
+
+def test_supervisor_finishes_an_accepted_batch_during_shutdown() -> None:
+    adapter = _BlockingAdapter()
+    supervisor = IncrementalSupervisor(adapter=adapter)
+    supervisor.start()
+    shutdown = threading.Thread(target=supervisor.stop)
+    try:
+        supervisor.submit(classify_changes(("kernel/src/one.py",)))
+        assert adapter.first_started.wait(2)
+        supervisor.submit(classify_changes(("web/src/two.tsx",)))
+        shutdown.start()
+        with supervisor._condition:
+            assert supervisor._condition.wait_for(lambda: supervisor._stopping, timeout=2)
+        with pytest.raises(RuntimeError, match="DEV_SUPERVISOR_STOPPED"):
+            supervisor.submit(classify_changes(("web/src/rejected.tsx",)))
+    finally:
+        adapter.release_first.set()
+        if shutdown.ident is not None:
+            shutdown.join(3)
+        else:
+            supervisor.stop()
+    assert not shutdown.is_alive()
+    assert supervisor.status()["completedBatches"] == 2
+    assert ("validate", ("web",)) in adapter.calls

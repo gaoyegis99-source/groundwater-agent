@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { capabilitiesForProfile, historyFixture, sessionSummaryFixture } from '../src/test-fixtures';
+import { capabilitiesForProfile, historyFixture, sessionResponseFixture, sessionSummaryFixture } from '../src/test-fixtures';
 
 const profile = JSON.parse(readFileSync(new URL('../../products/groundwater/ui/product-ui.json', import.meta.url), 'utf8'));
 
@@ -41,4 +41,47 @@ test('archived sessions and operation feedback remain visible on desktop', async
   const rail = page.getByTestId('session-list');
   expect(await rail.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('a second tab can create a conversation after one workspace login', async ({ page, context }) => {
+  const capabilities = capabilitiesForProfile(profile);
+  await context.route('**/product-ui.json', route => route.fulfill({ json: profile }));
+  await context.route('**/api/v12/**', async route => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname;
+    const headers = await request.allHeaders();
+    if (path.endsWith('/auth/login')) return route.fulfill({
+      json: { currentUser: capabilities.currentUser, csrfToken: 'test-shared-csrf' },
+      headers: { 'Set-Cookie': 'gw_research_session=test-session; Path=/; HttpOnly; SameSite=Strict' },
+    });
+    if (!headers.cookie?.includes('gw_research_session=test-session')) {
+      return route.fulfill({ status: 401, json: { code: 'AUTHENTICATION_REQUIRED' } });
+    }
+    if (path.endsWith('/capabilities')) return route.fulfill({ json: capabilities });
+    if (path.endsWith('/sessions') && request.method() === 'POST') {
+      if (headers['x-csrf-token'] !== 'test-shared-csrf') {
+        return route.fulfill({ status: 403, json: { code: 'ROLE_FORBIDDEN' } });
+      }
+      return route.fulfill({ status: 201, json: sessionResponseFixture() });
+    }
+    if (path.endsWith('/sessions')) return route.fulfill({ json: { items: [], nextCursor: null } });
+    if (path.endsWith('/messages')) return route.fulfill({ json: historyFixture() });
+    if (path.endsWith('/results')) return route.fulfill({ json: { items: [], nextCursor: null } });
+    if (path.endsWith('/events') || path.endsWith('/preview')) return route.fulfill({ contentType: 'text/event-stream', body: ': connected\n\n' });
+    throw new Error(`Unexpected workspace request: ${path}`);
+  });
+
+  await page.goto('/');
+  await page.getByLabel('用户名').fill('researcher');
+  await page.getByLabel('密码').fill('fixture-password');
+  await page.getByRole('button', { name: '登录', exact: true }).click();
+  await expect(page.getByRole('button', { name: '新建对话' })).toBeEnabled();
+
+  const other = await context.newPage();
+  await other.goto('/');
+  const created = other.waitForResponse(response =>
+    response.url().endsWith('/api/v12/sessions') && response.request().method() === 'POST',
+  );
+  await other.getByRole('button', { name: '新建对话' }).click();
+  expect((await created).status()).toBe(201);
 });

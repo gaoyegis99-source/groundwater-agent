@@ -24,6 +24,7 @@ from scripts.maintenance import (  # noqa: E402
     lifecycle_cleanup,
     migration_runtime,
     research_artifacts,
+    workspace_cleanup,
 )
 from scripts.maintenance.contracts import ContractRefusal  # noqa: E402
 from scripts.maintenance.daemon_runtime import DaemonRefusal  # noqa: E402
@@ -64,6 +65,7 @@ def doctor() -> dict[str, Any]:
         "docker": _version(["docker", "--version"]),
         "compose": _version(["docker", "compose", "version"]),
     }
+    residue = workspace_cleanup.workspace_clean_plan(PROJECT_ROOT, SOURCE_ROOT)
     issues = []
     if (PROJECT_ROOT / "runtime").exists():
         issues.append("LEGACY_RUNTIME_PRESENT")
@@ -78,6 +80,8 @@ def doctor() -> dict[str, Any]:
     for name in ("docker", "compose"):
         if tools[name] is None:
             issues.append(f"{name.upper()}_MISSING")
+    if residue["candidateCount"]:
+        issues.append("WORKSPACE_RESIDUE_PRESENT")
     return {
         "status": "PASS" if not issues else "NOT_READY",
         "schema": contract["schema_version"],
@@ -95,6 +99,11 @@ def doctor() -> dict[str, Any]:
         "permissions": permissions,
         "tools": tools,
         "rootless": rootless,
+        "workspaceResidue": {
+            "candidates": residue["candidateCount"],
+            "files": residue["files"],
+            "bytes": residue["bytes"],
+        },
         "issues": issues,
         "docker_contacted": False,
     }
@@ -132,6 +141,15 @@ def _instance(args: argparse.Namespace) -> dict[str, Any]:
 
 def _clean(args: argparse.Namespace) -> dict[str, Any]:
     resolved = lifecycle()
+    if args.clean_action == "workspace":
+        plan = workspace_cleanup.workspace_clean_plan(PROJECT_ROOT, SOURCE_ROOT)
+        return _apply_or_plan(
+            plan,
+            args.confirm,
+            lambda value, confirmation: workspace_cleanup.apply_workspace_clean(
+                resolved, value, confirmation
+            ),
+        )
     plan = lifecycle_cleanup.cache_clean_plan(resolved)
     return _apply_or_plan(
         plan,
@@ -280,6 +298,8 @@ def _parse(argv: list[str]) -> argparse.Namespace:
     clean_commands = clean.add_subparsers(dest="clean_action", required=True)
     cache = clean_commands.add_parser("cache")
     cache.add_argument("--confirm")
+    workspace = clean_commands.add_parser("workspace")
+    workspace.add_argument("--confirm")
 
     engine = commands.add_parser("engine")
     engine_commands = engine.add_subparsers(dest="engine_action", required=True)
@@ -437,6 +457,7 @@ def main(argv: list[str] | None = None) -> None:
         migration_runtime.MigrationError,
         LayoutRefusal,
         research_artifacts.ResearchArtifactError,
+        workspace_cleanup.WorkspaceCleanupRefusal,
         OSError,
         ValueError,
     ) as error:

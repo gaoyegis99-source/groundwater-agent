@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import { AssistantContent, MessageContent } from './MessageContent';
 import { ErrorNotice } from './ErrorNotice';
@@ -36,8 +36,26 @@ it('shows the conclusion first and keeps deduplicated details and sources in one
 it('separates adjacent evidence labels in copied text', () => {
   render(<AssistantContent reply={reply({ sources: [source, { ...source, unitId: 'unit-3' }] })} onKnowledge={vi.fn()} onResource={vi.fn()} />);
   fireEvent.click(screen.getByText('更多信息'));
-  expect(screen.getByRole('region', { name: '回答依据' })).toHaveTextContent('方法说明；方法说明');
+  expect(screen.getByRole('region', { name: '回答依据' })).toHaveTextContent('1. 方法说明；2. 方法说明');
   expect(screen.getByRole('region', { name: '回答依据' })).not.toHaveTextContent('unit-2');
+});
+
+it('opens the exact same-title evidence assigned to each reply section', () => {
+  const read = vi.fn();
+  const other = { ...source, unitId: 'unit-3', checksum: 'b'.repeat(64) };
+  render(<AssistantContent reply={reply({
+    conclusion: { markdown: '结论正文', sourceIndexes: [1] },
+    details: [{ markdown: '补充正文', sourceIndexes: [0] }],
+    unresolvedItems: [{ markdown: '待确认正文', sourceIndexes: [] }],
+    sources: [source, other],
+  })} onKnowledge={read} onResource={vi.fn()} />);
+
+  fireEvent.click(screen.getByRole('button', { name: '查看依据 2 · 方法说明' }));
+  expect(read).toHaveBeenLastCalledWith({ versionId: other.versionId, unitId: other.unitId, checksum: other.checksum });
+  fireEvent.click(screen.getByText('更多信息'));
+  fireEvent.click(screen.getByRole('button', { name: '查看依据 1 · 方法说明' }));
+  expect(read).toHaveBeenLastCalledWith({ versionId: source.versionId, unitId: source.unitId, checksum: source.checksum });
+  expect(within(screen.getByRole('region', { name: '需要补充' })).queryByRole('button')).not.toBeInTheDocument();
 });
 
 it('keeps execution summaries and unresolved questions visible without a conclusion', () => {

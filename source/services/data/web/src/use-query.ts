@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery as useServerQuery } from "@tanstack/react-query";
-import { newRequestId } from "@platform/ui-boundary";
+import { newRequestId, recoverDataQuerySubmission } from "@platform/ui-boundary";
 import { useUrlParam } from "@platform/operator-ui";
 import { api, PlatformUiError } from "./api";
 import type { QueryResult, Schema, Version } from "./api";
@@ -175,6 +175,9 @@ export function useQuery(
     }
   };
 
+  const submit = (snapshot: Schema["DataQueryRequest"]) =>
+    recoverDataQuerySubmission(signal => api("data_create_query", "queries", snapshot, { signal }));
+
   const submitQuery = async () => {
     if (!selected) return;
     const fieldsById = new Map(selected.descriptor.fields.map(field => [field.fieldId, field]));
@@ -200,7 +203,7 @@ export function useQuery(
       })),
       sort: sorts.map(item => ({ field: item.field, direction: item.direction })),
     };
-    const accepted = await api("data_create_query", "queries", snapshot);
+    const accepted = await submit(snapshot);
     retain(accepted.queryId, snapshot);
   };
 
@@ -211,7 +214,7 @@ export function useQuery(
       metricName,
       kind: "metrics",
     };
-    const accepted = await api("data_create_query", "queries", snapshot);
+    const accepted = await submit(snapshot);
     retain(accepted.queryId, snapshot);
   };
 

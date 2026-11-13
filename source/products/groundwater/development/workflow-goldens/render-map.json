@@ -49,7 +49,7 @@
       }
     }
   },
-  "operatorCatalogDigest": "sha256:2ca1c058884bc6d5bb17a71fd19aaa46bd44307a2c953edd7c67b6895ed5d901",
+  "operatorCatalogDigest": "sha256:5a9d8c409454a44af27544a8a3d010953b8acd15543000dbfb5c7dddd473fcb8",
   "outputs": {
     "map-image": {
       "format": "png",

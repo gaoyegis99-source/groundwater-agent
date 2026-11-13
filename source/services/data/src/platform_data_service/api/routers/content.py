@@ -1,3 +1,4 @@
+import re
 from typing import Annotated
 
 from fastapi import FastAPI, Header, Path, Request
@@ -9,6 +10,13 @@ from ...errors import DataProblemError
 from ...query import service as queries
 from ...repositories import http_queries
 from ..audit import record as audit
+
+
+_WORKFLOW_FILE_EXTENSIONS = {
+    "arrow-ipc-file": "arrow", "binary": "bin", "cog": "tif", "flatgeobuf": "fgb",
+    "geopackage": "gpkg", "geoparquet": "parquet", "geotiff": "tif",
+    "markdown": "md", "pytorch-state-dict": "pt", "text": "txt",
+}
 
 
 def download(service: Application, obj, filename, range_header=None):
@@ -103,7 +111,11 @@ def register_content_routes(app: FastAPI, settings, service: Application) -> Non
             request, "download.object", versionId=version_id, objectId=object_id,
             checksum=obj["descriptor"]["checksum"],
         )
+        format_ = obj["descriptor"]["format"]
+        filename = f"{object_id}.{format_}"
+        output_name = obj.get("output_name")
+        if isinstance(output_name, str) and re.fullmatch(r"[a-zA-Z0-9_-]{1,128}", output_name):
+            filename = f"{output_name}.{_WORKFLOW_FILE_EXTENSIONS.get(format_, format_)}"
         return download(
-            service, obj["descriptor"], f"{object_id}.{obj['descriptor']['format']}",
-            range_header,
+            service, obj["descriptor"], filename, range_header,
         )

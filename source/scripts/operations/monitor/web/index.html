@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Groundwater V6 · 实时监控</title>
+  <link rel="stylesheet" href="/monitor.css">
+  <script src="/monitor.js" defer></script>
+</head>
+<body>
+  <header><h1>Groundwater V6 <span>实时监控</span></h1><div class="header-actions"><span id="access-mode" hidden>局域网只读</span><button id="logout" hidden>退出</button></div></header>
+  <main>
+    <form id="login" hidden>
+      <h2>管理员登录</h2>
+      <label>账号<input name="username" autocomplete="username" required></label>
+      <label>密码<input name="password" type="password" autocomplete="current-password" required></label>
+      <button type="submit">登录</button>
+      <output id="login-error" role="alert"></output>
+    </form>
+    <p id="startup" role="status">正在连接监控…</p>
+    <div id="workspace" hidden>
+      <div id="signals" role="status"></div>
+      <section aria-labelledby="logs-title">
+        <div class="section-top"><h2 id="logs-title">日志 <small>保留 24 小时</small></h2><div><button id="copy-logs" disabled>复制当前日志</button> <button id="wrap" aria-pressed="true">自动换行</button> <button id="older" hidden>更早日志</button> <button id="follow" aria-pressed="true">暂停跟随</button></div></div>
+        <form id="filters">
+          <label>服务<select name="service"><option value="">所有服务</option></select></label>
+          <label>从<input name="start" type="datetime-local"></label>
+          <label>到<input name="end" type="datetime-local"></label>
+          <label class="search">关键词或请求／会话／运行 ID<input name="q" maxlength="200" type="search"></label>
+          <button type="submit">筛选</button><button type="reset">清空</button>
+        </form>
+        <div class="log-feedback"><p id="notice" role="status"></p><output id="copy-status" aria-live="polite"></output><span id="log-count"></span></div>
+        <div class="table-wrap log-window" id="log-window" tabindex="0"><table><thead><tr><th>本地时间</th><th>服务</th><th>日志</th><th>操作</th></tr></thead><tbody id="logs"></tbody></table></div>
+      </section>
+      <details class="services-panel">
+        <summary id="services-title">服务状态</summary>
+        <div class="table-wrap service-list"><table><thead><tr><th>服务</th><th>进程</th><th>健康检查</th><th>就绪</th><th>Worker 心跳</th><th>重启次数</th><th>容器</th></tr></thead><tbody id="services"></tbody></table></div>
+        <details><summary>队列、Worker 与 Provider 指标</summary><div class="table-wrap"><table><thead><tr><th>服务</th><th>指标</th><th>标签</th><th>值</th></tr></thead><tbody id="metrics"></tbody></table></div></details>
+      </details>
+    </div>
+  </main>
+  <dialog id="manual-copy">
+    <form method="dialog">
+      <label for="copy-text">文本已选中，请按 Ctrl+C 或 ⌘C 复制</label>
+      <textarea id="copy-text" readonly rows="9"></textarea>
+      <button>关闭</button>
+    </form>
+  </dialog>
+</body>
+</html>

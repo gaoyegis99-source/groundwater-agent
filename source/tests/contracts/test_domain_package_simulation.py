@@ -32,6 +32,12 @@ from platform_kernel.tasks.models import TaskPreparationEntryV1
 
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def _groundwater_domain(root: Path) -> Path:
+    product = _read(root / "products/groundwater/product-manifest.json")
+    reference = product["domainPackage"]
+    return root / "domains" / reference["domainId"] / reference["version"]
 PACKAGES = ("groundwater", "air-quality")
 MESSAGE = "请分析当前项目的监测数据。"
 AIR_PROMPT = (
@@ -98,7 +104,7 @@ def assembly_root(tmp_path):
     shutil.copytree(ROOT / "products", root / "products")
     shutil.copytree(ROOT / "domains", root / "domains")
     shutil.copy2(ROOT / "system-deps.lock.json", root / "system-deps.lock.json")
-    groundwater = root / "domains/groundwater/6.0.0"
+    groundwater = _groundwater_domain(root)
     air_product = root / "products/air-quality"
     air_product.mkdir()
     air = root / "domains/air-quality/1.0.0"
@@ -201,7 +207,7 @@ def _pin_domain(root, product):
 def _add_knowledge_to_product(root: Path, product: str) -> None:
     domain_path = root / "domains" / product / "1.0.0" / "domain-manifest.json"
     domain = _read(domain_path)
-    groundwater_domain = _read(root / "domains/groundwater/6.0.0/domain-manifest.json")
+    groundwater_domain = _read(_groundwater_domain(root) / "domain-manifest.json")
     domain["observationTools"] += [
         tool
         for tool in groundwater_domain["observationTools"]
@@ -1219,7 +1225,7 @@ def test_invalid_package_fails_before_output(assembly_root, mutation, error):
         manifest["observationTools"][0]["tool"] = "search_air_stations"
     elif mutation == "missing_service":
         knowledge = _read(
-            assembly_root / "domains/groundwater/6.0.0/domain-manifest.json"
+            _groundwater_domain(assembly_root) / "domain-manifest.json"
         )
         manifest["observationTools"].append(
             next(
@@ -1353,7 +1359,7 @@ def test_domain_replacement_changes_compiled_v11_contract(
     knowledge_tools = [
         item
         for item in _read(
-            assembly_root / "domains/groundwater/6.0.0/domain-manifest.json"
+            _groundwater_domain(assembly_root) / "domain-manifest.json"
         )["observationTools"]
         if item["service"] == "knowledge-next"
     ]

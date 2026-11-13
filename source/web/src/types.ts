@@ -1,6 +1,8 @@
+import type { DatasetProfile, FieldProfileFacts } from '@platform/ui-boundary';
 import type { components as PublicApiComponents, paths as PublicApiPaths } from './generated/public-api-v12';
 
 export type PublicApiPath = keyof PublicApiPaths;
+export type ConfirmationRevisionAction = PublicApiComponents['schemas']['kernel__ConfirmationRevisionAction'];
 
 export interface JsonSchemaProperty { type?: string; description?: string; default?: unknown; enum?: unknown[]; minimum?: number; maximum?: number }
 export interface Capabilities { productId: string; projectId: string; orchestrationOwner?: 'AGENT'; observationTools?: { name: string; description: string; inputSchema: Record<string, unknown>; outputSchema: Record<string, unknown> }[]; services?: string[]; currentUser: { subject: string; displayName: string; roles: string[] }; models: { modelId: string; modelVersion?: string; modelChecksum?: string; workflowId?: string; workflowVersion?: string; workflowChecksum?: string; description: string; tool: string; inputSchema?: { type: string; properties?: Record<string, JsonSchemaProperty>; required?: string[] }; dataInputParameters?: string[]; requiredInputs?: string[]; defaultParameters?: Record<string, unknown>; finalOutputs?: { name?: string }[] | string[]; applicabilityStatus?: string; deadlineSeconds?: number }[] }
@@ -297,7 +299,9 @@ export interface ResourceItem extends ResourceReference {
 }
 export interface ResourceDetail {
   versionId: string; datasetId: string; publicationId: string; semanticId: string; currentVersion?: string; project?: string; tags?: string[]; title: string; createdAt?: string; inputVersions: string[];
-  descriptor: { rowCount?: number | null; fields?: { fieldId: string; name: string; type: string; nullCount?: number }[]; policy?: string; provenance?: Record<string, string> };
+  descriptor: { rowCount?: number | null; profile?: DatasetProfile;
+    fields?: { fieldId: string; name: string; type: string; nullCount?: number; profile?: FieldProfileFacts }[];
+    policy?: string; provenance?: Record<string, string> };
   semantics: { description?: string; fields?: Record<string, { meaning?: string | null; unit?: string | null }>; grain?: string | null; timeRange?: string | null; timezone?: string | null; crs?: string | null; verticalDatum?: string | null; limitations?: string[] };
   objects: { objectId: string; size: number; checksum: string; role: 'raw' | 'query'; format: string; mediaType: string; sourceChecksum?: string }[];
 }

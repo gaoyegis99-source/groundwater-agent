@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -26,9 +27,24 @@ def test_check_scope_uses_existing_commands_and_propagates_failure(monkeypatch):
     with pytest.raises(subprocess.CalledProcessError) as error:
         check_change.run_checks("executor")
     assert error.value.returncode == 3
-    assert commands == [
-        (check_change.PYTHON, "-m", "pytest", "-q", "services/executor/tests")
-    ]
+    command, = commands
+    assert command[:5] == (check_change.PYTHON, "-m", "pytest", "-q", "services/executor/tests")
+    assert command[5] == "--basetemp"
+    assert not Path(command[6]).parent.exists()
+
+
+def test_check_scope_preserves_explicit_pytest_temp_and_other_options(monkeypatch, tmp_path):
+    explicit = tmp_path / "custom temporary directory"
+    options = f'--basetemp="{explicit}" -x'
+    monkeypatch.setenv("PYTEST_ADDOPTS", options)
+    monkeypatch.setattr(check_change, "_preflight", lambda scope: [])
+    monkeypatch.setattr(check_change, "_steps", lambda scope: (
+        check_change.Check("test", (check_change.PYTHON, "-m", "pytest", "-q")),
+    ))
+    commands = []
+    monkeypatch.setattr(check_change.subprocess, "run", lambda command, **kwargs: commands.append(tuple(command)))
+    check_change.run_checks("kernel")
+    assert commands == [(check_change.PYTHON, "-m", "pytest", "-q")]
 
 
 def test_missing_prerequisite_skips_every_command(monkeypatch):

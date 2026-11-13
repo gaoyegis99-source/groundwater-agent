@@ -3,9 +3,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from scripts.development.product_selection import load_selected_product_by_id
+
 
 SOURCE = Path(__file__).resolve().parents[2]
-MODEL = SOURCE / "domains/groundwater/6.0.0/models/flow-field.model.json"
+DOMAIN = load_selected_product_by_id(SOURCE, "groundwater").domain.root
+MODEL = DOMAIN / "models/flow-field.model.json"
 UI = SOURCE / "products/groundwater/ui/product-ui.json"
 OPERATORS = SOURCE / "packages/operator-pack/catalog/operators"
 

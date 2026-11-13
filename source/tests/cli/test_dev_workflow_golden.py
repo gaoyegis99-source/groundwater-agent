@@ -58,7 +58,7 @@ def test_dev_workflow_golden_uses_xdg_cache_and_locked_native_runtime(
     )
     assert call["case_file"] == (
         dev.ROOT
-        / "products/groundwater/development/workflow-golden-cases.v1.json"
+        / "products/groundwater/development/workflow-golden-cases.v2.json"
     )
     assert call["baseline_file"] == (
         dev.ROOT

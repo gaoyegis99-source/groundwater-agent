@@ -122,6 +122,16 @@ def begin_immediate(connection: sqlite3.Connection, *, wait: bool = True) -> boo
         connection.execute(f"PRAGMA busy_timeout={previous_timeout}")
 
 
+def scheduler_store_writable(path: Path) -> bool:
+    with connect_database(path) as connection:
+        if not begin_immediate(connection, wait=False):
+            return False
+        # A read-only WAL connection can pass BEGIN IMMEDIATE. This
+        # statement exercises SQLite's write check without changing rows.
+        connection.execute("UPDATE schema_version SET version=version WHERE 0")
+    return True
+
+
 def initialize_database(path: Path) -> None:
     """Create v34 or open an exact v34 store without implicit upgrades."""
 

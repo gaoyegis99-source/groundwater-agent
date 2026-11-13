@@ -403,6 +403,7 @@ def test_follow_waits_for_latest_recovery_batch(monkeypatch):
     term.session_id = 'existing'
     monkeypatch.setattr('groundwater_api_client.tli.time.sleep', lambda _: pytest.fail('unexpected reconnect'))
     snapshots = iter([
+        {'eventCursor': 3, 'goalRevision': 1, 'turns': []},
         {'goalRevision': 1, 'turns': [{'goalRevision': 1, 'agentRunId': 'current', 'status': 'FAILED',
           'confirmations': [{'confirmationId': 'new-recovery', 'kind': 'RECOVERY', 'status': 'CONFIRMED'}],
           'executionTasks': [{'status': 'RUNNING', 'isLatestAttempt': True}]}]},
@@ -433,3 +434,38 @@ def test_follow_stops_at_current_recovery_approval(monkeypatch):
     ])
     term.execute('events --follow --cursor 0')
     assert 'confirmation.recovery_created' in output.getvalue()
+
+
+
+def test_retry_reuses_message_and_exact_references():
+    from platform_protocol_contracts import TransportError
+
+    term, client, _ = terminal()
+    term.interactive = True
+    term.session_id = "existing"
+    term.execute("attach version-1 object-1")
+    requests = []
+
+    def submit(session_id, request):
+        requests.append((session_id, request.model_dump()))
+        if len(requests) == 1:
+            raise TransportError("lost response")
+        return {"requestId": request.request_id}
+
+    client.send_message = submit
+    term.run_line("水位统计")
+    term.run_line("/retry")
+    assert len(requests) == 2 and requests[0] == requests[1]
+    assert not term.pending_sends
+    assert not term.references
+
+
+def test_follow_returns_without_opening_stream_at_terminal_cursor():
+    term, client, _ = terminal()
+    term.session_id = "existing"
+    client.history = lambda *_args, **_kwargs: {
+        "eventCursor": 7, "goalRevision": 1,
+        "turns": [{"goalRevision": 1, "status": "COMPLETE"}],
+    }
+    client.events = lambda *_args, **_kwargs: pytest.fail("terminal cursor reopened the stream")
+    assert term.execute("events --follow --cursor 7")

@@ -1,23 +1,41 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { resolveWorkspaceState, WorkspacePanel } from './WorkspacePanel';
 import { dataRef, historyFixture, replyFixture, taskFixture } from './test-fixtures';
 import type { Result, TaskContext } from './types';
 import { scopedStorageKey } from './browser-scope';
+import { useWorkspaceController } from './use-workspace-controller';
 
 beforeEach(() => sessionStorage.clear());
+
+it('restores the selected result identity before the result list arrives and scopes it to its owner', () => {
+  const exact = dataRef({ semanticId: 'published-semantics', objectId: 'published-object' });
+  const first = renderHook(() => useWorkspaceController('session-1', 'researcher-a'));
+  act(() => first.result.current.openResource(exact.versionId, exact));
+  first.unmount();
+
+  const restored = renderHook(({ scope }) => useWorkspaceController('session-1', scope), { initialProps: { scope: 'researcher-a' } });
+  expect(restored.result.current.resourceId).toBe(exact.versionId);
+  expect(restored.result.current.resourceReference).toEqual(exact);
+  restored.rerender({ scope: 'researcher-b' });
+  expect(restored.result.current.resourceId).toBeNull();
+  expect(restored.result.current.resourceReference).toBeNull();
+  restored.rerender({ scope: 'researcher-a' });
+  act(() => restored.result.current.openResource(exact.versionId));
+  expect(restored.result.current.resourceReference).toBeNull();
+});
 
 it('does not offer recovery for a failed run from an earlier goal or a replaced attempt', () => {
   const view = render(<WorkspacePanel history={historyFixture({ goalRevision: 2, turns: [
     { goalRevision: 1, agentRunId: 'agent-old', executionTasks: [taskFixture({ agentRunId: 'agent-old', status: 'FAILED', isLatestAttempt: true })] },
     { goalRevision: 2, agentRunId: 'agent-current', status: 'COMPLETE' },
   ] })} results={[]} activeId="session-1" collapsed={false} onToggle={vi.fn()} onJump={vi.fn()} />);
-  expect(screen.queryByRole('button', { name: /恢复.*批次/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /准备恢复未完成步骤/ })).not.toBeInTheDocument();
   view.rerender(<WorkspacePanel history={historyFixture({ turns: [{ executionTasks: [
     taskFixture({ status: 'FAILED', isLatestAttempt: false, attempt: 1 }),
     taskFixture({ workflowRunId: 'retry', status: 'SUCCEEDED', isLatestAttempt: true, attempt: 2 }),
   ] }] })} results={[]} activeId="session-1" collapsed={false} onToggle={vi.fn()} onJump={vi.fn()} />);
-  expect(screen.queryByRole('button', { name: /恢复.*批次/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /准备恢复未完成步骤/ })).not.toBeInTheDocument();
 });
 
 it('recovers the failed source and its blocked downstream batch, not just the last blocked row', () => {
@@ -27,9 +45,9 @@ it('recovers the failed source and its blocked downstream batch, not just the la
     taskFixture({ workflowRunId: 'failed-source', toolCallId: 'source', position: 1, status: 'TIMED_OUT', isLatestAttempt: true }),
     taskFixture({ workflowRunId: 'blocked', toolCallId: 'downstream', position: 2, status: 'FAILED', blockedByWorkflowRunId: 'failed-source', isLatestAttempt: true }),
   ] }] })} results={[]} activeId="session-1" collapsed={false} onToggle={vi.fn()} onJump={vi.fn()} onRecover={recover} />);
-  fireEvent.click(screen.getByRole('button', { name: /恢复.*批次/ }));
+  fireEvent.click(screen.getByRole('button', { name: /准备恢复未完成步骤/ }));
   expect(recover).toHaveBeenCalledExactlyOnceWith('failed-source');
-  expect(screen.getByText(/2 项分析.*确认后执行/)).toBeVisible();
+  expect(screen.getByText(/2 项分析.*需要确认/)).toBeVisible();
 });
 
 it('allows the latest cancelled source to request a separate recovery confirmation', () => {
@@ -37,7 +55,7 @@ it('allows the latest cancelled source to request a separate recovery confirmati
   render(<WorkspacePanel history={historyFixture({ turns: [{ status: 'CANCELLED', executionTasks: [
     taskFixture({ workflowRunId: 'cancelled-source', status: 'CANCELLED', isLatestAttempt: true }),
   ] }] })} results={[]} activeId="session-1" collapsed={false} onToggle={vi.fn()} onJump={vi.fn()} onRecover={recover} />);
-  fireEvent.click(screen.getByRole('button', { name: /恢复.*批次/ }));
+  fireEvent.click(screen.getByRole('button', { name: /准备恢复未完成步骤/ }));
   expect(recover).toHaveBeenCalledExactlyOnceWith('cancelled-source');
 });
 
@@ -57,6 +75,7 @@ it('shows recorded work and released outputs without presenting pending files as
   expect(screen.getByText('本轮回答已完成')).toBeVisible();
   fireEvent.click(screen.getByRole('tab', { name: /成果/ }));
   expect(screen.getByText('汇总结果')).toBeVisible();
+  expect(screen.getByText(/版本 released/)).toBeVisible();
   expect(screen.queryByText('pending')).not.toBeInTheDocument();
   expect(screen.getByText('older')).toBeVisible();
   fireEvent.click(screen.getByRole('tab', { name: /任务/ }));
@@ -64,7 +83,7 @@ it('shows recorded work and released outputs without presenting pending files as
   fireEvent.click(screen.getByRole('tab', { name: /成果/ }));
   fireEvent.click(screen.getByRole('button', { name: /汇总结果/ }));
   expect(onJump).toHaveBeenCalledExactlyOnceWith(1);
-  expect(onResource).toHaveBeenCalledExactlyOnceWith('released');
+  expect(onResource).toHaveBeenCalledExactlyOnceWith('released', results[0].remoteOutputs[0]);
 });
 
 it('keeps every selected tab usable for an empty session', () => {

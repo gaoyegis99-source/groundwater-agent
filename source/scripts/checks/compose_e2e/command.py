@@ -24,9 +24,7 @@ def main() -> None:
         type=Path,
         help="Prepared INPUT manifest for the transfer-learning case",
     )
-    parser.add_argument(
-        "--transfer-evidence", type=Path, default=output_root / "transfer-evidence"
-    )
+    parser.add_argument("--transfer-evidence", type=Path, default=output_root / "transfer-evidence")
     parser.add_argument(
         "--native-worker-image",
         help="Use an already smoke-verified native Worker image",
@@ -113,12 +111,8 @@ def main() -> None:
         action="store_true",
         help="Run the frozen 24-case real-Provider reply-quality gate",
     )
-    parser.add_argument(
-        "--reply-quality-provider", choices=("deepseek", "minimax")
-    )
-    parser.add_argument(
-        "--reply-quality-protocol", choices=("responses", "chat_completions")
-    )
+    parser.add_argument("--reply-quality-provider", choices=("deepseek", "minimax"))
+    parser.add_argument("--reply-quality-protocol", choices=("responses", "chat_completions"))
     parser.add_argument("--reply-quality-base-url", type=_http_base_url)
     parser.add_argument("--reply-quality-model")
     parser.add_argument(
@@ -126,9 +120,7 @@ def main() -> None:
         help="Name of the environment variable holding the temporary Provider key",
     )
     parser.add_argument("--reply-quality-report", type=Path)
-    parser.add_argument(
-        "--webui-report", type=Path, default=output_root / "webui-evidence"
-    )
+    parser.add_argument("--webui-report", type=Path, default=output_root / "webui-evidence")
     args = parser.parse_args()
     if args.interaction_only and (
         args.product != "groundwater"

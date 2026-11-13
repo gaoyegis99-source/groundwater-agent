@@ -141,8 +141,20 @@ def _operation_schemas(
 
 def _standalone_operation_validators(
     contract: Path,
+    *,
+    operations: frozenset[str] | None = None,
 ) -> tuple[bytes, bytes]:
     schemas, definitions, request_names, response_names = _operation_schemas(contract)
+    if operations is not None:
+        missing = operations - (set(request_names) | set(response_names))
+        if missing:
+            raise ValueError("INITIAL_UI_OPERATIONS_MISSING:" + ",".join(sorted(missing)))
+        request_names = [name for name in request_names if name in operations]
+        response_names = [name for name in response_names if name in operations]
+        selected = [f"request_{name}" for name in request_names] + [
+            f"response_{name}" for name in response_names
+        ]
+        schemas = {name: schemas[name] for name in selected}
     script = r"""
 import fs from 'node:fs';
 import Ajv2020 from 'ajv/dist/2020.js';
@@ -291,6 +303,29 @@ def _write_or_check(path: Path, content: bytes, *, check: bool, code: str) -> No
         path.write_bytes(content)
 
 
+_INITIAL_UI_OPERATIONS = {
+    "data-api-v3.validators.js": frozenset({
+        "data_capabilities", "data_discovery", "data_inventory", "data_list_datasets",
+    }),
+    "knowledge-api-v3.validators.js": frozenset({
+        "knowledge_capabilities", "knowledge_list_documents",
+    }),
+}
+
+
+def _write_initial_ui_validators(contract: Path, validators: Path, *, check: bool) -> None:
+    operations = _INITIAL_UI_OPERATIONS.get(validators.name)
+    if operations is None:
+        return
+    initial = validators.with_name(validators.stem + ".initial.js")
+    content, declarations = _standalone_operation_validators(contract, operations=operations)
+    _write_or_check(initial, content, check=check, code="INITIAL_UI_VALIDATORS_STALE")
+    _write_or_check(
+        initial.with_suffix(".d.ts"), declarations, check=check,
+        code="INITIAL_UI_VALIDATOR_TYPES_STALE",
+    )
+
+
 def run(product: str | None, *, check: bool) -> None:
     product_id, manifest = _load_product(ROOT, product)
     public_contract = _output_path(ROOT, product_id, manifest)
@@ -400,6 +435,7 @@ def run(product: str | None, *, check: bool) -> None:
         )
     if not check:
         for source, output, validators in clients:
+            _write_initial_ui_validators(source, validators, check=False)
             _typescript(source, output)
             validator_source, declarations = _standalone_operation_validators(source)
             _write_or_check(
@@ -418,6 +454,7 @@ def run(product: str | None, *, check: bool) -> None:
     with tempfile.TemporaryDirectory(prefix="platform-web-contracts-") as directory:
         temporary = Path(directory)
         for index, (source, expected, validators) in enumerate(clients):
+            _write_initial_ui_validators(source, validators, check=True)
             generated = temporary / f"client-{index}.ts"
             _typescript(source, generated)
             if not expected.is_file() or expected.read_bytes() != generated.read_bytes():

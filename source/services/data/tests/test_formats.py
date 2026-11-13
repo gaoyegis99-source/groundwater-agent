@@ -67,6 +67,19 @@ def test_csv_date_error_and_explicit_nulls():
         list(reader.read(io.BytesIO(b"x,y\n1\n"), Conversion()))
 
 
+def test_csv_water_head_conversion_preserves_well_identifiers():
+    raw = b"well,time,hydraulic_head_m\n001,2025-01-01,81.2\n002,2025-01-01,82.4\n"
+    (_, schema), batch = CSVReader().read(
+        io.BytesIO(raw), Conversion(types={"f2": "float64"})
+    )
+    assert schema.field("f2").type == pa.float64()
+    assert batch.to_pydict() == {
+        "f0": ["001", "002"],
+        "f1": ["2025-01-01", "2025-01-01"],
+        "f2": [81.2, 82.4],
+    }
+
+
 def test_commit_abort_race_has_one_winner(client, worker):
     pid = start(client)
     upload(client, pid)

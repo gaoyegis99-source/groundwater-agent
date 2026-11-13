@@ -1,7 +1,9 @@
 import { mergeConfig } from "vite";
 import baseConfig from "../../../services/knowledge-next/ui/vite.config.ts";
+import { observeDevelopmentHmr } from "./vite-observation.ts";
 
 export default mergeConfig(baseConfig, {
+  plugins: [observeDevelopmentHmr()],
   server: {
     host: "127.0.0.1",
     port: 5175,

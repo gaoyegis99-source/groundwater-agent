@@ -124,8 +124,12 @@ def check_links(errors: list[str]) -> None:
             if link.scheme or link.netloc or link.path.startswith("/"):
                 continue
             target = (path.parent / local_path).resolve() if local_path else path
+            active_plan = (
+                ROOT.parent / "plans/01_SYSTEM_ENGINEERING/README.md"
+            ).resolve()
             if (
                 not target.is_relative_to(ROOT)
+                and target != active_plan
                 or not target.exists()
                 and not ignored_artifact_target(target)
             ):

@@ -62,9 +62,16 @@ def _publish(
                         else "FILE_ONLY"
                     ),
                     "tags": ["SYNTHETIC_TEST_ONLY", "v12-browser-acceptance"],
+                    **(
+                        {"conversion": {"types": {"f2": "float64"}}}
+                        if format_ == "csv" else {}
+                    ),
                     "semantics": {
                         "description": "v12 浏览器验收的最小合成夹具",
-                        "fields": {},
+                        "fields": (
+                            {"f2": {"meaning": "合成观测水头", "unit": "m"}}
+                            if format_ == "csv" else {}
+                        ),
                         "grain": None,
                         "time_range": None,
                         "timezone": None,
@@ -128,7 +135,10 @@ def _observations_csv() -> bytes:
 
 def _parquet() -> bytes:
     output = pa.BufferOutputStream()
-    pq.write_table(pa.table({"well": ["w1", "w2"], "level": [81.2, 82.4]}), output)
+    pq.write_table(
+        pa.table({"well": ["w1", "w2"], "level": [81.2, 82.4], "integer_id": [2**53, 2**53 + 1]}),
+        output,
+    )
     return output.getvalue().to_pybytes()
 
 
@@ -223,7 +233,8 @@ def seed_browser_data(base_url: str) -> None:
     ) as client:
         for format_, (title, media_type, content) in fixtures.items():
             params = {"format": format_, "limit": 20}
-            if format_ == "csv":
+            requires_native_fixture = format_ in {"csv", "parquet"}
+            if requires_native_fixture:
                 params["query"] = title
             items = _request(
                 client,
@@ -232,7 +243,7 @@ def seed_browser_data(base_url: str) -> None:
                 params=params,
                 headers=HEADERS,
             )["items"]
-            if format_ == "csv":
+            if requires_native_fixture:
                 exists = any(item["title"] == title for item in items)
             else:
                 exists = bool(items)

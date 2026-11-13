@@ -321,6 +321,22 @@
             "title": "Arguments",
             "type": "object"
           },
+          "expectedInputReferences": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/MessageInputReference"
+                },
+                "minProperties": 1,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Exact Data references selected for this action, keyed by model input parameter.",
+            "title": "Expectedinputreferences"
+          },
           "toolCallId": {
             "minLength": 1,
             "title": "Toolcallid",
@@ -2323,6 +2339,192 @@
           "diagnostics"
         ],
         "title": "WorkflowDraftResponse",
+        "type": "object"
+      },
+      "WorkflowGraphNode": {
+        "additionalProperties": false,
+        "properties": {
+          "dependsOn": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Dependson",
+            "type": "array"
+          },
+          "nodeId": {
+            "title": "Nodeid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "nodeId",
+          "dependsOn"
+        ],
+        "title": "WorkflowGraphNode",
+        "type": "object"
+      },
+      "WorkflowGraphResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "availability": {
+            "enum": [
+              "NOT_DISPATCHED",
+              "UNAVAILABLE",
+              "AVAILABLE"
+            ],
+            "title": "Availability",
+            "type": "string"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/WorkflowGraphNode"
+            },
+            "title": "Nodes",
+            "type": "array"
+          },
+          "workflowRunId": {
+            "title": "Workflowrunid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "workflowRunId",
+          "availability",
+          "nodes"
+        ],
+        "title": "WorkflowGraphResponse",
+        "type": "object"
+      },
+      "WorkflowNodeDiagnostic": {
+        "additionalProperties": false,
+        "properties": {
+          "attemptCount": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attemptcount"
+          },
+          "errorCode": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Z][A-Z0-9_]{0,95}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Errorcode"
+          },
+          "finishedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finishedat"
+          },
+          "nodeId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Nodeid",
+            "type": "string"
+          },
+          "operatorId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Operatorid",
+            "type": "string"
+          },
+          "runtime": {
+            "enum": [
+              "native",
+              "qgis",
+              "remote_http"
+            ],
+            "title": "Runtime",
+            "type": "string"
+          },
+          "startedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Startedat"
+          },
+          "status": {
+            "enum": [
+              "WAITING",
+              "READY",
+              "LEASED",
+              "RUNNING",
+              "SUCCEEDED",
+              "FAILED",
+              "CANCELLED",
+              "SKIPPED"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "nodeId",
+          "operatorId",
+          "runtime",
+          "status",
+          "attemptCount",
+          "startedAt",
+          "finishedAt",
+          "errorCode"
+        ],
+        "title": "WorkflowNodeDiagnostic",
+        "type": "object"
+      },
+      "WorkflowNodeDiagnosticsResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "availability": {
+            "enum": [
+              "NOT_DISPATCHED",
+              "UNAVAILABLE",
+              "AVAILABLE"
+            ],
+            "title": "Availability",
+            "type": "string"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/WorkflowNodeDiagnostic"
+            },
+            "title": "Nodes",
+            "type": "array"
+          },
+          "workflowRunId": {
+            "title": "Workflowrunid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "workflowRunId",
+          "availability",
+          "nodes"
+        ],
+        "title": "WorkflowNodeDiagnosticsResponse",
         "type": "object"
       },
       "WorkflowRecoveryRequest": {
@@ -5664,6 +5866,172 @@
           }
         },
         "summary": "Get Run"
+      }
+    },
+    "/api/v12/workflow-runs/{runId}/graph": {
+      "get": {
+        "operationId": "kernel_get_workflow_run_graph",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "runId",
+            "required": true,
+            "schema": {
+              "title": "Runid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "title": "Projectid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowGraphResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Graph"
+      }
+    },
+    "/api/v12/workflow-runs/{runId}/nodes": {
+      "get": {
+        "operationId": "kernel_get_workflow_run_nodes",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "runId",
+            "required": true,
+            "schema": {
+              "title": "Runid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "title": "Projectid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowNodeDiagnosticsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Get Nodes"
       }
     },
     "/internal/health": {

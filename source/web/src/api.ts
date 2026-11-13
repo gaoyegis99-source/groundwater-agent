@@ -1,13 +1,14 @@
-import type { DataPreviewResponse, DataQueryResponse, DebugEntry, Result } from './types';
+import type { DataPreviewResponse, DataQueryResponse, DebugEntry, ResourceDetail, ResourceReference, Result } from './types';
 import {
   PlatformUiError,
+  recoverDataQuerySubmission,
   readProblem,
   readValidatedJson,
   requireValidJson,
   type JsonValidator,
   type ProblemIssue,
 } from '@platform/ui-boundary';
-import { decodeDataPreviewResponse, decodeDataQueryResponse, decodeResults } from './api-contract';
+import { decodeDataPreviewResponse, decodeDataQueryResponse, decodeResourceDetail, decodeResults } from './api-contract';
 import { newRequestId } from './message-routing';
 import type { operations as PublicApiOperations, paths as PublicApiPaths } from './generated/public-api-v12';
 import { loadRequestValidator, loadResponseValidator } from './generated/public-api-v12.validators.lazy.js';
@@ -33,14 +34,18 @@ export const webContractPaths = [
   '/api/v12/sessions/{sessionId}/control-proposals/{proposalId}/confirm',
   '/api/v12/sessions/{sessionId}/control-proposals/{proposalId}/dismiss',
   '/api/v12/sessions/{sessionId}/workflow-runs/{workflowRunId}/recoveries',
+  '/api/v12/workflow-runs/{runId}/nodes',
+  '/api/v12/workflow-runs/{runId}/graph',
   '/api/v12/agent-runs/{agentRunId}/trace',
   '/api/v12/data/datasets',
   '/api/v12/data/capabilities',
   '/api/v12/data/datasets/{datasetId}/versions',
   '/api/v12/data/versions/{versionId}',
+  '/api/v12/data/versions/{versionId}/semantics/{semanticId}',
   '/api/v12/data/versions/{versionId}/objects/{objectId}/content',
   '/api/v12/data/queries',
   '/api/v12/data/queries/{queryId}',
+  '/api/v12/data/queries/{queryId}/cancel',
   '/api/v12/data/previews',
   '/api/v12/data/previews/{previewId}',
   '/api/v12/data/previews/{previewId}/cancel',
@@ -99,8 +104,24 @@ export class ApiError extends PlatformUiError {
 const CSRF_STORAGE_KEY = 'platform.v12.auth.csrf';
 
 export function researchCsrfToken() {
+  try {
+    const sharedToken = window.localStorage.getItem(CSRF_STORAGE_KEY);
+    if (sharedToken !== null) return sharedToken;
+  } catch {
+    // Some browser privacy settings only permit storage for the active tab.
+  }
   try { return window.sessionStorage.getItem(CSRF_STORAGE_KEY) ?? ''; }
   catch { return ''; }
+}
+
+function storeResearchCsrfToken(token: string) {
+  // An empty shared entry prevents older tabs from restoring a signed-out token.
+  try { window.localStorage.setItem(CSRF_STORAGE_KEY, token); }
+  catch { /* Use the per-tab fallback when shared storage is disabled. */ }
+  try {
+    if (token) window.sessionStorage.setItem(CSRF_STORAGE_KEY, token);
+    else window.sessionStorage.removeItem(CSRF_STORAGE_KEY);
+  } catch { /* The server cookie remains the authentication authority. */ }
 }
 
 export async function loginResearch(username: string, password: string) {
@@ -109,7 +130,7 @@ export async function loginResearch(username: string, password: string) {
     '/auth/login',
     { username, password },
   );
-  window.sessionStorage.setItem(CSRF_STORAGE_KEY, result.csrfToken);
+  storeResearchCsrfToken(result.csrfToken);
   return result.currentUser;
 }
 
@@ -118,8 +139,8 @@ export async function logoutResearch() {
   const csrf = researchCsrfToken();
   if (csrf) headers.set('X-CSRF-Token', csrf);
   const response = await fetch('/api/v12/auth/logout', { method: 'POST', headers });
-  window.sessionStorage.removeItem(CSRF_STORAGE_KEY);
   if (!response.ok) throw new ApiError(response.status, `HTTP_${response.status}`);
+  if (researchCsrfToken() === csrf) storeResearchCsrfToken('');
 }
 
 function asApiError(error: unknown, status = 0, requestId: string | null = null): ApiError {
@@ -220,6 +241,31 @@ export function contentUrl(_project: string, versionId: string, objectId?: strin
   if (!objectId) return `/api/v12/data/versions/${encodeURIComponent(versionId)}`;
   return `/api/v12/data/versions/${encodeURIComponent(versionId)}/objects/${encodeURIComponent(objectId)}/content`;
 }
+
+export async function readDataVersion(versionId: string, signal: AbortSignal, reference?: ResourceReference): Promise<ResourceDetail> {
+  const path = `/data/versions/${encodeURIComponent(versionId)}`;
+  const version = await callApi('data_get_version', path, undefined, signal, decodeResourceDetail);
+  if (version.versionId !== versionId) throw new ApiError(409, 'DATA_VERSION_IDENTITY_MISMATCH');
+  if (!reference || reference.versionId !== versionId) return version;
+  const object = version.objects.find(item => item.objectId === reference.objectId);
+  if (!object || version.datasetId !== reference.datasetId || object.checksum !== reference.checksum
+    || object.format !== reference.format || object.mediaType !== reference.mediaType || object.size !== reference.sizeBytes) {
+    throw new ApiError(409, 'DATA_VERSION_IDENTITY_MISMATCH');
+  }
+  return readDataVersionSemantic(version, reference.semanticId, signal);
+}
+
+export async function readDataVersionSemantic(version: ResourceDetail, semanticId: string, signal: AbortSignal): Promise<ResourceDetail> {
+  if (version.semanticId === semanticId) return version;
+  signal.throwIfAborted();
+  const path = `/data/versions/${encodeURIComponent(version.versionId)}/semantics/${encodeURIComponent(semanticId)}`;
+  const semantic = await callApi('data_get_semantic_revision', path, undefined, signal);
+  if (semantic.versionId !== version.versionId || semantic.semanticId !== semanticId) {
+    throw new ApiError(409, 'DATA_VERSION_IDENTITY_MISMATCH');
+  }
+  return decodeResourceDetail({ ...version, semanticId: semantic.semanticId, semantics: semantic.body });
+}
+
 export interface DataQueryRequest {
   versionId: string;
   semanticId: string;
@@ -243,8 +289,42 @@ function pollDelay(milliseconds: number, signal?: AbortSignal) {
   });
 }
 
+function dataQueryPath(queryId: string) {
+  return `/data/queries/${encodeURIComponent(queryId)}`;
+}
+
+function cancelDataQuery(path: string) {
+  void callApi('data_cancel_query', `${path}/cancel`, {}).catch(() => undefined);
+}
+
+async function waitForDataQueryReceipt(body: unknown, signal?: AbortSignal) {
+  signal?.throwIfAborted();
+  // Keep an in-flight submission recoverable after the viewer has gone away.
+  const submission = recoverDataQuerySubmission(
+    requestSignal => callApi('data_create_query', '/data/queries', body, requestSignal),
+  ).catch(error => { throw asApiError(error); });
+  if (!signal) return submission;
+  let onAbort: () => void = () => {};
+  const aborted = new Promise<never>((_, reject) => {
+    onAbort = () => reject(signal.reason);
+    signal.addEventListener('abort', onAbort, { once: true });
+  });
+  try {
+    return await Promise.race([submission, aborted]);
+  } catch (error) {
+    if (signal.aborted) {
+      void submission.then(receipt => cancelDataQuery(dataQueryPath(receipt.queryId)), () => undefined);
+      signal.throwIfAborted();
+    }
+    throw error;
+  } finally {
+    signal.removeEventListener('abort', onAbort);
+  }
+}
+
 export async function runDataQuery(query: DataQueryRequest, offset: number, limit: number, signal?: AbortSignal): Promise<DataQueryResponse> {
-  const accepted = await callApi('data_create_query', '/data/queries', {
+  signal?.throwIfAborted();
+  const accepted = await waitForDataQueryReceipt(structuredClone({
     idempotencyKey: `web-${newRequestId()}`,
     kind: 'table',
     versionIds: [query.versionId],
@@ -254,15 +334,26 @@ export async function runDataQuery(query: DataQueryRequest, offset: number, limi
     groupBy: [],
     aggregates: [],
     sort: query.sort ?? [],
-  }, signal);
-  while (true) {
-    const result = await callApi('data_get_query', `/data/queries/${encodeURIComponent(accepted.queryId)}?offset=${offset}&limit=${limit}`, undefined, signal, decodeDataQueryResponse);
-    if (result.state === 'SUCCEEDED') {
-      if (!result.resultAvailable || !result.result || !result.receipt) throw new ApiError(410, 'QUERY_RESULT_UNAVAILABLE');
-      return result;
+  }), signal);
+  const path = dataQueryPath(accepted.queryId);
+  try {
+    while (true) {
+      signal?.throwIfAborted();
+      const result = await callApi('data_get_query', `${path}?offset=${offset}&limit=${limit}`, undefined, signal, decodeDataQueryResponse);
+      signal?.throwIfAborted();
+      if (result.state === 'SUCCEEDED') {
+        if (!result.resultAvailable || !result.result || !result.receipt) throw new ApiError(410, 'QUERY_RESULT_UNAVAILABLE');
+        return result;
+      }
+      if (result.state === 'FAILED' || result.state === 'CANCELLED') throw new ApiError(422, result.error?.code ?? `QUERY_${result.state}`);
+      await pollDelay(250, signal);
     }
-    if (result.state === 'FAILED' || result.state === 'CANCELLED') throw new ApiError(422, result.error?.code ?? `QUERY_${result.state}`);
-    await pollDelay(250, signal);
+  } catch (error) {
+    if (signal?.aborted) {
+      cancelDataQuery(path);
+      signal.throwIfAborted();
+    }
+    throw error;
   }
 }
 export type DataPreviewRequest = {
@@ -332,6 +423,7 @@ const errorDescriptions: Record<string, string> = {
   MESSAGE_REQUEST_CONFLICT: '这条消息的编号已对应另一次提交，请刷新对话核对已接收的内容。',
   FILE_READ_FAILED: '无法读取本地文件，请重新选择可读取的文件。',
   HASH_WORKER_FAILED: '文件校验未完成，尚未上传。请重新选择文件后重试。',
+  QUERY_SUBMISSION_UNCERTAIN: '连接中断，恢复查询回执后仍无法确认提交结果。请先查看数据库任务状态。',
   NETWORK_UNCERTAIN: '连接中断，请先查看会话或数据库确认结果。请求没有自动重发。',
   AUTHENTICATION_REQUIRED: '登录状态无效或已过期，请重新登录后再继续。',
   IDENTITY_INVALID: '登录身份未通过校验，请重新登录或联系项目管理员。',
@@ -358,10 +450,12 @@ const errorDescriptions: Record<string, string> = {
   OBSERVATION_ARGUMENTS_INVALID: '查阅资料时使用的参数未通过检查，请核对资料和查询范围。',
   OBSERVATION_SERVICE_UNAVAILABLE: '资料或知识查询服务暂时不可用，本轮处理未完成。',
   OBSERVATION_RESPONSE_INVALID: '资料或知识查询服务返回了未通过检查的响应，需要排查服务状态。',
+  CONFIRMATION_DATA_VERSION_INVALID: '所选数据的版本、语义或原始对象未通过核验。请关闭参数编辑器，再打开并重新选择数据。',
   WORKFLOW_PORT_INCOMPATIBLE: '编排步骤的输入与上游输出不兼容，请核对端口和文件格式。',
   WORKFLOW_INPUT_BINDING_INVALID: '编排步骤的输入绑定不完整或无效，请核对所需资料和连接。',
   WORKFLOW_PARAMETER_BINDING_INVALID: '编排步骤的参数绑定无效，请核对参数名称和引用。',
   WORKFLOW_OPERATOR_UNKNOWN: '草稿引用的算子不在当前已安装目录中，请重新选择可用算子。',
+  WORKFLOW_NODE_DIAGNOSTICS_UNAVAILABLE: '暂时无法读取节点状态，请重试。',
   WORKFLOW_CYCLE: '草稿的步骤形成了循环依赖，请调整执行顺序与连接。',
   WORKFLOW_NODE_UNREACHABLE: '草稿中有步骤不通向任何预期输出，请调整连接或移除该步骤。',
   WORKFLOW_OUTPUT_INVALID: '草稿的预期输出引用无效，请核对输出步骤与端口。',

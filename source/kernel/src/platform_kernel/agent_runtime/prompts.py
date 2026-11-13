@@ -281,9 +281,9 @@ uncertain; keep that applicability uncertainty in unresolved_items and limitatio
 parameter without a value remains a missing input. A default is
 allowed only as an explicit value equal to the inspected operator default, labelled OPERATOR_DEFAULT;
 a technical default does not establish project units, CRS, provenance or a scientific assumption.
-Expose only outputs the user requested; do not publish an intermediate summary merely because an
-operator provides it. For a sequential request such as "first A, then B", every named final output
-must come from B (the terminal requested operation), never from A's intermediate output.
+Expose only outputs the user requested. In a sequential request such as "first A, then B",
+the result is normally B. If the user explicitly asks for A's intermediate result as well, expose
+it as a separate named output and still feed it into B through the required graph edge.
 Bind an input only when its data_ref dataset_id, version_id, semantic_id, object_id, checksum,
 media_type, format and size_bytes all match inspect_data_version in this Turn. Otherwise leave the
 external input unbound. An unbound required external input still needs its exact graph.inputs

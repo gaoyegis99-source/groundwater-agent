@@ -79,7 +79,44 @@ it('queries typed table controls and configures a grouped chart with up to four 
   ));
   await waitFor(() => expect(setOptionMock).toHaveBeenCalled());
   const option = setOptionMock.mock.calls.at(-1)?.[0];
+  expect(option.xAxis).toMatchObject({ type: 'value', name: 'time' });
   expect(option.series[0].data[0][0]).toBe(1);
+
+  fireEvent.change(screen.getByLabelText('横轴'), { target: { value: 'f2' } });
+  await waitFor(() => expect(setOptionMock.mock.calls.at(-1)?.[0]).toMatchObject({
+    xAxis: { type: 'category', name: 'group' },
+    series: [{ data: [['a', 1]] }, { data: [['a', 3]] }],
+  }));
+});
+
+it('requests an ordered timestamp series and renders a scatter plot with null-safe numeric data', async () => {
+  const timeResource: ResourceDetail = {
+    ...resource,
+    descriptor: { ...resource.descriptor, fields: [
+      { fieldId: 'f0', name: 'recordedAt', type: 'timestamp[us]' },
+      { fieldId: 'f1', name: 'level', type: 'decimal128(8, 2)' },
+    ] },
+    semantics: { fields: { f1: { unit: 'm' } } },
+  };
+  queryMock.mockResolvedValue({
+    ...table,
+    result: { ...table.result!, rows: [['2026-01-01T10:00:00', '2.5'], ['2026-01-01T13:00:00', null], [null, '8.0']] },
+  });
+  render(<ArtifactViewer resource={timeResource} project="groundwater-demo" />);
+  await screen.findByRole('button', { name: '图表' });
+  fireEvent.click(screen.getByRole('button', { name: '图表' }));
+  const kind = await screen.findByLabelText('图表类型', {}, { timeout: 5000 });
+  fireEvent.change(kind, { target: { value: 'scatter' } });
+
+  await waitFor(() => expect(queryMock).toHaveBeenCalledWith(
+    expect.objectContaining({ sort: [{ field: 'f0', direction: 'asc' }] }), 0, 1000, expect.any(AbortSignal),
+  ));
+  await waitFor(() => expect(setOptionMock.mock.calls.at(-1)?.[0]).toMatchObject({
+    xAxis: { type: 'time', name: 'recordedAt' },
+    yAxis: { type: 'value', name: 'level（m）' },
+    tooltip: { trigger: 'item' },
+    series: [{ type: 'scatter', data: [[Date.UTC(2026, 0, 1, 10), 2.5], [Date.UTC(2026, 0, 1, 13), null]] }],
+  }));
 });
 
 it('resets table state when the selected resource changes and ignores the old response', async () => {
@@ -100,9 +137,10 @@ it('resets table state when the selected resource changes and ignores the old re
   expect(signals[1].aborted).toBe(false);
 });
 
-it('discloses truncated chart data', async () => {
+it.each(['receipt', 'next page'])('discloses truncated chart data from the %s', async (reason) => {
   queryMock.mockImplementation((_: unknown, __: number, limit: number) => Promise.resolve(limit === 1000 ? {
-    ...table, receipt: { ...table.receipt!, truncated: true },
+    ...table, receipt: { ...table.receipt!, truncated: reason === 'receipt' },
+    result: { ...table.result!, nextOffset: reason === 'next page' ? 1000 : null },
   } : table));
   render(<ArtifactViewer resource={resource} project="groundwater-demo" />);
   await screen.findByText('3');

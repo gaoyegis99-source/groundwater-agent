@@ -6,12 +6,6 @@ import { validationOutput } from '../../packages/ui-boundary/build-path.ts';
 const sourceRoot = fileURLToPath(new URL('../..', import.meta.url));
 
 export default function buildProductFixtures() {
-  const webBuild = spawnSync('npm', ['run', 'build'], {
-    cwd: resolve('.'), encoding: 'utf8',
-  });
-  if (webBuild.status !== 0) {
-    throw new Error(`WEB_BUILD_FAILED\n${webBuild.stdout}\n${webBuild.stderr}`);
-  }
   const result = spawnSync(
     'python',
     [

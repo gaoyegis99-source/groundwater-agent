@@ -4,6 +4,10 @@ import {
   PlatformUiError,
   readValidatedJson,
   requireValidJson,
+  validDatasetProfile,
+  validFieldProfile,
+  type DatasetProfile,
+  type FieldProfileFacts,
   type DiagnosticSink,
   type JsonValidator,
 } from "@platform/ui-boundary";
@@ -12,8 +16,13 @@ import type { components, operations } from "./generated/data-api-v3";
 import type { requestValidators, responseValidators } from "./generated/data-api-v3.validators.js";
 
 type DataValidators = { requestValidators: typeof requestValidators; responseValidators: typeof responseValidators };
+let initialValidatorsPromise: Promise<DataValidators> | undefined;
 let validatorsPromise: Promise<DataValidators> | undefined;
-export function loadDataValidators(): Promise<DataValidators> {
+export async function loadDataValidators(operationId?: string): Promise<DataValidators> {
+  if (operationId) {
+    const initial = await (initialValidatorsPromise ??= import("./generated/data-api-v3.validators.initial.js"));
+    if (Object.hasOwn(initial.responseValidators, operationId)) return initial;
+  }
   return validatorsPromise ??= import("./generated/data-api-v3.validators.js");
 }
 
@@ -21,29 +30,6 @@ export { PlatformUiError };
 export const dataDiagnostics: DiagnosticSink = createDiagnosticSink();
 export type Schema = components["schemas"];
 export type Dataset = Schema["DatasetSummary"];
-type ProfileValue = string | number | boolean | null;
-export type NumericStringProfile = {
-  checkedCount: number;
-  parsedCount: number;
-  parseSuccessRate: number;
-  identifierLike: boolean;
-  suggestedType?: "int64" | "float64";
-};
-export type TemporalProfile = {
-  kind: "date" | "timestamp" | "time";
-  checkedCount: number;
-  parsedCount: number;
-  parseSuccessRate: number | null;
-  physicalTimezone?: string | null;
-};
-export type FieldProfileFacts = {
-  nonNullCount: number;
-  sampleValues: ProfileValue[];
-  valueRange?: { minimum: ProfileValue; maximum: ProfileValue };
-  nonFiniteCount?: number;
-  numericString?: NumericStringProfile;
-  temporal?: TemporalProfile;
-};
 export type FieldDescriptor = {
   fieldId: string;
   name: string;
@@ -51,12 +37,6 @@ export type FieldDescriptor = {
   nullable?: boolean;
   nullCount: number;
   profile?: FieldProfileFacts;
-};
-export type DatasetProfile = {
-  schemaVersion: "field-profile.v1";
-  statisticsScope: "all_rows";
-  sampleScope: "first_non_null_values";
-  sampleLimitPerField: number;
 };
 export type Version = Omit<Schema["VersionResponse"], "descriptor"> & {
   descriptor: {
@@ -92,76 +72,6 @@ function record(value: unknown): value is Record<string, unknown> {
 
 function count(value: unknown): value is number {
   return Number.isInteger(value) && Number(value) >= 0;
-}
-
-function profileValue(value: unknown): value is ProfileValue {
-  return value === null
-    || typeof value === "string"
-    || typeof value === "boolean"
-    || (typeof value === "number" && Number.isFinite(value));
-}
-
-function validDatasetProfile(value: unknown): value is DatasetProfile {
-  return record(value)
-    && value.schemaVersion === "field-profile.v1"
-    && value.statisticsScope === "all_rows"
-    && value.sampleScope === "first_non_null_values"
-    && count(value.sampleLimitPerField)
-    && value.sampleLimitPerField > 0
-    && value.sampleLimitPerField <= 20;
-}
-
-function validRate(value: unknown, parsed: number, checked: number): boolean {
-  if (checked === 0) return value === null;
-  return typeof value === "number"
-    && Number.isFinite(value)
-    && value >= 0
-    && value <= 1
-    && Math.abs(value - parsed / checked) <= 0.000001;
-}
-
-function validNumericProfile(value: unknown): boolean {
-  if (!record(value)
-    || !count(value.checkedCount)
-    || !count(value.parsedCount)
-    || value.parsedCount > value.checkedCount
-    || typeof value.identifierLike !== "boolean"
-    || !validRate(value.parseSuccessRate, value.parsedCount, value.checkedCount)) return false;
-  return value.suggestedType === undefined
-    || value.suggestedType === "int64"
-    || value.suggestedType === "float64";
-}
-
-function validTemporalProfile(value: unknown): boolean {
-  if (!record(value)
-    || !["date", "timestamp", "time"].includes(String(value.kind))
-    || !count(value.checkedCount)
-    || !count(value.parsedCount)
-    || value.parsedCount > value.checkedCount
-    || !validRate(value.parseSuccessRate, value.parsedCount, value.checkedCount)) return false;
-  return value.physicalTimezone === undefined
-    || value.physicalTimezone === null
-    || typeof value.physicalTimezone === "string";
-}
-
-function validFieldProfile(
-  value: unknown,
-  sampleLimit: number,
-  rowCount: number | null,
-  nullCount: number,
-): boolean {
-  if (!record(value)
-    || !count(value.nonNullCount)
-    || !Array.isArray(value.sampleValues)
-    || value.sampleValues.length > sampleLimit
-    || !value.sampleValues.every(profileValue)
-    || (rowCount !== null && value.nonNullCount + nullCount !== rowCount)) return false;
-  if (value.valueRange !== undefined && (!record(value.valueRange)
-    || !profileValue(value.valueRange.minimum)
-    || !profileValue(value.valueRange.maximum))) return false;
-  if (value.nonFiniteCount !== undefined && !count(value.nonFiniteCount)) return false;
-  if (value.numericString !== undefined && !validNumericProfile(value.numericString)) return false;
-  return value.temporal === undefined || validTemporalProfile(value.temporal);
 }
 
 function validField(
@@ -254,7 +164,7 @@ export async function api<Name extends keyof operations>(
   body?: unknown,
   options: ApiOptions = {},
 ): Promise<ApiResponse<Name>> {
-  const { requestValidators, responseValidators } = await loadDataValidators();
+  const { requestValidators, responseValidators } = await loadDataValidators(String(operationId));
   const requestValidator = requestValidators[operationId] as JsonValidator | undefined;
   if (requestValidator) requireValidJson(requestValidator, body, "request");
   const requestId = newRequestId();

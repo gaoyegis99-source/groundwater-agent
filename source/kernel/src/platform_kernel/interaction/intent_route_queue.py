@@ -2,10 +2,46 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import TypedDict
 
-from ..database import connect_database, utc_now
+from ..database import connect_database, scheduler_store_writable, utc_now
+from ..errors import scheduler_write
 from .message_request_common import IntentRouteRequest, route_from_row
+
+
+class IntentRoutingMetrics(TypedDict):
+    pending: int
+    running: int
+    oldest_wait_seconds: float
+
+
+def route_store_writable(database: Path) -> bool:
+    with scheduler_write():
+        return scheduler_store_writable(database)
+
+
+def intent_routing_metrics(database: Path) -> IntentRoutingMetrics:
+    with connect_database(database) as connection:
+        rows = connection.execute(
+            """SELECT routing_status,count(*) AS count,min(created_at) AS oldest
+                 FROM message_requests AS r
+                WHERE r.requested_mode='AUTO'
+                  AND r.routing_status IN ('ROUTING_REQUESTED','ROUTING_RUNNING')
+                  AND NOT EXISTS (
+                      SELECT 1 FROM run_controls AS stop
+                       WHERE stop.agent_run_id=r.agent_run_id
+                  )
+                GROUP BY routing_status"""
+        )
+        states = {row["routing_status"]: (row["count"], row["oldest"]) for row in rows}
+    pending, oldest = states.get("ROUTING_REQUESTED", (0, None))
+    running, _ = states.get("ROUTING_RUNNING", (0, None))
+    age = 0.0 if oldest is None else max(
+        0.0, (datetime.now(timezone.utc) - datetime.fromisoformat(oldest)).total_seconds(),
+    )
+    return {"pending": pending, "running": running, "oldest_wait_seconds": age}
 
 
 def requested_intent_routes(
@@ -32,7 +68,7 @@ def requested_intent_routes(
 
 def claim_intent_route(database: Path, agent_run_id: str) -> IntentRouteRequest | None:
     started_at = utc_now()
-    with connect_database(database) as connection:
+    with scheduler_write(), connect_database(database) as connection:
         connection.execute("BEGIN IMMEDIATE")
         claimed = connection.execute(
             """UPDATE message_requests

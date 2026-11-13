@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import App from './App';
-import { activityFixture, capabilitiesFixture, dataRef, historyFixture, messageReceiptFixture, replyFixture, sessionResponseFixture, sessionResultsFixture, taskFixture, type HistoryFixture } from './test-fixtures';
+import { activityFixture, capabilitiesFixture, dataDetail, dataRef, historyFixture, messageReceiptFixture, replyFixture, sessionResponseFixture, sessionResultsFixture, taskFixture, type HistoryFixture } from './test-fixtures';
 import { identityStorageScope, scopedStorageKey } from './browser-scope';
 import type { Confirmation } from './types';
 import kernelSessionEvents from './fixtures/kernel-session-events.json';
@@ -103,6 +103,46 @@ const editableConfirmation = (id: string): Confirmation => ({
     workflowId: 'summary', workflowVersion: '1.0.0', arguments: { axis: 'columns' } }],
 });
 
+it('posts the selected Data identity and keeps the editor open on a revision conflict', async () => {
+  const confirmation = editableConfirmation('original');
+  confirmation.actions[0].arguments = { versionId: 'previous' };
+  const capabilities = capabilitiesFixture();
+  const model = capabilities.models.find(item => item.modelId === 'groundwater.summary')!;
+  model.dataInputParameters = ['versionId'];
+  model.inputSchema = { type: 'object', properties: { versionId: { type: 'string' } } };
+  const detail = dataDetail({ versionId: 'new-input', datasetId: 'catalog-id', semanticId: 'semantic-seen' });
+  const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+    if (url.endsWith('/capabilities')) return json(capabilities);
+    if (url.endsWith('/messages')) return json(snapshot({ turns: [{ status: 'WAITING_CONFIRMATION', confirmations: [confirmation] }] }));
+    if (url.includes('/data/datasets?')) return json({ items: [{
+      datasetId: detail.datasetId, project: 'demo', title: detail.title, tags: [], currentVersion: detail.versionId,
+      createdAt: '2026-11-10T00:00:00Z', formats: ['csv'], semantics: {},
+    }], nextCursor: null, matchBasis: 'catalog' });
+    if (url.endsWith('/data/versions/new-input')) return json(detail);
+    if (url.endsWith('/data/versions/previous')) return json(dataDetail({ versionId: 'previous' }));
+    if (url.endsWith('/revisions') && init?.method === 'POST') {
+      return new Response(JSON.stringify({ code: 'CONFIRMATION_DATA_VERSION_INVALID', requestId: 'revision-http-id' }), {
+        status: 409, headers: { 'Content-Type': 'application/problem+json' },
+      });
+    }
+    return basics(url);
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: '编辑参数' }));
+  await screen.findByRole('option', { name: /new-input/ });
+  fireEvent.change(screen.getByRole('combobox', { name: /输入资料/ }), { target: { value: 'new-input' } });
+  fireEvent.click(screen.getByRole('button', { name: '保存为新修订' }));
+  expect(await screen.findByText(/所选数据的版本、语义或原始对象未通过核验/)).toBeVisible();
+  expect(screen.getByTestId('confirmation-editor')).toBeVisible();
+  const post = fetchMock.mock.calls.find(([url]) => url.endsWith('/original/revisions'));
+  expect(JSON.parse(String(post?.[1]?.body))).toMatchObject({ actions: [{
+    toolCallId: 'summary', arguments: { versionId: detail.versionId },
+    expectedInputReferences: { versionId: { semanticId: detail.semanticId, checksum: detail.objects[0].checksum } },
+  }] });
+  expect(fetchMock.mock.calls.some(([url]) => url.endsWith('/confirm'))).toBe(false);
+});
+
 it('does not close another session parameter editor when a previous revision finishes', async () => {
   const revision = delayed();
   let posts = 0;
@@ -184,13 +224,13 @@ it('submits a confirmation once during repeated activation and permits an explic
     return basics(url);
   }));
   render(<App />);
-  const confirm = await screen.findByRole('button', { name: '确认执行' });
+  const confirm = await screen.findByRole('button', { name: /^确认执行/ });
   fireEvent.click(confirm); fireEvent.click(confirm);
   await waitFor(() => expect(posts).toBe(1));
   await act(async () => pending.finish(new Response(JSON.stringify({ code: 'SERVICE_UNAVAILABLE' }), { status: 503 })));
-  fireEvent.click(await screen.findByRole('button', { name: '确认执行' }));
+  fireEvent.click(await screen.findByRole('button', { name: /^确认执行/ }));
   await waitFor(() => expect(posts).toBe(2));
-  await waitFor(() => expect(screen.queryByRole('button', { name: '确认执行' })).not.toBeInTheDocument());
+  await waitFor(() => expect(screen.queryByRole('button', { name: /^确认执行/ })).not.toBeInTheDocument());
 });
 
 it('installs history before SSE and slow details, and coalesces covered metadata events without extra GETs', async () => {
@@ -519,5 +559,5 @@ it('refreshes a recovered confirmation after the SSE connection reopens', async 
   await screen.findByText('失败恢复批次');
   expect(document.querySelector('[data-confirmation-id="recovered"]')).not.toBeNull();
   expect(reads).toBe(2);
-  expect(screen.getAllByRole('button', { name: '确认执行' })).toHaveLength(1);
+  expect(screen.getAllByRole('button', { name: /^确认执行/ })).toHaveLength(1);
 });

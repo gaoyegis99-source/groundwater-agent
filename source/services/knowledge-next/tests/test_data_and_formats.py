@@ -78,7 +78,10 @@ def test_openapi_declares_catalog_collection_pages():
 
 
 def test_current_domain_documents_convert_without_loss():
-    root = Path(__file__).resolve().parents[3] / "domains/groundwater/5.0.0/knowledge"
+    from scripts.development.product_selection import load_selected_product_by_id
+
+    repository = Path(__file__).resolve().parents[3]
+    root = load_selected_product_by_id(repository, "groundwater").domain.root / "knowledge"
     docs, units = 0, 0
     for path in root.glob("*.json"):
         body = json.loads(path.read_text())
@@ -90,7 +93,15 @@ def test_current_domain_documents_convert_without_loss():
             assert [u["content"] for u in before["chunks"]] == [
                 u.content for u in after.units
             ]
-    assert (docs, units) == (99, 291)
+    expected_docs = sum(
+        len(json.loads(path.read_text())["documents"]) for path in root.glob("*.json")
+    )
+    expected_units = sum(
+        len(document["chunks"])
+        for path in root.glob("*.json")
+        for document in json.loads(path.read_text())["documents"]
+    )
+    assert (docs, units) == (expected_docs, expected_units)
 
 
 @pytest.mark.parametrize(

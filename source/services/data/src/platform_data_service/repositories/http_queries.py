@@ -56,11 +56,26 @@ def list_semantic_revisions(
 
 def get_object_descriptor(database, project: str, version_id: str, object_id: str):
     with database.transaction() as connection:
-        catalog.version(connection, project, version_id)
-        return connection.execute(
+        version = catalog.version(connection, project, version_id)
+        obj = connection.execute(
             "SELECT descriptor FROM objects WHERE id=%s AND version_id=%s",
             (object_id, version_id),
         ).fetchone()
+        if not obj or obj["descriptor"]["role"] != "raw":
+            return obj
+        # The receipt binds an output name to this immutable version even
+        # when the dataset later acquires another version or title.
+        named = connection.execute(
+            """SELECT output->>'name' AS output_name
+                 FROM publications AS p
+                 CROSS JOIN LATERAL jsonb_array_elements(p.receipt->'outputs') AS items(output)
+                WHERE p.id=%s AND p.project=%s AND p.state='PUBLISHED'
+                  AND p.publication_kind='MANAGED'
+                  AND p.manifest->'provenance' ?& ARRAY['model_id','workflow_id']
+                  AND output->>'version_id'=%s""",
+            (version["publication_id"], project, version_id),
+        ).fetchone()
+        return {**obj, "output_name": named["output_name"] if named else None}
 
 
 def _activity_item(

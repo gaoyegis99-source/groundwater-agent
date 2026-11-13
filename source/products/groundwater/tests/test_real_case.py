@@ -13,7 +13,7 @@ from products.groundwater.development.real_case_worker import prepare_mrva
 def test_real_case_manifest_selects_all_declared_cases() -> None:
     repository = Path(__file__).resolve().parents[3]
     manifest = _load_manifest(
-        repository / "products/groundwater/development/real-data-cases.v1.json"
+        repository / "products/groundwater/development/real-data-cases.v2.json"
     )
 
     assert _select_cases(manifest, "all") == [

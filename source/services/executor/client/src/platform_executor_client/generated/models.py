@@ -32,6 +32,27 @@ class HealthResponse(BaseModel):
     status: str = Field(..., title='Status')
 
 
+class JobGraphNode(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    depends_on: list[str] = Field(..., alias='dependsOn', title='Dependson')
+    node_id: str = Field(..., alias='nodeId', title='Nodeid')
+
+
+class JobGraphResponse(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    nodes: list[JobGraphNode] = Field(..., title='Nodes')
+    request_id: str = Field(..., alias='requestId', title='Requestid')
+    workflow_checksum: str = Field(
+        ..., alias='workflowChecksum', title='Workflowchecksum'
+    )
+    workflow_id: str = Field(..., alias='workflowId', title='Workflowid')
+    workflow_version: str = Field(..., alias='workflowVersion', title='Workflowversion')
+
+
 class JobRequestBodyV6(BaseModel):
     model_config = ConfigDict(
         extra='forbid',

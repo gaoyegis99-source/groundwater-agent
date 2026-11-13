@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import closing, contextmanager
 from datetime import UTC, datetime
 import json
 import os
@@ -18,6 +20,7 @@ from scripts.checks.check_research_acceptance import evaluate
 
 from .contracts import canonical_bytes, sha256_digest
 from .instance_runtime import read_manifest
+from .project_environment import docker_executable
 from .xdg_layout import LifecyclePaths, owned_path, validate_instance_id
 
 
@@ -172,14 +175,78 @@ def verify(artifact: Path, expected_schema: str) -> dict[str, Any]:
     return {"status": "PASS", "schemaVersion": expected_schema, "artifact": str(artifact)}
 
 
+@contextmanager
+def _stopped_kernel_inspection(database: Path) -> Iterator[sqlite3.Connection]:
+    # Even a read-only WAL connection can create -wal and -shm. Inspect a
+    # detached copy of the stopped store, including its committed journal.
+    with tempfile.TemporaryDirectory(prefix="gw-kernel-inspection-") as temporary:
+        probe = Path(temporary) / database.name
+        shutil.copyfile(database, probe)
+        journal = database.with_name(database.name + "-wal")
+        if journal.is_file():
+            shutil.copyfile(journal, probe.with_name(probe.name + "-wal"))
+        with closing(sqlite3.connect(probe.as_uri() + "?mode=ro", uri=True)) as connection:
+            connection.row_factory = sqlite3.Row
+            yield connection
+
+
+_READ_WORKFLOW = """
+from contextlib import closing
+import json
+import sqlite3
+import sys
+with closing(sqlite3.connect('file:/data/kernel.sqlite3?mode=ro', uri=True)) as connection:
+    connection.row_factory = sqlite3.Row
+    row = connection.execute(
+        'SELECT * FROM workflow_runs WHERE run_id=?', (sys.stdin.read(),)
+    ).fetchone()
+print(json.dumps(None if row is None else dict(row)))
+"""
+
+
+def _read_workflow_evidence(instance: dict[str, Any], run_id: str) -> dict[str, Any] | None:
+    database = Path(instance["dataRoot"]) / "kernel/kernel.sqlite3"
+    try:
+        if instance["status"] == "active":
+            docker = docker_executable()
+            ids = subprocess.check_output(
+                [docker, "ps", "-q", "--no-trunc",
+                 "--filter", f"label=com.docker.compose.project={instance['composeProject']}",
+                 "--filter", "label=com.docker.compose.service=kernel-service"],
+                text=True, stderr=subprocess.PIPE, timeout=10,
+            ).splitlines()
+            if len(ids) != 1:
+                raise ResearchArtifactError("ARCHIVE_KERNEL_CONTAINER_NOT_UNIQUE")
+            container = ids[0]
+            mount = subprocess.check_output(
+                [docker, "inspect", "--format",
+                 '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Source}}{{end}}{{end}}', container],
+                text=True, stderr=subprocess.PIPE, timeout=10,
+            ).strip()
+            if not mount or Path(mount).resolve() != database.parent.resolve():
+                raise ResearchArtifactError("ARCHIVE_KERNEL_DATA_MOUNT_MISMATCH")
+            raw = subprocess.check_output(
+                [docker, "exec", "-i", container, "python", "-c", _READ_WORKFLOW],
+                input=run_id, text=True, stderr=subprocess.PIPE, timeout=40,
+            )
+            return json.loads(raw)
+        if not database.is_file():
+            return None
+        with _stopped_kernel_inspection(database) as connection:
+            row = connection.execute("SELECT * FROM workflow_runs WHERE run_id=?", (run_id,)).fetchone()
+            return None if row is None else dict(row)
+    except (OSError, subprocess.SubprocessError, sqlite3.Error, json.JSONDecodeError) as error:
+        raise ResearchArtifactError("ARCHIVE_KERNEL_EVIDENCE_UNREADABLE") from error
+
+
 def _snapshot_schema_versions(
     instance: dict[str, Any], source_versions: dict[str, int] | None
 ) -> dict[str, Any]:
     database = Path(instance["dataRoot"]) / "kernel/kernel.sqlite3"
     try:
-        with sqlite3.connect(f"file:{database}?mode=ro", uri=True) as connection:
+        with _stopped_kernel_inspection(database) as connection:
             row = connection.execute("SELECT version FROM schema_version").fetchone()
-    except sqlite3.Error as error:
+    except (OSError, sqlite3.Error) as error:
         raise ResearchArtifactError("SNAPSHOT_KERNEL_SCHEMA_UNREADABLE") from error
     if row is None or not isinstance(row[0], int):
         raise ResearchArtifactError("SNAPSHOT_KERNEL_SCHEMA_UNREADABLE")
@@ -372,45 +439,38 @@ def create_archive(
             path = Path(instance["stateRoot"]) / name
             if path.is_file():
                 shutil.copy2(path, root / name)
-        evidence: dict[str, Any] | None = None
-        database = Path(instance["dataRoot"]) / "kernel/kernel.sqlite3"
-        if database.is_file():
-            with sqlite3.connect(database) as connection:
-                connection.row_factory = sqlite3.Row
-                row = connection.execute("SELECT * FROM workflow_runs WHERE run_id=?", (run_id,)).fetchone()
-                if row is not None:
-                    workflow = dict(row)
-                    parameters = _json(workflow.get("arguments_json"))
-                    inputs = _json(workflow.get("input_references_json"))
-                    outputs = _json(workflow.get("outputs_json"))
-                    evidence = {
-                        "runId": run_id,
-                        "status": "FOUND",
-                        "parameters": parameters,
-                        "randomSeeds": _seeds(parameters),
-                        "inputs": inputs,
-                        "inputChecksums": _checksums(inputs),
-                        "outputs": outputs,
-                        "outputChecksums": _checksums(outputs),
-                        "modelImplementation": {
-                            key: workflow.get(key)
-                            for key in (
-                                "model_id", "model_version", "model_checksum",
-                                "workflow_id", "workflow_version", "workflow_checksum",
-                                "execution_service", "executor_id",
-                            )
-                        },
-                        "lineage": {
-                            key: workflow.get(key)
-                            for key in (
-                                "session_id", "agent_run_id", "confirmation_id",
-                                "retry_of_workflow_run_id", "attempt",
-                            )
-                        },
-                        "workflowRun": workflow,
-                    }
-        if evidence is None:
+        workflow = _read_workflow_evidence(instance, run_id)
+        if workflow is None:
             raise ResearchArtifactError("ARCHIVE_RUN_NOT_FOUND")
+        parameters = _json(workflow.get("arguments_json"))
+        inputs = _json(workflow.get("input_references_json"))
+        outputs = _json(workflow.get("outputs_json"))
+        evidence = {
+            "runId": run_id,
+            "status": "FOUND",
+            "parameters": parameters,
+            "randomSeeds": _seeds(parameters),
+            "inputs": inputs,
+            "inputChecksums": _checksums(inputs),
+            "outputs": outputs,
+            "outputChecksums": _checksums(outputs),
+            "modelImplementation": {
+                key: workflow.get(key)
+                for key in (
+                    "model_id", "model_version", "model_checksum",
+                    "workflow_id", "workflow_version", "workflow_checksum",
+                    "execution_service", "executor_id",
+                )
+            },
+            "lineage": {
+                key: workflow.get(key)
+                for key in (
+                    "session_id", "agent_run_id", "confirmation_id",
+                    "retry_of_workflow_run_id", "attempt",
+                )
+            },
+            "workflowRun": workflow,
+        }
         (root / "run-evidence.json").write_bytes(canonical_bytes(evidence))
         compose = _json((root / "compose.json").read_text()) if (root / "compose.json").is_file() else {}
         images = sorted(

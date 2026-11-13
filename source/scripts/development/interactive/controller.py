@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime, timezone
 import fcntl
 import json
@@ -10,7 +11,7 @@ import time
 from typing import Protocol, TextIO
 
 from .events import EventStore
-from .profile import ChangePlan, classify_changes
+from .profile import ChangePlan, affected_apis, classify_changes
 from .server import ObservabilityServer
 from .supervisor import IncrementalSupervisor
 from .watcher import SourceSnapshot, diff_snapshots
@@ -19,9 +20,9 @@ from .watcher import SourceSnapshot, diff_snapshots
 class InteractiveRuntime(Protocol):
     def prepare(self) -> None: ...
 
-    def apply(self, plan: ChangePlan) -> None: ...
+    def apply(self, plan: ChangePlan) -> dict[str, object] | None: ...
 
-    def validate(self, scopes: tuple[str, ...]) -> None: ...
+    def validate(self, scopes: tuple[str, ...]) -> tuple[str, ...] | None: ...
 
     def status(self) -> dict[str, object]: ...
 
@@ -154,9 +155,9 @@ class InteractiveController:
         temporary.replace(self.status_path)
         return payload
 
-    def _watch(self) -> None:
-        previous = SourceSnapshot.capture(self.root)
+    def _watch(self, previous: SourceSnapshot) -> None:
         pending: set[str] = set()
+        file_set_changes: set[str] = set()
         last_change = 0.0
         last_status_write = time.monotonic()
         while not self._stop.wait(self.poll_interval):
@@ -166,6 +167,9 @@ class InteractiveController:
             if changes:
                 paths = tuple(change.path for change in changes)
                 pending.update(paths)
+                file_set_changes.update(
+                    change.path for change in changes if change.kind != "modified"
+                )
                 last_change = time.monotonic()
                 self.events.publish(
                     "change.detected",
@@ -175,7 +179,11 @@ class InteractiveController:
                 )
             if pending and time.monotonic() - last_change >= self.debounce_seconds:
                 plan = classify_changes(pending)
+                # Uvicorn stat reload detects edits, but not reliable additions/deletions.
+                restarts = set(plan.restart_services) | set(affected_apis(file_set_changes))
+                plan = replace(plan, restart_services=tuple(sorted(restarts)))
                 pending.clear()
+                file_set_changes.clear()
                 self.events.publish(
                     "change.planned",
                     "已生成隔离增量计划",
@@ -205,6 +213,7 @@ class InteractiveController:
             self.events.publish("controller.starting", "正在启动交互式增量开发")
             error: BaseException | None = None
             try:
+                initial_sources = None if once else SourceSnapshot.capture(self.root)
                 self.runtime.prepare()
                 self.supervisor.start()
                 self.server.start()
@@ -216,8 +225,8 @@ class InteractiveController:
                     details={"dashboardPort": self.server.port},
                 )
                 self._write_status()
-                if not once:
-                    self._watch()
+                if initial_sources is not None:
+                    self._watch(initial_sources)
             except KeyboardInterrupt:
                 self.events.publish("controller.interrupted", "收到终止请求")
             except BaseException as caught:

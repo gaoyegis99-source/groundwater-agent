@@ -1,5 +1,6 @@
 .generated/
 .pytest_cache/
+**/.mypy_cache/
 .hypothesis/
 .ruff_cache/
 __pycache__/
@@ -18,7 +19,6 @@ build/
 .env
 .env.*
 !.env.example
-/migration-assets/yaozhanbao-transfer-case/payload/
 docs/V7-编排内核交接手册.docx
 /docs/presentations/
 /packages/lightweight-agent-core/examples/domain-packs/csv-statistics/artifacts/

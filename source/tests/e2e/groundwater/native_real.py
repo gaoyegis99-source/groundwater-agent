@@ -170,7 +170,7 @@ def run_suite(
 ) -> list[dict]:
     prepared = prepared.resolve(strict=True)
     declaration = json.loads((prepared / "summary.json").read_text())
-    manifest = source / "products/groundwater/development/real-data-cases.v1.json"
+    manifest = source / "products/groundwater/development/real-data-cases.v2.json"
     assert declaration["status"] == "PASS"
     assert _digest(manifest.read_bytes()) == declaration["manifestSha256"]
     product = json.loads(

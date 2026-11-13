@@ -17,6 +17,7 @@ from ..models import (
 from ..evidence import (
     exact_retrieval_identities,
     knowledge_identity,
+    read_supersedes_identity,
     trusted_read_identity,
 )
 from ..reply_schema import reply_schema
@@ -384,16 +385,18 @@ def _record_read_evidence(control: dict, result: object) -> None:
         observed = knowledge_identity(item)
         if observed is None:
             continue
-        version_id, unit_id, _checksum = observed
         identity = trusted_read_identity(
             item,
             {tuple(candidate) for candidate in candidates},
         )
+        status = item.get("status")
         evidence = [
-            current for current in evidence if current[:2] != [version_id, unit_id]
+            current for current in evidence
+            if not read_supersedes_identity(tuple(current), observed, status)
         ]
         candidates = [
-            current for current in candidates if current[:2] != [version_id, unit_id]
+            current for current in candidates
+            if not read_supersedes_identity(tuple(current), observed, status)
         ]
         if identity is not None:
             evidence.append(list(identity))

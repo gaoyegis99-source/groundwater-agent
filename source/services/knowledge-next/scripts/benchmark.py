@@ -1,6 +1,6 @@
 """Synthetic scale test using repeated corpus units and cached real embeddings.
 
-Run on a disposable *_bench database restored from the 291-unit evaluation DB.
+Run on a disposable *_bench database restored from a verified evaluation DB.
 No quality claim is made for replicated documents. Query vectors are computed
 once using the real provider; the measured service path excludes provider time.
 """
@@ -40,7 +40,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--samples", type=int, default=24)
-    parser.add_argument("--sizes", nargs="+", type=int, default=[291, 5000, 50000])
+    parser.add_argument("--sizes", nargs="+", type=int, default=[5000, 50000])
     parser.add_argument(
         "--binding-file",
         type=Path,
@@ -78,7 +78,9 @@ def main():
         ]
     with db.transaction() as c:
         count = c.execute("SELECT count(*) AS n FROM search_entries").fetchone()["n"]
-    assert count == 291, "Fresh 291-unit benchmark seed required"
+    if not seed or count <= 0:
+        raise ValueError("Verified non-empty benchmark seed required")
+    seed_count = count
     serial = 0
     report = {
         "host": platform.platform(),
@@ -86,7 +88,8 @@ def main():
         "samples": args.samples,
         "query_embedding_ms": round(provider_ms, 3),
         "binding": binding.model_dump() if binding else None,
-        "corpus": "replicated real 291-unit corpus; query embedding replayed",
+        "corpus": f"replicated verified {seed_count}-unit corpus; query embedding replayed",
+        "seed_units": seed_count,
         "results": [],
     }
 

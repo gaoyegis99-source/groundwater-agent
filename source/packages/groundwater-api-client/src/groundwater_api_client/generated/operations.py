@@ -640,6 +640,18 @@ KERNEL_GET_WORKFLOW_RUN = Operation(
     media_type='application/json', side_effecting=False,
 )
 
+KERNEL_GET_WORKFLOW_RUN_GRAPH = Operation(
+    operation_id='kernel_get_workflow_run_graph', method='GET', path='/workflow-runs/{runId}/graph',
+    response_model=models.KernelWorkflowGraphResponse, success_statuses=frozenset([200]),
+    media_type='application/json', side_effecting=False,
+)
+
+KERNEL_GET_WORKFLOW_RUN_NODES = Operation(
+    operation_id='kernel_get_workflow_run_nodes', method='GET', path='/workflow-runs/{runId}/nodes',
+    response_model=models.KernelWorkflowNodeDiagnosticsResponse, success_statuses=frozenset([200]),
+    media_type='application/json', side_effecting=False,
+)
+
 OPERATIONS = {
     ADMIN_USERS_API_V12_ADMIN_USERS_GET.operation_id: ADMIN_USERS_API_V12_ADMIN_USERS_GET,
     ADMIN_USER_CREATE_API_V12_ADMIN_USERS_POST.operation_id: ADMIN_USER_CREATE_API_V12_ADMIN_USERS_POST,
@@ -747,4 +759,6 @@ OPERATIONS = {
     KERNEL_EXPORT_WORKFLOW_DRAFT.operation_id: KERNEL_EXPORT_WORKFLOW_DRAFT,
     KERNEL_RECOVER_WORKFLOW.operation_id: KERNEL_RECOVER_WORKFLOW,
     KERNEL_GET_WORKFLOW_RUN.operation_id: KERNEL_GET_WORKFLOW_RUN,
+    KERNEL_GET_WORKFLOW_RUN_GRAPH.operation_id: KERNEL_GET_WORKFLOW_RUN_GRAPH,
+    KERNEL_GET_WORKFLOW_RUN_NODES.operation_id: KERNEL_GET_WORKFLOW_RUN_NODES,
 }

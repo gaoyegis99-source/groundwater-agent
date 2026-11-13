@@ -17,6 +17,7 @@ from agents import (
 from .usage_ports import ScopedActivityRecorder
 
 from ...application.task_api import context_for_run
+from ..case_resolver import load_explicit_model_tool_request
 from ..context_policy import (
     ContextPolicyV1,
     ContextSourceSnapshotV1,
@@ -118,6 +119,9 @@ async def execute_resumed(
                     **load_request_context(dependencies.database, agent_run_id),
                     "task_context": full_task_context,
                     "preparation_context": full_preparation_context,
+                    "explicit_model_tool_request": load_explicit_model_tool_request(
+                        dependencies.database, dependencies.settings, agent_run_id,
+                    ),
                 }
                 capabilities = _capabilities(dependencies, request_context)
                 policy = ContextPolicyV1(O200kTokenEstimator())

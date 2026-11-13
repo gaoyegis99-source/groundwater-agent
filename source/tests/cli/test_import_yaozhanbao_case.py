@@ -4,6 +4,7 @@ import hashlib
 import importlib.util
 import json
 from pathlib import Path
+import shutil
 import sys
 
 import pytest
@@ -104,7 +105,7 @@ def test_local_case_preserves_manifest_bytes_and_resolves_all_resources(
 ) -> None:
     case_root, contents = _case_root(tmp_path)
 
-    manifest_path, resolved = MODULE._load_case_layout(case_root)
+    manifest_path, resolved = MODULE._load_case_layout(case_root, case_root)
     manifest, checksum, verified = MODULE._load_and_verify(manifest_path, resolved)
 
     assert checksum == _sha256(manifest_path)
@@ -118,7 +119,7 @@ def test_local_case_rejects_tampered_resource(tmp_path: Path) -> None:
     (case_root / "payload" / "resources" / "resource-0.bin").write_bytes(b"changed")
 
     with pytest.raises(ValueError, match="CASE_RESOURCE_(SIZE|CHECKSUM)_CHANGED:resource-0"):
-        MODULE._load_case_layout(case_root)
+        MODULE._load_case_layout(case_root, case_root)
 
 
 def test_local_case_rejects_path_escape(tmp_path: Path) -> None:
@@ -129,7 +130,7 @@ def test_local_case_rejects_path_escape(tmp_path: Path) -> None:
     relocation_path.write_text(json.dumps(relocation), encoding="utf-8")
 
     with pytest.raises(ValueError, match="CASE_RELOCATION_PATH_ESCAPE"):
-        MODULE._load_case_layout(case_root)
+        MODULE._load_case_layout(case_root, case_root)
 
 
 def test_local_case_rejects_payload_symlink(tmp_path: Path) -> None:
@@ -146,24 +147,123 @@ def test_local_case_rejects_payload_symlink(tmp_path: Path) -> None:
     relocation_path.write_text(json.dumps(relocation), encoding="utf-8")
 
     with pytest.raises(ValueError, match="CASE_PAYLOAD_SYMLINK_INVALID"):
-        MODULE._load_case_layout(case_root)
+        MODULE._load_case_layout(case_root, case_root)
 
 
-def test_explicit_legacy_manifest_remains_supported(tmp_path: Path) -> None:
-    case_root, contents = _case_root(tmp_path)
-    manifest_path, _ = MODULE._load_case_layout(case_root)
-    legacy_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    relocation = json.loads(
-        (case_root / "relocation.v1.json").read_text(encoding="utf-8")
+def test_relocation_plan_and_apply_are_verified(
+    tmp_path: Path, monkeypatch
+) -> None:
+    source, _ = _case_root(tmp_path)
+    data_home = tmp_path / "xdg-data"
+    state_home = tmp_path / "xdg-state"
+    paths = MODULE.lifecycle(
+        {
+            "HOME": str(tmp_path),
+            "XDG_DATA_HOME": str(data_home),
+            "XDG_STATE_HOME": str(state_home),
+            "XDG_CONFIG_HOME": str(tmp_path / "xdg-config"),
+            "XDG_CACHE_HOME": str(tmp_path / "xdg-cache"),
+            "XDG_RUNTIME_DIR": str(tmp_path / "xdg-runtime"),
+        }
     )
-    for name, item in legacy_manifest["resources"].items():
-        item["path"] = str(case_root / relocation["resources"][name])
-    legacy_path = tmp_path / "legacy-inputs.json"
-    legacy_path.write_text(json.dumps(legacy_manifest), encoding="utf-8")
+    target = paths.data / "case-assets/yaozhanbao-transfer-case"
+    monkeypatch.setattr(MODULE, "DESCRIPTOR_ROOT", source)
+    monkeypatch.setattr(MODULE, "lifecycle", lambda: paths)
 
-    _, _, verified = MODULE._load_and_verify(legacy_path)
+    plan = MODULE.relocation_plan(source, target)
+    assert plan["files"] == 21
+    assert not target.exists()
 
-    assert verified.keys() == contents.keys()
+    with pytest.raises(ValueError, match="CONFIRMATION_MISMATCH"):
+        MODULE.apply_relocation(plan, "sha256:wrong")
+    receipt = MODULE.apply_relocation(plan, plan["confirmationDigest"])
+
+    assert receipt["status"] == "PASS"
+    assert receipt["sourcePayloadRemoved"] is True
+    assert target.joinpath("payload").is_dir()
+    MODULE._load_case_layout(target, source)
+
+
+def test_relocation_rejects_source_change(tmp_path: Path, monkeypatch) -> None:
+    source, _ = _case_root(tmp_path)
+    monkeypatch.setattr(MODULE, "DESCRIPTOR_ROOT", source)
+    target = tmp_path / "target"
+    plan = MODULE.relocation_plan(source, target)
+    (source / "payload/resources/resource-0.bin").write_bytes(b"changed")
+
+    with pytest.raises(ValueError, match="CASE_RESOURCE_(SIZE|CHECKSUM)_CHANGED"):
+        MODULE.apply_relocation(plan, plan["confirmationDigest"])
+
+
+def test_relocation_rejects_conflicting_existing_target(
+    tmp_path: Path, monkeypatch
+) -> None:
+    source, _ = _case_root(tmp_path / "source")
+    target = tmp_path / "xdg-data/groundwater-v6/case-assets/yaozhanbao-transfer-case"
+    target.parent.mkdir(parents=True)
+    shutil.copytree(source / "payload", target / "payload")
+    (target / "payload/resources/resource-0.bin").write_bytes(b"conflict")
+    paths = MODULE.lifecycle(
+        {
+            "HOME": str(tmp_path),
+            "XDG_DATA_HOME": str(tmp_path / "xdg-data"),
+            "XDG_STATE_HOME": str(tmp_path / "xdg-state"),
+            "XDG_CONFIG_HOME": str(tmp_path / "xdg-config"),
+            "XDG_CACHE_HOME": str(tmp_path / "xdg-cache"),
+            "XDG_RUNTIME_DIR": str(tmp_path / "xdg-runtime"),
+        }
+    )
+    monkeypatch.setattr(MODULE, "DESCRIPTOR_ROOT", source)
+    monkeypatch.setattr(MODULE, "lifecycle", lambda: paths)
+    plan = MODULE.relocation_plan(source, target)
+
+    with pytest.raises(ValueError, match="CASE_RESOURCE_(SIZE|CHECKSUM)_CHANGED"):
+        MODULE.apply_relocation(plan, plan["confirmationDigest"])
+    assert source.joinpath("payload").is_dir()
+
+
+def test_relocation_closes_identical_target_and_reuses_stable_receipt(
+    tmp_path: Path, monkeypatch
+) -> None:
+    source, _ = _case_root(tmp_path / "source")
+    target = tmp_path / "xdg-data/groundwater-v6/case-assets/yaozhanbao-transfer-case"
+    target.parent.mkdir(parents=True)
+    shutil.copytree(source / "payload", target / "payload")
+    paths = MODULE.lifecycle(
+        {
+            "HOME": str(tmp_path),
+            "XDG_DATA_HOME": str(tmp_path / "xdg-data"),
+            "XDG_STATE_HOME": str(tmp_path / "xdg-state"),
+            "XDG_CONFIG_HOME": str(tmp_path / "xdg-config"),
+            "XDG_CACHE_HOME": str(tmp_path / "xdg-cache"),
+            "XDG_RUNTIME_DIR": str(tmp_path / "xdg-runtime"),
+        }
+    )
+    monkeypatch.setattr(MODULE, "DESCRIPTOR_ROOT", source)
+    monkeypatch.setattr(MODULE, "lifecycle", lambda: paths)
+    plan = MODULE.relocation_plan(source, target)
+    receipt = {
+        "schemaVersion": "yaozhanbao-case-relocation-receipt.v1",
+        "status": "PASS",
+        "confirmationDigest": plan["confirmationDigest"],
+        "sourceCaseRoot": str(source.absolute()),
+        "targetCaseRoot": str(target.absolute()),
+        "files": plan["files"],
+        "bytes": plan["bytes"],
+        "inventorySha256": plan["inventorySha256"],
+        "published": True,
+        "verifiedAt": "2026-11-12T00:00:00+00:00",
+    }
+    receipt_path, persisted = MODULE._write_relocation_receipt(paths, receipt)
+    assert persisted == receipt
+
+    result = MODULE.apply_relocation(plan, plan["confirmationDigest"])
+
+    assert result["published"] is True
+    assert result["verifiedAt"] == receipt["verifiedAt"]
+    assert result["receipt"] == str(receipt_path)
+    assert not source.joinpath("payload").exists()
+    MODULE._load_case_layout(target, source)
 
 
 def test_verify_only_has_no_network_side_effect(tmp_path: Path, monkeypatch, capsys) -> None:
@@ -174,6 +274,7 @@ def test_verify_only_has_no_network_side_effect(tmp_path: Path, monkeypatch, cap
         [str(SCRIPT), "--case-root", str(case_root), "--verify-only"],
     )
 
+    monkeypatch.setattr(MODULE, "DESCRIPTOR_ROOT", case_root)
     MODULE.main()
 
     result = json.loads(capsys.readouterr().out)

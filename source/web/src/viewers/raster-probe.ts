@@ -124,8 +124,12 @@ export async function probeRasterValue(
     samples: [band.index],
     signal,
   });
-  const rawValue = Number(rasters[0]?.[0]);
-  if (isNoData(rawValue, band.noData)) {
+  const samples = rasters[0];
+  const rawValue = Number(samples?.[0]);
+  const noData = samples instanceof Float32Array && band.noData !== null
+    ? Math.fround(band.noData)
+    : band.noData;
+  if (isNoData(rawValue, noData)) {
     return { kind: 'nodata', coordinate, pixel, band, rawValue };
   }
   if (!Number.isFinite(rawValue)) {

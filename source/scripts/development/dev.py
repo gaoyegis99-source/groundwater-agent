@@ -48,6 +48,7 @@ from scripts.maintenance.project_environment import (  # noqa: E402
 )
 from scripts.maintenance import dependency_materializer  # noqa: E402
 from scripts.maintenance.xdg_layout import ensure_private_roots  # noqa: E402
+from scripts.maintenance.worktree_identity import worktree_identity as _worktree_identity  # noqa: E402
 
 _CACHE_DIRECTORIES = frozenset(
     {
@@ -93,67 +94,6 @@ def _git_paths(root: Path, *arguments: str) -> list[str]:
         text=True,
     )
     return [line for line in result.stdout.splitlines() if line]
-
-
-def _worktree_identity(root: Path) -> tuple[str, bool, str]:
-    """Return the revision, dirty state, and digest of mounted source inputs.
-
-    ``git diff`` covers tracked index and worktree changes. Untracked, non-ignored
-    files are hashed separately because local builds and source mounts can consume
-    them even though they do not appear in a diff against ``HEAD``.
-    """
-    revision = _git_paths(root, "rev-parse", "HEAD")[0]
-    diff = subprocess.run(
-        [
-            "git",
-            "diff",
-            "--binary",
-            "--no-ext-diff",
-            "--no-textconv",
-            "HEAD",
-        ],
-        cwd=root,
-        capture_output=True,
-        check=True,
-    ).stdout
-    untracked_output = subprocess.run(
-        ["git", "ls-files", "--others", "--exclude-standard", "-z"],
-        cwd=root,
-        capture_output=True,
-        check=True,
-    ).stdout
-    untracked = sorted(path for path in untracked_output.split(b"\0") if path)
-
-    digest = hashlib.sha256()
-
-    def add_record(name: bytes, payload: bytes) -> None:
-        digest.update(len(name).to_bytes(8, "big"))
-        digest.update(name)
-        digest.update(len(payload).to_bytes(8, "big"))
-        digest.update(payload)
-
-    add_record(b"identity-version", b"worktree.v1")
-    add_record(b"revision", revision.encode("utf-8"))
-    add_record(b"tracked-diff", diff)
-    for relative_bytes in untracked:
-        relative = Path(os.fsdecode(relative_bytes))
-        path = root / relative
-        metadata = path.lstat()
-        mode = stat.S_IMODE(metadata.st_mode).to_bytes(4, "big")
-        if stat.S_ISREG(metadata.st_mode):
-            kind = b"file"
-            content = path.read_bytes()
-        elif stat.S_ISLNK(metadata.st_mode):
-            kind = b"symlink"
-            content = os.fsencode(os.readlink(path))
-        else:
-            kind = b"special"
-            content = b""
-        add_record(b"untracked-path", relative_bytes)
-        add_record(b"untracked-kind", kind)
-        add_record(b"untracked-mode", mode)
-        add_record(b"untracked-content", content)
-    return revision, bool(diff or untracked), digest.hexdigest()
 
 
 def _is_ignored(root: Path, path: Path) -> bool:
@@ -252,6 +192,41 @@ def _assembly_product_ids(generated: Path) -> set[str]:
     return product_ids
 
 
+def _container_bind_sources() -> set[Path] | None:
+    """Return project Docker bind sources, or None if they cannot be verified."""
+    def docker_output(arguments: list[str]) -> str:
+        return subprocess.check_output(
+            docker_arguments(arguments), text=True, stderr=subprocess.PIPE, timeout=10,
+        )
+
+    try:
+        container_ids = docker_output(["ps", "--all", "--quiet"]).splitlines()
+        if not container_ids:
+            return set()
+        lines = docker_output(
+            ["inspect", "--format", "{{json .Mounts}}", *container_ids],
+        ).splitlines()
+        if len(lines) != len(container_ids):
+            return None
+        sources = set()
+        for line in lines:
+            mounts = json.loads(line)
+            if not isinstance(mounts, list):
+                return None
+            for mount in mounts:
+                if not isinstance(mount, dict):
+                    return None
+                if mount.get("Type") != "bind":
+                    continue
+                source = mount.get("Source")
+                if not isinstance(source, str) or not Path(source).is_absolute():
+                    return None
+                sources.add(Path(source).resolve())
+        return sources
+    except (OSError, RuntimeError, subprocess.SubprocessError, ValueError):
+        return None
+
+
 def _stale_assemblies(root: Path) -> set[Path]:
     generated = generated_root(root)
     stale: set[Path] = set()
@@ -265,7 +240,16 @@ def _stale_assemblies(root: Path) -> set[Path]:
                 for path in releases.iterdir()
                 if path.is_dir() and (active is None or path.resolve() != active)
             )
-    return stale
+    if not stale:
+        return stale
+    sources = _container_bind_sources()
+    if sources is None:
+        return set()
+    return {
+        release
+        for release in stale
+        if not any(source.is_relative_to(release.resolve()) for source in sources)
+    }
 
 
 def _generated_outputs(root: Path) -> set[Path]:
@@ -652,20 +636,23 @@ def _record_bootstrap_status(
     return status
 
 
-def _load_bootstrap_status(product_id: str) -> dict[str, object]:
-    output = current_bundle(generated_root(ROOT), product_id)
-    expected_digest = output.name if output is not None else None
+def _load_bootstrap_status(
+    product_id: str, *, assembly_digest: str | None = None,
+) -> dict[str, object]:
+    if assembly_digest is None:
+        output = current_bundle(generated_root(ROOT), product_id)
+        assembly_digest = output.name if output is not None else None
     path = _bootstrap_status_path(product_id)
     if path.is_file():
         try:
             status = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             status = None
-        if isinstance(status, dict) and status.get("assemblyDigest") == expected_digest:
+        if isinstance(status, dict) and status.get("assemblyDigest") == assembly_digest:
             return status
     return {
         "status": "NOT_RUN",
-        "assemblyDigest": expected_digest,
+        "assemblyDigest": assembly_digest,
     }
 
 
@@ -702,6 +689,46 @@ def _unavailable_status(
     }
 
 
+def _mounted_research_assembly(
+    product_id: str, inspected: list[dict[str, object]],
+) -> Path | None:
+    """Resolve the local immutable release mounted by the running services."""
+    targets = {
+        "kernel-service": "/config/kernel-config.json",
+        "executor-control": "/config/executor-config.json",
+    }
+    release_root = (generated_root(ROOT) / ".releases" / product_id).resolve()
+    releases = set()
+    for container in inspected:
+        config = container.get("Config")
+        labels = config.get("Labels") if isinstance(config, dict) else None
+        service = labels.get("com.docker.compose.service") if isinstance(labels, dict) else None
+        target = targets.get(service)
+        if not target:
+            continue
+        mounts = container.get("Mounts")
+        matching = [
+            mount for mount in mounts
+            if isinstance(mount, dict) and mount.get("Destination") == target
+        ] if isinstance(mounts, list) else []
+        if len(matching) != 1 or matching[0].get("Type") != "bind":
+            return None
+        source = matching[0].get("Source")
+        if not isinstance(source, str) or not Path(source).is_absolute():
+            return None
+        config_path = Path(source).resolve()
+        release = config_path.parent
+        if (
+            config_path.name != Path(target).name
+            or release.parent != release_root
+            or re.fullmatch(r"[a-f0-9]{64}", release.name) is None
+            or not (release / "compose.json").is_file()
+        ):
+            return None
+        releases.add(release)
+    return next(iter(releases)) if len(releases) == 1 else None
+
+
 def _status(product_id: str) -> dict[str, object]:
     revision, source_dirty, source_digest = _worktree_identity(ROOT)
     try:
@@ -725,14 +752,6 @@ def _status(product_id: str) -> dict[str, object]:
         }
         for row in rows
     }
-    required = set(json.loads(compose.read_text())["services"])
-    containers_healthy = all(
-        name in services
-        and services[name]["state"] == "running"
-        and services[name]["health"] not in {"unhealthy", "starting"}
-        for name in required
-        if not name.endswith("-migrate") and name != "knowledge-bootstrap"
-    )
     readiness: dict[str, object] = {}
     readiness_paths = {
         "kernel-service": "/internal/health/ready",
@@ -790,6 +809,16 @@ def _status(product_id: str) -> dict[str, object]:
                 "reference": config.get("Image") if isinstance(config, dict) else None,
                 "imageId": item.get("Image"),
             }
+    running_assembly = _mounted_research_assembly(product_id, inspected)
+    running_compose = running_assembly / "compose.json" if running_assembly else compose
+    required = set(json.loads(running_compose.read_text())["services"])
+    containers_healthy = all(
+        name in services
+        and services[name]["state"] == "running"
+        and services[name]["health"] not in {"unhealthy", "starting"}
+        for name in required
+        if not name.endswith("-migrate") and name != "knowledge-bootstrap"
+    )
     executor_readiness = readiness.get("executor-control", {})
     runtime_capabilities = (
         executor_readiness.get("components", {})
@@ -815,7 +844,15 @@ def _status(product_id: str) -> dict[str, object]:
         else "NOT_READY"
     )
     initialization = {
-        "knowledgeBootstrap": _load_bootstrap_status(product_id),
+        "knowledgeBootstrap": (
+            _load_bootstrap_status(product_id, assembly_digest=running_assembly.name)
+            if running_assembly
+            else {
+                "status": "UNKNOWN",
+                "errorCode": "RESEARCH_RUNNING_ASSEMBLY_UNKNOWN",
+                "assemblyDigest": None,
+            }
+        ),
     }
     issues: list[dict[str, str]] = []
     bootstrap_status = initialization["knowledgeBootstrap"]
@@ -827,11 +864,10 @@ def _status(product_id: str) -> dict[str, object]:
                 "code": str(
                     bootstrap_status.get("errorCode", "KNOWLEDGE_BOOTSTRAP_NOT_RUN")
                 ),
-                "summary": (
-                    "知识目录初始化失败；常驻服务仍可诊断。"
-                    if bootstrap_status.get("status") == "FAILED"
-                    else "当前装配尚未执行知识目录初始化。"
-                ),
+                "summary": {
+                    "FAILED": "运行装配的知识目录初始化失败；常驻服务仍可诊断。",
+                    "UNKNOWN": "无法从容器配置确定运行装配，知识初始化状态待核验。",
+                }.get(str(bootstrap_status.get("status")), "运行装配尚未执行知识目录初始化。"),
             }
         )
     return {
@@ -843,13 +879,15 @@ def _status(product_id: str) -> dict[str, object]:
         "services": services,
         "readiness": readiness,
         "runtimeCapabilities": runtime_capabilities,
+        "runningAssemblyDigest": running_assembly.name if running_assembly else None,
+        "compiledAssemblyDigest": compose.parent.name,
         "images": images,
         "initialization": initialization,
     }
 
 
 def clean_workspace(root: Path = ROOT, *, dry_run: bool = False) -> list[str]:
-    """Remove ignored, reproducible outputs while preserving the current assembly."""
+    """Remove ignored outputs while preserving current and container-mounted releases."""
     root = root.resolve()
     candidates = (
         _cache_candidates(root) | _stale_assemblies(root) | _generated_outputs(root)
@@ -1448,8 +1486,11 @@ def _run_workflow_golden(
             }
         return run_workflow_golden(
             repository_root=ROOT,
+            product_manifest_path=(
+                ROOT / "products" / product_id / "product-manifest.json"
+            ),
             catalog_directory=ROOT / "packages/operator-pack/catalog/operators",
-            case_file=product_development / "workflow-golden-cases.v1.json",
+            case_file=product_development / "workflow-golden-cases.v2.json",
             baseline_file=product_development / "workflow-golden-baselines.v1.json",
             case_id=args.case,
             run_directory=output,
@@ -1494,13 +1535,16 @@ def _run_real_case(args: argparse.Namespace, product_id: str) -> dict[str, objec
         return run_real_cases(
             product_id=product_id,
             repository_root=ROOT,
+            product_manifest_path=(
+                ROOT / "products" / product_id / "product-manifest.json"
+            ),
             catalog_directory=ROOT / "packages/operator-pack/catalog/operators",
             manifest_path=(
                 ROOT
                 / "products"
                 / product_id
                 / "development"
-                / "real-data-cases.v1.json"
+                / "real-data-cases.v2.json"
             ),
             case_id=args.case,
             source_root=args.source_root,

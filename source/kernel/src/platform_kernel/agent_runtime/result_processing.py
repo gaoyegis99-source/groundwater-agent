@@ -12,7 +12,7 @@ from ..errors import AgentRunError
 from ..settings import ExecutableModelDefinition
 from .evidence import collect_turn_evidence
 from .models import AgentRun
-from .provider_arguments import normalize_model_tool_arguments
+from .provider_arguments import normalize_model_tool_arguments, omit_unset_field_arguments
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -169,6 +169,7 @@ def prepare_interruption(
     models_by_tool: dict[str, ExecutableModelDefinition],
     *,
     provider: str = "deepseek",
+    explicit_model_tool_request: object = None,
 ) -> PreparedInterruption:
     plan = run.plans[-1] if run.plans else None
     if plan is None:
@@ -207,6 +208,7 @@ def prepare_interruption(
             supplied = normalize_model_tool_arguments(
                 supplied, model.input_schema, provider=provider,
             )
+            supplied = omit_unset_field_arguments(supplied, model, explicit_model_tool_request)
             arguments = {**model.default_parameters, **supplied}
             selection_policy = "PINNED"
             explicitly_prepared = prepared_arguments.get(model.model_id, [])

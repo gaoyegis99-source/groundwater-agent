@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 import json
 
 import pytest
@@ -11,6 +12,7 @@ from platform_kernel.agent_runtime.context_policy import (
     ContextTurnV1,
 )
 from platform_kernel.agent_runtime.memory import O200kTokenEstimator
+from platform_kernel.contracts import DataVersionRefV2
 
 
 def _task(revision: int = 3) -> dict:
@@ -114,6 +116,31 @@ def test_execution_watermark_changes_agent_manifest_hash():
         ).content_hash
 
     assert compile_hash(original) != compile_hash(changed)
+
+
+def test_agent_context_pins_the_exact_data_version_in_active_task_results():
+    published = DataVersionRefV2.from_dict({
+        "kind": "data_version", "service": "data-primary", "datasetId": "dataset",
+        "versionId": "active-version", "semanticId": "semantic", "objectId": "object",
+        "mediaType": "text/csv", "format": "csv", "sizeBytes": 8,
+        "checksum": "sha256:" + "a" * 64,
+    }).as_storage_dict()
+    older = {**published, "version_id": "older-version", "object_id": "older-object"}
+    active_task = _task()
+    active_task["progress"]["results"] = [published]
+    snapshot = replace(
+        _snapshot(),
+        task_context=active_task,
+        execution_actions=(
+            {"status": "COMPLETE", "workflow_run_id": "older-run", "outputs": [older]},
+            {"status": "COMPLETE", "workflow_run_id": "active-run", "outputs": [published]},
+        ),
+    )
+
+    projection = ContextPolicyV1(O200kTokenEstimator()).agent_projection(snapshot)
+
+    assert projection.execution_context["actions"] == [snapshot.execution_actions[1]]
+    assert projection.execution_context["retrievable"]["recent_workflow_run_ids"] == ["older-run"]
 
 
 def test_router_uses_summary_watermark_and_restores_selected_turn_order():
@@ -224,7 +251,7 @@ def test_one_hundred_turns_and_executions_keep_provider_input_bounded():
             "tool": "historical-model",
             "status": "COMPLETE",
             "workflow_run_id": f"workflow-{revision:03d}",
-            "outputs": [{"resource_id": f"resource-{revision:03d}"}],
+            "outputs": [{"version_id": f"version-{revision:03d}"}],
             "error": None,
         }
         for revision in range(1, 101)

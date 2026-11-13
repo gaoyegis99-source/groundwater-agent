@@ -8,7 +8,7 @@ import sqlite3
 from uuid import uuid4
 
 from ...database import append_event, begin_immediate, connect_database, utc_now
-from ...errors import ResourceNotFoundError, WorkflowDefinitionUnavailableError, WriteLockUnavailableError
+from ...errors import ResourceNotFoundError, WorkflowDefinitionUnavailableError, WriteLockUnavailableError, scheduler_write
 from ...settings import ExecutableModelDefinition, ServiceBinding
 from ...application.query_dtos import ConfirmedAction
 from ..models import DispatchWork, WorkflowRun
@@ -251,7 +251,7 @@ def claim_dispatch_batch(
     database: Path, limit: int, *, wait: bool = True
 ) -> tuple[DispatchWork, ...]:
     now = utc_now()
-    with connect_database(database) as connection:
+    with scheduler_write(), connect_database(database) as connection:
         if not begin_immediate(connection, wait=wait):
             raise WriteLockUnavailableError("KERNEL_WRITE_BUSY")
         rows = connection.execute(

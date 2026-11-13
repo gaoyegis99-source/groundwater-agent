@@ -179,15 +179,9 @@ Product UI 声明生成，不手写“模型数量”或“算子数量”作为
 模型的说明与适用范围、workflow 节点组成和精确输出/viewer、完整 catalog runtime 分布，以及哪些算子
 实际被当前领域 workflow 使用。数量和表格行均由源声明动态派生。
 
-本次生成结果为 10 个模型、10 个 workflow、109 个 catalog 算子，其中 43 个唯一算子被当前 workflow
-使用；Product UI 有 11 个示例、其中 7 个 featured。参考表 SHA-256 为
-`a8b38fcc34a7133d12eb614ba42e9a60b812055f6343a81a461a016da4c75399`。来源身份分别为 domain
-package `sha256:e5e8702c14a8ac0298b91f88399faa91154c107ccc7fc283fba34fffbf21eb09`、catalog manifest
-`sha256:2ca1c058884bc6d5bb17a71fd19aaa46bd44307a2c953edd7c67b6895ed5d901`、Assembler execution
-catalog `sha256:31dd7cd9dc989a3f8a800d52054c6ff11d97b590191e9907910c55290d4a3a91` 和 Product UI source
-`sha256:1d8bc1e3db2182548965ad8c7398c642836a605b9b03855d25521d9d7a19849d`。两个 catalog digest
-代表不同的规范化合同，并非漂移；生成器会分别验证。Pastas/MF6 独立 spike 和 `remote_http` 声明不被
-冒充为默认部署或服务可用性。
+当前计数及 domain package、catalog manifest、Assembler execution catalog 和 Product UI 的校验和
+记录在生成清单的身份与统计表中。生成器分别核对 catalog manifest 与 Assembler execution catalog
+的摘要。Pastas/MF6 独立 spike 与 `remote_http` 声明的运行可用性需要单独验证。
 
 ## 输出位置
 

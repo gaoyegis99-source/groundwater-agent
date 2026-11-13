@@ -7,7 +7,7 @@ from fastapi import FastAPI, Path, Query, Request
 from ..composition import ExecutorApplication
 from ..contracts import JobRequestV6
 from ..errors import ExecutionServiceError, JobNotFoundError
-from ..worker_contracts import JobRequestBodyV6, JobStatusResponseV6, NodeDiagnosticsResponse, lease_to_wire
+from ..worker_contracts import JobGraphResponse, JobRequestBodyV6, JobStatusResponseV6, NodeDiagnosticsResponse, lease_to_wire
 
 
 def register_execution_routes(app: FastAPI, application: ExecutorApplication) -> None:
@@ -57,3 +57,12 @@ def register_execution_routes(app: FastAPI, application: ExecutorApplication) ->
     @app.get("/internal/execution/v6/jobs/{jobId}/nodes", response_model=NodeDiagnosticsResponse, operation_id="executor_get_job_nodes")
     def node_diagnostics(job_id: Annotated[str, Path(alias="jobId")]):
         return lease_to_wire({"nodes": application.control.node_diagnostics(job_id)})
+
+
+    @app.get(
+        "/internal/execution/v6/jobs/{jobId}/graph",
+        response_model=JobGraphResponse,
+        operation_id="executor_get_job_graph",
+    )
+    def job_graph(job_id: Annotated[str, Path(alias="jobId")]):
+        return application.control.job_graph(job_id)

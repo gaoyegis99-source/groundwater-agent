@@ -12,6 +12,7 @@ from platform_protocol_contracts import (
 
 from ..contracts import JobRequestV6, JobStatusV6
 from ..settings import ServiceBinding
+from .node_diagnostics import WorkflowNodeDiagnostic
 
 
 class ExecutionClientError(RuntimeError):
@@ -89,4 +90,34 @@ class ExecutionClient:
         try:
             await AsyncExecutorClient(service.internal_base_url, client=self.client).cancel(job_id)
         except (ApiProblem, TransportError, ProtocolError) as error:
+            raise ExecutionClientError(str(error)) from error
+
+    async def get_nodes(
+        self, service: ServiceBinding, job_id: str,
+    ) -> list[WorkflowNodeDiagnostic] | None:
+        try:
+            result = await AsyncExecutorClient(
+                service.internal_base_url, timeout=5, client=self.client,
+            ).get_nodes(job_id)
+            return [WorkflowNodeDiagnostic.from_executor(row) for row in result.nodes]
+        except ApiProblem as error:
+            if error.problem.status == 404:
+                return None
+            raise ExecutionClientError(error.problem.code) from error
+        except (TransportError, ProtocolError, ValueError, TypeError) as error:
+            raise ExecutionClientError(str(error)) from error
+
+
+    async def get_graph(
+        self, service: ServiceBinding, job_id: str,
+    ) -> executor_models.JobGraphResponse | None:
+        try:
+            return await AsyncExecutorClient(
+                service.internal_base_url, timeout=5, client=self.client,
+            ).get_graph(job_id)
+        except ApiProblem as error:
+            if error.problem.status == 404:
+                return None
+            raise ExecutionClientError(error.problem.code) from error
+        except (TransportError, ProtocolError) as error:
             raise ExecutionClientError(str(error)) from error

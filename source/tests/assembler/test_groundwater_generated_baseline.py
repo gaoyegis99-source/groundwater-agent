@@ -16,7 +16,7 @@ GENERATED_ARTIFACT_DIGESTS = {
     "nginx.conf": "301325455147fe4416b0031474f7512da574e5019932689e1e1008060726ba1b",
     "product-ui.json": "8629570bfac04fb36a555a66bc1df99c0d4710d10ba92c7ae2c861b3491b903f",
     "product-icon.svg": "e484a9befc9ff8ccabff776babccdcb0f0c8cf6adebc6da25bb64fccf5a0dfab",
-    "assembly-lock.json": "4f365aff433084b34e9cf51d80cfed4cab3aadd071fa0b9dac147577861eafc0"
+    "assembly-lock.json": "48ef1c439b02a4f67d9a449cbda1a5ee1ef0aed82ce5b79636a107cf8ad4d19f"
 }
 
 

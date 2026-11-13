@@ -345,7 +345,7 @@ it('preserves ordinary message text and separates connection status', async () =
   act(() => TestEvents.latest.onopen?.());
   expect(screen.getByTestId('connection-status')).toHaveTextContent('实时更新已连接');
   act(() => TestEvents.latest.onerror?.());
-  expect(screen.getByTestId('connection-status')).toHaveTextContent('实时更新连接中断');
+  expect(screen.getByTestId('connection-status')).toHaveTextContent('正在恢复连接 · 显示最近状态');
   expect(screen.getByText(content)).toBeVisible();
   expect(screen.getByRole('button', { name: /^已完成/ })).toBeVisible();
 });

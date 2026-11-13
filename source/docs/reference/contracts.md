@@ -9,7 +9,7 @@
 | Kernel HTTP / Config / SQLite | v12 / v8 / v34 |
 | Session Event / IntentDecision / message request | v20 / v4 / v5 |
 | AgentFinal / SubmittedReply | v5 / v6 |
-| Workflow / Executable Model | v6 / v4 |
+| Workflow / Executable Model | v6 / v6（当前产品）；装配仍接受 Executable Model v4、v5 |
 | JobRequest / JobStatus | v6 / v6 |
 | Executor HTTP / Worker / SQLite | v6 / v3 / v9 |
 | Data HTTP / Tools / PostgreSQL | v3 / v4 / schema v8 |
@@ -44,6 +44,12 @@ capabilities、ready、audit，以及根页面、assets 和 Product UI 精确静
 Executor 只接受冻结的 Data 引用。读取输入时再次核验 Dataset/Version/Object/checksum，并从该精确版本及其绑定语义/转换回执形成受限的 `dataContract` 执行 metadata（命名时区、空值、物理类型和字段 ID/名称映射）。metadata 与原始对象检查点共同持久化，不改变 `DataVersionRefV2` wire 字段，也不以 query 对象替换冻结的 raw 对象。每个 WorkflowRun 固定一个幂等发布组，所有最终输出在一个事务中公开；响应丢失时查询或重放同一发布组。内容改变的重放冲突，完全相同的重放返回原回执。成功输出的 lineage 必须精确指向输入版本。
 
 声明为 `json` 的 Data 发布在 READY 前必须通过有预算的 UTF-8、语法、重复键和有限数值校验；`FILE_ONLY` 不推断业务语义，但仍验证声明格式。任意不透明字节使用 `binary`。
+
+`field-profile.v1` 的 `sampleValues` 和 `valueRange` 保留原有 JSON 数值。读取 `int64` 或
+`uint64` 字段画像时，Data 对超出 JavaScript 安全整数范围的值附加可选 `exactIntegers`。
+其中 `sampleValues` 按原样例索引对齐，安全位置为 `null`。`minimum` 和 `maximum` 各自只在
+对应端点超出安全范围时出现。精确值以十进制文本传输，读取时从已保存的画像生成，适用于已发布
+版本及新版本。两套 Web 优先显示这些文本，旧服务缺少对应文本时标注精度不可确认。
 
 Data Query 的表格白名单仍为 CSV/Parquet。XLSX 与 GeoPackage 使用独立的幂等 Preview 操作，结果有有效期并保存到对象库；解析在受限 Worker 中完成，冻结并核验 `version_id/semantic_id/object_id/checksum`。Preview 不执行公式、宏、外部链接或客户端 SQL。
 
@@ -99,9 +105,13 @@ Agent 的 objective 只通过服务拥有的模板进入摘要，不作为
 
 MessageRequest v5 接受最多 20 个有序 `DataVersionRefV2` 输入引用。正文仅保存用户文字；引用单独进入 Router/Agent 的 Kernel 事实上下文，并投影到消息历史。相同请求 ID 修改引用会发生幂等冲突。带引用的控制词按普通任务请求处理，避免把附件分析误判为控制命令。
 
+保存确认修订时，action 可携带 `expectedInputReferences`，以模型数据输入字段为键，值为选择时取得的精确 `DataVersionRefV2` 原始对象身份。Kernel 将它与 Data 当前返回的身份核对。字段或身份不一致时返回 `409 CONFIRMATION_DATA_VERSION_INVALID`，原批次仍可见。省略该字段沿用 v12 既有处理，旧请求的幂等指纹保持兼容。保存成功生成新的待确认批次，执行需要批准该批次。
+
 `EXECUTION_PROPOSAL` 只有两种合法终态：已持久化可执行 Action 并进入 `WAITING_CONFIRMATION`；或返回包含真实缺项的回复。没有 Action 且没有缺项的成功声明以 `AGENT_MODEL_OUTPUT_INVALID` 拒绝。`include_execution_status`、WorkflowRun 引用和确认状态都根据持久事实校验。
 
 用户确认后 Kernel 创建 WorkflowRun，Executor 根据 Execution Protocol v6 运行静态 DAG。Worker 使用租约与心跳；成功节点形成 checksum 地址的检查点。恢复、取消、超时和发布均以持久状态仲裁。
+
+`GET /api/v12/workflow-runs/{runId}/nodes?projectId=…` 按 WorkflowRun 所有者授权。Kernel 用冻结的 Executor 地址和远端作业 ID 读取节点标识、算子、运行环境、状态、尝试次数、时间和稳定错误码。`NOT_DISPATCHED` 表示尚无作业 ID，`UNAVAILABLE` 表示作业记录或绑定不可用，`AVAILABLE` 表示已读取节点列表。旧 Executor 未提供尝试次数时，`attemptCount` 为 `null`。临时上游故障返回 `503 WORKFLOW_NODE_DIAGNOSTICS_UNAVAILABLE`。参数、远端状态、租约和原始日志留在 Executor 的诊断边界。`JobStatusV6` 保持原有字段。
 
 ## Provider 请求与可用性
 

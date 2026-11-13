@@ -433,7 +433,10 @@ def test_cli_domain_conversion_and_typed_http_client_write_guard():
     import httpx
 
     root = Path(__file__).resolve().parents[3]
-    source = next((root / "domains/groundwater/5.0.0/knowledge").glob("*.json"))
+    from scripts.development.product_selection import load_selected_product_by_id
+
+    domain = load_selected_product_by_id(root, "groundwater").domain.root
+    source = next((domain / "knowledge").glob("*.json"))
     cli_environment = {
         **os.environ,
         "PYTHONPATH": os.pathsep.join(

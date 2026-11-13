@@ -2,6 +2,7 @@ import type { MessageRequest, ResourceItem, Turn } from './types';
 import { newRequestId as compatibleRequestId } from '@platform/ui-boundary';
 import { readJsonCache } from './browser-cache';
 import { scopedStorageKey } from './browser-scope';
+import { isResourceReference } from './resource-item';
 
 export interface SavedSubmission {
   queueItemId?: string;
@@ -10,15 +11,8 @@ export interface SavedSubmission {
   attachments: ResourceItem[];
 }
 function isResourceItem(value: unknown): value is ResourceItem {
-  if (value === null || typeof value !== 'object') return false;
-  const item = value as Record<string, unknown>;
-  return item.kind === 'data_version' && item.service === 'data-primary'
-    && typeof item.datasetId === 'string' && typeof item.versionId === 'string'
-    && typeof item.semanticId === 'string' && typeof item.objectId === 'string'
-    && typeof item.checksum === 'string' && typeof item.familyId === 'string'
-    && typeof item.name === 'string' && typeof item.format === 'string'
-    && typeof item.mediaType === 'string' && typeof item.sizeBytes === 'number'
-    && Number.isFinite(item.sizeBytes);
+  return isResourceReference(value) && 'familyId' in value && typeof value.familyId === 'string'
+    && 'name' in value && typeof value.name === 'string';
 }
 export function isResourceItems(value: unknown): value is ResourceItem[] {
   return Array.isArray(value) && value.every(isResourceItem);
