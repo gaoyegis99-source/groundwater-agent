@@ -62,6 +62,10 @@ def _publish(
                         else "FILE_ONLY"
                     ),
                     "tags": ["SYNTHETIC_TEST_ONLY", "v12-browser-acceptance"],
+                    **(
+                        {"conversion": {"types": {"f2": "float64"}}}
+                        if format_ == "csv" else {}
+                    ),
                     "semantics": {
                         "description": "v12 浏览器验收的最小合成夹具",
                         "fields": (
