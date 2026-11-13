@@ -98,5 +98,8 @@ class ExecutorControl:
     def runtime_statuses(self) -> dict[str, str]:
         return self.queries.runtime_statuses()
 
+    def job_graph(self, job_id: str) -> dict:
+        return self.queries.job_graph(job_id)
+
     def node_diagnostics(self, job_id: str) -> list[dict]:
         return self.queries.node_diagnostics(job_id)

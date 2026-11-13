@@ -1,3 +1,4 @@
+import '@platform/ui-boundary/workspace-tokens.css';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 import './style.css';

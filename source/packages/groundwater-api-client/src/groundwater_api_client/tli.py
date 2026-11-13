@@ -36,7 +36,8 @@ HELP = """命令（交互模式下以前缀 / 调用；普通文字直接发送�
   /clear                             清空待发送附件
   /confirm 确认ID                    显式批准该批次
   /reject 确认ID 原因                  显式拒绝该批次
-  /events [--cursor 事件ID] [--follow] 查看事件；--follow 自动续接至待确认或终态，Ctrl-C 停止
+  /retry                             重试当前会话中回执未确认的消息
+  /events [--cursor 事件ID] [--follow] 查看事件；--follow 自动续接至待确认或终态，Ctrl-C 停止观察
   /results [--cursor 数字]             查看成果及精确版本
   /download 版本ID 对象ID 目标路径      下载到新文件，不覆盖已有文件
   /help                              显示帮助
@@ -106,6 +107,8 @@ class Terminal:
         self.session_id: str | None = None
         self.references: list[Any] = []
         self.event_cursors: dict[str, int] = {}
+        self.pending_sends: dict[str, models.KernelMessageCreate] = {}
+        self.interactive = False
 
     def _print(self, value: Any) -> None:
         print(json.dumps(_jsonable(value), ensure_ascii=False, indent=2, default=str), file=self.output, flush=True)
@@ -173,11 +176,15 @@ class Terminal:
             if not positional:
                 raise ValueError('用法: send [--request-id ID] 消息')
             request = models.KernelMessageCreate(requestId=opts.get('request-id') or str(uuid4()), message=' '.join(positional), requestedMode='AUTO', inputReferences=self.references or None)
+            self._send(self._session(), request)
+        elif command == 'retry':
+            if rest or not self.interactive:
+                raise ValueError('用法: 在交互模式输入 /retry')
             session = self._session()
-            print(f'请求 ID: {request.request_id}', file=self.output, flush=True)
-            result = self.client.send_message(session, request)
-            self.references.clear()
-            self._print(result)
+            request = self.pending_sends.get(session)
+            if request is None:
+                raise ValueError('当前会话没有回执待核对的消息')
+            self._send(session, request)
         elif command == 'datasets':
             positional, opts = _options(rest, 'query', 'cursor', 'limit')
             if positional:
@@ -261,19 +268,67 @@ class Terminal:
             raise ValueError(f'未知命令: {command}；输入 /help 查看帮助')
         return True
 
+    def _send(self, session: str, request: models.KernelMessageCreate) -> None:
+        print(f'请求 ID: {request.request_id}', file=self.output, flush=True)
+        try:
+            result = self.client.send_message(session, request)
+        except (TransportError, ProtocolError):
+            if self.interactive:
+                self.pending_sends[session] = request
+                print('消息回执待核对，可输入 /retry 重试同一请求。', file=self.output, flush=True)
+            raise
+        except ApiProblem as error:
+            if self.interactive and (error.problem.status >= 500 or error.problem.status == 429):
+                self.pending_sends[session] = request
+            elif self.pending_sends.get(session) is request:
+                self.pending_sends.pop(session)
+            raise
+        self.pending_sends.pop(session, None)
+        if self.references == list(request.input_references or ()):
+            self.references.clear()
+        self._print(result)
+        if self.interactive:
+            print('已受理 · 输入 /events --follow 查看进度。', file=self.output, flush=True)
+
     def _events(self, session: str, cursor: int | None, *, follow: bool = False) -> None:
         delay = 0.25
+        last_phase = "尚未读取"
+        reconnecting = False
         if follow and cursor is not None:
             self.event_cursors[session] = cursor
         while True:
             before = cursor
             try:
+                if follow:
+                    history = _jsonable(self.client.history(session, cursor=None, limit=100))
+                    turn = next((item for item in reversed(history.get('turns', []))
+                                 if item.get('goalRevision') == history.get('goalRevision')), None)
+                    if turn:
+                        last_phase = {
+                            'ROUTING': '正在判断需求', 'QUEUED': '排队', 'RUNNING': '正在分析',
+                            'WAITING_CONFIRMATION': '待确认', 'WAITING_EXECUTION': '正在执行',
+                            'COMPLETE': '本轮已完成', 'FAILED': '本轮未完成', 'CANCELLED': '本轮已停止',
+                        }.get(turn.get('status'), '已同步会话')
+                    snapshot_cursor = history.get('eventCursor')
+                    if type(snapshot_cursor) is int:
+                        if cursor is None:
+                            cursor = snapshot_cursor
+                        if cursor >= snapshot_cursor:
+                            phase = self._settled_phase(history)
+                            if phase:
+                                if self.interactive:
+                                    print(phase, file=self.output, flush=True)
+                                return
                 terminal, cursor = self._event_stream(session, cursor, follow=follow)
+                reconnecting = False
                 if terminal or not follow:
                     return
             except TransportError:
                 if not follow:
                     raise
+                if self.interactive and not reconnecting:
+                    print(f'连接恢复中 · 最近核对状态：{last_phase}', file=self.output, flush=True)
+                reconnecting = True
                 cursor = self.event_cursors.get(session, cursor)
             time.sleep(delay)
             delay = 0.25 if cursor != before else min(delay * 2, 5.0)
@@ -310,12 +365,39 @@ class Terminal:
                         self.event_cursors[session] = cursor
                     print(event, file=self.output, flush=True)
                     if stop:
+                        if self.interactive:
+                            if event_type in {'agent.waiting_confirmation', 'confirmation.recovery_created'}:
+                                print('待确认 · 输入 /status 核对参数。', file=self.output, flush=True)
+                            else:
+                                print('本轮等待结束 · 输入 /status 查看状态，或 /results 查看成果。', file=self.output, flush=True)
                         return True, cursor
         finally:
             close = getattr(stream, 'close', None)
             if close is not None:
                 close()
         return False, cursor
+
+    @staticmethod
+    def _settled_phase(history: dict[str, Any]) -> str | None:
+        revision = history.get('goalRevision')
+        turn = next((item for item in reversed(history.get('turns', [])) if item.get('goalRevision') == revision), None)
+        if turn is None:
+            return None
+        confirmations = turn.get('confirmations', [])
+        latest = confirmations[-1] if confirmations else None
+        if any(task.get('isLatestAttempt', True) and task.get('status') in {'QUEUED', 'RUNNING'}
+               for task in turn.get('executionTasks', [])):
+            return None
+        if latest and latest.get('status') == 'PENDING':
+            if latest.get('decisionState'):
+                return None
+            return f"待确认 · 修订 {latest.get('revision', 1)} · 输入 /status 核对参数"
+        return {
+            'COMPLETE': '本轮已完成 · 输入 /results 查看成果',
+            'FAILED': '本轮未完成 · 输入 /status 查看详情',
+            'CANCELLED': '本轮已停止 · 输入 /status 查看详情',
+            'SUPERSEDED': '本轮已被替代 · 输入 /status 查看当前状态',
+        }.get(turn.get('status'))
 
     def _current_terminal(self, session: str, event_type: str, data_lines: list[str]) -> bool:
         statuses = {
@@ -390,6 +472,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.command:
             terminal.execute_tokens(args.command)
             return 0
+        terminal.interactive = True
         print('地下水终端。输入 /help 查看命令，普通文字发送到当前会话。', flush=True)
         while True:
             try:
@@ -397,7 +480,7 @@ def main(argv: list[str] | None = None) -> int:
                 if not terminal.run_line(line):
                     return 0
             except KeyboardInterrupt:
-                print('\n已中断当前操作。', flush=True)
+                print('\n已中断当前终端操作。', flush=True)
             except EOFError:
                 print()
                 return 0

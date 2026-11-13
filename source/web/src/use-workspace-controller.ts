@@ -14,8 +14,20 @@ function readResourceSelection(key: string) {
   return { key, id, reference: reference?.versionId === id ? reference : null };
 }
 
+function readWorkspaceRoute(): WorkspaceTab | null {
+  const route = /^#\/sessions\/[a-zA-Z0-9-]+\/workbench\/(inputs|parameters|tasks|results)$/.exec(window.location.hash);
+  return route ? route[1] as WorkspaceTab : null;
+}
+
 export function useWorkspaceController(activeSessionId: string, storageScope: string) {
-  const [collapsed, setCollapsed] = useState(window.innerWidth < 1200);
+  const [homeCollapsed, setCollapsed] = useState(true);
+  const [routeTab, setRouteTab] = useState(readWorkspaceRoute);
+  useEffect(() => {
+    const sync = () => setRouteTab(readWorkspaceRoute());
+    window.addEventListener('hashchange', sync);
+    return () => window.removeEventListener('hashchange', sync);
+  }, []);
+  const collapsed = activeSessionId ? !routeTab : homeCollapsed;
   const selectionKey = scopedStorageKey(storageScope, 'workspace-resource', activeSessionId);
   const [selection, setSelection] = useState(() => readResourceSelection(selectionKey));
   const [editingConfirmationId, setEditingConfirmationId] = useState<string | null>(null);
@@ -28,10 +40,18 @@ export function useWorkspaceController(activeSessionId: string, storageScope: st
     setConfirmationFocus(null);
   }, [selectionKey]);
 
+  const returnToConversation = useCallback(() => {
+    if (activeSessionId) window.location.hash = `#/sessions/${activeSessionId}`;
+    else setCollapsed(true);
+  }, [activeSessionId]);
   const focus = useCallback((tab: WorkspaceTab) => {
+    if (activeSessionId) {
+      window.location.hash = `#/sessions/${activeSessionId}/workbench/${tab}`;
+      return;
+    }
     setFocusRequest({ tab, nonce: Date.now() });
     setCollapsed(false);
-  }, []);
+  }, [activeSessionId]);
   const openResource = useCallback((id: string, reference: ResourceReference | null = null) => {
     const exact = id && reference?.versionId === id ? reference : null;
     setSelection({ key: selectionKey, id: id || null, reference: exact });
@@ -53,7 +73,13 @@ export function useWorkspaceController(activeSessionId: string, storageScope: st
 
   return {
     collapsed,
-    toggleCollapsed: () => setCollapsed(value => !value),
+    routeTab,
+    returnToConversation,
+    toggleCollapsed: () => {
+      if (!activeSessionId) setCollapsed(value => !value);
+      else if (routeTab) returnToConversation();
+      else focus('tasks');
+    },
     resourceId: selection.key === selectionKey ? selection.id : null,
     resourceReference: selection.key === selectionKey ? selection.reference : null,
     editingConfirmationId,

@@ -35,6 +35,7 @@ export const webContractPaths = [
   '/api/v12/sessions/{sessionId}/control-proposals/{proposalId}/dismiss',
   '/api/v12/sessions/{sessionId}/workflow-runs/{workflowRunId}/recoveries',
   '/api/v12/workflow-runs/{runId}/nodes',
+  '/api/v12/workflow-runs/{runId}/graph',
   '/api/v12/agent-runs/{agentRunId}/trace',
   '/api/v12/data/datasets',
   '/api/v12/data/capabilities',

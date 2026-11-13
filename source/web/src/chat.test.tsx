@@ -16,7 +16,7 @@ describe('approval boundaries', () => {
   it('only approves the current undecided confirmation and passes its exact identity', () => {
     const decision = vi.fn();
     render(<ConfirmationCard confirmation={confirmation} history={approvalHistory} busy={false} onDecision={decision} onResource={vi.fn()} project="demo" />);
-    fireEvent.click(screen.getByRole('button', { name: '确认执行' }));
+    fireEvent.click(screen.getByRole('button', { name: /^确认执行/ }));
     expect(decision).toHaveBeenCalledExactlyOnceWith('approval-1', 'confirm');
     expect(screen.getByText('exact-resource')).toBeVisible();
   });
@@ -25,7 +25,7 @@ describe('approval boundaries', () => {
     { goalRevision: 1 }, { confirmationId: 'old-approval' },
   ])('does not reopen a historical or already requested decision: %o', change => {
     render(<ConfirmationCard confirmation={{ ...confirmation, ...change }} history={approvalHistory} busy={false} onDecision={vi.fn()} onResource={vi.fn()} project="demo" />);
-    expect(screen.queryByRole('button', { name: '确认执行' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^确认执行/ })).not.toBeInTheDocument();
   });
   it('busy state blocks approval', () => {
     expect(canConfirm(confirmation, approvalHistory, true)).toBe(false);

@@ -28,6 +28,12 @@ EXECUTOR_CANCEL_JOB = Operation(
     media_type='application/json', side_effecting=True,
 )
 
+EXECUTOR_GET_JOB_GRAPH = Operation(
+    operation_id='executor_get_job_graph', method='GET', path='/jobs/{jobId}/graph',
+    response_model=models.JobGraphResponse, success_statuses=frozenset([200]),
+    media_type='application/json', side_effecting=False,
+)
+
 EXECUTOR_GET_JOB_NODES = Operation(
     operation_id='executor_get_job_nodes', method='GET', path='/jobs/{jobId}/nodes',
     response_model=models.NodeDiagnosticsResponse, success_statuses=frozenset([200]),
@@ -39,5 +45,6 @@ OPERATIONS = {
     EXECUTOR_GET_JOB_BY_REQUEST.operation_id: EXECUTOR_GET_JOB_BY_REQUEST,
     EXECUTOR_GET_JOB.operation_id: EXECUTOR_GET_JOB,
     EXECUTOR_CANCEL_JOB.operation_id: EXECUTOR_CANCEL_JOB,
+    EXECUTOR_GET_JOB_GRAPH.operation_id: EXECUTOR_GET_JOB_GRAPH,
     EXECUTOR_GET_JOB_NODES.operation_id: EXECUTOR_GET_JOB_NODES,
 }

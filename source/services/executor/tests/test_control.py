@@ -1258,6 +1258,11 @@ def test_parallel_branches_join_and_successful_nodes_survive_restart(tmp_path):
     model["workflow"]["nodes"] = [*branches, join]
     model["maxParallelNodes"] = 2
     job = control.submit(_request(config))
+    graph = control.job_graph(job.job_id)
+    assert graph["requestId"] == job.request_id
+    assert {node["nodeId"]: set(node["dependsOn"]) for node in graph["nodes"]} == {
+        "join": {"left", "right"}, "left": set(), "right": set(),
+    }
     left, right = control.claim(_worker(config)), control.claim(_worker(config))
     assert {left["node_id"], right["node_id"]} == {"left", "right"}
     assert left["operator_id"] == right["operator_id"]

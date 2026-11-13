@@ -69,6 +69,7 @@ test('01 desktop shell, navigation, API boundary and keyboard controls', async (
   await expect(page.getByRole('button', { name: '知识库' })).toBeEnabled();
   await page.setViewportSize({ width: 1280, height: 800 });
   await expect(page.getByRole('button', { name: '折叠会话侧栏' })).toBeVisible();
+  await page.getByRole('button', { name: '打开任务工作台' }).click();
   await expect(page.getByRole('heading', { name: '任务工作台' })).toBeVisible();
   await expect(page.getByRole('tab', { name: '数据' })).toBeVisible();
   const tabs = page.getByRole('tablist', { name: '任务工作台视图' });
@@ -158,7 +159,8 @@ test('04 execution proposal confirms, publishes, downloads and restores results'
   const inputVersion = await proposeSummary(page, id, `frontend-confirm-${randomUUID()}`);
   const confirmation = page.getByTestId('confirmation-card');
   await expect(confirmation).toContainText(inputVersion);
-  await expect(confirmation).toContainText('确认后才会执行');
+  await expect(confirmation.getByRole('button', { name: '确认执行修订 1' })).toBeEnabled();
+  expect((await session(page, id)).workflowRunIds).toEqual([]);
   const confirmed = page.waitForResponse(response =>
     new URL(response.url()).pathname === `/api/v12/sessions/${id}/confirm`
       && response.request().method() === 'POST');
@@ -193,6 +195,9 @@ test('04 execution proposal confirms, publishes, downloads and restores results'
   await expect(workspace).toContainText('血缘输入');
   await expect(workspace).toContainText(inputVersion);
   await page.reload();
+  await expect(page).toHaveURL(/\/workbench\/results$/);
+  await expect(workspace.getByRole('heading', { name: outputLabel })).toBeVisible();
+  await workspace.getByRole('button', { name: '返回对话' }).click();
   await expect(page.getByTestId('result-card')).toBeVisible();
   await expect(page.getByTestId('confirm-execution')).toHaveCount(0);
   await page.screenshot({ path: info.outputPath('04-confirmed-result.png'), fullPage: true });
@@ -208,11 +213,11 @@ test('04 execution proposal confirms, publishes, downloads and restores results'
     const key = Object.keys(sessionStorage).find(entry => !entry.includes(':unbound:') && entry.endsWith(`:draft-attachments:${current}`));
     return key ? JSON.parse(sessionStorage.getItem(key) ?? '[]') : [];
   }, sessionId);
-  await row.getByRole('button', { name: '作为下一步输入' }).click();
+  await row.getByRole('button', { name: '附加到当前草稿' }).click();
   await expect(page.getByTestId('pending-attachments')).toContainText(outputLabel);
   await expect.poll(() => readDraftAttachment(id)).toEqual([expect.objectContaining(output)]);
   const created = page.waitForResponse(response => new URL(response.url()).pathname === '/api/v12/sessions' && response.request().method() === 'POST');
-  await row.getByRole('button', { name: '在新对话中继续' }).click();
+  await row.getByRole('button', { name: '带成果打开新会话' }).click();
   const continuation = await created;
   expect(continuation.status()).toBe(200);
   const nextId = (await continuation.json()).sessionId;

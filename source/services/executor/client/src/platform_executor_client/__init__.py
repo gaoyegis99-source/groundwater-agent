@@ -100,6 +100,11 @@ class AsyncExecutorClient:
             operations.EXECUTOR_GET_JOB_NODES, path={"jobId": job_id}
         )  # type: ignore[return-value]
 
+    async def get_graph(self, job_id: str) -> models.JobGraphResponse:
+        return await self.http.call(
+            operations.EXECUTOR_GET_JOB_GRAPH, path={"jobId": job_id}
+        )  # type: ignore[return-value]
+
     async def get_by_request(
         self, request_id: str, project_id: str
     ) -> models.JobStatusResponseV6:

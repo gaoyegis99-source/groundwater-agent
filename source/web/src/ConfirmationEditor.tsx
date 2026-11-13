@@ -2,10 +2,11 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { ApiError, callApi } from './api';
 import { decodeResourceDetail } from './api-contract';
 import { argumentGroup, argumentLabel, modelName, parameterPresentation } from './card-presentation';
+import { DataFieldQuality } from './DataFieldQuality';
 import { ErrorNotice } from './ErrorNotice';
 import type { Capabilities, Confirmation, ConfirmationRevisionAction, JsonSchemaProperty, ResourceDetail, ResourceReference } from './types';
 
-type SelectableResource = { name: string; reference: ResourceReference };
+type SelectableResource = { name: string; reference: ResourceReference; detail: ResourceDetail };
 
 function selectableResource(version: ResourceDetail): SelectableResource | null {
   const raw = version.objects.filter(item => item.role === 'raw');
@@ -13,6 +14,7 @@ function selectableResource(version: ResourceDetail): SelectableResource | null 
   const [object] = raw;
   return {
     name: version.title,
+    detail: version,
     reference: {
       kind: 'data_version', service: 'data-primary', datasetId: version.datasetId,
       versionId: version.versionId, semanticId: version.semanticId, objectId: object.objectId,
@@ -48,6 +50,7 @@ function resourceError(error: unknown): ApiError | string {
 type ConfirmationEditorProps = {
   confirmation: Confirmation; capabilities: Capabilities; project: string; busy: boolean;
   focusField?: string | null;
+  stale?: boolean;
   suggestedValue?: string;
   onSave: (actions: ConfirmationRevisionAction[]) => void; onClose: () => void;
 };
@@ -56,7 +59,7 @@ export function ConfirmationEditor(props: ConfirmationEditorProps) {
   return <ConfirmationEditorForm key={`${props.project}:${props.confirmation.confirmationId}`} {...props} />;
 }
 
-function ConfirmationEditorForm({ confirmation, capabilities, busy, focusField, suggestedValue, onSave, onClose }: ConfirmationEditorProps) {
+function ConfirmationEditorForm({ confirmation, capabilities, busy, focusField, suggestedValue, onSave, onClose, stale }: ConfirmationEditorProps) {
   const [values, setValues] = useState(() => confirmation.actions.map(action => structuredClone(action.arguments)));
   const [expectedReferences, setExpectedReferences] = useState<Record<string, ResourceReference>[]>(
     () => confirmation.actions.map(() => ({})),
@@ -188,6 +191,7 @@ function ConfirmationEditorForm({ confirmation, capabilities, busy, focusField, 
     })));
   }
   return <section className="confirmation-editor" data-testid="confirmation-editor"><div className="workspace-section-heading"><div><span className="workspace-kicker">确认修订 {(confirmation.revision ?? 1) + 1}</span><h3>{confirmation.kind === 'RECOVERY' ? '编辑恢复批次参数' : '编辑执行参数'}</h3></div><button className="text-button" onClick={onClose}>关闭</button></div>
+    {stale && <p className="limitations" role="status">此批次已更新。当前编辑仍保留，请核对最新确认批次。</p>}
     <p className="muted">保存会创建不可变的新修订。执行动作和顺序保持不变。</p>
     {requiresResources && <>
       <form className="artifact-toolbar" onSubmit={event => {
@@ -221,14 +225,14 @@ function ConfirmationEditorForm({ confirmation, capabilities, busy, focusField, 
             key={name} fieldKey={`${action.toolCallId}:${name}`} name={name} modelId={action.modelId}
             schema={schema} value={values[actionIndex][name]} originalValue={action.arguments[name]}
             required={required.has(name)} resource={model?.dataInputParameters?.includes(name) ?? false}
-            resources={currentResourceLoad.resources} resourceDisabled={currentResourceLoad.status !== 'ready'}
+            resources={currentResourceLoad.resources} frozenReference={expectedReferences[actionIndex][name] ?? action.inputReferences?.[name]} resourceDisabled={currentResourceLoad.status !== 'ready'}
             onJsonError={updateJsonError} onChange={(value, reference) => update(actionIndex, name, value, reference)}
           />)}</div>
         </details>)}
       </article>;
     })}
     <section className="diff-preview"><h4>字段变化 · {changes.length}</h4>{changes.length ? <dl>{changes.map(change => <div key={`${change.actionIndex}:${change.name}`}><dt>{argumentLabel(change.name, confirmation.actions[change.actionIndex].modelId)}</dt><dd><del>{String(change.before ?? '∅')}</del><ins>{String(change.after ?? '∅')}</ins></dd></div>)}</dl> : <p className="muted">尚未修改参数。</p>}</section>
-    <div className="actions"><button className="primary" disabled={busy || changes.length === 0 || hasJsonErrors || hasUnresolvedSelection} onClick={saveRevision}>保存为新修订</button><button onClick={onClose}>取消</button></div>
+    <div className="actions"><button className="primary" disabled={busy || stale || changes.length === 0 || hasJsonErrors || hasUnresolvedSelection} onClick={saveRevision}>保存为新修订</button><button onClick={onClose}>取消</button></div>
   </section>;
 }
 
@@ -252,14 +256,19 @@ function resourceVersionId(value: unknown): string {
   return '';
 }
 
-function SchemaField({ fieldKey, name, modelId, schema, value, originalValue, required, resource, resources, resourceDisabled, onJsonError, onChange }: { fieldKey: string; name: string; modelId: string; schema: JsonSchemaProperty; value: unknown; originalValue: unknown; required: boolean; resource: boolean; resources: SelectableResource[]; resourceDisabled: boolean; onJsonError: (field: string, error: string | null) => void; onChange: (value: unknown, reference?: ResourceReference | null) => void }) {
+function SchemaField({ fieldKey, name, modelId, schema, value, originalValue, required, resource, resources, frozenReference, resourceDisabled, onJsonError, onChange }: { fieldKey: string; name: string; modelId: string; schema: JsonSchemaProperty; value: unknown; originalValue: unknown; required: boolean; resource: boolean; resources: SelectableResource[]; frozenReference?: ResourceReference; resourceDisabled: boolean; onJsonError: (field: string, error: string | null) => void; onChange: (value: unknown, reference?: ResourceReference | null) => void }) {
   const presentation = parameterPresentation(name, modelId);
   const label = <span>{presentation.label}{presentation.unit ? `（${presentation.unit}）` : ''}{required && <b className="required"> *</b>}{schema.default !== undefined && <small> 默认 {String(schema.default)}</small>}</span>;
   if (resource) {
     const selected = resourceVersionId(value);
     const original = resourceVersionId(originalValue);
-    const selectedLoaded = resources.some(item => item.reference.versionId === selected);
-    return <label data-parameter-field={name}>{label}
+    const selectedResource = resources.find(item => item.reference.versionId === selected);
+    const matchesFrozen = selectedResource && (!frozenReference || (
+      selectedResource.reference.semanticId === frozenReference.semanticId &&
+      selectedResource.reference.objectId === frozenReference.objectId &&
+      selectedResource.reference.checksum === frozenReference.checksum
+    ));
+    return <div data-parameter-field={name}><label>{label}
       <select disabled={resourceDisabled} value={selected} onChange={event => {
         const versionId = event.target.value;
         const reference = resources.find(item => item.reference.versionId === versionId)?.reference;
@@ -267,10 +276,20 @@ function SchemaField({ fieldKey, name, modelId, schema, value, originalValue, re
       }}>
         <option value="">选择数据版本</option>
         {original && !resources.some(item => item.reference.versionId === original) && <option value={original}>当前冻结版本 · {original}</option>}
-        {selected && selected !== original && !selectedLoaded && <option value={selected}>已选择版本 · {selected}</option>}
+        {selected && selected !== original && !selectedResource && <option value={selected}>已选择版本 · {selected}</option>}
         {resources.map(({ name, reference }) => <option key={reference.versionId} value={reference.versionId}>{name} · {reference.versionId}</option>)}
       </select>
-    </label>;
+    </label>
+      {selectedResource && matchesFrozen && <div className="selected-data-facts">
+        <strong>{selectedResource.name}</strong>
+        <p>时间范围 · {selectedResource.detail.semantics.timeRange ?? '未提供'}</p>
+        {selectedResource.detail.semantics.crs && <p>坐标参考系 · {selectedResource.detail.semantics.crs}</p>}
+        <details><summary>字段单位、缺测与样例</summary>
+          <DataFieldQuality descriptor={selectedResource.detail.descriptor} semantics={selectedResource.detail.semantics} />
+        </details>
+      </div>}
+      {selectedResource && !matchesFrozen && <p role="status">当前资料与已冻结版本不一致，请重新核对。</p>}
+    </div>;
   }
   if (schema.enum) return <label data-parameter-field={name}>{label}<select value={String(value ?? '')} onChange={event => onChange(event.target.value)}>{schema.enum.map(item => <option key={String(item)} value={String(item)}>{presentation.values?.[String(item)] ?? String(item)}</option>)}</select></label>;
   if (schema.type === 'number' || schema.type === 'integer') return <label data-parameter-field={name}>{label}<input type="number" min={schema.minimum} max={schema.maximum} step={schema.type === 'integer' ? 1 : 'any'} value={typeof value === 'number' ? value : ''} onChange={event => onChange(event.target.value === '' ? undefined : Number(event.target.value))} /><small>原值：{String(originalValue ?? '∅')}</small></label>;

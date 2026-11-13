@@ -6,32 +6,32 @@
   font-weight: 400;
   line-height: 1.65;
   color: #202633;
-  background: #eceef2;
-  --ink: #252a34;
-  --muted: #5f6977;
-  --accent: #4557c2;
-  --accent-hover: #3445aa;
-  --accent-soft: #eef0fb;
-  --border: #e4e7ed;
-  --paper: #ffffff;
-  --soft: #f7f8fa;
-  --warning: #865711;
-  --warning-soft: #fff8e9;
-  --error: #a03336;
-  --error-soft: #fff2f1;
+  background: var(--workspace-canvas);
+  --ink: var(--workspace-ink);
+  --muted: var(--workspace-muted);
+  --accent: var(--workspace-accent);
+  --accent-hover: var(--workspace-accent-active);
+  --accent-soft: var(--workspace-accent-soft);
+  --border: var(--workspace-line);
+  --paper: var(--workspace-surface);
+  --soft: var(--workspace-surface-soft);
+  --warning: var(--workspace-warning);
+  --warning-soft: var(--workspace-warning-soft);
+  --error: var(--workspace-error);
+  --error-soft: var(--workspace-error-soft);
   --danger: var(--error);
-  --success: #24705b;
-  --success-soft: #edf7f2;
+  --success: var(--workspace-success);
+  --success-soft: var(--workspace-success-soft);
   --surface: var(--paper);
   --surface-soft: var(--soft);
   --control-height: 36px;
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-6: 24px;
-  --radius-control: 6px;
-  --radius-panel: 10px;
+  --space-1: var(--workspace-space-1);
+  --space-2: var(--workspace-space-2);
+  --space-3: var(--workspace-space-3);
+  --space-4: var(--workspace-space-4);
+  --space-6: var(--workspace-space-6);
+  --radius-control: var(--workspace-radius-control);
+  --radius-panel: var(--workspace-radius-panel);
 }
 
 * { box-sizing: border-box; }
@@ -866,4 +866,24 @@ progress { width: 100%; height: 6px; border: 0; accent-color: var(--accent); }
   .workspace-panel.is-collapsed { display: flex; }
   .task-update-card { grid-template-columns: minmax(0, 1fr); }
   .task-update-card > button { grid-column: 1; grid-row: auto; justify-self: start; }
+}
+
+.current-confirmation { flex: 0 1 auto; min-height: 0; max-height: 52%; overflow: auto; padding: 0 var(--space-4); background: var(--paper); }
+.current-confirmation .confirmation-card { margin: var(--space-1) 0 var(--space-2); padding: var(--space-2) var(--space-3); }
+.current-confirmation .confirmation-card h3 { margin: var(--space-1) 0; }
+.current-confirmation .confirmation-summary { margin: var(--space-1) 0; }
+.current-confirmation .confirmation-key-facts { overflow-wrap: anywhere; }
+.current-confirmation .confirmation-key-facts p { margin: var(--space-1) 0; }
+.current-confirmation .confirmation-badges:empty { display: none; }
+.workspace-confirmation-summary button + button { margin-inline-start: var(--space-2); }
+
+.current-confirmation-skip:not(:focus) { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.current-confirmation-skip:focus { position: fixed; z-index: 60; inset: var(--space-2) auto auto var(--space-2); }
+.historical-confirmation { margin-block: var(--space-2); }
+.selected-data-facts p { margin-block: var(--space-1); }
+
+.current-confirmation .confirmation-card > .actions { position: sticky; bottom: 0; z-index: 1; padding-block: var(--space-1); background: var(--paper); }
+@media (max-width: 640px) {
+  .app-shell.has-session:not(.workspace-route) .workspace-panel.is-collapsed { display: none; }
+  .current-confirmation { padding-inline: var(--space-2); }
 }

@@ -122,7 +122,16 @@ def test_workflow_task_http_probe(kernel_settings, tmp_path, remote_status):
         ModelStep(output=[_final("已登记执行结果")]),
     ]
 
+    graph_requests = []
+    submitted_graph = {}
+
     def executor(request):
+        if request.url.path.endswith("/graph"):
+            graph_requests.append(request.url.path)
+            return httpx.Response(200, json={
+                **submitted_graph,
+                "nodes": [{"nodeId": "read", "dependsOn": []}, {"nodeId": "summarize", "dependsOn": ["read"]}],
+            })
         if request.url.path.endswith("/nodes"):
             diagnostics_requests.append(request.url.path)
             if diagnostic_mode == "down":
@@ -144,6 +153,7 @@ def test_workflow_task_http_probe(kernel_settings, tmp_path, remote_status):
         if request.method == "POST" and request.url.path.endswith("/jobs"):
             body = json.loads(request.content)
             submitted.append(body["requestId"])
+            submitted_graph.update({key: body[key] for key in ("requestId", "workflowId", "workflowVersion", "workflowChecksum")})
             return httpx.Response(202, json=_job(body["requestId"], "QUEUED"))
         if request.method == "GET" and submitted:
             return httpx.Response(
@@ -301,6 +311,17 @@ def test_workflow_task_http_probe(kernel_settings, tmp_path, remote_status):
             "errorCode": "WORKER_LOST" if remote_status == "FAILED" else None,
         }]}
         assert diagnostics_requests == [f"/internal/execution/v6/jobs/{final_workflow['remoteJobId']}/nodes"]
+        graph_path = f"{workflow_path}/graph"
+        probe("graph_wrong_project", "GET", graph_path, 404, params={"projectId": "other"})
+        assert not graph_requests
+        graph = probe("graph_final", "GET", graph_path, 200, params={"projectId": "p"})
+        assert graph == {"workflowRunId": workflow_id, "availability": "AVAILABLE", "nodes": [
+            {"nodeId": "read", "dependsOn": []}, {"nodeId": "summarize", "dependsOn": ["read"]},
+        ]}
+        submitted_graph["workflowChecksum"] = "sha256:" + "f" * 64
+        assert probe("graph_mismatch", "GET", graph_path, 200, params={"projectId": "p"}) == {
+            "workflowRunId": workflow_id, "availability": "UNAVAILABLE", "nodes": [],
+        }
         with connect_database(application.database) as connection:
             binding = connection.execute(
                 "SELECT target_digest FROM workflow_service_bindings WHERE workflow_run_id=?", (workflow_id,)

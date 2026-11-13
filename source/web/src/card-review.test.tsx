@@ -35,7 +35,7 @@ it('keeps every frozen scientific value visible across a batch and opens the exa
   expect(screen.queryByText(text => text.includes('"resourceId": "exact-input-version-3"'))).not.toBeInTheDocument();
   expect(screen.queryByText('模型身份与原始参数')).not.toBeInTheDocument();
   expect(screen.queryByText(approval.reason)).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: '确认执行' }));
+  fireEvent.click(screen.getByRole('button', { name: /^确认执行/ }));
   expect(onDecision).toHaveBeenCalledExactlyOnceWith('approval-review', 'confirm');
 });
 
@@ -48,7 +48,7 @@ it('does not request resource names for collapsed historical confirmations and r
   fireEvent.click(screen.getByText('查看本批次 2 项分析的资料与参数'));
   expect(await screen.findByRole('button', { name: /历史输入.csv · exact-input-version-3/ })).toBeVisible();
   expect(fetch.mock.calls.map(([url]) => url)).toEqual(['/api/v12/data/versions/exact-input-version-3']);
-  expect(screen.queryByRole('button', { name: '确认执行' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /^确认执行/ })).not.toBeInTheDocument();
 });
 
 it('explains a rejected verification batch and keeps a large transfer plan summarized and grouped', async () => {
@@ -94,7 +94,7 @@ it('explains a rejected verification batch and keeps a large transfer plan summa
   expect(screen.getByText('预训练 · 训练轮数')).toBeVisible();
   expect(screen.getByText('微调 · 训练轮数')).toBeVisible();
   expect(screen.queryByText('groundwater_systemsVersionId')).not.toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: '确认执行' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /^确认执行/ })).not.toBeInTheDocument();
 });
 
 it('keeps an unavailable input name explicit without guessing its name or version', async () => {
@@ -156,8 +156,8 @@ it('dispatches each result reuse action with the exact immutable reference', () 
   const result: Result = { goalRevision: 1, agentRunId: 'agent-1', toolCallId: 'tool-1', modelId: task.modelId, status: 'SUCCEEDED', workflowRunId: task.workflowRunId, remoteOutputs: [output] };
   const onAttach = vi.fn(), onContinue = vi.fn(), onCompare = vi.fn();
   render(<ResultCard task={task} result={result} project="demo" onResource={vi.fn()} onAttach={onAttach} onContinue={onContinue} onCompare={onCompare} />);
-  fireEvent.click(screen.getByRole('button', { name: '作为下一步输入' }));
-  fireEvent.click(screen.getByRole('button', { name: '在新对话中继续' }));
+  fireEvent.click(screen.getByRole('button', { name: '附加到当前草稿' }));
+  fireEvent.click(screen.getByRole('button', { name: '带成果打开新会话' }));
   fireEvent.click(screen.getByRole('button', { name: '与另一版本比较' }));
   expect(onAttach).toHaveBeenCalledExactlyOnceWith(output);
   expect(onContinue).toHaveBeenCalledExactlyOnceWith(output);

@@ -61,6 +61,19 @@ class NodeDiagnosticsResponse(CamelModel):
     nodes: list[dict[str, Any]]
 
 
+class JobGraphNode(CamelModel):
+    node_id: str
+    depends_on: list[str]
+
+
+class JobGraphResponse(CamelModel):
+    request_id: str
+    workflow_id: str
+    workflow_version: str
+    workflow_checksum: str
+    nodes: list[JobGraphNode]
+
+
 class WorkerIdentityV3(CamelModel):
     worker_id: str = Field(min_length=1)
     runtime: str = Field(min_length=1)

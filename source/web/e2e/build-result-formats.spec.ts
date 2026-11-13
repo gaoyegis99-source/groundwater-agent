@@ -140,7 +140,7 @@ test('published result actions preserve identity across the Groundwater output f
       await expect(panel.getByText(reference.objectId, { exact: true })).toBeVisible();
       await expect(preview(panel)).toBeVisible();
       const download = page.waitForEvent('download');
-      const downloadLink = output.getByRole('link', { name: '下载' });
+      const downloadLink = panel.locator('.result-route-actions').getByRole('link', { name: '下载' });
       const filename = `${reference.outputName}.${extensions[format] ?? format}`;
       await expect(downloadLink).toHaveAttribute('download', filename);
       await downloadLink.click();
@@ -149,14 +149,14 @@ test('published result actions preserve identity across the Groundwater output f
       const downloaded = await readFile((await receipt.path())!);
       expect(downloaded.length).toBe(bytes.length);
       expect(sha256(downloaded)).toBe(reference.checksum);
-      await output.getByRole('button', { name: '与另一版本比较' }).click();
+      await panel.getByRole('button', { name: '与另一版本比较' }).click();
       const compare = drawer.getByRole('combobox', { name: '比较版本' });
       await compare.selectOption(second.versionId);
       await expect(drawer.getByText(`${reference.semanticId} → ${second.semanticId}`)).toBeVisible();
       await expect(drawer.getByText(`${reference.checksum} → raw:${second.objects[0].checksum}`, { exact: false })).toBeVisible();
       await expect(drawer.getByText(`input-${format} → second-input-${format}`)).toBeVisible();
       await drawer.getByRole('button', { name: '关闭数据库' }).click();
-      await output.getByRole('button', { name: '作为下一步输入' }).click();
+      await panel.getByRole('button', { name: '附加到当前草稿' }).click();
       const pending = page.getByTestId('pending-attachments');
       await pending.getByText('附件版本详情').click();
       await expect(pending.getByText(reference.semanticId, { exact: true })).toBeVisible();

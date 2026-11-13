@@ -1,0 +1,25 @@
+:root {
+  --workspace-ink: #252a34;
+  --workspace-muted: #5f6977;
+  --workspace-canvas: #eceef2;
+  --workspace-surface: #fff;
+  --workspace-surface-soft: #f7f8fa;
+  --workspace-line: #e4e7ed;
+  --workspace-line-strong: #c8cdd8;
+  --workspace-accent: #4557c2;
+  --workspace-accent-active: #3445aa;
+  --workspace-accent-soft: #eef0fb;
+  --workspace-warning: #865711;
+  --workspace-warning-soft: #fff8e9;
+  --workspace-error: #a03336;
+  --workspace-error-soft: #fff2f1;
+  --workspace-success: #24705b;
+  --workspace-success-soft: #edf7f2;
+  --workspace-space-1: 4px;
+  --workspace-space-2: 8px;
+  --workspace-space-3: 12px;
+  --workspace-space-4: 16px;
+  --workspace-space-6: 24px;
+  --workspace-radius-control: 6px;
+  --workspace-radius-panel: 10px;
+}

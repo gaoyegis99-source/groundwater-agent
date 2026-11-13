@@ -159,13 +159,15 @@ test('production GeoTIFF maps render and probe the centre pixel in results and t
     releaseResults();
   }
 
-  await page.getByRole('button', { name: '数据库', exact: true }).click();
+  await resultMap.getByRole('tab', { name: /^数据/ }).click();
+  await resultMap.getByRole('button', { name: '打开数据库选择数据' }).click();
   const database = page.getByTestId('database-workbench');
   await database.getByRole('button', { name: /测试水头栅格/ }).click();
   await probeMap(database.getByRole('region', { name: '数据预览' }));
   await page.screenshot({ path: testInfo.outputPath('database-raster-probe.png') });
   await database.getByRole('button', { name: '关闭数据库' }).click();
-  await page.getByTestId('result-card').getByRole('button', { name: '与另一版本比较' }).click();
+  await resultMap.getByRole('tab', { name: /^成果/ }).click();
+  await resultMap.locator('.result-route-actions').getByRole('button', { name: '与另一版本比较' }).click();
   const comparison = database.getByRole('combobox', { name: '比较版本' });
   await expect(comparison.getByRole('option', { name: 'version-2' })).toHaveCount(1);
   await comparison.selectOption('version-2');
@@ -262,6 +264,6 @@ test('production chunks load the database and all chart types without loading ch
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('database-workbench')).toHaveCount(0);
   await page.setViewportSize({ width: 1440, height: 900 });
-  await expect(page.getByTestId('workspace-panel')).not.toHaveClass(/is-collapsed/);
+  await expect(page.getByTestId('workspace-panel')).toHaveClass(/is-collapsed/);
   expect(errors).toEqual([]);
 });

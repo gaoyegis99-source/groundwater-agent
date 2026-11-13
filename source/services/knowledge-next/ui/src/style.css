@@ -242,7 +242,8 @@ h4 { margin: 18px 0 8px; font-size: 14px; }
 .result-heading h3 { margin: 0; font-size: 18px; }
 .result-heading details { text-align: right; }
 .state-badge { padding: 4px 8px; background: var(--surface-soft); color: var(--muted); }
-.state-ok, .state-active, .state-succeeded { background: var(--accent-soft); color: var(--accent-dark); }
+.state-active { background: var(--accent-soft); color: var(--accent-dark); }
+.state-ok, .state-succeeded { background: var(--workspace-success-soft); color: var(--workspace-success); }
 .state-no_match, .state-partial, .state-retry_wait { background: #fff3dc; color: #8a5611; }
 .state-withdrawn, .state-failed { background: var(--danger-soft); color: var(--danger); }
 .state-queued, .state-validating, .state-indexing { background: #e9f1f7; color: #315f7d; }

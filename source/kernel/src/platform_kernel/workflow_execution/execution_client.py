@@ -106,3 +106,18 @@ class ExecutionClient:
             raise ExecutionClientError(error.problem.code) from error
         except (TransportError, ProtocolError, ValueError, TypeError) as error:
             raise ExecutionClientError(str(error)) from error
+
+
+    async def get_graph(
+        self, service: ServiceBinding, job_id: str,
+    ) -> executor_models.JobGraphResponse | None:
+        try:
+            return await AsyncExecutorClient(
+                service.internal_base_url, timeout=5, client=self.client,
+            ).get_graph(job_id)
+        except ApiProblem as error:
+            if error.problem.status == 404:
+                return None
+            raise ExecutionClientError(error.problem.code) from error
+        except (TransportError, ProtocolError) as error:
+            raise ExecutionClientError(str(error)) from error

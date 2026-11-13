@@ -1801,6 +1801,29 @@ class KernelWorkflowDraftResponse(BaseModel):
     status: str = Field(..., title='Status')
 
 
+class KernelWorkflowGraphNode(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    depends_on: list[str] = Field(..., alias='dependsOn', title='Dependson')
+    node_id: str = Field(..., alias='nodeId', title='Nodeid')
+
+
+class Availability(Enum):
+    not_dispatched = 'NOT_DISPATCHED'
+    unavailable = 'UNAVAILABLE'
+    available = 'AVAILABLE'
+
+
+class KernelWorkflowGraphResponse(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    availability: Availability = Field(..., title='Availability')
+    nodes: list[KernelWorkflowGraphNode] = Field(..., title='Nodes')
+    workflow_run_id: str = Field(..., alias='workflowRunId', title='Workflowrunid')
+
+
 class AttemptCount(RootModel[int]):
     root: int = Field(..., ge=0, title='Attemptcount')
 
@@ -1846,12 +1869,6 @@ class KernelWorkflowNodeDiagnostic(BaseModel):
     runtime: Runtime = Field(..., title='Runtime')
     started_at: AwareDatetime | None = Field(..., alias='startedAt', title='Startedat')
     status: Status4 = Field(..., title='Status')
-
-
-class Availability(Enum):
-    not_dispatched = 'NOT_DISPATCHED'
-    unavailable = 'UNAVAILABLE'
-    available = 'AVAILABLE'
 
 
 class KernelWorkflowNodeDiagnosticsResponse(BaseModel):

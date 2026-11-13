@@ -2341,6 +2341,60 @@
         "title": "WorkflowDraftResponse",
         "type": "object"
       },
+      "WorkflowGraphNode": {
+        "additionalProperties": false,
+        "properties": {
+          "dependsOn": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Dependson",
+            "type": "array"
+          },
+          "nodeId": {
+            "title": "Nodeid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "nodeId",
+          "dependsOn"
+        ],
+        "title": "WorkflowGraphNode",
+        "type": "object"
+      },
+      "WorkflowGraphResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "availability": {
+            "enum": [
+              "NOT_DISPATCHED",
+              "UNAVAILABLE",
+              "AVAILABLE"
+            ],
+            "title": "Availability",
+            "type": "string"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/WorkflowGraphNode"
+            },
+            "title": "Nodes",
+            "type": "array"
+          },
+          "workflowRunId": {
+            "title": "Workflowrunid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "workflowRunId",
+          "availability",
+          "nodes"
+        ],
+        "title": "WorkflowGraphResponse",
+        "type": "object"
+      },
       "WorkflowNodeDiagnostic": {
         "additionalProperties": false,
         "properties": {
@@ -5812,6 +5866,84 @@
           }
         },
         "summary": "Get Run"
+      }
+    },
+    "/api/v12/workflow-runs/{runId}/graph": {
+      "get": {
+        "operationId": "kernel_get_workflow_run_graph",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "runId",
+            "required": true,
+            "schema": {
+              "title": "Runid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "title": "Projectid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowGraphResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Graph"
       }
     },
     "/api/v12/workflow-runs/{runId}/nodes": {

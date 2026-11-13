@@ -39,3 +39,14 @@ class WorkflowNodeDiagnosticsResponse(CamelModel):
     workflow_run_id: str
     availability: Literal["NOT_DISPATCHED", "UNAVAILABLE", "AVAILABLE"]
     nodes: list[WorkflowNodeDiagnostic]
+
+
+class WorkflowGraphNode(CamelModel):
+    node_id: str
+    depends_on: list[str]
+
+
+class WorkflowGraphResponse(CamelModel):
+    workflow_run_id: str
+    availability: Literal["NOT_DISPATCHED", "UNAVAILABLE", "AVAILABLE"]
+    nodes: list[WorkflowGraphNode]

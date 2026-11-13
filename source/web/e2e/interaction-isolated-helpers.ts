@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { promisify } from 'node:util';
-import { expect, type Page } from '@playwright/test';
+import { expect, type APIResponse, type Page, type Request, type Route } from '@playwright/test';
 import type { Confirmation, ResourceReference, Session } from '../src/types';
 
 const run = promisify(execFile);
@@ -64,7 +64,35 @@ export async function isolatedInteractionClients(page: Page, baseURL: string | u
 
 type Clients = Awaited<ReturnType<typeof isolatedInteractionClients>>;
 
-export async function openSummaryProposal(page: Page, clients: Clients, marker: string) {
+export async function observeInteractionPost(page: Page, path: string, click: () => Promise<void>, loseReceipt = false) {
+  const matches = (request: Request) =>
+    new URL(request.url()).pathname === path && request.method() === 'POST';
+  if (!loseReceipt) {
+    const response = page.waitForResponse(item => matches(item.request()), { timeout: 40_000 });
+    await click();
+    const receipt = await response;
+    return { receipt, request: receipt.request() };
+  }
+  const url = (value: URL) => value.pathname === path;
+  let receipt: APIResponse | undefined;
+  const handler = async (route: Route) => {
+    if (!matches(route.request())) { await route.continue(); return; }
+    receipt = await route.fetch({ timeout: 30_000 });
+    await route.abort('connectionreset');
+  };
+  await page.route(url, handler);
+  try {
+    const failed = page.waitForEvent('requestfailed', { predicate: matches, timeout: 40_000 });
+    await click();
+    const request = await failed;
+    if (!receipt) throw new Error(`Gateway response not captured for ${path}`);
+    return { receipt, request };
+  } finally {
+    await page.unroute(url, handler);
+  }
+}
+
+export async function openSummaryProposal(page: Page, clients: Clients, marker: string, loseMessageReceipt = false) {
   const versionId = clients.inputVersion;
   const catalog = JSON.parse(await clients.cli('datasets', '--query', title));
   const dataset = (catalog.items as { title: string; currentVersion: string; datasetId: string }[])
@@ -87,18 +115,16 @@ export async function openSummaryProposal(page: Page, clients: Clients, marker: 
     tool: 'run_summary', arguments: args,
   })}`;
   await page.getByRole('textbox', { name: '消息输入框' }).fill(message);
-  const submitted = page.waitForResponse(response =>
-    new URL(response.url()).pathname === `/api/v12/sessions/${sessionId}/messages`
-      && response.request().method() === 'POST');
-  await page.getByRole('button', { name: '发送消息', exact: true }).click();
-  const response = await submitted;
+  const { receipt: response, request } = await observeInteractionPost(page, `/api/v12/sessions/${sessionId}/messages`,
+    () => page.getByRole('button', { name: '发送消息', exact: true }).click(), loseMessageReceipt);
   expect(response.status()).toBe(202);
-  const headers = await response.request().allHeaders();
+  const headers = await request.allHeaders();
   expect(Boolean(headers.authorization), 'browser must use the authenticated cookie').toBe(false);
   expect(Boolean(headers.cookie)).toBe(true);
   expect(Boolean(headers['x-csrf-token'])).toBe(true);
   const receipt = await response.json() as { goalRevision: number };
-  expect(response.request().postDataJSON().inputReferences).toMatchObject([{ versionId }]);
+  const { requestId, inputReferences } = request.postDataJSON();
+  expect(inputReferences).toMatchObject([{ versionId }]);
   await expect(page.getByTestId('confirm-execution')).toBeEnabled({ timeout: 60_000 });
 
   const status = JSON.parse(await clients.cli('--session', sessionId, 'status')) as InteractionSession;
@@ -109,7 +135,8 @@ export async function openSummaryProposal(page: Page, clients: Clients, marker: 
   expect(status.workflowRunIds).toEqual([]);
   expect(status.remoteOutputs).toEqual([]);
   const confirmation = status.confirmation as Confirmation;
-  const history = await clients.get<{ eventCursor: number }>(`/api/v12/sessions/${sessionId}/messages`);
+  const history = await clients.get<{ eventCursor: number; turns: { requestId: string }[] }>(`/api/v12/sessions/${sessionId}/messages`);
+  expect(history.turns.filter(turn => turn.requestId === requestId)).toHaveLength(1);
   return {
     sessionId, projectId, versionId, arguments: args, confirmation, confirmationId: confirmation.confirmationId,
     goalRevision: receipt.goalRevision, cursor: history.eventCursor,

@@ -202,7 +202,7 @@ it('creates one continuation session for duplicate clicks and permits an explici
     throw new Error(`unexpected endpoint ${url}`);
   }));
   render(<App />);
-  const continuation = await screen.findByRole('button', { name: '在新对话中继续' });
+  const continuation = await screen.findByRole('button', { name: '带成果打开新会话' });
   const input = screen.getByRole('textbox', { name: '消息输入框' });
   fireEvent.change(input, { target: { value: '保留当前会话草稿' } });
   act(() => { fireEvent.click(continuation); fireEvent.click(continuation); });
@@ -212,7 +212,7 @@ it('creates one continuation session for duplicate clicks and permits an explici
   await screen.findByRole('alert');
   expect(window.location.hash).toBe('#/sessions/session-1');
   expect(input).toHaveValue('保留当前会话草稿');
-  const retry = screen.getByRole('button', { name: '在新对话中继续' });
+  const retry = screen.getByRole('button', { name: '带成果打开新会话' });
   expect(retry).toBeEnabled();
   fireEvent.click(retry);
   await waitFor(() => expect(window.location.hash).toBe('#/sessions/continued-session'));

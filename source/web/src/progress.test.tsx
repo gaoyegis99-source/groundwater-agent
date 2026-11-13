@@ -224,13 +224,13 @@ it('submits a confirmation once during repeated activation and permits an explic
     return basics(url);
   }));
   render(<App />);
-  const confirm = await screen.findByRole('button', { name: '确认执行' });
+  const confirm = await screen.findByRole('button', { name: /^确认执行/ });
   fireEvent.click(confirm); fireEvent.click(confirm);
   await waitFor(() => expect(posts).toBe(1));
   await act(async () => pending.finish(new Response(JSON.stringify({ code: 'SERVICE_UNAVAILABLE' }), { status: 503 })));
-  fireEvent.click(await screen.findByRole('button', { name: '确认执行' }));
+  fireEvent.click(await screen.findByRole('button', { name: /^确认执行/ }));
   await waitFor(() => expect(posts).toBe(2));
-  await waitFor(() => expect(screen.queryByRole('button', { name: '确认执行' })).not.toBeInTheDocument());
+  await waitFor(() => expect(screen.queryByRole('button', { name: /^确认执行/ })).not.toBeInTheDocument());
 });
 
 it('installs history before SSE and slow details, and coalesces covered metadata events without extra GETs', async () => {
@@ -559,5 +559,5 @@ it('refreshes a recovered confirmation after the SSE connection reopens', async 
   await screen.findByText('失败恢复批次');
   expect(document.querySelector('[data-confirmation-id="recovered"]')).not.toBeNull();
   expect(reads).toBe(2);
-  expect(screen.getAllByRole('button', { name: '确认执行' })).toHaveLength(1);
+  expect(screen.getAllByRole('button', { name: /^确认执行/ })).toHaveLength(1);
 });

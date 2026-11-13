@@ -118,17 +118,17 @@ test('recovers an actual timed-out workflow across Web, TLI and SDK', async ({ p
   let follow!: Promise<{ output?: string; failure?: Error; seconds: number }>;
   try {
     await native.stop();
+    const confirmed = responseFor(path + '/confirm');
+    await page.getByTestId('confirm-execution').click();
+    const decision = await confirmed;
+    expect(decision.status()).toBe(202);
+    expect(decision.request().postDataJSON()).toEqual({ confirmationId });
     // The real session SSE endpoint closes each connection after 25 seconds.
     // Holding the Worker through the real 60-second deadline forces TLI to reconnect.
     const followingStarted = Date.now();
     follow = clients.cli('--session', sessionId, 'events', '--cursor', String(cursor), '--follow')
       .then(output => ({ output, seconds: (Date.now() - followingStarted) / 1000 }),
         (failure: Error) => ({ failure, seconds: (Date.now() - followingStarted) / 1000 }));
-    const confirmed = responseFor(path + '/confirm');
-    await page.getByTestId('confirm-execution').click();
-    const decision = await confirmed;
-    expect(decision.status()).toBe(202);
-    expect(decision.request().postDataJSON()).toEqual({ confirmationId });
     await expect.poll(async () => (await tasks())[0]?.status, {
       timeout: 110_000, intervals: [500, 1000],
     }).toBe('TIMED_OUT');
@@ -160,6 +160,7 @@ test('recovers an actual timed-out workflow across Web, TLI and SDK', async ({ p
   record('first-attempt', { nativeProject: native.project, task: failedTask, run: failedRun, cursor, followSeconds: firstFollow.seconds, firstEvents });
 
   const workspace = page.getByTestId('workspace-panel');
+  await page.getByRole('navigation', { name: '会话详情' }).getByRole('link', { name: '运行' }).click();
   const tasksTab = workspace.getByRole('tab', { name: '任务', exact: true });
   await tasksTab.click();
   const failedNodes = workspace.locator(`[data-execution-run-id="${failedTask.workflowRunId}"]`);
@@ -170,7 +171,7 @@ test('recovers an actual timed-out workflow across Web, TLI and SDK', async ({ p
   expect(originalDiagnostics.nodes).toEqual(expect.arrayContaining([
     expect.objectContaining({ status: 'CANCELLED', errorCode: 'JOB_DEADLINE_EXCEEDED', attemptCount: 0 }),
   ]));
-  const recover = workspace.getByRole('button', { name: '恢复最新未完成批次', exact: true });
+  const recover = workspace.getByRole('button', { name: '准备恢复未完成步骤', exact: true });
   await expect(recover).toBeEnabled();
   await expect(card(failedTask.workflowRunId).getByRole('link', { name: '下载', exact: true })).toHaveCount(0);
   await screenshot('02-timeout-visible');
@@ -196,8 +197,7 @@ test('recovers an actual timed-out workflow across Web, TLI and SDK', async ({ p
   await screenshot('03-recovery-confirmation');
 
   const recoveryCursor = (await history()).eventCursor;
-  const followingRecovery = clients.cli('--session', sessionId, 'events', '--cursor', String(recoveryCursor), '--follow')
-    .then(output => ({ output, failure: undefined }), (failure: Error) => ({ output: undefined, failure }));
+  expect(await clients.cli('--session', sessionId, 'events', '--cursor', String(recoveryCursor), '--follow')).toBe('');
   const sdkApproval = await clients.python<{ replayed: InteractionSession; confirmed: InteractionSession }>(`
 import json
 import os
@@ -221,6 +221,8 @@ with GroundwaterClient(origin, api_token=os.environ["GROUNDWATER_API_TOKEN"]) as
 `, sessionId, failedTask.workflowRunId, requestId, String(goalRevision), recovery.confirmationId);
   expect(sdkApproval.replayed.confirmation?.confirmationId).toBe(recovery.confirmationId);
   expect(sdkApproval.confirmed.sessionId).toBe(sessionId);
+  const followingRecovery = clients.cli('--session', sessionId, 'events', '--cursor', String(recoveryCursor), '--follow')
+    .then(output => ({ output, failure: undefined }), (failure: Error) => ({ output: undefined, failure }));
 
   await expect.poll(async () => (await tasks()).map(task => task.status), { timeout: 80_000 }).toEqual(['TIMED_OUT', 'SUCCEEDED']);
   const [retained, restored] = await tasks();
@@ -242,6 +244,8 @@ with GroundwaterClient(origin, api_token=os.environ["GROUNDWATER_API_TOKEN"]) as
     expect.objectContaining({ type: 'workflow.succeeded', data: expect.objectContaining({ workflowRunId: restored.workflowRunId }) }),
   ]));
   expect(resumedEvents.some(event => event.type === 'workflow.timed_out')).toBe(false);
+  const terminalCursor = (await history()).eventCursor;
+  expect(await clients.cli('--session', sessionId, 'events', '--cursor', String(terminalCursor), '--follow')).toBe('');
   writeFileSync(info.outputPath('tli-recovery-follow.sse'), recoveryFollow.output!);
 
   const finalCard = card(restored.workflowRunId);
@@ -263,7 +267,7 @@ with GroundwaterClient(origin, api_token=os.environ["GROUNDWATER_API_TOKEN"]) as
   await expect(finalCard).toHaveAttribute('data-status', 'SUCCEEDED');
   await expect(card(retained.workflowRunId)).toHaveAttribute('data-status', 'TIMED_OUT');
   await expect(page.getByTestId('confirm-execution')).toHaveCount(0);
-  await tasksTab.click();
+  await page.getByRole('navigation', { name: '会话详情' }).getByRole('link', { name: '运行' }).click();
   await expect(recover).toHaveCount(0);
   const restoredNodes = workspace.locator(`[data-execution-run-id="${restored.workflowRunId}"]`);
   await restoredNodes.getByText('节点详情', { exact: true }).click();
@@ -274,8 +278,15 @@ with GroundwaterClient(origin, api_token=os.environ["GROUNDWATER_API_TOKEN"]) as
     expect.objectContaining({ status: 'SUCCEEDED', errorCode: null, attemptCount: 1 }),
   ]));
   expect(await nodeDiagnostics(retained.workflowRunId)).toEqual(originalDiagnostics);
+  const graph = await clients.get<{ workflowRunId: string; availability: string; nodes: { nodeId: string; dependsOn: string[] }[] }>(
+    `/api/v12/workflow-runs/${restored.workflowRunId}/graph?projectId=${encodeURIComponent(projectId)}`,
+  );
+  expect(graph).toMatchObject({ workflowRunId: restored.workflowRunId, availability: 'AVAILABLE' });
+  expect(graph.nodes.map(node => node.nodeId).sort()).toEqual(restoredDiagnostics.nodes.map(node => node.nodeId).sort());
+  record('workflow-graph', graph);
   record('node-diagnostics', { original: originalDiagnostics, recovered: restoredDiagnostics });
   await screenshot('06-workflow-node-diagnostics');
+  await workspace.getByRole('button', { name: '返回对话' }).click();
   const resultPage = JSON.parse(await clients.cli('--session', sessionId, 'results')) as { items: Result[] };
   expect(resultPage.items).toHaveLength(1);
   const [outcome] = resultPage.items;

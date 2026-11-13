@@ -87,6 +87,65 @@
         "title": "HealthResponse",
         "type": "object"
       },
+      "JobGraphNode": {
+        "additionalProperties": false,
+        "properties": {
+          "dependsOn": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Dependson",
+            "type": "array"
+          },
+          "nodeId": {
+            "title": "Nodeid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "nodeId",
+          "dependsOn"
+        ],
+        "title": "JobGraphNode",
+        "type": "object"
+      },
+      "JobGraphResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/JobGraphNode"
+            },
+            "title": "Nodes",
+            "type": "array"
+          },
+          "requestId": {
+            "title": "Requestid",
+            "type": "string"
+          },
+          "workflowChecksum": {
+            "title": "Workflowchecksum",
+            "type": "string"
+          },
+          "workflowId": {
+            "title": "Workflowid",
+            "type": "string"
+          },
+          "workflowVersion": {
+            "title": "Workflowversion",
+            "type": "string"
+          }
+        },
+        "required": [
+          "requestId",
+          "workflowId",
+          "workflowVersion",
+          "workflowChecksum",
+          "nodes"
+        ],
+        "title": "JobGraphResponse",
+        "type": "object"
+      },
       "JobRequestBodyV6": {
         "additionalProperties": false,
         "properties": {
@@ -1109,6 +1168,85 @@
           }
         },
         "summary": "Cancel Job"
+      }
+    },
+    "/internal/execution/v6/jobs/{jobId}/graph": {
+      "get": {
+        "operationId": "executor_get_job_graph",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "jobId",
+            "required": true,
+            "schema": {
+              "title": "Jobid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobGraphResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Job Graph"
       }
     },
     "/internal/execution/v6/jobs/{jobId}/nodes": {

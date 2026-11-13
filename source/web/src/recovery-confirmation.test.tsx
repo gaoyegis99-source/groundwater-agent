@@ -22,11 +22,11 @@ describe('recovery confirmation after the original turn is terminal', () => {
     const decide = vi.fn();
     render(<ConfirmationCard confirmation={recovery} history={current()} busy={false} onDecision={decide} onResource={vi.fn()} project="demo" />);
     expect(screen.getByText('失败恢复批次')).toBeVisible();
-    expect(screen.getByRole('button', { name: '确认执行' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /^确认执行/ })).toBeEnabled();
     expect(screen.getByText('frozen-version')).toBeVisible();
     expect(screen.getByText('12')).toBeVisible();
     expect(decide).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: '确认执行' }));
+    fireEvent.click(screen.getByRole('button', { name: /^确认执行/ }));
     expect(decide).toHaveBeenCalledExactlyOnceWith('recovery-2', 'confirm');
   });
 

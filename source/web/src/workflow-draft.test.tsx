@@ -68,7 +68,7 @@ it('renders business steps, missing items and evidence without exposing raw grap
   expect(screen.getByText(/仅草稿，不可执行/)).toBeVisible();
   expect(screen.queryByText('冻结身份与原始 JSON')).not.toBeInTheDocument();
   expect(screen.queryByText('sha256:workflow')).not.toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: '确认执行' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /^确认执行/ })).not.toBeInTheDocument();
 });
 
 it('renders an accessible DAG with external inputs, missing callouts and expandable node facts', () => {

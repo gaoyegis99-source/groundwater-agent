@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { capabilitiesForProfile, dataDetail, dataRef, historyFixture, replyFixture, taskFixture, turnFixture } from '../src/test-fixtures';
+import { capabilitiesForProfile, dataDetail, dataRef, historyFixture, replyFixture, sessionResultsFixture, taskFixture, turnFixture } from '../src/test-fixtures';
 import type { Confirmation } from '../src/types';
 
 const profile = JSON.parse(
@@ -18,14 +18,15 @@ async function noHighImpactViolations(page: Page) {
   expect(violations, JSON.stringify(violations, null, 2)).toEqual([]);
 }
 
-async function mockApplication(page: Page, withSession = false, analysis?: string) {
-  const reference = dataRef({ outputName: 'summary', format: 'json', mediaType: 'application/json' });
+async function mockApplication(page: Page, withSession = false, analysis?: string, pendingRevision = false) {
+  const reference = dataRef({ outputName: pendingRevision ? '地下水监测观测井长周期水位与降水联合观测样本'.repeat(3) : 'summary',
+    format: 'json', mediaType: 'application/json' });
   const confirmation: Confirmation = {
     confirmationId: 'confirmation-1', goalRevision: 1, status: 'PENDING', agentRunId: 'agent-1',
     reason: '', decision: null, decisionState: null, revision: 1, kind: 'INITIAL',
     actions: [{
       toolCallId: 'tool-1', tool: 'run_summary', modelId: 'groundwater.summary', modelVersion: '1.0.0',
-      workflowId: 'groundwater.summary', workflowVersion: '1.0.0', arguments: { resourceId: 'version-1' },
+      workflowId: 'groundwater.summary', workflowVersion: '1.0.0', arguments: { resourceId: 'version-1', axis: 'columns' },
       inputReferences: { resource: reference },
     }],
   };
@@ -33,7 +34,11 @@ async function mockApplication(page: Page, withSession = false, analysis?: strin
   const history = historyFixture({
     sessionId: 'application-session', goalRevision: 1,
     items: [{ messageId: 1, goalRevision: 1, role: 'user', content: '应用可访问性检查' }],
-    turns: [turnFixture({ goalRevision: 1, status: analysis ? 'COMPLETE' : 'WAITING_EXECUTION', confirmations: [confirmation], executionTasks: [task], ...(analysis ? { reply: replyFixture(analysis) } : {}) })],
+    turns: pendingRevision ? [turnFixture({ goalRevision: 1, status: 'WAITING_CONFIRMATION', confirmations: [
+      { ...confirmation, status: 'SUPERSEDED' },
+      { ...confirmation, confirmationId: 'confirmation-2', revision: 2, kind: 'EDITED', replacesConfirmationId: 'confirmation-1',
+        actions: confirmation.actions.map(action => ({ ...action, arguments: { ...action.arguments, axis: 'flatten' } })) },
+    ] })] : [turnFixture({ goalRevision: 1, status: analysis ? 'COMPLETE' : 'WAITING_EXECUTION', confirmations: [confirmation], executionTasks: [task], ...(analysis ? { reply: replyFixture(analysis) } : {}) })],
   });
   await page.route('**/product-ui.json', route => route.fulfill({ json: profile }));
   await page.route('**/product-icon.svg', route => route.fulfill({
@@ -64,7 +69,7 @@ async function mockApplication(page: Page, withSession = false, analysis?: strin
       }] : [], nextCursor: null,
     });
     if (url.pathname.endsWith('/messages')) return reply(history);
-    if (url.pathname.endsWith('/results')) return reply({
+    if (url.pathname.endsWith('/results')) return reply(pendingRevision ? sessionResultsFixture([], {sessionId: 'application-session'}) : {
       items: [{ goalRevision: 1, agentRunId: 'agent-1', toolCallId: 'tool-1', modelId: 'groundwater.summary', status: 'SUCCEEDED', workflowRunId: task.workflowRunId, remoteOutputs: [reference] }],
       nextCursor: null,
     });
@@ -162,4 +167,52 @@ test('upload, database, confirmation and result surfaces have no serious accessi
   });
   await expect(page.getByRole('dialog', { name: '添加资料' })).toBeVisible();
   await noHighImpactViolations(page);
+});
+
+for (const viewport of [
+  { width: 1440, height: 900 }, { width: 1366, height: 768 },
+  { width: 720, height: 450 }, // CSS viewport equivalent of 1440×900 at 200% zoom.
+  { width: 390, height: 844 }, { width: 320, height: 720 },
+]) {
+  test(`current revision is actionable and reachable with the keyboard at ${viewport.width}px`, async ({ page }, info) => {
+    await page.setViewportSize(viewport);
+    await mockApplication(page, true, undefined, true);
+    await page.goto('/#/sessions/application-session');
+    const confirm = page.getByRole('button', { name: '确认执行修订 2', exact: true });
+    await expect(confirm).toBeInViewport();
+    await expect(confirm).toBeEnabled();
+    expect(await confirm.evaluate(node => {
+      const bounds = node.getBoundingClientRect();
+      return node.contains(document.elementFromPoint(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2));
+    })).toBe(true);
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('button', { name: '查看当前确认', exact: true }).first()).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#current-confirmation')).toBeFocused();
+    await expect(page.getByText('历史修订 1 · 已被替代')).toBeVisible();
+    await expect(page.getByTestId('confirm-execution')).toHaveCount(1);
+    await page.screenshot({ path: info.outputPath('current-confirmation.png') });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  });
+}
+
+
+test('session workbench routes have distinct pages and keep the conversation draft', async ({ page }, info) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockApplication(page, true, undefined, true);
+  await page.goto('/#/sessions/application-session');
+  const composer = page.locator('textarea').first();
+  await composer.fill('保留的研究草稿');
+  await page.getByRole('navigation', { name: '会话详情' }).getByRole('link', { name: '参数' }).click();
+  await expect(page).toHaveURL(/workbench\/parameters$/);
+  await expect(page.getByRole('heading', { name: '参数', exact: true })).toBeVisible();
+  await expect(composer).toBeHidden();
+  await page.screenshot({ path: info.outputPath('parameters-route.png') });
+  await page.getByRole('tab', { name: '成果', exact: true }).click();
+  await expect(page).toHaveURL(/workbench\/results$/);
+  await page.reload();
+  await expect(page.getByRole('heading', { name: '成果', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '返回对话', exact: true }).click();
+  await expect(page).toHaveURL(/#\/sessions\/application-session$/);
+  await expect(composer).toHaveValue('保留的研究草稿');
 });

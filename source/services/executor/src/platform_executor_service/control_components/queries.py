@@ -95,6 +95,27 @@ class ExecutionQueries(ControlComponent):
     def ready(self) -> bool:
         return all(value == "UP" for value in self.runtime_statuses().values())
 
+    def job_graph(self, job_id: str) -> dict:
+        with connect_database(self.database) as connection:
+            job = connection.execute(
+                """SELECT request_id, request_json, workflow_id, workflow_version, workflow_checksum
+                   FROM executor_jobs WHERE job_id = ?""", (job_id,)
+            ).fetchone()
+            if job is None or json.loads(job["request_json"])["project_id"] != self.project_id:
+                raise JobNotFoundError("JOB_NOT_FOUND")
+            rows = connection.execute(
+                "SELECT node_id, dependencies_json FROM job_nodes WHERE job_id = ? ORDER BY node_id",
+                (job_id,),
+            ).fetchall()
+            return {
+                "requestId": job["request_id"], "workflowId": job["workflow_id"],
+                "workflowVersion": job["workflow_version"], "workflowChecksum": job["workflow_checksum"],
+                "nodes": [
+                    {"nodeId": row["node_id"], "dependsOn": json.loads(row["dependencies_json"])}
+                    for row in rows
+                ],
+            }
+
     def node_diagnostics(self, job_id: str) -> list[dict]:
         with connect_database(self.database) as connection:
             job = connection.execute(
