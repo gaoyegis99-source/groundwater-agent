@@ -1,7 +1,8 @@
-# Groundwater V6 活动计划索引
+# Groundwater V6 工程计划归档
 
-当前唯一活动计划包是 [`01_SYSTEM_ENGINEERING/`](01_SYSTEM_ENGINEERING/README.md)。
+系统级工程完善计划已结项。原进度台账记录了 14 项已通过的任务，涵盖架构边界、Agent 运行机制、Data 与 Knowledge、Workflow 与 Executor、Web 工作台、测试与性能。验收结果对应当时的源码和环境。
 
-计划用于组织待办，不是产品事实源。产品选择、接口版本和运行行为以当前源码、产品清单、领域清单与测试结果为准。历史计划、进度日志和验证报告保留在 [清理前的历史计划目录](https://github.com/gaoyegis99-source/groundwater-agent/tree/19175f592697999b895d6d3ebdb25c6d06d39455/plans)及仓库历史中，不得复制回活动计划目录。
+- [系统工程任务卡、验收矩阵与进度台账](https://github.com/gaoyegis99-source/groundwater-agent/tree/3968bc43f5a341dfb03066dc5aa4c4d49de182cd/plans/01_SYSTEM_ENGINEERING)
+- [更早的计划、审计与验证报告](https://github.com/gaoyegis99-source/groundwater-agent/tree/19175f592697999b895d6d3ebdb25c6d06d39455/plans)
 
-`plans/` 只允许本索引和 `01_SYSTEM_ENGINEERING/`。历史报告与证据应写入 XDG state，运行载荷应写入 XDG data。
+现行开发和验收入口见[执行手册](../source/docs/operations/execution-playbook.md)。本地验收日志放在 XDG state，运行数据放在 XDG data。

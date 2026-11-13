@@ -82,6 +82,20 @@ def test_activity_plan_rejects_tracked_or_untracked_extras(tmp_path: Path) -> No
     ]
 
 
+def test_plan_archive_requires_a_regular_index(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    source.mkdir()
+    plans = tmp_path / "plans"
+    plans.mkdir()
+    assert MODULE._activity_plan_violations(source) == [
+        "../plans/README.md: PLAN_ARCHIVE_INDEX_INVALID"
+    ]
+    (plans / "README.md").symlink_to(source)
+    assert MODULE._activity_plan_violations(source) == [
+        "../plans/README.md: PLAN_ARCHIVE_INDEX_INVALID"
+    ]
+
+
 def test_workspace_scan_allows_the_enclosing_project_but_rejects_a_sibling(
     tmp_path: Path,
 ) -> None:
