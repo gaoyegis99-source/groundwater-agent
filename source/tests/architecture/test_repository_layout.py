@@ -285,6 +285,7 @@ def test_capsule_images_build_only_from_local_context() -> None:
             allowed_roots.add("services/data/client")
         if capsule == ROOT / "services" / "executor":
             allowed_roots.add("services/data/client")
+            allowed_roots.add("packages/workflow-compiler")
         assert all(
             source.rstrip("/") in allowed_roots
             or any(source.startswith(root + "/") for root in allowed_roots)
