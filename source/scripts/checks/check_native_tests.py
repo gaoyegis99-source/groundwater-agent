@@ -141,6 +141,7 @@ def main() -> int:
                     str(ROOT / path)
                     for path in (
                         "packages/protocol-contracts",
+                        "packages/workflow-compiler",
                         "services/data/client",
                         "services/executor",
                         "packages/operator-pack",

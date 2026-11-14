@@ -1,9 +1,10 @@
+from datetime import date
 from typing import Annotated, Any, Literal
 
 from pydantic import Field, model_validator
 from platform_protocol_contracts import CamelModel, reject_snake_wire
 
-from ..models import BeginPublication, Model, Preview, Query as DataQuery, Semantics
+from ..models import BeginPublication, Model, Preview, Query as DataQuery, Semantics, SpatialExtent
 
 
 class ToolActor(CamelModel):
@@ -37,8 +38,17 @@ class DiscoveryRequest(StrictWireModel, Model):
     formats: list[str] = Field(default_factory=list, max_length=20)
     field_terms: list[str] = Field(default_factory=list, max_length=20)
     units: list[str] = Field(default_factory=list, max_length=20)
+    quantity_kinds: list[Annotated[str, Field(pattern=r"^[a-z][a-z0-9_.-]{0,127}$")]] = Field(default_factory=list, max_length=20)
+    time_window: tuple[date, date] | None = None
+    spatial_extent: SpatialExtent | None = None
     after: str | None = Field(default=None, pattern=r"^[0-9]+$")
     limit: int = Field(default=20, ge=1, le=100)
+
+    @model_validator(mode="after")
+    def ordered_time_window(self):
+        if self.time_window and self.time_window[0] > self.time_window[1]:
+            raise ValueError("time window must be ordered")
+        return self
 
 
 class BeginPublicationRequest(StrictWireModel, BeginPublication):

@@ -10,7 +10,7 @@ from typing import Any
 from agents import FunctionTool
 
 from ...errors import AgentRunError
-from ...tool_progress import control_tool_outcome
+from ...tool_progress import builtin_progress_definition, control_tool_outcome, validate_builtin_progress_intent
 from ..evidence import _data_reference
 from ..governance import (
     advance_from_discovery,
@@ -27,6 +27,21 @@ from .replies import (
     _has_evidence_references, _record_read_evidence,
     _record_retrieved_evidence,
 )
+
+
+def _pending_exact_evidence(control: dict[str, Any]) -> bool:
+    read = {tuple(identity) for identity in control["knowledge_evidence"]}
+    return any(
+        tuple(identity) not in read
+        for identity in control.get("knowledge_exact_candidates", [])
+    )
+
+
+def _proposal_evidence_read_enabled(context, agent) -> bool:
+    control = governance(context.context)
+    return read_tool_enabled(context, agent) or (
+        control["phase"] == "PROPOSAL" and _pending_exact_evidence(control)
+    )
 
 
 def _control_result(
@@ -55,8 +70,8 @@ def _prepare_tools(
             tool.is_enabled = non_submit_enabled
         if tool.name in read_names:
             tool.is_enabled = (
-                evidence_read_enabled
-                if converge_evidence and tool.name == "read_evidence"
+                (evidence_read_enabled if converge_evidence else _proposal_evidence_read_enabled)
+                if tool.name == "read_evidence"
                 else (
                     (
                         _knowledge_backed_preparation_enabled
@@ -113,9 +128,9 @@ def _govern_read_tool(
     async def governed(context, arguments_json: str):
         control = governance(context.context)
         if control["phase"] != "DISCOVERY" and not (
-            converge_evidence
-            and name == "read_evidence"
+            name == "read_evidence"
             and control["phase"] == "PROPOSAL"
+            and (converge_evidence or _pending_exact_evidence(control))
         ) and not (
             name == "prepare_task_inputs"
             and control["phase"] == "PROPOSAL"
@@ -180,9 +195,14 @@ def _govern_read_tool(
             )
         control["read_tool_count"] += 1
         try:
+            if builtin_progress_definition(name) is not None:
+                validate_builtin_progress_intent(
+                    name, arguments.get("progress_intent") if isinstance(arguments, dict) else None,
+                )
             result = await invoke(context, arguments_json)
         except AgentRunError as error:
             diagnostics = error.diagnostics or {}
+            progress_invalid = diagnostics.get("reason") in {"PROGRESS_INTENT_INVALID", "PROGRESS_INTENT_MISMATCH"}
             observation_arguments_invalid = diagnostics.get("reason") in {
                 "OBSERVATION_ARGUMENTS_JSON_INVALID",
                 "OBSERVATION_ARGUMENTS_INVALID",
@@ -199,14 +219,14 @@ def _govern_read_tool(
                     "OPERATOR_UNKNOWN",
                 }
             )
-            if observation_arguments_invalid or catalog_arguments_invalid:
+            if progress_invalid or observation_arguments_invalid or catalog_arguments_invalid:
                 control["read_tool_count"] -= 1
                 if _repair_current_provider_batch(database, context, control):
                     return _control_result(
                         "RETRY_REQUIRED",
                         "control.retry_required",
                         **diagnostics,
-                        instruction=_schema_repair_instruction(name, diagnostics),
+                        instruction=_schema_repair_instruction(name, diagnostics, tool.params_json_schema),
                     )
             raise
         data = result.get("data") if isinstance(result, dict) else None
@@ -239,11 +259,15 @@ def _govern_read_tool(
                     control["finalization_reason"] = None
         elif name in {"retrieve_evidence", "lookup_knowledge"}:
             _record_retrieved_evidence(control, result)
-            if converge_evidence and _has_evidence_references(data):
+            if (
+                converge_evidence
+                and len(control["data_evidence"]) <= 1
+                and _has_evidence_references(data)
+            ):
                 # A read-only answer needs the full immutable evidence next.
-                # Once retrieval has produced references, hide all browsing
-                # tools except read_evidence so one final request remains for
-                # submit_reply.
+                # For a single source, reserve the remaining requests for
+                # reading and replying. Several inspected versions may each
+                # need a separate bound retrieval before the combined read.
                 control["phase"] = "PROPOSAL"
                 control["finalizing"] = False
                 control["finalization_pending"] = False
@@ -283,8 +307,17 @@ def _repair_current_provider_batch(
     )
 
 
-def _schema_repair_instruction(name: str, diagnostics: dict[str, Any]) -> str:
+def _schema_repair_instruction(name: str, diagnostics: dict[str, Any], schema: dict | None = None) -> str:
     reason = diagnostics.get("reason")
+    if reason in {"PROGRESS_INTENT_INVALID", "PROGRESS_INTENT_MISMATCH"}:
+        progress = (schema or {}).get("properties", {}).get("progress_intent", {}).get("properties", {})
+        capability = progress.get("capability", {}).get("const")
+        template = progress.get("template_key", {}).get("const")
+        return (
+            f"Call {name} once more with the same operation arguments and a progress_intent object "
+            f'with capability="{capability}", template_key="{template}", and a short objective '
+            "without a prefix or trailing punctuation."
+        )
     if name == "get_operator" and reason in {
         "OPERATOR_ID_INVALID",
         "OPERATOR_VERSION_INVALID",
@@ -323,6 +356,15 @@ def _schema_repair_instruction(name: str, diagnostics: dict[str, Any]) -> str:
         )
     issues = diagnostics.get("issues")
     if name == "discover_datasets" and isinstance(issues, list):
+        if any(
+            isinstance(issue, dict) and issue.get("path") in {"/spatial_extent", "/time_window"}
+            for issue in issues
+        ):
+            return (
+                "Call discover_datasets once more. Omit spatial_extent and time_window "
+                "unless the user needs those filters. A time_window needs two ISO dates "
+                "and a spatial_extent needs both crs and bbox."
+            )
         if any(
             isinstance(issue, dict) and issue.get("path") == "/after"
             for issue in issues

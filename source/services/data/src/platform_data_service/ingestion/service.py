@@ -9,6 +9,7 @@ from ..errors import DataProblemError
 from ..models import BeginPublication, Metrics
 from .field_profile import TableFieldProfiler
 from .json_validation import validate_json
+from .raster import inspect_raster
 
 
 def prepare(payload, store, settings, work):
@@ -31,6 +32,11 @@ def prepare(payload, store, settings, work):
             "quality": {"scope": "not_inspected"},
         }
         with store.open(raw) as source:
+            if output.format in {"geotiff", "cog"}:
+                raster = inspect_raster(store.path(raw), raw["checksum"])
+                if raster is not None:
+                    descriptor["raster"] = raster
+                    descriptor["quality"] = {"scope": "metadata", "checks": ["raster_header"]}
             if output.format == "json":
                 validate_json(
                     source,

@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 from platform_protocol_contracts import ToolOutcome, to_camel
-from ..models import Semantics
+from ..models import Semantics, SpatialExtent
 
 
 class Response(BaseModel):
@@ -325,6 +325,8 @@ class DiscoveryField(BaseModel):
     name: str
     meaning: str
     unit: str | None
+    quantity_kind: str | None = None
+    role: str | None = None
 
 
 class DiscoveryReason(BaseModel):
@@ -334,6 +336,12 @@ class DiscoveryReason(BaseModel):
     kind: str
     term: str | None = None
     values: list[str] | None = None
+
+
+class DiscoveryQuality(Response):
+    quality_run_id: str
+    suite_version_id: str
+    status: Literal["PASSED", "PASSED_WITH_WARNINGS", "FAILED", "ERROR"]
 
 
 class DiscoveryItem(BaseModel):
@@ -350,6 +358,9 @@ class DiscoveryItem(BaseModel):
     grain: str | None
     time_range: str | None
     crs: str | None
+    vertical_datum: str | None = None
+    spatial_extent: SpatialExtent | None = None
+    quality: DiscoveryQuality | None = None
     matched_fields: list[DiscoveryField]
     score: int
     match_reasons: list[DiscoveryReason]

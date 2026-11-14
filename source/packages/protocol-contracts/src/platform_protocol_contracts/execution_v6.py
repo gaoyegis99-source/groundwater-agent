@@ -127,6 +127,7 @@ class JobRequestV6:
     input_references: Mapping[str, DataVersionRefV2]
     deadline_at: str
     traceparent: str | None = None
+    composition: Mapping[str, object] | None = None
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -145,6 +146,7 @@ class JobRequestV6:
                 for name, reference in self.input_references.items()
             },
             "deadlineAt": self.deadline_at,
+            **({"composition": dict(self.composition)} if self.composition is not None else {}),
         }
 
     def as_storage_dict(self) -> dict[str, object]:
@@ -163,6 +165,8 @@ class JobRequestV6:
         }
         if self.traceparent is not None:
             value["traceparent"] = self.traceparent
+        if self.composition is not None:
+            value["composition"] = dict(self.composition)
         return value
 
     @classmethod
@@ -172,8 +176,13 @@ class JobRequestV6:
             "workflowId", "workflowVersion", "workflowChecksum", "executorId",
             "arguments", "inputReferences", "deadlineAt",
         }
-        if set(value) != required:
+        if set(value) - {"composition"} != required:
             raise ValueError("JOB_REQUEST_INVALID")
+        composition = value.get("composition")
+        if "composition" in value and not isinstance(composition, dict):
+            raise ValueError("JOB_REQUEST_INVALID")
+        if composition is not None:
+            _validate_json(composition, "JOB_REQUEST_INVALID")
         for field_name in required - {"arguments", "inputReferences"}:
             _require_string(value[field_name], "JOB_REQUEST_INVALID")
         for field_name in ("modelChecksum", "workflowChecksum"):
@@ -208,6 +217,7 @@ class JobRequestV6:
                 name: DataVersionRefV2.from_dict(ref) for name, ref in references.items()
             },
             deadline_at=deadline,
+            composition=composition,
         )
 
     @classmethod
@@ -220,11 +230,9 @@ class JobRequestV6:
             "workflow_checksum": "workflowChecksum", "executor_id": "executorId",
             "arguments": "arguments", "input_references": "inputReferences",
             "deadline_at": "deadlineAt",
+            "composition": "composition",
         }
-        if frozenset(value) not in {
-            frozenset(keys),
-            frozenset(keys) | {"traceparent"},
-        }:
+        if set(value) - {"traceparent", "composition"} != keys.keys() - {"composition"}:
             raise ValueError("JOB_REQUEST_INVALID")
         traceparent = value.get("traceparent")
         if traceparent is not None and not isinstance(traceparent, str):

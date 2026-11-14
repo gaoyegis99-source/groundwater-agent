@@ -9,6 +9,9 @@ from uuid import uuid4
 
 from jsonschema import Draft202012Validator, ValidationError
 from platform_protocol_contracts import parse_traceparent, trace_context_for_id
+from platform_workflow_compiler import WorkflowValidationError
+from platform_workflow_compiler.composition.execution import ArtifactComposition, execution_arguments, raster_input_facts
+from platform_workflow_compiler.graph import input_members
 
 from ..contracts import JobRequestV6, JobStatusV6, canonical_json
 from ..database import connect_database, utc_now
@@ -17,6 +20,26 @@ from .shared import ControlComponent
 
 
 class AdmissionControl(ControlComponent):
+    def __init__(self, context):
+        super().__init__(context)
+        profile = self.config.get("workflowComposition")
+        self.composition = None if profile is None else ArtifactComposition.from_config(profile)
+
+    def _composed_model(self, request: JobRequestV6) -> dict:
+        if self.composition is None:
+            raise ExecutionServiceError("COMPOSITION_EXECUTION_UNSUPPORTED")
+        definition = dict(request.composition)
+        try:
+            model, _ = self.composition.compile(definition, request.project_id)
+        except WorkflowValidationError as error:
+            raise ExecutionServiceError(error.code) from error
+        arguments, references = execution_arguments(definition)
+        if arguments != request.arguments or references != {
+            name: ref.as_dict() for name, ref in request.input_references.items()
+        }:
+            raise ExecutionServiceError("COMPOSITION_INPUT_MISMATCH")
+        return model
+
     def submit(
         self, request: JobRequestV6, traceparent: str | None = None
     ) -> JobStatusV6:
@@ -26,12 +49,17 @@ class AdmissionControl(ControlComponent):
         request = replace(request, traceparent=traceparent)
         if request.project_id != self.project_id:
             raise ExecutionServiceError("PROJECT_MISMATCH")
-        model = self.models.get((request.model_id, request.model_version))
+        model = (
+            self._composed_model(request) if request.composition is not None
+            else self.models.get((request.model_id, request.model_version))
+        )
         if model is None:
             raise ExecutionServiceError("MODEL_NOT_CONFIGURED")
         workflow = model["workflow"]
         if (
-            request.model_checksum != model["modelChecksum"]
+            request.model_id != model["modelId"]
+            or request.model_version != model["version"]
+            or request.model_checksum != model["modelChecksum"]
             or request.workflow_id != workflow["workflowId"]
             or request.workflow_version != workflow["version"]
             or request.workflow_checksum != workflow["definitionChecksum"]
@@ -141,7 +169,7 @@ class AdmissionControl(ControlComponent):
                 dependencies = sorted(
                     {
                         binding["nodeOutput"]["nodeId"]
-                        for binding in node["inputs"].values()
+                        for source in node["inputs"].values() for binding in input_members(source)
                         if "nodeOutput" in binding
                     }
                 )
@@ -217,6 +245,14 @@ class AdmissionControl(ControlComponent):
             )
             try:
                 contract = contracts[input_name]
+                if request.composition is not None:
+                    frozen = request.composition["inputs"][input_name]
+                    if metadata.get("semantic_checksum") != frozen["dataRef"]["semanticChecksum"]:
+                        raise ExecutionServiceError("COMPOSITION_SEMANTIC_REVISION_MISMATCH")
+                    if frozen["port"]["logicalType"] == "raster" and frozen["facts"] != raster_input_facts(
+                        metadata.get("raster_descriptor"), frozen["dataRef"],
+                    ):
+                        raise ExecutionServiceError("RASTER_INPUT_FACTS_MISMATCH")
                 if {
                     "mediaType": metadata["media_type"], "format": metadata["format"]
                 } not in contract["formatPairs"]:

@@ -3,7 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 
 from .formats import _port_pairs
-from .graph import _compile_workflow, compile_workflow
+from .graph import _compile_workflow, input_members
 from .validation import (
     DIGEST,
     GRAPH_SCHEMA,
@@ -118,6 +118,7 @@ def compile_draft(
     graph: object, catalog: dict[tuple[str, str], dict], *, workflow_id: str,
     operator_catalog_digest: str, parameter_values: object, parameter_sources: object,
     data_bindings: object, version: str = "0.1.0",
+    collection_operators: dict[tuple[str, str], dict] | None = None,
 ) -> dict:
     """Freeze a validated definition and supplied facts; never execute or install it."""
     require_json({
@@ -137,7 +138,7 @@ def compile_draft(
     parameter_nodes = _draft_parameter_nodes(raw, catalog)
     if parameter_nodes is None:
         try:
-            compile_workflow(raw, catalog)
+            _compile_workflow(raw, catalog, collection_operators=collection_operators)
         except WorkflowValidationError as error:
             raise WorkflowValidationError(error.code, "/graph" + error.path) from error
         raise AssertionError("validated workflow parameter bindings were not available")
@@ -167,7 +168,7 @@ def compile_draft(
         _validate_node_parameters(node, parameter_values, index)
     try:
         workflow = _compile_workflow(
-            raw, catalog, parameter_values=parameter_values
+            raw, catalog, parameter_values=parameter_values, collection_operators=collection_operators,
         )
     except WorkflowValidationError as error:
         raise WorkflowValidationError(error.code, "/graph" + error.path) from error
@@ -181,7 +182,8 @@ def compile_draft(
     inputs = {item["name"]: item for item in workflow["inputs"]}
     used_inputs = {
         binding["workflowInput"] for node in workflow["nodes"]
-        for binding in node["inputs"].values() if "workflowInput" in binding
+        for source in node["inputs"].values() for binding in input_members(source)
+        if "workflowInput" in binding
     }
     if set(inputs) != used_inputs:
         raise WorkflowValidationError("DRAFT_INPUT_UNBOUND", "/graph/inputs")
@@ -197,7 +199,7 @@ def compile_draft(
             "required_by": [
                 {"node_id": node["nodeId"], "port": port}
                 for node in workflow["nodes"] for port, binding in node["inputs"].items()
-                if binding.get("workflowInput") == name
+                if any(member.get("workflowInput") == name for member in input_members(binding))
             ],
         }
         for name in inputs if name not in bindings

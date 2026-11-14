@@ -1,0 +1,214 @@
+{
+  "schemaVersion": "domain-knowledge.v2",
+  "contentVersion": "1.1.0",
+  "language": "zh-CN",
+  "sources": [
+    {
+      "sourceId": "groundwater-6-2-porous-model-cards",
+      "kind": "DOMAIN_DEFINITION",
+      "title": "Groundwater 6.2.0 porous-model-cards",
+      "publisher": "Groundwater Platform",
+      "url": null,
+      "version": "6.2.0",
+      "publishedAt": "2026-11-14",
+      "accessedAt": null,
+      "reviewAfter": "2027-11-14",
+      "validThrough": null,
+      "lifecycleStatus": "ACTIVE"
+    }
+  ],
+  "documents": [
+    {
+      "knowledgeId": "gw-model-card-porous-simulation",
+      "title": "孔隙型流与运移仿真",
+      "summary": "计算水头、浓度并发布分析与图件。",
+      "chunks": [
+        {
+          "content": "groundwater.porous-simulation@1.0.0，工具 run_porous_simulation。计算水头、浓度并发布分析与图件。选择已发布的 Data 输入版本，经用户确认执行。运行凭据记录服务版本、任务标识及成果校验值。现场科学等价待验证。",
+          "sourceRefs": [
+            "groundwater-6-2-porous-model-cards"
+          ],
+          "locator": {
+            "section": "模型适用范围"
+          }
+        }
+      ],
+      "modelRef": {
+        "modelId": "groundwater.porous-simulation",
+        "version": "1.0.0",
+        "checksum": "sha256:7caf98b1ebf785d71f93eb1665b9c6e047a8707815f669c8885be9656d29f856"
+      },
+      "aliases": [
+        "run_porous_simulation"
+      ]
+    },
+    {
+      "knowledgeId": "gw-model-card-porous-calibration",
+      "title": "孔隙型 PEST 水头率定",
+      "summary": "用原生 PEST 拟合给定水头观测和全局参数倍率，随后用率定模型重新执行仿真。",
+      "chunks": [
+        {
+          "content": "groundwater.porous-calibration@1.0.0，工具 run_porous_pest_calibration。用原生 PEST 拟合给定水头观测和全局参数倍率，随后用率定模型重新执行仿真。选择已发布的 Data 输入版本，经用户确认执行。运行凭据记录服务版本、任务标识及成果校验值。现场科学等价待验证。",
+          "sourceRefs": [
+            "groundwater-6-2-porous-model-cards"
+          ],
+          "locator": {
+            "section": "模型适用范围"
+          }
+        }
+      ],
+      "modelRef": {
+        "modelId": "groundwater.porous-calibration",
+        "version": "1.0.0",
+        "checksum": "sha256:7abcb95817db7db8e9c20396e0f55782006b24e7ffaf012110346440372898b4"
+      },
+      "aliases": [
+        "run_porous_pest_calibration"
+      ]
+    },
+    {
+      "knowledgeId": "gw-model-card-porous-scenario-comparison",
+      "title": "孔隙型情景对比",
+      "summary": "以固定模型为基准，计算声明的各个参数情景并汇总差异。",
+      "chunks": [
+        {
+          "content": "groundwater.porous-scenario-comparison@1.0.0，工具 run_porous_scenario_compare。以固定模型为基准，计算声明的各个参数情景并汇总差异。选择已发布的 Data 输入版本，经用户确认执行。运行凭据记录服务版本、任务标识及成果校验值。现场科学等价待验证。",
+          "sourceRefs": [
+            "groundwater-6-2-porous-model-cards"
+          ],
+          "locator": {
+            "section": "模型适用范围"
+          }
+        }
+      ],
+      "modelRef": {
+        "modelId": "groundwater.porous-scenario-comparison",
+        "version": "1.0.0",
+        "checksum": "sha256:6274a3cde35704b8a88896e5051e0942e69900ec8a5820fbd13f8e3ef2feb8f7"
+      },
+      "aliases": [
+        "run_porous_scenario_compare"
+      ]
+    },
+    {
+      "knowledgeId": "gw-model-card-porous-map",
+      "title": "孔隙型栅格地图准备",
+      "summary": "校验并整理本地 GeoTIFF，发布栅格与坐标参考系信息。",
+      "chunks": [
+        {
+          "content": "groundwater.porous-map@1.0.0，工具 run_porous_map_prepare。校验并整理本地 GeoTIFF，发布栅格与坐标参考系信息。选择已发布的 Data 输入版本，经用户确认执行。运行凭据记录服务版本、任务标识及成果校验值。现场科学等价待验证。",
+          "sourceRefs": [
+            "groundwater-6-2-porous-model-cards"
+          ],
+          "locator": {
+            "section": "模型适用范围"
+          }
+        }
+      ],
+      "modelRef": {
+        "modelId": "groundwater.porous-map",
+        "version": "1.0.0",
+        "checksum": "sha256:3d511a3eae8e79a39029064997b643d9d04ecf085a4725af86c67ccbdfddb06b"
+      },
+      "aliases": [
+        "run_porous_map_prepare"
+      ]
+    },
+    {
+      "knowledgeId": "gw-model-card-porous-inversion-training",
+      "title": "孔隙型反演训练",
+      "summary": "用同批水头、地表形变与参数场训练条件扩散反演模型。",
+      "chunks": [
+        {
+          "content": "groundwater.porous-inversion-training@1.0.0，工具 run_porous_inversion_train。用同批水头、地表形变与参数场训练条件扩散反演模型。选择已发布的 Data 输入版本，经用户确认执行。运行凭据记录服务版本、任务标识及成果校验值。现场科学等价待验证。",
+          "sourceRefs": [
+            "groundwater-6-2-porous-model-cards"
+          ],
+          "locator": {
+            "section": "模型适用范围"
+          }
+        }
+      ],
+      "modelRef": {
+        "modelId": "groundwater.porous-inversion-training",
+        "version": "1.0.0",
+        "checksum": "sha256:59373130cb1d942661066f2e2a2f0c4fa5c18b13ba8a077c861aa277f45f06eb"
+      },
+      "aliases": [
+        "run_porous_inversion_train"
+      ]
+    },
+    {
+      "knowledgeId": "gw-model-card-porous-inversion-sampling",
+      "title": "孔隙型反演采样",
+      "summary": "用已训练权重和明确观测条件采样参数场后验。",
+      "chunks": [
+        {
+          "content": "groundwater.porous-inversion-sampling@1.0.0，工具 run_porous_inversion_sample。用已训练权重和明确观测条件采样参数场后验。选择已发布的 Data 输入版本，经用户确认执行。运行凭据记录服务版本、任务标识及成果校验值。现场科学等价待验证。",
+          "sourceRefs": [
+            "groundwater-6-2-porous-model-cards"
+          ],
+          "locator": {
+            "section": "模型适用范围"
+          }
+        }
+      ],
+      "modelRef": {
+        "modelId": "groundwater.porous-inversion-sampling",
+        "version": "1.0.0",
+        "checksum": "sha256:04239793564e3b006c627b6e3839c0d260aa861b4235cfceee35151462d69b4b"
+      },
+      "aliases": [
+        "run_porous_inversion_sample"
+      ]
+    },
+    {
+      "knowledgeId": "gw-model-card-porous-agricultural-inversion",
+      "title": "孔隙型农业抽水反演",
+      "summary": "以明确的农业抽水记录和监测水头计算响应矩阵，分期率定并独立验证。",
+      "chunks": [
+        {
+          "content": "groundwater.porous-agricultural-inversion@1.0.0，工具 run_porous_agri_inversion。以明确的农业抽水记录和监测水头计算响应矩阵，分期率定并独立验证。选择已发布的 Data 输入版本，经用户确认执行。运行凭据记录服务版本、任务标识及成果校验值。现场科学等价待验证。",
+          "sourceRefs": [
+            "groundwater-6-2-porous-model-cards"
+          ],
+          "locator": {
+            "section": "模型适用范围"
+          }
+        }
+      ],
+      "modelRef": {
+        "modelId": "groundwater.porous-agricultural-inversion",
+        "version": "1.0.0",
+        "checksum": "sha256:527d5bd118801f76675a05019c053d5d1180f05304e360209e29181e6efb9f72"
+      },
+      "aliases": [
+        "run_porous_agri_inversion"
+      ]
+    },
+    {
+      "knowledgeId": "gw-model-card-sustainability-input-preparation",
+      "title": "水源地评价输入准备",
+      "summary": "汇总模拟、监测及管理资料，核对同一区域、时段和指标口径，生成候选评价输入与字段来源报告。",
+      "chunks": [
+        {
+          "content": "groundwater.sustainability-input-preparation@1.0.0，工具 prepare_source_sustainability。汇总模拟、监测及管理资料，核对同一区域、时段和指标口径，生成候选评价输入与字段来源报告。选择已发布的 Data 输入版本，经用户确认执行。运行凭据记录服务版本、任务标识及成果校验值。现场科学等价待验证。",
+          "sourceRefs": [
+            "groundwater-6-2-porous-model-cards"
+          ],
+          "locator": {
+            "section": "模型适用范围"
+          }
+        }
+      ],
+      "modelRef": {
+        "modelId": "groundwater.sustainability-input-preparation",
+        "version": "1.0.0",
+        "checksum": "sha256:baade9048f5a9e791ea8ec39b58b24b764e4905cfac6ab708982310e9291998a"
+      },
+      "aliases": [
+        "prepare_source_sustainability"
+      ]
+    }
+  ]
+}

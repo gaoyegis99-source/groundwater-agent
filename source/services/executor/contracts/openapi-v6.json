@@ -203,6 +203,18 @@
             "title": "Arguments",
             "type": "object"
           },
+          "composition": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Composition"
+          },
           "deadlineAt": {
             "title": "Deadlineat",
             "type": "string"

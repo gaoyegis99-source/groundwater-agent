@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from platform_workflow_compiler.composition.execution import TOOL
 
 from ..application.query_dtos import ConfirmedAction
 from ..database import begin_immediate, connect_database
@@ -183,6 +184,11 @@ async def reject_run(
             raise ValueError("AGENT_REJECTION_ACTIONS_INVALID")
         if pending:
             return run
+    if run.actions and all(action.tool == TOOL for action in run.actions):
+        stored = claim_state(deps.database, run, expected_status="WAITING_CONFIRMATION", reject_pending=True)
+        if stored is None:
+            return get_run(deps.database, agent_run_id, project_id)
+        return finalize_rejection(deps, get_run(deps.database, agent_run_id, project_id))
     return await resume_run(
         deps,
         agent_run_id,
@@ -217,6 +223,8 @@ async def resume_run(
     run = get_run(deps.database, agent_run_id, project_id)
     if run.status != expected_status:
         return run
+    if expected_status == "WAITING_EXECUTION" and run.actions and all(action.tool == TOOL for action in run.actions):
+        return finalize_completed_execution(deps, run)
     case_state = kernel_case_state(deps.database, agent_run_id)
     if expected_status == "WAITING_EXECUTION" and case_state is not None:
         return finalize_case_execution(deps, run)
@@ -233,7 +241,7 @@ async def resume_run(
         )
         if stored is None:
             return get_run(deps.database, agent_run_id, project_id)
-        return finalize_kernel_case_rejection(
+        return finalize_rejection(
             deps, get_run(deps.database, agent_run_id, project_id)
         )
     if (
@@ -286,10 +294,10 @@ async def resume_run(
     return record_result(deps, agent_run_id, execution)
 
 
-def finalize_kernel_case_rejection(
+def finalize_rejection(
     deps: RunDependencies, run: AgentRun,
 ) -> AgentRun:
-    """Finish a rejected deterministic case without restoring an SDK RunState."""
+    """Finish a rejected Kernel-owned proposal without restoring an SDK RunState."""
     rejected = [action for action in run.actions if action.status == "REJECTED"]
     if not rejected or len(rejected) != len(run.actions):
         raise ValueError("KERNEL_CASE_REJECTION_INVALID")
@@ -315,6 +323,6 @@ def finalize_kernel_case_rejection(
         output=output,
         usage=UsageDelta(0, 0, 0),
         error=None,
-        continuation_stop="KERNEL_CASE_REJECTED",
+        continuation_stop="COMPOSITION_REJECTED" if rejected[0].tool == TOOL else "KERNEL_CASE_REJECTED",
     )
     return get_run(deps.database, run.agent_run_id)

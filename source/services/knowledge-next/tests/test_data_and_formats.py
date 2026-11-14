@@ -1,3 +1,4 @@
+import importlib.util
 import json
 from pathlib import Path
 
@@ -102,6 +103,53 @@ def test_current_domain_documents_convert_without_loss():
         for document in json.loads(path.read_text())["documents"]
     )
     assert (docs, units) == (expected_docs, expected_units)
+
+
+def test_evaluator_submits_domain_bundle_as_sdk_wire_model():
+    path = Path(__file__).resolve().parents[1] / "scripts/evaluate.py"
+    spec = importlib.util.spec_from_file_location("knowledge_evaluator", path)
+    evaluator = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(evaluator)
+    repository = Path(__file__).resolve().parents[3]
+    domain = evaluator.load_selected_product_by_id(repository, "groundwater").domain
+    package_path = domain.root / domain.manifest["knowledgeDocuments"][0]
+
+    class Client:
+        def submit_import(self, request):
+            assert request.project_id == "audit"
+            assert request.documents[0].units[0].content
+            return evaluator.models.ImportResponse.model_validate({
+                "importId": "import-1", "state": "QUEUED", "dataAttempts": 0,
+                "actor": {}, "lastError": None, "nextRetryAt": None, "retryDeadline": None,
+            })
+
+    assert evaluator.submit_domain_package(Client(), package_path, "audit") == "import-1"
+
+
+def test_domain_conversion_preserves_classification_and_context():
+    from scripts.development.product_selection import load_selected_product_by_id
+
+    repository = Path(__file__).resolve().parents[3]
+    domain = load_selected_product_by_id(repository, "groundwater").domain
+    body = domain.definitions["knowledge/model-cards.v1.json"]
+    package = convert_domain_package(body, project="local-data", idempotency_key="metadata")
+    by_id = {document.knowledge_id: document for document in package.documents}
+    trend = by_id["gw-model-card-monitoring-trend"]
+    assert trend.model_id == "groundwater.monitoring-trend"
+    assert trend.model_version == "3.1.0"
+    assert trend.model_checksum.startswith("sha256:")
+    assert "监测趋势" in trend.aliases
+    assert by_id["gw-model-card-render-map"].units[1].required_units == ["chunk-0"]
+    assert trend.units[0].locator == {"section": "模型与适用任务"}
+
+    body = domain.definitions["knowledge/groundwater-statistical-methods.v1.json"]
+    methods = convert_domain_package(body, project="local-data", idempotency_key="methods")
+    assert {document.knowledge_id for document in methods.documents} >= {
+        "gw-method-sen-slope", "gw-method-pettitt"
+    }
+    assert len(methods.documents) == 10
+    assert all(document.kind in {"definition", "method"} and len(document.units) == 1
+               for document in methods.documents)
 
 
 @pytest.mark.parametrize(

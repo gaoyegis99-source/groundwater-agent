@@ -10,6 +10,8 @@ import shutil
 import stat
 from threading import RLock
 
+from platform_workflow_compiler.graph import input_members
+
 from .database import utc_now
 from .errors import ExecutionServiceError
 
@@ -32,39 +34,40 @@ class ArtifactStore:
         with self._publication_lock:
             yield
 
-    def input_snapshot(self, connection, node) -> dict[str, dict]:
-        inputs = {}
-        for port, binding in json.loads(node["input_bindings_json"]).items():
-            if "workflowInput" in binding:
-                row = connection.execute(
-                    "SELECT o.* FROM job_object_pins p JOIN content_objects o ON o.checksum=p.checksum WHERE p.job_id=? AND p.purpose=?",
-                    (node["job_id"], f"workflow-input:{binding['workflowInput']}"),
-                ).fetchone()
-                if row is None:
-                    raise ExecutionServiceError("CHECKPOINT_MISSING")
-                media_type, format_id, execution_metadata = self.workflow_input_metadata(
-                    connection, node["job_id"], binding["workflowInput"], row
-                )
-                inputs[port] = {
-                    "checksum": row["checksum"],
-                    "size_bytes": row["size_bytes"],
-                    "media_type": media_type,
-                    "format": format_id,
-                    "execution_metadata": execution_metadata,
-                }
-            else:
-                ref = binding["nodeOutput"]
-                upstream = connection.execute(
-                    "SELECT outputs_json FROM job_nodes WHERE job_id=? AND node_id=?",
-                    (node["job_id"], ref["nodeId"]),
-                ).fetchone()
-                outputs = {
-                    item["port"]: item for item in json.loads(upstream["outputs_json"])
-                }
-                if ref["port"] not in outputs:
-                    raise ExecutionServiceError("CHECKPOINT_MISSING")
-                inputs[port] = outputs[ref["port"]]
-        return inputs
+    def input_snapshot(self, connection, node) -> dict[str, list[dict]]:
+        return {
+            port: [self._input_object(connection, node, member) for member in input_members(binding)]
+            for port, binding in json.loads(node["input_bindings_json"]).items()
+        }
+
+    def _input_object(self, connection, node, binding) -> dict:
+        if "workflowInput" in binding:
+            row = connection.execute(
+                "SELECT o.* FROM job_object_pins p JOIN content_objects o ON o.checksum=p.checksum WHERE p.job_id=? AND p.purpose=?",
+                (node["job_id"], f"workflow-input:{binding['workflowInput']}"),
+            ).fetchone()
+            if row is None:
+                raise ExecutionServiceError("CHECKPOINT_MISSING")
+            media_type, format_id, execution_metadata = self.workflow_input_metadata(
+                connection, node["job_id"], binding["workflowInput"], row
+            )
+            return {
+                "checksum": row["checksum"],
+                "size_bytes": row["size_bytes"],
+                "media_type": media_type,
+                "format": format_id,
+                "execution_metadata": execution_metadata,
+            }
+        ref = binding["nodeOutput"]
+        upstream = connection.execute(
+            "SELECT outputs_json FROM job_nodes WHERE job_id=? AND node_id=?",
+            (node["job_id"], ref["nodeId"]),
+        ).fetchone()
+        if upstream is not None and upstream["outputs_json"] is not None:
+            for item in json.loads(upstream["outputs_json"]):
+                if item["port"] == ref["port"]:
+                    return item
+        raise ExecutionServiceError("CHECKPOINT_MISSING")
 
     @staticmethod
     def workflow_input_metadata_purpose(name: str, item: dict) -> str:
@@ -103,40 +106,49 @@ class ArtifactStore:
             raise ExecutionServiceError("CHECKPOINT_MISSING")
         return facts["media_type"], facts["format"], facts["execution_metadata"]
 
-    def prepare_workspace(self, inputs: dict[str, dict], workspace: Path) -> None:
+    def prepare_workspace(self, inputs: dict[str, list[dict]], workspace: Path) -> None:
         (workspace / "inputs").mkdir(parents=True)
         (workspace / "outputs").mkdir()
-        for port, item in inputs.items():
-            digest, size = hashlib.sha256(), 0
-            try:
-                with (
-                    self.object_path(item["checksum"]).open("rb") as source,
-                    (workspace / "inputs" / port).open("xb") as target,
-                ):
-                    while chunk := source.read(1024 * 1024):
-                        digest.update(chunk)
-                        size += len(chunk)
-                        target.write(chunk)
-            except FileNotFoundError as error:
-                raise ExecutionServiceError("CHECKPOINT_MISSING") from error
-            if (
-                size != item["size_bytes"]
-                or "sha256:" + digest.hexdigest() != item["checksum"]
-            ):
-                raise ExecutionServiceError("CHECKPOINT_MISSING")
+        for port, members in inputs.items():
+            for index, item in enumerate(members):
+                self._copy_input(item, self._input_path(workspace, port, index, len(members)))
 
     @staticmethod
-    def workspace_inputs(inputs: dict[str, dict], workspace: Path) -> dict:
+    def _input_path(workspace: Path, port: str, index: int, count: int) -> Path:
+        return workspace / "inputs" / (port if count == 1 else f"{port}:{index}")
+
+    def _copy_input(self, item: dict, path: Path) -> None:
+        digest, size = hashlib.sha256(), 0
+        try:
+            with (
+                self.object_path(item["checksum"]).open("rb") as source,
+                path.open("xb") as target,
+            ):
+                while chunk := source.read(1024 * 1024):
+                    digest.update(chunk)
+                    size += len(chunk)
+                    target.write(chunk)
+        except FileNotFoundError as error:
+            raise ExecutionServiceError("CHECKPOINT_MISSING") from error
+        if (
+            size != item["size_bytes"]
+            or "sha256:" + digest.hexdigest() != item["checksum"]
+        ):
+            raise ExecutionServiceError("CHECKPOINT_MISSING")
+
+    @staticmethod
+    def workspace_inputs(inputs: dict[str, list[dict]], workspace: Path) -> dict:
         return {
             port: [
                 {
-                    "path": str(workspace / "inputs" / port),
+                    "path": str(ArtifactStore._input_path(workspace, port, index, len(members))),
                     "mediaType": item["media_type"],
                     "format": item["format"],
                     "metadata": item.get("execution_metadata", {}),
                 }
+                for index, item in enumerate(members)
             ]
-            for port, item in inputs.items()
+            for port, members in inputs.items()
         }
 
     def stage_outputs(

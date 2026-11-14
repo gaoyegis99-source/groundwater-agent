@@ -1,0 +1,54 @@
+{
+  "schemaVersion": "workflow.v6",
+  "workflowId": "groundwater.porous-map",
+  "version": "1.0.0",
+  "inputs": [
+    {
+      "name": "map_input",
+      "cardinality": "one",
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "formats": [
+        "geotiff"
+      ]
+    }
+  ],
+  "parameters": [],
+  "nodes": [
+    {
+      "nodeId": "execute",
+      "operatorId": "groundwater.porous.map_prepare",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "map_input": {
+          "workflowInput": "map_input"
+        }
+      },
+      "parameters": {}
+    }
+  ],
+  "outputs": [
+    {
+      "name": "porous-map-raster",
+      "nodeOutput": {
+        "nodeId": "execute",
+        "port": "geospatial_output"
+      }
+    },
+    {
+      "name": "porous-map-crs",
+      "nodeOutput": {
+        "nodeId": "execute",
+        "port": "crs_attribution_metadata"
+      }
+    },
+    {
+      "name": "porous-map-receipt",
+      "nodeOutput": {
+        "nodeId": "execute",
+        "port": "run_receipt"
+      }
+    }
+  ]
+}

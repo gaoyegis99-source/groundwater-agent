@@ -53,9 +53,8 @@ def run(inputs: dict[str, Any], parameters: dict[str, Any], output_dir: Path) ->
                         dataset.read(band, window=window, masked=True)
                         for dataset in datasets
                     ]
-                    values = np.stack(
-                        [np.asarray(array.filled(np.nan), dtype=np.float64) for array in arrays]
-                    )
+                    values = np.stack([array.astype(np.float64).filled(np.nan) for array in arrays])
+                    values[~np.isfinite(values)] = np.nan
                     count = np.sum(np.isfinite(values), axis=0)
                     with np.errstate(invalid="ignore", divide="ignore"):
                         calculated = _calculate(values, statistic)

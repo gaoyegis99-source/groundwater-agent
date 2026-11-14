@@ -66,7 +66,7 @@ class LeaseControl(ControlComponent):
                     raise
                 self._fail_node(connection, node["job_id"], node["node_id"], str(error))
                 return None
-            for item in inputs.values():
+            for item in (item for members in inputs.values() for item in members):
                 connection.execute(
                     "INSERT OR IGNORE INTO job_object_pins(job_id,checksum,purpose) VALUES (?,?,?)",
                     (node["job_id"], item["checksum"], purpose),

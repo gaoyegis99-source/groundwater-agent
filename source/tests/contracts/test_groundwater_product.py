@@ -83,9 +83,9 @@ def test_data_observations_accept_exact_version_identity_and_lineage():
 def test_groundwater_v11_domain_upgrades_models_and_preserves_workflow_identity(
     tmp_path,
 ):
-    after = load_domain(ROOT / "domains/groundwater/6.1.0")
+    after = load_domain(ROOT / "domains/groundwater/6.2.0")
     assert (after.identity["domainId"], after.identity["version"]) == (
-        "groundwater", "6.1.0",
+        "groundwater", "6.2.0",
     )
     assert len(after.manifest["executableModels"]) == 18
     for name in after.manifest["executableModels"]:

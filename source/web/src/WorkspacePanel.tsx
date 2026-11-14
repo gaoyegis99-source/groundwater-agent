@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ApiError, contentUrl, errorCodeMessage, readDataVersion } from './api';
-import { agentTokenUsageLabel, canConfirm, statusLabel, taskLabel } from './chat-state';
+import { agentTokenUsageLabel, canConfirm, isComposedConfirmation, statusLabel, taskLabel } from './chat-state';
 import { ArgumentValue, argumentLabel, modelName, outputName, resourceTitle } from './card-presentation';
 import { resultDownloadName } from './ChatCards';
 import { productUi } from './product-ui';
@@ -174,7 +174,7 @@ export function WorkspacePanel({ history, results, resultsRead = { status: 'load
   const latestConfirmation = turn?.confirmations.at(-1);
   const pendingConfirmation = latestConfirmation && latestConfirmation.agentRunId === turn?.agentRunId
     && canConfirm(latestConfirmation, history, false) ? latestConfirmation : null;
-  const editing = confirmations.find(item => item.confirmationId === editingConfirmationId) ?? null;
+  const editing = confirmations.find(item => item.confirmationId === editingConfirmationId && !isComposedConfirmation(item)) ?? null;
   const attached = uniqueReferences(history?.items.filter(item => item.role === 'user').flatMap(item => item.inputReferences ?? []) ?? []);
   const frozen = uniqueReferences(confirmations.flatMap(item => item.actions.flatMap(action => Object.values(action.inputReferences ?? {}))));
   const preparationEntries = history?.preparation?.entries ?? [];
@@ -391,9 +391,10 @@ export function WorkspacePanel({ history, results, resultsRead = { status: 'load
       {tab === 'inputs' && <div role="tabpanel" tabIndex={0} aria-labelledby="workspace-tab-inputs" id="workspace-inputs">{history?.preparation && <PreparationDetails history={history} dataAvailable={dataAvailable} onData={openDatabase} onVersion={openInput} onUseCurrentVersion={onUseCurrentVersion} onParameter={onResolveParameter} />}{renderReferences('待发送', pendingInputs, true)}{renderReferences('已附加', attached)}{renderReferences('已准备', prepared)}{renderReferences('已冻结', frozen)}{!pendingInputs.length && !attached.length && !prepared.length && !frozen.length && unresolved.length > 0 && <div className="workspace-attention"><strong>需要补充</strong>{unresolved.map((item, index) => <p key={index}>{item}</p>)}</div>}{dataAvailable && <button className="primary" onClick={() => openDatabase()}>打开数据库选择数据</button>}</div>}
       {tab === 'parameters' && <div role="tabpanel" tabIndex={0} aria-labelledby="workspace-tab-parameters" id="workspace-parameters">{editing && capabilities ? <ConfirmationEditor confirmation={editing} stale={editing.confirmationId !== pendingConfirmation?.confirmationId} capabilities={capabilities} project={project} busy={busy || confirmationWriteDisabled} focusField={confirmationFocus?.field} suggestedValue={confirmationFocus?.value} onClose={onEditClose} onSave={actions => onRevision(editing, actions)} /> : <section className="workspace-section"><h3>参数批次</h3>{history?.preparation && preparationEntries.some(entry => Object.keys(entry.parameters).length > 0) && <details open><summary>准备参数 · {!history.preparation.freshForCurrentTurn ? '需要本轮重新核验' : history.preparation.status === 'READY' ? '已通过合同检查' : '存在阻塞'}</summary>{preparationEntries.map((entry, entryIndex) => <div key={`${entry.targetId}/${entryIndex}`}><strong>{modelName(entry.targetId)}</strong><dl>{Object.entries(entry.parameters).map(([name, value]) => <div key={name}><dt>{name}</dt><dd>{JSON.stringify(value)} · {entry.parameterSources[name] ?? '来源未记录'}</dd></div>)}</dl></div>)}</details>}{pendingConfirmation && <div className="workspace-confirmation-summary">
           <strong>待确认 · 修订 {pendingConfirmation.revision ?? 1}</strong>
-          <p>{pendingConfirmation.actions.map(action => modelName(action.modelId)).join('、')}</p>
+          <p>{isComposedConfirmation(pendingConfirmation) ? '组合工作流' : pendingConfirmation.actions.map(action => modelName(action.modelId)).join('、')}</p>
           {onCurrentConfirmation && <button onClick={onCurrentConfirmation}>查看当前确认</button>}
-          <button disabled={busy || confirmationWriteDisabled} onClick={() => onEdit(pendingConfirmation.confirmationId)}>编辑当前参数</button>
+          {isComposedConfirmation(pendingConfirmation) ? <p>调整资料或参数时，请在对话中生成新草稿。</p>
+            : <button disabled={busy || confirmationWriteDisabled} onClick={() => onEdit(pendingConfirmation.confirmationId)}>编辑当前参数</button>}
         </div>}
         {confirmations.some(item => item.confirmationId !== pendingConfirmation?.confirmationId) && <details>
           <summary>历史批次</summary>

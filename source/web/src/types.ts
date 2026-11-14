@@ -213,13 +213,15 @@ export interface ResourceReference {
   semanticId: string; objectId: string; checksum: string; outputName?: string;
   mediaType: string; format: string; sizeBytes: number;
 }
+type SingleWorkflowInputBinding = { workflowInput: string } | { nodeOutput: { nodeId: string; port: string } };
+
 export interface WorkflowDefinition {
   schemaVersion: 'workflow.v6'; workflowId: string; version: string;
   inputs: { name: string; cardinality: 'one'; mediaTypes: string[]; formats: string[] }[];
   parameters: string[];
   nodes: {
     nodeId: string; operatorId: string; operatorVersion: string;
-    inputs: Record<string, { workflowInput: string } | { nodeOutput: { nodeId: string; port: string } }>;
+    inputs: Record<string, SingleWorkflowInputBinding | { collection: SingleWorkflowInputBinding[] }>;
     parameters: Record<string, { workflowParameter: string }>;
   }[];
   outputs: { name: string; nodeOutput: { nodeId: string; port: string } }[];
@@ -233,7 +235,8 @@ export interface WorkflowDraftPayload {
   dataBindings: { inputName: string; dataRef: ResourceReference }[];
   missingInputs: { kind: 'DATA' | 'PARAMETER'; name: string; requiredBy: { nodeId: string; port: string }[] }[];
   knowledgeRefs: KnowledgeReference[]; unresolvedItems: string[]; limitations: string[];
-  executionAllowed: false;
+  executionAllowed: boolean;
+  compositionCheck?: { status: 'VALIDATED' | 'INCOMPLETE' | 'INVALID'; code?: string; path?: string };
 }
 export interface WorkflowValidationDiagnostics {
   kind: 'WORKFLOW_VALIDATION'; code: string; path: string;

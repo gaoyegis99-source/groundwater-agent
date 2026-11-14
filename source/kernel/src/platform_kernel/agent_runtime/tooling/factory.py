@@ -29,6 +29,7 @@ def build_agent_tools(
     *, request_context: dict | None = None,
     operator_catalog: dict | None = None,
     operator_catalog_digest: str | None = None,
+    composition_operators: dict | None = None,
     capabilities: AgentModeCapabilities | None = None,
     provider: str = "deepseek",
     include_execution_facts: bool = True,
@@ -78,6 +79,7 @@ def build_agent_tools(
         provider,
         operator_catalog=operator_catalog,
         operator_catalog_digest=operator_catalog_digest,
+        collection_operators=composition_operators,
     ).tool(capabilities))
     if not capabilities.clarification_only:
         tools.extend(build_task_tools(
@@ -95,7 +97,7 @@ def build_agent_tools(
             for item in active_observations
         )
     if capabilities.allow_operator_catalog:
-        tools.extend(build_catalog_tools(operator_catalog))
+        tools.extend(build_catalog_tools(operator_catalog, composition_operators))
     if capabilities.allow_model_tools:
         tools.extend(
             build_model_tool(

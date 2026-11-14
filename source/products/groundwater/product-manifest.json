@@ -21,13 +21,25 @@
   ],
   "domainPackage": {
     "domainId": "groundwater",
-    "version": "6.1.0",
-    "checksum": "sha256:8662efa7382bbe4f9fe7c35fd873bf7109a4d75ee3213fd4bb0fdc92b4c4b10d"
+    "version": "6.2.0",
+    "checksum": "sha256:9862f88dd7cce5bcdcf58dd008edb6465bcfde031d97548785a66eb3e14c5fc3"
   },
   "knowledgeProjects": [
     "groundwater-demo"
   ],
   "publicApiVersion": "v12",
+  "compositionOperators": [
+    "raster.align_grid@1.0.0",
+    "raster.cell_statistics@1.0.0",
+    "raster.reclassify@1.0.0",
+    "raster.reproject@1.1.0",
+    "table.deduplicate@1.0.0",
+    "table.filter@1.0.0",
+    "table.profile@1.0.0",
+    "table.project@1.0.0",
+    "table.sort@1.0.0",
+    "table.validate@1.0.0"
+  ],
   "remoteServices": [
     {
       "serviceId": "groundwater-sustainability",

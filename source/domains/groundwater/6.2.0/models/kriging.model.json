@@ -1,0 +1,318 @@
+{
+  "schemaVersion": "executable-model.v6",
+  "modelId": "groundwater.kriging",
+  "version": "1.0.0",
+  "workflowRef": {
+    "workflowId": "groundwater.kriging",
+    "version": "1.0.0",
+    "checksum": "sha256:b6671797ceb615690a8e08611d2489938d75076e58e92cde1978149db9bf78bd"
+  },
+  "tool": {
+    "name": "run_kriging",
+    "description": "对一个精确 Data version 中的投影点坐标和值执行 Ordinary Kriging 或带平面漂移的 Universal Kriging，分别输出预测栅格、克里金方差、变异函数诊断、留一法表和审计摘要。结果依赖变异函数、邻域、点位覆盖和投影坐标，不把方差等同于完整置信区间，也不保证优于 IDW。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "versionId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "valueField": {
+          "type": "string",
+          "minLength": 1
+        },
+        "xField": {
+          "type": "string",
+          "minLength": 1
+        },
+        "yField": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceCrs": {
+          "type": "string",
+          "minLength": 1
+        },
+        "targetCrs": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pixelSize": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "extentMinX": {
+          "type": "number"
+        },
+        "extentMinY": {
+          "type": "number"
+        },
+        "extentMaxX": {
+          "type": "number"
+        },
+        "extentMaxY": {
+          "type": "number"
+        },
+        "krigingType": {
+          "type": "string",
+          "enum": [
+            "ordinary",
+            "universal"
+          ]
+        },
+        "variogramModel": {
+          "type": "string",
+          "enum": [
+            "spherical",
+            "exponential",
+            "gaussian"
+          ]
+        },
+        "variogramRange": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "variogramSill": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "variogramNugget": {
+          "type": "number",
+          "minimum": 0
+        },
+        "variogramBinCount": {
+          "type": "integer",
+          "minimum": 4,
+          "maximum": 30
+        },
+        "neighborCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "minimumNeighbors": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "searchRadius": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0
+        },
+        "exact": {
+          "type": "boolean"
+        },
+        "idwPower": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "valueUnit": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "versionId",
+        "valueField",
+        "xField",
+        "yField",
+        "sourceCrs",
+        "targetCrs",
+        "pixelSize"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "inputBindings": {
+    "points": "versionId"
+  },
+  "fieldRequirements": [
+    {
+      "parameter": "valueField",
+      "inputParameter": "versionId",
+      "identifier": "name",
+      "allowedTypes": [
+        "string",
+        "number"
+      ]
+    },
+    {
+      "parameter": "xField",
+      "inputParameter": "versionId",
+      "identifier": "name",
+      "allowedTypes": [
+        "string",
+        "number"
+      ]
+    },
+    {
+      "parameter": "yField",
+      "inputParameter": "versionId",
+      "identifier": "name",
+      "allowedTypes": [
+        "string",
+        "number"
+      ]
+    }
+  ],
+  "semanticRequirements": [
+    {
+      "kind": "crs",
+      "inputParameter": "versionId",
+      "crsParameter": "sourceCrs"
+    },
+    {
+      "kind": "crsParameter",
+      "parameter": "targetCrs",
+      "requirement": "projectedMetric"
+    }
+  ],
+  "defaultParameters": {
+    "krigingType": "ordinary",
+    "variogramModel": "spherical",
+    "variogramBinCount": 10,
+    "neighborCount": 12,
+    "minimumNeighbors": 4,
+    "searchRadius": null,
+    "exact": true,
+    "idwPower": 2.0,
+    "valueUnit": ""
+  },
+  "parameterBindings": {
+    "valueField": "valueField",
+    "xField": "xField",
+    "yField": "yField",
+    "sourceCrs": "sourceCrs",
+    "targetCrs": "targetCrs",
+    "pixelSize": "pixelSize",
+    "extentMinX": "extentMinX",
+    "extentMinY": "extentMinY",
+    "extentMaxX": "extentMaxX",
+    "extentMaxY": "extentMaxY",
+    "krigingType": "krigingType",
+    "variogramModel": "variogramModel",
+    "variogramRange": "variogramRange",
+    "variogramSill": "variogramSill",
+    "variogramNugget": "variogramNugget",
+    "variogramBinCount": "variogramBinCount",
+    "neighborCount": "neighborCount",
+    "minimumNeighbors": "minimumNeighbors",
+    "searchRadius": "searchRadius",
+    "exact": "exact",
+    "idwPower": "idwPower",
+    "valueUnit": "valueUnit"
+  },
+  "deadlineSeconds": 3600,
+  "maxParallelNodes": 1,
+  "finalOutputs": [
+    "kriging-prediction",
+    "kriging-variance",
+    "variogram-diagnostics",
+    "kriging-loo",
+    "kriging-summary"
+  ],
+  "executionService": "executor",
+  "executorId": "workflow-dag",
+  "outputPublications": {
+    "kriging-prediction": {
+      "title": "克里金预测栅格",
+      "mediaType": "image/tiff",
+      "format": "geotiff",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "Projected-grid estimate produced by Ordinary Kriging or linear-drift Universal Kriging from the selected point values.",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": "targetCrs workflow parameter (projected metres)",
+        "vertical_datum": null,
+        "limitations": [
+          "Cells beyond or near the edge of the observation network are spatial extrapolation and require separate review.",
+          "The estimate is conditional on the chosen variogram, drift, neighborhood, grid resolution, input quality, and spatial sampling pattern."
+        ],
+        "source": "workflow-declared"
+      }
+    },
+    "kriging-variance": {
+      "title": "克里金方差栅格",
+      "mediaType": "image/tiff",
+      "format": "geotiff",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "Nonnegative model-based kriging variance on the same projected grid as the prediction raster.",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": "targetCrs workflow parameter (projected metres)",
+        "vertical_datum": null,
+        "limitations": [
+          "Kriging variance is conditional on the selected variogram, drift, neighbors and observation locations; it is not a complete confidence interval.",
+          "Variance does not include every source of measurement error, model misspecification, nonstationarity, anisotropy or external uncertainty."
+        ],
+        "source": "workflow-declared"
+      }
+    },
+    "variogram-diagnostics": {
+      "title": "变异函数诊断",
+      "mediaType": "application/json",
+      "format": "json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "Empirical semivariogram bins and fitted or user-specified variogram model diagnostics, including range, sill, nugget, fit source, fit SSE, drift basis and numerical regularization.",
+        "fields": {},
+        "grain": "one diagnostic document per kriging execution",
+        "time_range": null,
+        "timezone": null,
+        "crs": "Distances are measured in the projected targetCrs axis unit recorded in the document.",
+        "vertical_datum": null,
+        "limitations": [
+          "An automatically fitted variogram is a deterministic least-squares candidate, not proof that stationarity, isotropy or the selected model family is scientifically adequate.",
+          "Sparse or clustered point pairs can make empirical bins and fitted parameters unstable."
+        ],
+        "source": "workflow-declared"
+      }
+    },
+    "kriging-loo": {
+      "title": "留一法交叉验证",
+      "mediaType": "text/csv",
+      "format": "csv",
+      "policy": "FILE_QUERYABLE",
+      "semantics": {
+        "description": "Per-point leave-one-out predictions, observed-minus-predicted residuals, kriging variance, standard error and standardized residual; aggregate diagnostics report mean error, RMSE, mean standardized residual and RMSSE.",
+        "fields": {},
+        "grain": "one row per input observation",
+        "time_range": null,
+        "timezone": null,
+        "crs": "x and y are transformed targetCrs coordinates",
+        "vertical_datum": null,
+        "limitations": [
+          "Leave-one-out diagnostics measure internal point prediction and are not independent external validation.",
+          "Rows without the required local neighbors are retained as not evaluated and excluded from aggregate residual metrics."
+        ],
+        "source": "workflow-declared"
+      }
+    },
+    "kriging-summary": {
+      "title": "克里金运行摘要",
+      "mediaType": "application/json",
+      "format": "json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "Audit summary of the projected grid, method, variogram, neighbor settings, exactness, variance range, LOO metrics, same-point-set IDW LOO comparison and same-grid Kriging-minus-IDW surface differences; Kriging is not guaranteed to outperform IDW on every dataset.",
+        "fields": {},
+        "grain": "one summary per kriging execution",
+        "time_range": null,
+        "timezone": null,
+        "crs": "sourceCrs and projected targetCrs are recorded in the summary",
+        "vertical_datum": null,
+        "limitations": [
+          "The IDW LOO and same-grid comparisons are diagnostics, not independent benchmarks; surface differences are not errors without independent truth and do not guarantee superior Kriging performance.",
+          "Projected coordinates, correct units, representative coverage and professional review remain required; spatial extrapolation and edge effects can be substantial."
+        ],
+        "source": "workflow-declared"
+      }
+    }
+  }
+}

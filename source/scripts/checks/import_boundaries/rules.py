@@ -62,7 +62,7 @@ PACKAGES = {
     ),
     "platform_executor_service": Package(
         ROOT / "services" / "executor" / "src",
-        frozenset({"platform_data_client", "platform_protocol_contracts"}),
+        frozenset({"platform_data_client", "platform_protocol_contracts", "platform_workflow_compiler"}),
     ),
     "platform_executor_client": Package(
         ROOT / "services" / "executor" / "client" / "src",

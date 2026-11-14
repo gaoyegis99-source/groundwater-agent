@@ -5,11 +5,12 @@ COPY environments/build/requirements.lock /locks/build.lock
 RUN --network=none python -m pip install --no-index --find-links=/deps/build \
     --require-hashes -r /locks/build.lock
 COPY packages/protocol-contracts ./protocol-contracts
+COPY packages/workflow-compiler ./workflow-compiler
 COPY services/data/client ./data-client
 COPY services/executor/pyproject.toml ./executor/pyproject.toml
 COPY services/executor/src ./executor/src
 RUN --network=none python -m pip wheel --no-deps --no-index --no-build-isolation \
-    --wheel-dir /wheels ./protocol-contracts ./data-client ./executor
+    --wheel-dir /wheels ./protocol-contracts ./workflow-compiler ./data-client ./executor
 
 FROM platform-base-python AS runtime
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 EXECUTOR_STATE_ROOT=/data/state EXECUTOR_OBJECT_ROOT=/data/objects EXECUTOR_WORK_ROOT=/work

@@ -10,10 +10,11 @@ from platform_protocol_contracts import (
     reset_trace_context,
     trace_context_for_id,
 )
+from platform_workflow_compiler.composition.execution import ArtifactComposition
 
 from ..contracts import JobRequestV6
-from ..database import duration_ms, utc_now
-from ..errors import UpstreamServiceError
+from ..database import connect_database, duration_ms, utc_now
+from ..errors import UpstreamServiceError, WorkflowDefinitionUnavailableError
 from ..application.workflow_api import dispatch_confirmation_current
 
 from .persistence.status import save_cancelled
@@ -22,6 +23,7 @@ from ..settings import ExecutableModelDefinition, ServiceBinding
 from .execution_client import ExecutionClient, ExecutionClientError, ExecutionRejectedError
 from ..application.query_dtos import ConfirmedAction
 from .models import DispatchWork, WorkflowRun, WorkflowTickResult
+from .composed import resolve_composed
 from .node_diagnostics import WorkflowGraphNode, WorkflowGraphResponse, WorkflowNodeDiagnosticsResponse
 from .persistence import (
     claim_dispatch_batch,
@@ -52,6 +54,7 @@ class WorkflowExecutionOwner:
         expected_definition_set_digest: str | None = None,
         dispatch_concurrency: int = 8,
         trace_id_resolver: Callable[[str], str | None] | None = None,
+        composition: ArtifactComposition | None = None,
     ) -> None:
         if dispatch_concurrency < 1 or dispatch_concurrency > 64:
             raise ValueError("WORKFLOW_DISPATCH_CONCURRENCY_INVALID")
@@ -63,6 +66,7 @@ class WorkflowExecutionOwner:
         self.expected_definition_set_digest = expected_definition_set_digest
         self.dispatch_concurrency = dispatch_concurrency
         self.trace_id_resolver = trace_id_resolver
+        self.composition = composition
 
     def enqueue_confirmed_batch(
         self,
@@ -83,6 +87,7 @@ class WorkflowExecutionOwner:
             actions=actions,
             models=self.models,
             services=self.services,
+            composition=self.composition,
         )
 
     def get(self, project_id: str, run_id: str) -> WorkflowRun:
@@ -312,9 +317,18 @@ class WorkflowExecutionOwner:
                                 "EXECUTOR_DEFINITION_SET_MISMATCH",
                             )
                         return False
-                if status is None and not _matches_frozen_model(
-                    self.models.get(work.run.model_id), work.run
-                ):
+                model = self.models.get(work.run.model_id)
+                definition = None
+                if status is None and model is None and work.run.model_id.startswith("draft."):
+                    try:
+                        with connect_database(self.database) as connection:
+                            model, definition = resolve_composed(
+                                connection, self.composition, agent_run_id=work.run.agent_run_id,
+                                session_id=work.run.session_id, project_id=work.run.project_id, action=work.run,
+                            )
+                    except WorkflowDefinitionUnavailableError:
+                        pass
+                if status is None and not _matches_frozen_model(model, work.run):
                     # A process restarted with a different manifest must not
                     # create a new remote Job from an old queued run. A known
                     # remote Job is still reconciled above/below this gate.
@@ -385,6 +399,7 @@ class WorkflowExecutionOwner:
                             arguments=work.run.arguments,
                             input_references=work.run.input_references,
                             deadline_at=work.deadline_at,
+                            composition=definition,
                         ),
                     )
             elif work.state == "SUBMITTED":

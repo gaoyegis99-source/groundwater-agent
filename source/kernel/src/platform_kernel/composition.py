@@ -158,6 +158,7 @@ class PlatformApplication:
             expected_definition_set_digest=self.settings.definition_set_digest,
             dispatch_concurrency=self.settings.workflow_dispatch_concurrency,
             trace_id_resolver=partial(trace_id_for_run, self.database),
+            composition=self.settings.workflow_composition,
         )
         self.agent_projection = AgentProjectionAdapter()
         self.agent_runtime = AgentRuntimeOwner(

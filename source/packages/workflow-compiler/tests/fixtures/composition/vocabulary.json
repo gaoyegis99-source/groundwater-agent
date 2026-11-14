@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "composition-vocabulary.v1",
+  "id": "sample-vocabulary",
+  "version": "1.0.0",
+  "quantities": [
+    "water-head.v1",
+    "depth-to-water.v1"
+  ],
+  "crs": {
+    "EPSG:32650": {
+      "metric": true
+    },
+    "EPSG:4326": {
+      "metric": false
+    }
+  },
+  "units": {
+    "m": {
+      "dimension": "length",
+      "scale": 1,
+      "offset": 0
+    },
+    "cm": {
+      "dimension": "length",
+      "scale": 0.01,
+      "offset": 0
+    },
+    "s": {
+      "dimension": "time",
+      "scale": 1,
+      "offset": 0
+    }
+  }
+}

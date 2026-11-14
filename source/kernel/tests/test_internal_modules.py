@@ -746,6 +746,26 @@ def test_deepseek_observation_normalization_drops_only_unknown_schema_siblings()
     ) is incomplete
 
 
+def test_deepseek_discovery_treats_null_optional_scopes_as_omitted() -> None:
+    schema = {
+        "properties": {"query": {}, "spatial_extent": {}, "time_window": {}},
+        "required": ["query"],
+        "additionalProperties": False,
+    }
+    supplied = {
+        "query": "monitoring",
+        "spatial_extent": None,
+        "time_window": ["2025-01-01", "2025-12-01"],
+    }
+    assert _normalize_observation_arguments(
+        supplied,
+        provider="deepseek",
+        tool_name="discover_datasets",
+        accepts_budget=False,
+        input_schema=schema,
+    ) == {"query": "monitoring", "time_window": supplied["time_window"]}
+
+
 def test_minimax_general_retrieval_discards_inapplicable_binding() -> None:
     partial = {"dataset_id": "invented", "field_id": "f1"}
 

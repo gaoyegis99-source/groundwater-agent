@@ -8,6 +8,7 @@ import tempfile
 
 from platform_protocol_contracts import LocalIdentity
 from platform_workflow_compiler import validate_catalog
+from platform_workflow_compiler.composition.execution import ArtifactComposition
 
 from .settings_environment import read_api_key as _read_api_key
 from .settings_manifest import (
@@ -233,6 +234,7 @@ class KernelSettings:
     agent_queue_capacity: int = 100
     workflow_dispatch_concurrency: int = 8
     agent_shutdown_grace_seconds: int = 30
+    workflow_composition: ArtifactComposition | None = None
 
     @property
     def services_by_name(self) -> dict[str, ServiceBinding]:
@@ -243,6 +245,7 @@ class KernelSettings:
         """Identity shared with Executor for the complete executable definition set."""
         value = {
             "operatorCatalogDigest": self.operator_catalog_digest,
+            **({"compositionEnvironment": self.workflow_composition.environment} if self.workflow_composition else {}),
             "models": sorted(
                 (
                     {
@@ -404,9 +407,8 @@ class KernelSettings:
         models = _parse_models(raw["models"], services)
         execution_cases = _parse_execution_cases(raw["executionCases"], models)
         authoring = raw["workflowAuthoring"]
-        if not isinstance(authoring, dict) or set(authoring) != {
-            "operatorCatalogDigest", "operators", "enabledOperators"
-        }:
+        authoring_fields = {"operatorCatalogDigest", "operators", "enabledOperators"}
+        if not isinstance(authoring, dict) or set(authoring) - {"composition"} != authoring_fields:
             raise ValueError("KERNEL_CONFIG_INVALID")
         _digest(authoring["operatorCatalogDigest"])
         complete_catalog = validate_catalog(
@@ -431,6 +433,15 @@ class KernelSettings:
             identities[identity]: complete_catalog[identities[identity]]
             for identity in enabled
         }
+        composition = None
+        if "composition" in authoring:
+            composition_config = authoring["composition"]
+            composition = ArtifactComposition.from_config(composition_config)
+            if (
+                composition_config["catalogDigest"] != authoring["operatorCatalogDigest"]
+                or any(catalog.get(key) != row for key, row in composition.operators.items())
+            ):
+                raise ValueError("KERNEL_CONFIG_INVALID")
         agent_endpoint = ModelEndpointSettings.from_values(
             prefix="PLATFORM_AGENT",
             provider=agent_provider,
@@ -453,6 +464,7 @@ class KernelSettings:
             models=models,
             execution_cases=execution_cases,
             operator_catalog=catalog,
+            workflow_composition=composition,
             operator_catalog_digest=authoring["operatorCatalogDigest"],
             manifest_checksum=raw["manifestChecksum"],
             intent_router=intent_router,

@@ -5,7 +5,7 @@ import { useWorkspaceController } from './use-workspace-controller';
 import { useMessageActions } from './use-message-actions';
 import { currentSessionId, useProjectSessions } from './use-project-sessions';
 import { useSessionStream } from './use-session-stream';
-import { hasVerificationMarker, isVerificationHistory, turnPhase } from './chat-state';
+import { hasVerificationMarker, isComposedConfirmation, isVerificationHistory, turnPhase } from './chat-state';
 import { TurnTimeline } from './TurnTimeline';
 import { MessageComposer } from './MessageComposer';
 import { RoutingDebug } from './RoutingDetails';
@@ -145,6 +145,7 @@ export default function App() {
   const currentConfirmation = latestConfirmation?.status === 'PENDING'
     && latestConfirmation.agentRunId === lastTurn?.agentRunId && latestConfirmation.goalRevision === lastTurn?.goalRevision
     ? latestConfirmation : null;
+  const currentDraft = lastTurn?.workflowDraftId ? workflowDrafts[lastTurn.workflowDraftId] : undefined;
   useEffect(() => {
     if (confirmationFocusAfterSave.current && currentConfirmation && !workspace.routeTab) {
       confirmationFocusAfterSave.current = false;
@@ -435,7 +436,8 @@ export default function App() {
       {currentConfirmation && <div className="current-confirmation">
         <ConfirmationCard key={currentConfirmation.confirmationId} confirmation={currentConfirmation} history={history}
           busy={busy || !snapshotCurrent || connection === 'disconnected' || !canResearch} verificationSession={verificationSession} onDecision={(id, kind, reason) => void decision(id, kind, reason)}
-          onEdit={id => workspace.editConfirmation(id)} onResource={openInputResource} project={project} current capabilities={capabilities} />
+          onEdit={id => workspace.editConfirmation(id)} onResource={openInputResource} project={project} current capabilities={capabilities}
+          draftOutputs={currentDraft?.payload?.workflow.outputs.map(output => output.name)} />
       </div>}
       <div className="chat-scroll" ref={chatScroll} data-testid="message-list" onScroll={event => { const node = event.currentTarget; atBottom.current = node.scrollHeight - node.scrollTop - node.clientHeight < 80; if (atBottom.current) setNewMessages(false); }}>
         {!history?.items.length && !history?.controlMessages?.length && !activeTask && !loading ? <section className="welcome" aria-labelledby="welcome-title"><h1 id="welcome-title">{ui.brand.welcome}</h1><details className="usage-guide"><summary>使用说明</summary><p>PRIVATE 资料仅 owner 和 admin 可读；PROJECT 资料可供项目成员共享。归档前请复核输入 checksum、参数、随机种子、模型实现和 lineage。</p></details>{capabilityError && <div className="connection-notice" role="alert"><strong>业务服务尚未连接</strong><p>{capabilityError.code === 'PRODUCT_UI_IDENTITY_MISMATCH' ? '产品配置与当前服务不一致，业务操作已停用。' : capabilityError.code === 'API_RESPONSE_INVALID' ? '当前仅提供前端预览，暂不能发送。' : '无法连接业务接口，暂不能发送。'}</p><button onClick={() => void connectProject()}>重试连接</button></div>}<section className="example-group" aria-label="常用任务"><h2>常用任务</h2><div className="example-grid">{ui.examples.map((item, index) => item.featured ? exampleButton(index) : null)}</div><details className="more-examples"><summary>更多场景<Icon name="arrow-down" /></summary><div className="example-grid">{ui.examples.map((item, index) => !item.featured ? exampleButton(index) : null)}</div></details></section></section> : <div className="conversation">
@@ -497,7 +499,7 @@ export default function App() {
       confirmationWriteDisabled={confirmationWriteDisabled}
       onCompareResult={resource => openDatabase({ id: resource.versionId, reference: resource, compare: true })} onResource={openResource} onInputResource={openInputResource}
       onUseCurrentVersion={canResearch ? (id, datasetId) => void attachCurrentVersion(id, datasetId) : undefined}
-      onOpenDatabase={formats => openDatabase({ formats })} onRemovePending={id => setAttachments(previous => previous.filter(item => item.versionId !== id))} onEdit={id => workspace.editConfirmation(id)} onResolveParameter={name => { if (currentConfirmation) workspace.editConfirmation(currentConfirmation.confirmationId, { field: name }); else { updateDraft(`${draft}${draft.trim() ? '\n' : ''}补充参数 ${name}：`); if (workspace.routeTab) { composerAfterRoute.current = true; workspace.returnToConversation(); } else requestAnimationFrame(() => composer.current?.focus()); } }} onEditClose={workspace.closeConfirmation} onRevision={(confirmation, actions) => void reviseConfirmation(confirmation, actions)} onRecover={id => void recoverWorkflow(id)} /></Suspense>
+      onOpenDatabase={formats => openDatabase({ formats })} onRemovePending={id => setAttachments(previous => previous.filter(item => item.versionId !== id))} onEdit={id => workspace.editConfirmation(id)} onResolveParameter={name => { if (currentConfirmation && !isComposedConfirmation(currentConfirmation)) workspace.editConfirmation(currentConfirmation.confirmationId, { field: name }); else { updateDraft(`${draft}${draft.trim() ? '\n' : ''}补充参数 ${name}：`); if (workspace.routeTab) { composerAfterRoute.current = true; workspace.returnToConversation(); } else requestAnimationFrame(() => composer.current?.focus()); } }} onEditClose={workspace.closeConfirmation} onRevision={(confirmation, actions) => void reviseConfirmation(confirmation, actions)} onRecover={id => void recoverWorkflow(id)} /></Suspense>
     {drawer && <button className="drawer-shade" aria-label="关闭浮层" onClick={closeDrawer} />}
     {drawer?.kind === 'database' && <Suspense fallback={<p className="muted drawer-loading">正在加载数据库…</p>}><DatabaseWorkbench key={`database:${drawer.id ?? ''}:${drawer.reference?.semanticId ?? ''}:${drawer.reference?.objectId ?? ''}:${drawer.compare ? 'compare' : ''}:${drawer.formats?.join(',') ?? ''}`} project={project} initialId={drawer.id} reference={drawer.reference} compare={drawer.compare} allowedFormats={drawer.formats} onClose={closeDrawer} onAttach={attach} /></Suspense>}
     {drawer?.kind === 'knowledge' && <Suspense fallback={<p className="muted drawer-loading">正在加载知识库…</p>}><KnowledgeDrawer key={`knowledge:${drawer.reference?.versionId ?? ''}:${drawer.reference?.unitId ?? ''}`} project={project} reference={drawer.reference} onClose={closeDrawer} /></Suspense>}

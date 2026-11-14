@@ -1458,6 +1458,21 @@ def test_visible_reply_policy_repairs_once_then_fails_closed(
     assert failure.value.diagnostics == {"reason": reason}
 
 
+def test_long_conclusion_repair_tells_agent_to_shorten_it(kernel_settings):
+    app, model = _application(
+        kernel_settings,
+        [
+            ModelStep(output=[_submit("结论" * 81)]),
+            ModelStep(output=[_submit("这是简要结论。", call_id="shortened-reply")]),
+        ],
+    )
+
+    run = asyncio.run(_start(app))
+
+    assert run.status == "COMPLETE"
+    assert "most 160 characters" in json.dumps(model.calls[-1].input)
+
+
 @pytest.mark.parametrize(
     ("provider", "drafting", "unresolved"),
     [

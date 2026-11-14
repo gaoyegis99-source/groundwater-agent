@@ -8,6 +8,7 @@ import re
 
 from agents import FunctionTool
 from platform_workflow_compiler import compile_draft, WorkflowValidationError
+from platform_workflow_compiler.graph import input_members
 from pydantic import ValidationError as PydanticValidationError
 
 from ...errors import AgentRunError
@@ -26,7 +27,7 @@ from .replies import (
 _SEQUENCE_PATTERNS = (
     re.compile(
         r"先\s*(?P<upstream>.+?)\s*(?:，|,|；|;)?\s*"
-        r"(?:再|然后)\s*(?P<downstream>.+)",
+        r"(?:再|然后)\s*(?P<downstream>[^。！？\n]+)",
         re.I | re.S,
     ),
     re.compile(
@@ -75,12 +76,14 @@ class ReplySubmission:
         *,
         operator_catalog: dict | None = None,
         operator_catalog_digest: str | None = None,
+        collection_operators: dict | None = None,
     ):
         self.database = database
         self.request_context = request_context
         self.provider = provider
         self.operator_catalog = operator_catalog
         self.operator_catalog_digest = operator_catalog_digest
+        self.collection_operators = collection_operators
 
     async def submit_reply(
         self, context, arguments_json: str,
@@ -187,13 +190,23 @@ class ReplySubmission:
                 }
                 else "REPLY_VALUE_INVALID"
             )}
+            if reason == "REPLY_CONCLUSION_TOO_LONG":
+                return self._retry_or_raise(
+                    context, diagnostics,
+                    "Call submit_reply once more. Shorten conclusion.text to one sentence of at "
+                    "most 160 characters. Preserve the structured draft and any missing inputs. "
+                    "Keep the steps and output names in the draft.",
+                    error,
+                )
             return self._retry_or_raise(
                 context, diagnostics,
                 "Call submit_reply once more with valid JSON values. Preserve the "
                 "direct answer, explicitly repeat every answer item or business "
                 "method named by the user, and include a direct recommendation when methods are "
                 "being compared. Do not add platform, catalogue, or capability-"
-                "boundary wording.", error,
+                "boundary wording. Keep version IDs, object IDs and checksums in "
+                "structured citation fields only; use data and document titles in visible text.",
+                error,
             )
 
     def _without_completed_evidence_options(
@@ -323,6 +336,7 @@ class ReplySubmission:
                 workflow_id="draft.preflight",
                 version="0.1.0",
                 operator_catalog_digest=self.operator_catalog_digest,
+                collection_operators=self.collection_operators,
                 parameter_values=draft.parameter_values,
                 parameter_sources=[
                     source.model_dump() for source in draft.parameter_sources
@@ -426,11 +440,13 @@ class ReplySubmission:
         upstream_by_node = {node_id: set() for node_id in node_ids}
         for node in draft.graph.nodes:
             for binding in node.inputs.values():
-                node_output = getattr(binding, "node_output", None)
-                if node_output is None or node_output.node_id not in node_ids:
-                    continue
-                downstream_by_node[node_output.node_id].add(node.node_id)
-                upstream_by_node[node.node_id].add(node_output.node_id)
+                for member in input_members(binding.model_dump(by_alias=True)):
+                    node_output = member.get("nodeOutput")
+                    if node_output is None or node_output["nodeId"] not in node_ids:
+                        continue
+                    upstream = node_output["nodeId"]
+                    downstream_by_node[upstream].add(node.node_id)
+                    upstream_by_node[node.node_id].add(upstream)
 
         requested_upstream, requested_downstream = relation
         upstream_matches = self._matching_sequence_nodes(
@@ -558,7 +574,14 @@ class ReplySubmission:
             params_json_schema={**(
                 _clarification_reply_schema()
                 if capabilities.clarification_only
-                else reply_schema(drafting=mode == "WORKFLOW_DRAFT")
+                else reply_schema(
+                    drafting=mode == "WORKFLOW_DRAFT",
+                    collections=any(
+                        port.get("cardinality", {}).get("maxItems", 1) > 1
+                        for manifest in (self.collection_operators or {}).values()
+                        for port in manifest["inputs"]
+                    ),
+                )
             ), "title": "submit_reply_args"},
             on_invoke_tool=self.submit_reply,
             _use_default_failure_error_function=False,

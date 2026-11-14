@@ -78,7 +78,7 @@ def test_table_classify_is_frozen_in_catalog_runtime_and_product_authoring(
     kernel = _json(output / "kernel-config.json")
     executor = _json(output / "executor-config.json")
     authoring = kernel["workflowAuthoring"]
-    assert len(authoring["operators"]) == 111
+    assert len(authoring["operators"]) == len(index["operators"])
     assert "table.classify@1.0.0" in authoring["enabledOperators"]
     assert authoring["operatorCatalogDigest"] == executor["operatorCatalogDigest"]
     compiled = next(

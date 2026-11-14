@@ -1,0 +1,143 @@
+{
+  "schemaVersion": "workflow.v6",
+  "workflowId": "groundwater.porous-calibration",
+  "version": "1.0.0",
+  "inputs": [
+    {
+      "name": "project_package",
+      "cardinality": "one",
+      "mediaTypes": [
+        "application/zip"
+      ],
+      "formats": [
+        "zip"
+      ]
+    },
+    {
+      "name": "observations",
+      "cardinality": "one",
+      "mediaTypes": [
+        "application/json"
+      ],
+      "formats": [
+        "json"
+      ]
+    }
+  ],
+  "parameters": [
+    "includeCalibratedModel"
+  ],
+  "nodes": [
+    {
+      "nodeId": "compile",
+      "operatorId": "groundwater.porous.model_compile",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "project_package": {
+          "workflowInput": "project_package"
+        }
+      },
+      "parameters": {}
+    },
+    {
+      "nodeId": "calibrate",
+      "operatorId": "groundwater.porous.pest_calibrate",
+      "operatorVersion": "1.1.0",
+      "parameters": {
+        "includeCalibratedModel": {
+          "workflowParameter": "includeCalibratedModel"
+        }
+      },
+      "inputs": {
+        "model_package": {
+          "nodeOutput": {
+            "nodeId": "compile",
+            "port": "model_package"
+          }
+        },
+        "observations": {
+          "workflowInput": "observations"
+        }
+      }
+    },
+    {
+      "nodeId": "simulate",
+      "operatorId": "groundwater.porous.flow_transport_simulate",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "model_package": {
+          "nodeOutput": {
+            "nodeId": "calibrate",
+            "port": "calibrated_model_package"
+          }
+        }
+      },
+      "parameters": {}
+    }
+  ],
+  "outputs": [
+    {
+      "name": "porous-calibrated-parameters",
+      "nodeOutput": {
+        "nodeId": "calibrate",
+        "port": "calibrated_parameters"
+      }
+    },
+    {
+      "name": "porous-calibration-residuals",
+      "nodeOutput": {
+        "nodeId": "calibrate",
+        "port": "residual_diagnostics"
+      }
+    },
+    {
+      "name": "porous-calibration-package",
+      "nodeOutput": {
+        "nodeId": "calibrate",
+        "port": "calibration_package"
+      }
+    },
+    {
+      "name": "porous-calibrated-model",
+      "nodeOutput": {
+        "nodeId": "calibrate",
+        "port": "calibrated_model_package"
+      }
+    },
+    {
+      "name": "porous-calibrated-summary",
+      "nodeOutput": {
+        "nodeId": "simulate",
+        "port": "calculation_summary"
+      }
+    },
+    {
+      "name": "porous-calibrated-result",
+      "nodeOutput": {
+        "nodeId": "simulate",
+        "port": "result_package"
+      }
+    },
+    {
+      "name": "porous-pest-compile-receipt",
+      "nodeOutput": {
+        "nodeId": "compile",
+        "port": "run_receipt"
+      }
+    },
+    {
+      "name": "porous-pest-receipt",
+      "nodeOutput": {
+        "nodeId": "calibrate",
+        "port": "run_receipt"
+      }
+    },
+    {
+      "name": "porous-pest-simulation-receipt",
+      "nodeOutput": {
+        "nodeId": "simulate",
+        "port": "run_receipt"
+      }
+    }
+  ]
+}

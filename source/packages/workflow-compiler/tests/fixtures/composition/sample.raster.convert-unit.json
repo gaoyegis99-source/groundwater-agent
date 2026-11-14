@@ -1,0 +1,90 @@
+{
+  "schemaVersion": "operator-manifest.v2",
+  "id": "sample.raster.convert-unit",
+  "version": "1.0.0",
+  "implementationRevision": "sha256:55e7e59f8c5250fc66180ee700fb8e1789842ce6d6659d16cd80f5b6ee27e9cf",
+  "title": "sample.raster.convert-unit",
+  "description": "Synthetic operator declaration for offline contract verification.",
+  "domain": "test",
+  "runtime": "native",
+  "timeoutSeconds": 60,
+  "memoryLimitBytes": 134217728,
+  "inputs": [
+    {
+      "name": "data",
+      "kind": "artifact",
+      "logicalType": "raster",
+      "formatPairs": [
+        {
+          "format": "geotiff",
+          "mediaType": "image/tiff"
+        }
+      ]
+    }
+  ],
+  "outputs": [
+    {
+      "name": "data",
+      "kind": "artifact",
+      "logicalType": "raster",
+      "formatPairs": [
+        {
+          "format": "geotiff",
+          "mediaType": "image/tiff"
+        }
+      ]
+    }
+  ],
+  "parametersSchema": {
+    "type": "object",
+    "properties": {
+      "targetUnit": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "required": [
+      "targetUnit"
+    ],
+    "additionalProperties": false
+  },
+  "classification": {
+    "reuseScope": "generic",
+    "providerKind": "platform"
+  },
+  "portSemantics": {
+    "data": {
+      "requires": {
+        "quantityKind": "water-head.v1"
+      },
+      "requiredFacts": [
+        "unit",
+        "grid",
+        "verticalDatum"
+      ]
+    }
+  },
+  "outputSemantics": {
+    "data": {
+      "inherit": [
+        {
+          "inputPort": "data",
+          "facts": [
+            "grid",
+            "quantityKind",
+            "verticalDatum"
+          ]
+        }
+      ],
+      "transform": [
+        {
+          "rule": "convertUnit",
+          "property": "unit",
+          "parameter": "targetUnit",
+          "inputPort": "data"
+        }
+      ]
+    }
+  },
+  "definitionDigest": "sha256:38a8e79a28cd17a56103553196af4b80c0a9dde45862bf5a65442c44e8352626"
+}

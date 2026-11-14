@@ -142,7 +142,7 @@ export function selectWorkflowDraftUi(draft: Pick<WorkflowDraft, 'status' | 'pay
   if (draft.status === 'COMPLETE' && !draft.payload) {
     return display(draft.status, ['未生成可用草稿', 'neutral', '请查看本轮回复中的说明。'], ['view']);
   }
-  return lookup(draftStates, draft.status, draft.status === 'COMPLETE' && draft.payload?.executionAllowed === false
+  return lookup(draftStates, draft.status, draft.status === 'COMPLETE' && !!draft.payload
     ? ['view', 'export-draft'] : ['view']);
 }
 

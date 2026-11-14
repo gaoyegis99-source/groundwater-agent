@@ -1,0 +1,26 @@
+{
+  "expectedOutputs": {
+    "raster": {
+      "format": "geotiff",
+      "kind": "artifact",
+      "mediaType": "image/tiff"
+    }
+  },
+  "inputs": {
+    "raster": {
+      "fixtureId": "monitoring.raster.left"
+    },
+    "reference": {
+      "fixtureId": "monitoring.raster.right"
+    }
+  },
+  "operator": {
+    "id": "raster.align_grid",
+    "version": "1.0.0"
+  },
+  "parameters": {
+    "band": 1,
+    "resampling": "nearest"
+  },
+  "schemaVersion": "operator-smoke-test.v1"
+}

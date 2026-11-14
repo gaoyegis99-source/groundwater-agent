@@ -28,6 +28,12 @@ def _qgis(operator_id: str, inputs, parameters, output_dir):
     return run_qgis_operator(operator_id, inputs, parameters, output_dir)
 
 
+def _reference_grid(operator_id: str, inputs, parameters, output_dir):
+    from moperators.operators.raster_reference_grid import run
+
+    return run(operator_id, inputs, parameters, output_dir)
+
+
 def _remote_http(operator_id: str, inputs, parameters, output_dir):
     raise ValueError("REMOTE_HTTP_REQUIRES_DEDICATED_WORKER")
 
@@ -98,6 +104,8 @@ IMPLEMENTATIONS: dict[tuple[str, str], Runner] = {
     ("raster.rasterize", "1.0.0"): _native,
     ("raster.reclassify", "1.0.0"): _native,
     ("raster.reproject", "1.0.0"): _native,
+    ("raster.reproject", "1.1.0"): _reference_grid,
+    ("raster.align_grid", "1.0.0"): _reference_grid,
     ("raster.resample", "1.0.0"): _native,
     ("raster.sample_points", "1.0.0"): _native,
     ("raster.slope", "1.0.0"): _native,

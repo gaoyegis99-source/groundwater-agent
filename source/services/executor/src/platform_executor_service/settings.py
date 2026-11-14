@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 
 from jsonschema import Draft202012Validator, SchemaError
+from platform_workflow_compiler.composition.execution import ArtifactComposition
 
 from .contracts import canonical_json, sha256_bytes
 
@@ -32,7 +33,7 @@ def load_executor_config(path: Path) -> dict:
     if value.get("schemaVersion") == "executor-config.v8":
         required.add("remoteServices")
     if (
-        set(value) != required
+        set(value) - {"workflowComposition"} != required
         or value["leaseHeartbeatSeconds"] != 10
         or value["leaseSeconds"] != 45
     ):
@@ -82,6 +83,11 @@ def load_executor_config(path: Path) -> dict:
             if identity in identities:
                 raise ValueError("EXECUTOR_CONFIG_INVALID")
             identities.add(identity)
+        if "workflowComposition" in value:
+            composition = value["workflowComposition"]
+            ArtifactComposition.from_config(composition)
+            if "native" not in runtimes or composition["catalogDigest"] != value["operatorCatalogDigest"]:
+                raise ValueError("EXECUTOR_CONFIG_INVALID")
     except (ValueError, SchemaError) as cause:
         raise ValueError("EXECUTOR_CONFIG_INVALID") from cause
     return value
@@ -91,6 +97,9 @@ def definition_set_digest(config: dict) -> str:
     """Return the same executable-definition identity calculated by Kernel."""
     value = {
         "operatorCatalogDigest": config["operatorCatalogDigest"],
+        **({
+            "compositionEnvironment": ArtifactComposition.from_config(config["workflowComposition"]).environment,
+        } if "workflowComposition" in config else {}),
         "models": sorted(
             (
                 {

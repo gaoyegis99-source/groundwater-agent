@@ -55,11 +55,11 @@ sequenceDiagram
   K-->>U: AgentFinal v5 / Session Event v20
 ```
 
-Executor 不接收动态 DAG。Control 依据静态配置、依赖、容量、租约和绝对截止时间调度。响应丢失时按同一发布组查询或重放相同提交，不创建新版本。恢复、取消和超时都以持久状态为准。
+Executor 接收已装配模型和用户确认冻结的组合图。Control 依据受信算子配置重新校验组合图，再按依赖、容量、租约和绝对截止时间调度。响应丢失时按同一发布组查询或重放相同提交。恢复、取消和超时都以持久状态为准。
 
 ## Data 与 Knowledge
 
-`DataVersionRefV2` 固定版本、语义、对象、格式、MIME、大小和 checksum。Data 只允许 CSV/Parquet 查询，但可以保存 Operator Catalog 已声明的其他格式。XLSX 与 GeoPackage 由隔离 Worker 生成有上限、可过期的只读预览；COG/GeoTIFF 内容端点支持单段字节范围读取。格式与 MIME 不一致时拒绝发布。
+`DataVersionRefV2` 固定版本、语义、对象、格式、MIME、大小和 checksum。Data 查询支持 CSV/Parquet，也可保存 Operator Catalog 已声明的其他格式。XLSX 与 GeoPackage 由隔离 Worker 生成有上限、可过期的只读预览。Data 对 COG/GeoTIFF 提供单段字节范围读取，并在发布准备时从文件读取 CRS、网格及波段掩膜元数据。格式与 MIME 不一致时拒绝发布。
 
 Knowledge Next 的证据身份是 `version_id/unit_id/checksum`。数据绑定必须精确匹配 `data-primary/project_id/dataset_id/version_id/semantic_id`；错误版本、错误语义、失效或未完整读取的知识不能引用。Embedding 客户端禁用代理继承。
 

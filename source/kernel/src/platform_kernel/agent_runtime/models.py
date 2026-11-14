@@ -273,12 +273,16 @@ class WorkflowParameterBindingDraft(_WorkflowGraphModel):
     workflow_parameter: Utf8String = Field(alias="workflowParameter", min_length=1)
 
 
+class WorkflowCollectionBindingDraft(_WorkflowGraphModel):
+    collection: list[WorkflowInputBindingDraft | WorkflowNodeBindingDraft] = Field(min_length=1)
+
+
 class WorkflowNodeDraft(_WorkflowGraphModel):
 
     node_id: Utf8String = Field(alias="nodeId", min_length=1)
     operator_id: Utf8String = Field(alias="operatorId", min_length=1)
     operator_version: Utf8String = Field(alias="operatorVersion", min_length=1)
-    inputs: dict[str, WorkflowInputBindingDraft | WorkflowNodeBindingDraft]
+    inputs: dict[str, WorkflowInputBindingDraft | WorkflowNodeBindingDraft | WorkflowCollectionBindingDraft]
     parameters: dict[str, WorkflowParameterBindingDraft]
 
 

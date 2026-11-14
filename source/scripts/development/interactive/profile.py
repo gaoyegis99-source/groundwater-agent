@@ -53,6 +53,7 @@ API_SOURCE_ROOTS = {
     ),
     "executor-control": (
         "services/executor/src", "packages/operator-pack/src", _PROTOCOL, _DATA_CLIENT,
+        "packages/workflow-compiler/src",
     ),
 }
 

@@ -8,7 +8,7 @@ from .artifacts import ArtifactStore
 from .contracts import JobRequestV6, canonical_json
 from .data_client import DataClient, DataIntegrityError, DataUnavailableError
 from .database import connect_database, utc_now
-from .result_publication import PublicationSession, publication_contract
+from .result_publication import PublicationSession, publication_contract, result_model
 
 
 class PublicationFinalizer:
@@ -61,7 +61,7 @@ class PublicationFinalizer:
 
     def complete_committed(self, job, receipt: dict) -> None:
         request = JobRequestV6.from_storage_dict(json.loads(job["request_json"]))
-        model = self.models[(request.model_id, request.model_version)]
+        model = result_model(self.models, request)
         declarations = {
             name: model["outputPublications"][name]
             for name in model["finalOutputs"]
@@ -152,7 +152,7 @@ class PublicationFinalizer:
             # Data may have committed begin_publication before the Executor
             # stored its ID. Resolve by the same Data idempotency key first;
             # a missing local ID is never proof that no publication exists.
-            model = self.models[(request.model_id, request.model_version)]
+            model = result_model(self.models, request)
             outputs, provenance = publication_contract(
                 model, self.catalog_digest, request
             )

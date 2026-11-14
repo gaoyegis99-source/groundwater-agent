@@ -649,6 +649,28 @@
             "title": "Name",
             "type": "string"
           },
+          "quantityKind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quantitykind"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
           "unit": {
             "anyOf": [
               {
@@ -728,6 +750,16 @@
             "title": "Matchedfields",
             "type": "array"
           },
+          "quality": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/data__DiscoveryQuality"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "score": {
             "title": "Score",
             "type": "integer"
@@ -735,6 +767,16 @@
           "semanticId": {
             "title": "Semanticid",
             "type": "string"
+          },
+          "spatialExtent": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/data__SpatialExtent"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "tags": {
             "items": {
@@ -764,6 +806,17 @@
             },
             "title": "Unknowns",
             "type": "array"
+          },
+          "verticalDatum": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verticaldatum"
           }
         },
         "required": [
@@ -783,6 +836,36 @@
           "unknowns"
         ],
         "title": "DiscoveryItem",
+        "type": "object"
+      },
+      "data__DiscoveryQuality": {
+        "additionalProperties": false,
+        "properties": {
+          "qualityRunId": {
+            "title": "Qualityrunid",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "PASSED",
+              "PASSED_WITH_WARNINGS",
+              "FAILED",
+              "ERROR"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "suiteVersionId": {
+            "title": "Suiteversionid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "qualityRunId",
+          "suiteVersionId",
+          "status"
+        ],
+        "title": "DiscoveryQuality",
         "type": "object"
       },
       "data__DiscoveryReason": {
@@ -862,11 +945,30 @@
             "title": "Limit",
             "type": "integer"
           },
+          "quantityKinds": {
+            "items": {
+              "pattern": "^[a-z][a-z0-9_.-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Quantitykinds",
+            "type": "array"
+          },
           "query": {
             "default": "",
             "maxLength": 500,
             "title": "Query",
             "type": "string"
+          },
+          "spatialExtent": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/data__SpatialExtent"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "tags": {
             "items": {
@@ -875,6 +977,29 @@
             "maxItems": 20,
             "title": "Tags",
             "type": "array"
+          },
+          "timeWindow": {
+            "anyOf": [
+              {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "format": "date",
+                    "type": "string"
+                  },
+                  {
+                    "format": "date",
+                    "type": "string"
+                  }
+                ],
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timewindow"
           },
           "units": {
             "items": {
@@ -985,6 +1110,19 @@
       "data__FieldMeaning": {
         "additionalProperties": false,
         "properties": {
+          "applicability": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applicability"
+          },
           "meaning": {
             "anyOf": [
               {
@@ -995,6 +1133,43 @@
               }
             ],
             "title": "Meaning"
+          },
+          "quantityKind": {
+            "anyOf": [
+              {
+                "pattern": "^[a-z][a-z0-9_.-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quantitykind"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "pattern": "^[a-z][a-z0-9_.-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
           },
           "unit": {
             "anyOf": [
@@ -3985,6 +4160,16 @@
             "title": "Source",
             "type": "string"
           },
+          "spatialExtent": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/data__SpatialExtent"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "timeRange": {
             "anyOf": [
               {
@@ -4044,6 +4229,43 @@
           "field"
         ],
         "title": "Sort",
+        "type": "object"
+      },
+      "data__SpatialExtent": {
+        "additionalProperties": false,
+        "properties": {
+          "bbox": {
+            "maxItems": 4,
+            "minItems": 4,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Bbox",
+            "type": "array"
+          },
+          "crs": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Crs",
+            "type": "string"
+          }
+        },
+        "required": [
+          "crs",
+          "bbox"
+        ],
+        "title": "SpatialExtent",
         "type": "object"
       },
       "data__ToolActor": {

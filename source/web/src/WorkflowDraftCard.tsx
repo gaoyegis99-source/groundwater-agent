@@ -4,7 +4,7 @@ import { ArgumentValue, argumentLabel, outputName } from './card-presentation';
 import { ErrorNotice } from './ErrorNotice';
 import { Icon } from './Icon';
 import { selectWorkflowDraftUi } from './ui-selectors';
-import { WorkflowDraftGraph } from './WorkflowDraftGraph';
+import { inputMembers, WorkflowDraftGraph } from './WorkflowDraftGraph';
 
 const sourceNames = { USER: '用户说明', DATA: '数据', KNOWLEDGE: '知识', OPERATOR_DEFAULT: '算子默认值' };
 
@@ -27,7 +27,8 @@ export function WorkflowDraftCard({ draft, onKnowledge, onResource }: {
   const nodeName = (id: string) => stepLabels.get(id) ?? id;
   return <section className="workflow-draft-card" data-testid="workflow-draft-card" data-draft-id={draft.draftId} aria-label="工作流编排草稿">
     <div className="card-eyebrow"><Icon name="branch" />编排草稿 <span className="task-badge" data-tone={state.tone}>{state.label}</span></div>
-    <p className="draft-notice">仅草稿，不可执行。</p>
+    <p className="draft-notice">{payload?.executionAllowed ? '编排校验通过。请核对步骤和数据，然后在执行确认卡片上批准。' : '仅草稿，不可执行。'}</p>
+    {payload?.compositionCheck?.code && <ErrorNotice code={payload.compositionCheck.code} title="执行校验未通过" />}
     {!payload ? draft.status === 'FAILED' ? <ErrorNotice code={draft.errorCode!} diagnostics={draft.diagnostics} title="编排未完成" /> : <p className="muted" role="status">
       {draft.status === 'GENERATING' ? '正在查阅可用方法与当前资料，整理分析步骤。'
         : draft.status === 'CANCELLED' ? '编排已停止。'
@@ -51,7 +52,7 @@ export function WorkflowDraftCard({ draft, onKnowledge, onResource }: {
         return <li key={node.nodeId} data-node-id={node.nodeId}>
           <span className="draft-node-number">{String(index + 1).padStart(2, '0')}</span>
           <div className="draft-node-body"><strong>{title}</strong>
-            <p className="muted">使用：{Object.values(node.inputs).map(binding => 'workflowInput' in binding ? `输入资料「${argumentLabel(binding.workflowInput)}」` : `${nodeName(binding.nodeOutput.nodeId)}的输出`).join('；')}</p>
+            <p className="muted">使用：{Object.values(node.inputs).flatMap(inputMembers).map(binding => 'workflowInput' in binding ? `输入资料「${argumentLabel(binding.workflowInput)}」` : `${nodeName(binding.nodeOutput.nodeId)}的输出`).join('；')}</p>
           </div>
         </li>;
       })}</ol>

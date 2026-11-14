@@ -1,0 +1,424 @@
+{
+  "schemaVersion": "executable-model.v6",
+  "modelId": "groundwater.flow-field",
+  "version": "3.1.0",
+  "workflowRef": {
+    "workflowId": "groundwater.flow-field",
+    "version": "1.1.0",
+    "checksum": "sha256:bda102fc7492dccae5e2fe60a9e56cc1d5a1028ed382fdf28ede10a673e8ff6b"
+  },
+  "tool": {
+    "name": "run_flow_field",
+    "description": "Calculate hydraulic head from elevation minus depth, then interpolate that computed field and derive Darcy velocity from one exact Data version.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "versionId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "wellField": {
+          "type": "string",
+          "minLength": 1
+        },
+        "timeField": {
+          "type": "string",
+          "minLength": 1
+        },
+        "valueField": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Name of the new computed hydraulic-head column. It must not already exist in the input table."
+        },
+        "xField": {
+          "type": "string",
+          "minLength": 1
+        },
+        "yField": {
+          "type": "string",
+          "minLength": 1
+        },
+        "referenceElevationField": {
+          "type": "string",
+          "minLength": 1
+        },
+        "depthToWaterField": {
+          "type": "string",
+          "minLength": 1
+        },
+        "referenceElevationUnit": {
+          "type": "string",
+          "enum": [
+            "m",
+            "cm",
+            "mm"
+          ]
+        },
+        "depthToWaterUnit": {
+          "type": "string",
+          "enum": [
+            "m",
+            "cm",
+            "mm"
+          ]
+        },
+        "targetTime": {
+          "type": "string",
+          "minLength": 1
+        },
+        "selection": {
+          "type": "string",
+          "enum": [
+            "exact",
+            "latestAtOrBefore",
+            "nearest"
+          ]
+        },
+        "maxAgeDays": {
+          "type": "number",
+          "minimum": 0
+        },
+        "sourceCrs": {
+          "type": "string",
+          "minLength": 1
+        },
+        "targetCrs": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pixelSize": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "power": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "neighborCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "hydraulicConductivityMetersPerDay": {
+          "type": "number",
+          "minimum": 0
+        },
+        "effectivePorosity": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "versionId",
+        "wellField",
+        "timeField",
+        "xField",
+        "yField",
+        "referenceElevationField",
+        "depthToWaterField",
+        "targetTime",
+        "sourceCrs",
+        "targetCrs",
+        "pixelSize",
+        "hydraulicConductivityMetersPerDay",
+        "effectivePorosity"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "inputBindings": {
+    "observations": "versionId"
+  },
+  "fieldRequirements": [
+    {
+      "parameter": "wellField",
+      "inputParameter": "versionId",
+      "identifier": "name",
+      "allowedTypes": ["string", "number"]
+    },
+    {
+      "parameter": "timeField",
+      "inputParameter": "versionId",
+      "identifier": "name",
+      "allowedTypes": ["string", "date-time"]
+    },
+    {
+      "parameter": "xField",
+      "inputParameter": "versionId",
+      "identifier": "name",
+      "allowedTypes": ["string", "number"]
+    },
+    {
+      "parameter": "yField",
+      "inputParameter": "versionId",
+      "identifier": "name",
+      "allowedTypes": ["string", "number"]
+    },
+    {
+      "parameter": "referenceElevationField",
+      "inputParameter": "versionId",
+      "identifier": "name",
+      "allowedTypes": ["string", "number"]
+    },
+    {
+      "parameter": "depthToWaterField",
+      "inputParameter": "versionId",
+      "identifier": "name",
+      "allowedTypes": ["string", "number"]
+    }
+  ],
+  "semanticRequirements": [
+    {
+      "kind": "fieldUnit",
+      "inputParameter": "versionId",
+      "fieldParameter": "referenceElevationField",
+      "unitParameter": "referenceElevationUnit"
+    },
+    {
+      "kind": "fieldUnit",
+      "inputParameter": "versionId",
+      "fieldParameter": "depthToWaterField",
+      "unitParameter": "depthToWaterUnit"
+    },
+    {
+      "kind": "verticalBasis",
+      "inputParameter": "versionId",
+      "referenceFieldParameter": "referenceElevationField",
+      "depthFieldParameter": "depthToWaterField",
+      "referenceMeanings": [
+        "reference_elevation",
+        "land_surface_elevation"
+      ],
+      "depthMeanings": [
+        "depth_to_water",
+        "depth_below_reference_surface"
+      ]
+    },
+    {
+      "kind": "crs",
+      "inputParameter": "versionId",
+      "crsParameter": "sourceCrs"
+    },
+    {
+      "kind": "crsParameter",
+      "parameter": "targetCrs",
+      "requirement": "projectedMetric"
+    },
+    {
+      "kind": "timeField",
+      "inputParameter": "versionId",
+      "fieldParameter": "timeField"
+    },
+    {
+      "kind": "timeRange",
+      "inputParameter": "versionId",
+      "fieldParameter": "timeField",
+      "startParameter": "targetTime",
+      "endParameter": "targetTime"
+    }
+  ],
+  "defaultParameters": {
+    "valueField": "hydraulic_head_m",
+    "referenceElevationUnit": "m",
+    "depthToWaterUnit": "m",
+    "selection": "latestAtOrBefore",
+    "maxAgeDays": 30,
+    "power": 2,
+    "neighborCount": 12
+  },
+  "parameterBindings": {
+    "wellField": "wellField",
+    "timeField": "timeField",
+    "valueField": "valueField",
+    "xField": "xField",
+    "yField": "yField",
+    "referenceElevationField": "referenceElevationField",
+    "depthToWaterField": "depthToWaterField",
+    "referenceElevationUnit": "referenceElevationUnit",
+    "depthToWaterUnit": "depthToWaterUnit",
+    "targetTime": "targetTime",
+    "selection": "selection",
+    "maxAgeDays": "maxAgeDays",
+    "sourceCrs": "sourceCrs",
+    "targetCrs": "targetCrs",
+    "pixelSize": "pixelSize",
+    "power": "power",
+    "neighborCount": "neighborCount",
+    "hydraulicConductivityMetersPerDay": "hydraulicConductivityMetersPerDay",
+    "effectivePorosity": "effectivePorosity"
+  },
+  "deadlineSeconds": 7200,
+  "maxParallelNodes": 1,
+  "finalOutputs": [
+    "snapshot",
+    "snapshot-diagnostics",
+    "head-raster",
+    "gradient",
+    "flow-direction",
+    "darcy-flux",
+    "seepage-velocity",
+    "summary"
+  ],
+  "executionService": "executor",
+  "executorId": "workflow-dag",
+  "outputPublications": {
+    "snapshot": {
+      "title": "Snapshot",
+      "mediaType": "application/vnd.apache.parquet",
+      "format": "parquet",
+      "policy": "FILE_QUERYABLE",
+      "semantics": {
+        "description": "One selected observation per well at the requested target time, including the computed hydraulic-head elevation formed from reference elevation minus depth to water.",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "Selection can use an earlier or nearest observation according to the requested method and maximum age; inspect snapshot diagnostics before interpreting the surface.",
+          "Computed head is valid only when elevation and depth share the declared reference surface and vertical datum."
+        ],
+        "source": "workflow-declared"
+      }
+    },
+    "snapshot-diagnostics": {
+      "title": "Snapshot Diagnostics",
+      "mediaType": "application/vnd.apache.parquet",
+      "format": "parquet",
+      "policy": "FILE_QUERYABLE",
+      "semantics": {
+        "description": "Per-well diagnostics for target-time selection, including exclusions and the age of observations used to construct the snapshot.",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "Diagnostics describe record selection rather than measurement quality; stale, excluded, and missing wells must be reviewed separately."
+        ],
+        "source": "workflow-declared"
+      }
+    },
+    "head-raster": {
+      "title": "Head Raster",
+      "mediaType": "image/tiff",
+      "format": "geotiff",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "IDW-interpolated computed hydraulic-head elevation in metres, where point head equals reference elevation minus depth to water.",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": "targetCrs workflow parameter (projected metres)",
+        "vertical_datum": "Inherited from the preflight-validated reference-elevation field vertical datum.",
+        "limitations": [
+          "The IDW surface is sensitive to point coverage, neighbor count, power, pixel size, and edge effects; it is not a calibrated groundwater-model boundary solution.",
+          "The raster interpolates computed head values and does not represent an observed groundwater velocity field."
+        ],
+        "source": "workflow-declared"
+      }
+    },
+    "gradient": {
+      "title": "Gradient",
+      "mediaType": "image/tiff",
+      "format": "geotiff",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "Dimensionless two-dimensional horizontal hydraulic-gradient magnitude derived from the IDW-interpolated head raster in targetCrs.",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": "targetCrs workflow parameter (projected metres)",
+        "vertical_datum": null,
+        "limitations": [
+          "Gradient inherits interpolation, point-coverage, and raster-resolution uncertainty from the head surface.",
+          "The calculation does not resolve vertical gradients, aquifer layering, or anisotropy."
+        ],
+        "source": "workflow-declared"
+      }
+    },
+    "flow-direction": {
+      "title": "Flow Direction",
+      "mediaType": "image/tiff",
+      "format": "geotiff",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "Derived horizontal flow-direction azimuth in clockwise degrees from grid north toward decreasing hydraulic head.",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": "targetCrs workflow parameter (projected metres)",
+        "vertical_datum": null,
+        "limitations": [
+          "Grid north can differ from true north, and direction is undefined in flat or nodata cells.",
+          "This direction is derived from an interpolated head surface and is not an observed groundwater velocity direction."
+        ],
+        "source": "workflow-declared"
+      }
+    },
+    "darcy-flux": {
+      "title": "Darcy Flux",
+      "mediaType": "image/tiff",
+      "format": "geotiff",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "Model-derived Darcy flux (specific discharge) magnitude in metres per day, calculated as q = K times the dimensionless horizontal hydraulic-gradient magnitude.",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": "targetCrs workflow parameter (projected metres)",
+        "vertical_datum": null,
+        "limitations": [
+          "The estimate assumes homogeneous, isotropic scalar hydraulic conductivity and a two-dimensional steady horizontal field.",
+          "It is not an observed groundwater velocity or a calibrated transport-model result."
+        ],
+        "source": "workflow-declared"
+      }
+    },
+    "seepage-velocity": {
+      "title": "Seepage Velocity",
+      "mediaType": "image/tiff",
+      "format": "geotiff",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "Model-derived seepage-velocity magnitude in metres per day, calculated by dividing Darcy flux (specific discharge) by effective porosity.",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": "targetCrs workflow parameter (projected metres)",
+        "vertical_datum": null,
+        "limitations": [
+          "The estimate assumes homogeneous, isotropic scalar hydraulic conductivity and spatially uniform effective porosity.",
+          "It is not an observed groundwater velocity and omits heterogeneity, transient storage, density effects, and vertical flow."
+        ],
+        "source": "workflow-declared"
+      }
+    },
+    "summary": {
+      "title": "Summary",
+      "mediaType": "application/json",
+      "format": "json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "Execution summary reporting computed-head, interpolation, gradient, Darcy-flux, seepage-velocity, parameter, unit, and assumption metadata.",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "The summary supports interpretation but does not replace review of source-data quality, datum compatibility, spatial coverage, or model calibration."
+        ],
+        "source": "workflow-declared"
+      }
+    }
+  }
+}

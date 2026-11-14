@@ -92,6 +92,12 @@ experiment ID、tags、benchmarkStatus 与非授权 alias；旧 stage 仅保留�
 `GET /inventory` 返回当前 Dataset 数、已有标签/描述覆盖量以及 format/tag 分布。
 `POST /discovery` 接受 `query/tags/formats/fieldTerms/units/after/limit`，对当前版本、语义和对象元数据做确定性过滤与排序，并返回紧凑候选身份、命中的字段、`matchReasons`、`unknowns`、`totalMatches` 和游标；完整 descriptor/semantics 不复制到发现响应。Agent 工具的开放 `arguments` 键按工具合同保留 snake_case；选定候选后仍须调用 `inspect_data_version` 冻结完整版本身份。
 
+字段语义可在现有修订中声明 `quantityKind/role/source/applicability`，数据集可声明
+`spatialExtent`，包含 CRS 和 `[minX,minY,maxX,maxY]`。发现可按 `quantityKinds`、闭区间
+`timeWindow`（两个 ISO 日期）和同 CRS 的相交 `spatialExtent` 筛选。字段与单位过滤作用于
+满足条件的实际列，单位做 Unicode 规范化并保留大小写。需要时间或空间过滤时，缺少可比较元数据
+的候选不会命中。发现返回的质量摘要只使用同一数据版本、语义修订和当前启用质量绑定下的最新运行。
+
 发现仅匹配已登记的字面元数据，不做向量语义召回，不推断缺失字段含义，也不缓存跨项目副本。更正语义后下一次请求直接读取新的 current catalog 投影。
 
 ### 管理发布一组结果

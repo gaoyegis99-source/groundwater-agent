@@ -102,10 +102,18 @@ def object_schema(properties: dict, required: list[str] | None = None) -> dict:
 
 
 NODE_OUTPUT = object_schema({"nodeId": OPERATOR_ID, "port": NAME})
-INPUT_BINDING = {
+SINGLE_INPUT_BINDING = {
     "oneOf": [
         object_schema({"workflowInput": NAME}),
         object_schema({"nodeOutput": NODE_OUTPUT}),
+    ],
+}
+INPUT_BINDING = {
+    "oneOf": [
+        *SINGLE_INPUT_BINDING["oneOf"],
+        object_schema({"collection": {
+            "type": "array", "items": SINGLE_INPUT_BINDING, "minItems": 1,
+        }}),
     ],
 }
 PARAMETER_BINDING = object_schema({"workflowParameter": NAME})

@@ -31,25 +31,24 @@ class _ToolUsageCaptureMixin:
             else builtin_progress_definition(tool.name)
         )
         if progress is not None:
+            intent = None
             try:
                 arguments = json.loads(context.tool_arguments)
-            except (TypeError, json.JSONDecodeError) as error:
-                raise AgentRunError(
-                    "AGENT_MODEL_OUTPUT_INVALID",
-                    diagnostics={"reason": "PROGRESS_INTENT_INVALID"},
-                ) from error
-            if not isinstance(arguments, dict):
-                raise AgentRunError(
-                    "AGENT_MODEL_OUTPUT_INVALID",
-                    diagnostics={"reason": "PROGRESS_INTENT_INVALID"},
-                )
-            if definition is not None and definition.progress is not None:
-                intent, _service_arguments = parse_progress_intent(definition, arguments)
-            else:
-                intent = validate_builtin_progress_intent(
-                    tool.name, arguments.get("progress_intent")
-                )
-            title, summary = render_running_progress(progress, intent)
+                if isinstance(arguments, dict):
+                    if definition is not None and definition.progress is not None:
+                        intent, _service_arguments = parse_progress_intent(definition, arguments)
+                    else:
+                        intent = validate_builtin_progress_intent(tool.name, arguments.get("progress_intent"))
+            except (TypeError, json.JSONDecodeError):
+                # The governed tool owns validation and its bounded repair.
+                pass
+            except AgentRunError as error:
+                if (error.diagnostics or {}).get("reason") not in {"PROGRESS_INTENT_INVALID", "PROGRESS_INTENT_MISMATCH"}:
+                    raise
+            title, summary = (
+                (progress.title, "正在核验工具调用参数。") if intent is None
+                else render_running_progress(progress, intent)
+            )
             activity = _activity(
                 self.segment, "TOOL", "DECLARED_TOOL",
                 tool_name=tool.name, tool_call_id=context.tool_call_id,
@@ -62,7 +61,8 @@ class _ToolUsageCaptureMixin:
                 "template_key": progress.template_key,
             })
             self.record_activity(activity)
-            activity["_progress_intent"] = intent
+            if intent is not None:
+                activity["_progress_intent"] = intent
             self.tool_activities[context.tool_call_id] = activity
             return
         if tool.name not in self.observation_names:
@@ -163,11 +163,11 @@ class _ToolUsageCaptureMixin:
                     if control["mode"] == "WORKFLOW_DRAFT"
                     and "submit_reply" in enabled
                     else (
-                        "prepare_task_inputs"
-                        if "prepare_task_inputs" in enabled
+                        "read_evidence"
+                        if "read_evidence" in enabled
                         else (
-                            "read_evidence"
-                            if "read_evidence" in enabled
+                            "prepare_task_inputs"
+                            if "prepare_task_inputs" in enabled
                             else None
                         )
                     )
@@ -201,8 +201,6 @@ class _ToolUsageCaptureMixin:
         if progress is not None:
             body = _decoded_result(result)
             intent = activity.pop("_progress_intent", None)
-            if intent is None:
-                raise AgentRunError("PROGRESS_INTENT_MISSING")
             outcome_value = None
             if isinstance(body, dict):
                 outcome_value = body.get("progressOutcome")
@@ -218,6 +216,8 @@ class _ToolUsageCaptureMixin:
             activity["outcome_code"] = outcome.outcome_code
             activity["facts"] = outcome.facts
             if not is_control:
+                if intent is None:
+                    raise AgentRunError("PROGRESS_INTENT_MISSING")
                 self.next_model_activity = render_processing_progress(
                     progress, intent
                 )

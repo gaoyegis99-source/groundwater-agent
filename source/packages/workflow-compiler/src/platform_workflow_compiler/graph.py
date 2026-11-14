@@ -9,6 +9,11 @@ from .validation import WorkflowValidationError, checksum, pointer, require_stri
 NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_.-]*$")
 VERSION_PATTERN = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
 
+
+def input_members(binding: dict) -> list[dict]:
+    return binding["collection"] if "collection" in binding else [binding]
+
+
 def _named_list(
     value: object, name_key: str, error: str, *, collection: str | None = None,
 ) -> dict[str, dict]:
@@ -46,10 +51,12 @@ def _topological_order(dependencies: dict[str, set[str]]) -> list[str]:
 class _WorkflowCompilation:
     """Own intermediate contracts for one pure, isolated compilation."""
 
-    def __init__(self, raw: dict, operators: dict[tuple[str, str], dict], parameter_values: dict[str, object] | None):
+    def __init__(self, raw: dict, operators: dict[tuple[str, str], dict], parameter_values: dict[str, object] | None,
+                 collection_operators: dict[tuple[str, str], dict] | None):
         self.raw = raw
         self.operators = operators
         self.parameter_values = parameter_values
+        self.collection_operators = collection_operators or {}
         validate_raw_workflow(self.raw)
         if self.raw["schemaVersion"] != "workflow.v6":
             raise WorkflowValidationError("WORKFLOW_DSL_VERSION_INVALID")
@@ -123,26 +130,29 @@ class _WorkflowCompilation:
             if not isinstance(binding, dict) or len(binding) != 1:
                 raise WorkflowValidationError("WORKFLOW_INPUT_BINDING_INVALID", path)
             target = op_inputs[port_name]
-            if target.get("cardinality") != "one":
-                raise WorkflowValidationError("WORKFLOW_CARDINALITY_UNSUPPORTED", path)
-            if "workflowInput" in binding:
-                source_name = binding["workflowInput"]
-                if source_name not in self.inputs:
-                    raise WorkflowValidationError("WORKFLOW_PORT_INCOMPATIBLE", path + "/workflowInput")
-            elif "nodeOutput" in binding:
-                reference = binding["nodeOutput"]
-                if not isinstance(reference, dict) or set(reference) != {
-                    "nodeId",
-                    "port",
-                }:
-                    raise WorkflowValidationError("WORKFLOW_INPUT_BINDING_INVALID", path + "/nodeOutput")
-                upstream = reference["nodeId"]
-                source = self.declared_outputs.get((upstream, reference["port"]))
-                if source is None or source.get("kind") != "artifact":
-                    raise WorkflowValidationError("WORKFLOW_PORT_INCOMPATIBLE", path + "/nodeOutput")
-                node_dependencies.add(upstream)
-            else:
-                raise WorkflowValidationError("WORKFLOW_INPUT_BINDING_INVALID", path)
+            collection = "collection" in binding
+            if target["cardinality"] == "many":
+                manifest = self.collection_operators.get((node["operatorId"], node["operatorVersion"]), {})
+                limit = next((p["cardinality"] for p in manifest.get("inputs", [])
+                              if p["name"] == port_name and "cardinality" in p), None)
+                if limit is None:
+                    raise WorkflowValidationError("WORKFLOW_CARDINALITY_UNSUPPORTED", path)
+                if not collection or not limit["minItems"] <= len(binding["collection"]) <= limit["maxItems"]:
+                    raise WorkflowValidationError("COLLECTION_CARDINALITY_INVALID", path)
+            elif collection:
+                raise WorkflowValidationError("COLLECTION_CARDINALITY_INVALID", path)
+            for index, member in enumerate(input_members(binding)):
+                member_path = path + pointer(["collection", index]) if collection else path
+                if "workflowInput" in member:
+                    if member["workflowInput"] not in self.inputs:
+                        raise WorkflowValidationError("WORKFLOW_PORT_INCOMPATIBLE", member_path + "/workflowInput")
+                else:
+                    reference = member["nodeOutput"]
+                    upstream = reference["nodeId"]
+                    source = self.declared_outputs.get((upstream, reference["port"]))
+                    if source is None or source.get("kind") != "artifact":
+                        raise WorkflowValidationError("WORKFLOW_PORT_INCOMPATIBLE", member_path + "/nodeOutput")
+                    node_dependencies.add(upstream)
         self._validate_parameters(node_id, node)
         self.dependencies[node_id] = node_dependencies
 
@@ -173,16 +183,18 @@ class _WorkflowCompilation:
         input_contracts = []
         for target in operator["inputs"]:
             binding = node["inputs"][target["name"]]
-            source = (
-                self.workflow_inputs[binding["workflowInput"]]
-                if "workflowInput" in binding
-                else self.output_contracts[
-                    (binding["nodeOutput"]["nodeId"], binding["nodeOutput"]["port"])
-                ]
-            )
-            if not _formats_compatible(source, target):
-                raise WorkflowValidationError("WORKFLOW_PORT_INCOMPATIBLE", pointer(["nodes", self.node_indices[node_id], "inputs", target["name"]]))
-            bound_inputs[target["name"]] = _port_pairs(source)
+            bound_inputs[target["name"]] = set()
+            for member in input_members(binding):
+                source = (
+                    self.workflow_inputs[member["workflowInput"]]
+                    if "workflowInput" in member
+                    else self.output_contracts[
+                        (member["nodeOutput"]["nodeId"], member["nodeOutput"]["port"])
+                    ]
+                )
+                if not _formats_compatible(source, target):
+                    raise WorkflowValidationError("WORKFLOW_PORT_INCOMPATIBLE", pointer(["nodes", self.node_indices[node_id], "inputs", target["name"]]))
+                bound_inputs[target["name"]].update(_port_pairs(source))
             input_contracts.append(_compiled_port(target, _port_pairs(target)))
         compiled_outputs = []
         bound_parameters = (
@@ -248,8 +260,9 @@ class _WorkflowCompilation:
 def _compile_workflow(
     raw: dict, operators: dict[tuple[str, str], dict], *,
     parameter_values: dict[str, object] | None = None,
+    collection_operators: dict[tuple[str, str], dict] | None = None,
 ) -> dict:
-    return _WorkflowCompilation(raw, operators, parameter_values).compile()
+    return _WorkflowCompilation(raw, operators, parameter_values, collection_operators).compile()
 
 
 def compile_workflow(raw: dict, operators: dict[tuple[str, str], dict]) -> dict:

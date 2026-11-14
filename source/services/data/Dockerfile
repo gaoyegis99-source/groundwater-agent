@@ -48,7 +48,9 @@ WORKDIR /app
 RUN useradd --system --uid 10001 platform && mkdir /data /backups && chown platform:platform /data /backups
 COPY --from=wheels /wheels /wheels
 COPY --from=platform-deps python/common /wheels
-RUN --network=none python -m pip install --no-index --find-links=/wheels platform-data-service==3.0.0 platform-data-client==2.0.0 && rm -rf /wheels
+RUN --network=none python -m pip install --no-index --find-links=/wheels platform-data-service==3.0.0 platform-data-client==2.0.0 \
+    && python -c "import rasterio" \
+    && rm -rf /wheels
 COPY services/data/deploy/seccomp.json /app/seccomp.json
 USER 10001
 EXPOSE 8000

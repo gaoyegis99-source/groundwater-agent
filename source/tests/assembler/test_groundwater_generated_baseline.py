@@ -8,15 +8,15 @@ sys.path.insert(0, str(ROOT / "platform" / "assembler"))
 from assembler import compile_product  # noqa: E402
 
 
-# Domain 6.1.0: both model bindings, ten porous operations and Product UI.
+# Groundwater product assembly with the composition capability catalog.
 GENERATED_ARTIFACT_DIGESTS = {
-    "kernel-config.json": "cbd085e0deafc4c484b86578855270cea7f29faf718d3ad1adf90d962678241b",
-    "executor-config.json": "5a62764f3382afaabde6f77f828c2121589ba6ab180d46401d8709c40b975a56",
-    "compose.json": "0d542bd54633df8e514a0744f5d08cdaa2781a05c6977145f3bd783d3cdccd98",
-    "nginx.conf": "301325455147fe4416b0031474f7512da574e5019932689e1e1008060726ba1b",
+    "kernel-config.json": "deb81a1abc455ab29b500b6e7109a17047369af264bba56bbd81b8eaeec0a704",
+    "executor-config.json": "cdd55c9aab424cd082e009ee9b03160aa0302d7fd43ecaf03a335cb37827e345",
+    "compose.json": "0a49a99487fa4f815492fe704234910ad113d9e38379e7e6aec0ce9bfd13287b",
+    "nginx.conf": "2921970a6397dec6f4b4f81c2afaa334e8bdf651be8d12d5b90f71f3a7919d23",
     "product-ui.json": "9b7295796133f112e00ec356650072ad1d8040d3b35f358d37c47d1e304bdf85",
     "product-icon.svg": "e484a9befc9ff8ccabff776babccdcb0f0c8cf6adebc6da25bb64fccf5a0dfab",
-    "assembly-lock.json": "810b6951be19e826f910c68ab5b590c592682a3c8f07072dbd9771045b9477b4"
+    "assembly-lock.json": "8d04cda61150fcb7732bc6ce0bd0c760d33028836bb5223a8d7e76125a2c3529"
 }
 
 

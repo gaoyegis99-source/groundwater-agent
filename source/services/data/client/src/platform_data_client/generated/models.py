@@ -153,7 +153,25 @@ class DiscoveryField(BaseModel):
     field_id: str = Field(..., alias='fieldId', title='Fieldid')
     meaning: str = Field(..., title='Meaning')
     name: str = Field(..., title='Name')
+    quantity_kind: str | None = Field(None, alias='quantityKind', title='Quantitykind')
+    role: str | None = Field(None, title='Role')
     unit: str | None = Field(..., title='Unit')
+
+
+class Status(Enum):
+    passed = 'PASSED'
+    passed_with_warnings = 'PASSED_WITH_WARNINGS'
+    failed = 'FAILED'
+    error = 'ERROR'
+
+
+class DiscoveryQuality(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    quality_run_id: str = Field(..., alias='qualityRunId', title='Qualityrunid')
+    status: Status = Field(..., title='Status')
+    suite_version_id: str = Field(..., alias='suiteVersionId', title='Suiteversionid')
 
 
 class DiscoveryReason(BaseModel):
@@ -169,19 +187,12 @@ class After(RootModel[str]):
     root: str = Field(..., pattern='^[0-9]+$', title='After')
 
 
-class DiscoveryRequest(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    after: After | None = Field(None, title='After')
-    field_terms: list[str] | None = Field(
-        None, alias='fieldTerms', max_length=20, title='Fieldterms'
-    )
-    formats: list[str] | None = Field(None, max_length=20, title='Formats')
-    limit: int = Field(20, ge=1, le=100, title='Limit')
-    query: str = Field('', max_length=500, title='Query')
-    tags: list[str] | None = Field(None, max_length=20, title='Tags')
-    units: list[str] | None = Field(None, max_length=20, title='Units')
+class QuantityKind(RootModel[str]):
+    root: str = Field(..., pattern='^[a-z][a-z0-9_.-]{0,127}$')
+
+
+class TimeWindow(RootModel[list]):
+    root: list = Field(..., max_length=2, min_length=2, title='Timewindow')
 
 
 class EnumConstraint(BaseModel):
@@ -196,11 +207,33 @@ class EnumConstraint(BaseModel):
     )
 
 
+class Applicability(RootModel[str]):
+    root: str = Field(..., max_length=1000, min_length=1, title='Applicability')
+
+
+class QuantityKind1(RootModel[str]):
+    root: str = Field(..., pattern='^[a-z][a-z0-9_.-]{0,127}$', title='Quantitykind')
+
+
+class Role(RootModel[str]):
+    root: str = Field(..., pattern='^[a-z][a-z0-9_.-]{0,127}$', title='Role')
+
+
+class Source(RootModel[str]):
+    root: str = Field(..., max_length=500, min_length=1, title='Source')
+
+
 class FieldMeaning(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
+    applicability: Applicability | None = Field(None, title='Applicability')
     meaning: str | None = Field(None, title='Meaning')
+    quantity_kind: QuantityKind1 | None = Field(
+        None, alias='quantityKind', title='Quantitykind'
+    )
+    role: Role | None = Field(None, title='Role')
+    source: Source | None = Field(None, title='Source')
     unit: str | None = Field(None, title='Unit')
 
 
@@ -484,7 +517,7 @@ class NotNullConstraint(BaseModel):
     kind: Literal['notNull'] = Field(..., title='Kind')
 
 
-class Role(Enum):
+class Role1(Enum):
     raw = 'raw'
     query = 'query'
 
@@ -500,7 +533,7 @@ class ObjectDescriptor(BaseModel):
     format: str | None = Field(None, title='Format')
     media_type: str | None = Field(None, alias='mediaType', title='Mediatype')
     object_id: str = Field(..., alias='objectId', title='Objectid')
-    role: Role | None = Field(None, title='Role')
+    role: Role1 | None = Field(None, title='Role')
     size: int = Field(..., title='Size')
     source_checksum: str | None = Field(
         None, alias='sourceChecksum', title='Sourcechecksum'
@@ -747,7 +780,7 @@ class Severity(Enum):
     info = 'INFO'
 
 
-class Status(Enum):
+class Status1(Enum):
     fail = 'FAIL'
     error = 'ERROR'
 
@@ -762,7 +795,7 @@ class QualityAlertResponse(BaseModel):
     quality_run_id: str = Field(..., alias='qualityRunId', title='Qualityrunid')
     rule_id: str = Field(..., alias='ruleId', title='Ruleid')
     severity: Severity = Field(..., title='Severity')
-    status: Status = Field(..., title='Status')
+    status: Status1 = Field(..., title='Status')
     version_id: str = Field(..., alias='versionId', title='Versionid')
     violation_count: int = Field(..., alias='violationCount', title='Violationcount')
 
@@ -800,7 +833,7 @@ class Code(RootModel[str]):
     root: str = Field(..., max_length=128, min_length=1, title='Code')
 
 
-class Status1(Enum):
+class Status2(Enum):
     pass_ = 'PASS'
     fail = 'FAIL'
     error = 'ERROR'
@@ -815,7 +848,7 @@ class QualityRuleResultRequest(BaseModel):
     rule_id: str = Field(
         ..., alias='ruleId', max_length=128, min_length=1, title='Ruleid'
     )
-    status: Status1 = Field(..., title='Status')
+    status: Status2 = Field(..., title='Status')
     violation_count: int = Field(
         0, alias='violationCount', ge=0, title='Violationcount'
     )
@@ -829,7 +862,7 @@ class QualityRuleResultResponse(BaseModel):
     evidence: dict[str, Any] = Field(..., title='Evidence')
     rule_id: str = Field(..., alias='ruleId', title='Ruleid')
     severity: Severity = Field(..., title='Severity')
-    status: Status1 = Field(..., title='Status')
+    status: Status2 = Field(..., title='Status')
     violation_count: int = Field(..., alias='violationCount', title='Violationcount')
 
 
@@ -876,7 +909,7 @@ class QualityRunRequest(BaseModel):
     )
 
 
-class Status3(Enum):
+class Status4(Enum):
     passed = 'PASSED'
     passed_with_warnings = 'PASSED_WITH_WARNINGS'
     failed = 'FAILED'
@@ -904,7 +937,7 @@ class QualityRunResponse(BaseModel):
     quality_run_id: str = Field(..., alias='qualityRunId', title='Qualityrunid')
     results: list[QualityRuleResultResponse] = Field(..., title='Results')
     semantic_id: str = Field(..., alias='semanticId', title='Semanticid')
-    status: Status3 = Field(..., title='Status')
+    status: Status4 = Field(..., title='Status')
     suite_version_id: str = Field(..., alias='suiteVersionId', title='Suiteversionid')
     summary: dict[str, Any] = Field(..., title='Summary')
     version_id: str = Field(..., alias='versionId', title='Versionid')
@@ -1102,23 +1135,6 @@ class SemanticUpdateResponse(BaseModel):
     version_id: str = Field(..., alias='versionId', title='Versionid')
 
 
-class Semantics(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    crs: str | None = Field(None, title='Crs')
-    description: str = Field('', max_length=10000, title='Description')
-    fields: dict[str, FieldMeaning] | None = Field(None, title='Fields')
-    grain: str | None = Field(None, title='Grain')
-    limitations: list[str] | None = Field(None, title='Limitations')
-    source: str = Field('caller_declared', max_length=500, title='Source')
-    time_range: str | None = Field(None, alias='timeRange', title='Timerange')
-    timezone: str | None = Field(None, title='Timezone')
-    vertical_datum: str | None = Field(
-        None, alias='verticalDatum', title='Verticaldatum'
-    )
-
-
 class Direction(Enum):
     asc = 'asc'
     desc = 'desc'
@@ -1130,6 +1146,14 @@ class Sort(BaseModel):
     )
     direction: Direction = Field('asc', title='Direction')
     field: str = Field(..., pattern='^[a-zA-Z0-9_-]{1,128}$', title='Field')
+
+
+class SpatialExtent(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    bbox: list = Field(..., max_length=4, min_length=4, title='Bbox')
+    crs: str = Field(..., max_length=200, min_length=1, title='Crs')
 
 
 class ToolActor(BaseModel):
@@ -1197,25 +1221,6 @@ class ValidationIssue(BaseModel):
     )
     message: str = Field(..., title='Message')
     pointer: str = Field(..., title='Pointer')
-
-
-class VersionResponse(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    created_at: AwareDatetime = Field(..., alias='createdAt', title='Createdat')
-    current_version: str = Field(..., alias='currentVersion', title='Currentversion')
-    dataset_id: str = Field(..., alias='datasetId', title='Datasetid')
-    descriptor: dict[str, Any] = Field(..., title='Descriptor')
-    input_versions: list[str] = Field(..., alias='inputVersions', title='Inputversions')
-    objects: list[ObjectDescriptor] = Field(..., title='Objects')
-    project: str = Field(..., title='Project')
-    publication_id: str = Field(..., alias='publicationId', title='Publicationid')
-    semantic_id: str = Field(..., alias='semanticId', title='Semanticid')
-    semantics: Semantics
-    tags: list[str] = Field(..., title='Tags')
-    title: str = Field(..., title='Title')
-    version_id: str = Field(..., alias='versionId', title='Versionid')
 
 
 class VersionSummary(BaseModel):
@@ -1317,12 +1322,37 @@ class DiscoveryItem(BaseModel):
     matched_fields: list[DiscoveryField] = Field(
         ..., alias='matchedFields', title='Matchedfields'
     )
+    quality: DiscoveryQuality | None = None
     score: int = Field(..., title='Score')
     semantic_id: str = Field(..., alias='semanticId', title='Semanticid')
+    spatial_extent: SpatialExtent | None = Field(None, alias='spatialExtent')
     tags: list[str] = Field(..., title='Tags')
     time_range: str | None = Field(..., alias='timeRange', title='Timerange')
     title: str = Field(..., title='Title')
     unknowns: list[str] = Field(..., title='Unknowns')
+    vertical_datum: str | None = Field(
+        None, alias='verticalDatum', title='Verticaldatum'
+    )
+
+
+class DiscoveryRequest(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    after: After | None = Field(None, title='After')
+    field_terms: list[str] | None = Field(
+        None, alias='fieldTerms', max_length=20, title='Fieldterms'
+    )
+    formats: list[str] | None = Field(None, max_length=20, title='Formats')
+    limit: int = Field(20, ge=1, le=100, title='Limit')
+    quantity_kinds: list[QuantityKind] | None = Field(
+        None, alias='quantityKinds', max_length=20, title='Quantitykinds'
+    )
+    query: str = Field('', max_length=500, title='Query')
+    spatial_extent: SpatialExtent | None = Field(None, alias='spatialExtent')
+    tags: list[str] | None = Field(None, max_length=20, title='Tags')
+    time_window: TimeWindow | None = Field(None, alias='timeWindow', title='Timewindow')
+    units: list[str] | None = Field(None, max_length=20, title='Units')
 
 
 class DiscoveryResponse(BaseModel):
@@ -1355,24 +1385,6 @@ class MlRunResponse(BaseModel):
     resolved_model_inputs: list[ResolvedModelResponse] = Field(
         ..., alias='resolvedModelInputs', title='Resolvedmodelinputs'
     )
-
-
-class Output(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    conversion: Conversion | None = None
-    dataset_id: DatasetId | None = Field(None, alias='datasetId', title='Datasetid')
-    expected_version: ExpectedVersion | None = Field(
-        None, alias='expectedVersion', title='Expectedversion'
-    )
-    format: Format = Field(..., title='Format')
-    media_type: MediaType | None = Field(None, alias='mediaType', title='Mediatype')
-    name: str = Field(..., pattern='^[a-zA-Z0-9_-]{1,128}$', title='Name')
-    policy: Policy = Field('FILE_ONLY', title='Policy')
-    semantics: Semantics | None = None
-    tags: list[str] | None = Field(None, max_length=30, title='Tags')
-    title: str = Field(..., max_length=500, min_length=1, title='Title')
 
 
 class ProblemDetailsV11(BaseModel):
@@ -1469,14 +1481,22 @@ class SemanticRevisionPage(BaseModel):
     next_cursor: str | None = Field(..., alias='nextCursor', title='Nextcursor')
 
 
-class SemanticUpdate(BaseModel):
+class Semantics(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expected_semantic_id: str = Field(
-        ..., alias='expectedSemanticId', min_length=1, title='Expectedsemanticid'
+    crs: str | None = Field(None, title='Crs')
+    description: str = Field('', max_length=10000, title='Description')
+    fields: dict[str, FieldMeaning] | None = Field(None, title='Fields')
+    grain: str | None = Field(None, title='Grain')
+    limitations: list[str] | None = Field(None, title='Limitations')
+    source: str = Field('caller_declared', max_length=500, title='Source')
+    spatial_extent: SpatialExtent | None = Field(None, alias='spatialExtent')
+    time_range: str | None = Field(None, alias='timeRange', title='Timerange')
+    timezone: str | None = Field(None, title='Timezone')
+    vertical_datum: str | None = Field(
+        None, alias='verticalDatum', title='Verticaldatum'
     )
-    semantics: Semantics
 
 
 class VersionPage(BaseModel):
@@ -1485,6 +1505,53 @@ class VersionPage(BaseModel):
     )
     items: list[VersionSummary] = Field(..., title='Items')
     next_cursor: str | None = Field(..., alias='nextCursor', title='Nextcursor')
+
+
+class VersionResponse(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    created_at: AwareDatetime = Field(..., alias='createdAt', title='Createdat')
+    current_version: str = Field(..., alias='currentVersion', title='Currentversion')
+    dataset_id: str = Field(..., alias='datasetId', title='Datasetid')
+    descriptor: dict[str, Any] = Field(..., title='Descriptor')
+    input_versions: list[str] = Field(..., alias='inputVersions', title='Inputversions')
+    objects: list[ObjectDescriptor] = Field(..., title='Objects')
+    project: str = Field(..., title='Project')
+    publication_id: str = Field(..., alias='publicationId', title='Publicationid')
+    semantic_id: str = Field(..., alias='semanticId', title='Semanticid')
+    semantics: Semantics
+    tags: list[str] = Field(..., title='Tags')
+    title: str = Field(..., title='Title')
+    version_id: str = Field(..., alias='versionId', title='Versionid')
+
+
+class Output(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    conversion: Conversion | None = None
+    dataset_id: DatasetId | None = Field(None, alias='datasetId', title='Datasetid')
+    expected_version: ExpectedVersion | None = Field(
+        None, alias='expectedVersion', title='Expectedversion'
+    )
+    format: Format = Field(..., title='Format')
+    media_type: MediaType | None = Field(None, alias='mediaType', title='Mediatype')
+    name: str = Field(..., pattern='^[a-zA-Z0-9_-]{1,128}$', title='Name')
+    policy: Policy = Field('FILE_ONLY', title='Policy')
+    semantics: Semantics | None = None
+    tags: list[str] | None = Field(None, max_length=30, title='Tags')
+    title: str = Field(..., max_length=500, min_length=1, title='Title')
+
+
+class SemanticUpdate(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    expected_semantic_id: str = Field(
+        ..., alias='expectedSemanticId', min_length=1, title='Expectedsemanticid'
+    )
+    semantics: Semantics
 
 
 class BeginPublicationRequest(BaseModel):

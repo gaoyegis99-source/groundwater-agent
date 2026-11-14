@@ -9,6 +9,10 @@ def check_semantics(body, fields):
     unknown = set(body.fields) - {x["id"] for x in fields}
     if unknown:
         raise DataProblemError("UNKNOWN_FIELD", fields=sorted(unknown))
+    if body.spatial_extent is not None and body.crs is not None and (
+        body.spatial_extent.crs.strip().casefold() != body.crs.strip().casefold()
+    ):
+        raise DataProblemError("SPATIAL_EXTENT_CRS_MISMATCH", 422)
 
 
 def add_semantics(c, project, version_id, body, expected, actor):

@@ -1,0 +1,304 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.platform.local/workflow-composition/workflow.v7.schema.json",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": "workflow.v7"
+    },
+    "workflowId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.-]*$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+    },
+    "projectId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "definitionDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "registryRef": {
+      "$ref": "composition-types.v1.schema.json#/$defs/identity"
+    },
+    "validatorRef": {
+      "$ref": "composition-types.v1.schema.json#/$defs/identity"
+    },
+    "environmentRef": {
+      "$ref": "composition-types.v1.schema.json#/$defs/identity"
+    },
+    "requiredFeatures": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_.-]*$"
+      },
+      "uniqueItems": true
+    },
+    "inputs": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "port": {
+            "$ref": "composition-types.v1.schema.json#/$defs/port"
+          },
+          "dataRef": {
+            "$ref": "composition-types.v1.schema.json#/$defs/dataRef"
+          },
+          "facts": {
+            "type": "array",
+            "items": {
+              "$ref": "composition-types.v1.schema.json#/$defs/fact"
+            }
+          }
+        },
+        "required": [
+          "port",
+          "facts"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "parameters": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "value": {},
+          "source": {
+            "$ref": "composition-types.v1.schema.json#/$defs/parameterSource"
+          }
+        },
+        "required": [
+          "value",
+          "source"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "nodeId": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "operator": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_.-]*$"
+              },
+              "version": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+              },
+              "definitionDigest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              "implementationRevision": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              }
+            },
+            "required": [
+              "id",
+              "version",
+              "definitionDigest",
+              "implementationRevision"
+            ],
+            "additionalProperties": false
+          },
+          "inputs": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "minLength": 1
+            },
+            "additionalProperties": {
+              "$ref": "composition-types.v1.schema.json#/$defs/binding"
+            }
+          },
+          "parameters": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "minLength": 1
+            },
+            "additionalProperties": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "workflowParameter": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "workflowParameter"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "nodeOutput": {
+                      "$ref": "composition-types.v1.schema.json#/$defs/nodeOutput"
+                    }
+                  },
+                  "required": [
+                    "nodeOutput"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "nodeId",
+          "operator",
+          "inputs",
+          "parameters"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "outputs": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "nodeOutput": {
+            "$ref": "composition-types.v1.schema.json#/$defs/nodeOutput"
+          },
+          "goal": {
+            "type": "object",
+            "properties": {
+              "role": {
+                "type": "string",
+                "minLength": 1
+              },
+              "logicalType": {
+                "$ref": "composition-types.v1.schema.json#/$defs/logicalType"
+              },
+              "requires": {
+                "$ref": "composition-types.v1.schema.json#/$defs/facts"
+              }
+            },
+            "required": [
+              "role",
+              "logicalType",
+              "requires"
+            ],
+            "additionalProperties": false
+          },
+          "publication": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string",
+                "minLength": 1
+              },
+              "format": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_.-]*$"
+              },
+              "policy": {
+                "enum": [
+                  "FILE_ONLY",
+                  "FILE_QUERYABLE",
+                  "FILE_AND_METRICS"
+                ]
+              }
+            },
+            "required": [
+              "title",
+              "format",
+              "policy"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "nodeOutput",
+          "goal",
+          "publication"
+        ],
+        "additionalProperties": false
+      },
+      "minProperties": 1
+    },
+    "resourceLimits": {
+      "type": "object",
+      "properties": {
+        "maxNodes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "maxParallelNodes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "maxNodeMemoryBytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "maxNodeTimeoutSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "maxNodes",
+        "maxParallelNodes",
+        "maxNodeMemoryBytes",
+        "maxNodeTimeoutSeconds"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "workflowId",
+    "version",
+    "projectId",
+    "registryRef",
+    "validatorRef",
+    "environmentRef",
+    "requiredFeatures",
+    "inputs",
+    "parameters",
+    "nodes",
+    "outputs",
+    "resourceLimits"
+  ],
+  "additionalProperties": false
+}

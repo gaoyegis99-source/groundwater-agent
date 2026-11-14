@@ -1,0 +1,361 @@
+{
+  "schemaVersion": "domain-knowledge.v2",
+  "contentVersion": "1.1.0",
+  "language": "zh-CN",
+  "sources": [
+    {
+      "sourceId": "sen-1968",
+      "kind": "RESEARCH_PAPER",
+      "title": "Estimates of the Regression Coefficient Based on Kendall’s Tau",
+      "publisher": "American Statistical Association",
+      "url": "https://doi.org/10.1080/01621459.1968.10480934",
+      "version": "1968",
+      "publishedAt": null,
+      "accessedAt": "2026-11-14",
+      "reviewAfter": "2027-11-14",
+      "validThrough": null,
+      "lifecycleStatus": "ACTIVE"
+    },
+    {
+      "sourceId": "pettitt-1979",
+      "kind": "RESEARCH_PAPER",
+      "title": "A Non-Parametric Approach to the Change-Point Problem",
+      "publisher": "Royal Statistical Society",
+      "url": "https://doi.org/10.2307/2346729",
+      "version": "1979",
+      "publishedAt": null,
+      "accessedAt": "2026-11-14",
+      "reviewAfter": "2027-11-14",
+      "validThrough": null,
+      "lifecycleStatus": "ACTIVE"
+    },
+    {
+      "sourceId": "epa-drastic-1987",
+      "kind": "OFFICIAL_GUIDANCE",
+      "title": "DRASTIC, EPA/600/2-87/035",
+      "publisher": "US EPA",
+      "url": "https://nepis.epa.gov/Exe/ZyPURL.cgi?Dockey=20007KU4.TXT",
+      "version": "1987",
+      "publishedAt": null,
+      "accessedAt": "2026-11-14",
+      "reviewAfter": "2027-11-14",
+      "validThrough": null,
+      "lifecycleStatus": "ACTIVE"
+    },
+    {
+      "sourceId": "usgs-modflow6-tm6a55",
+      "kind": "OFFICIAL_GUIDANCE",
+      "title": "Documentation for the MODFLOW 6 Groundwater Flow Model",
+      "publisher": "USGS",
+      "url": "https://pubs.usgs.gov/publication/tm6A55",
+      "version": "2017",
+      "publishedAt": null,
+      "accessedAt": "2026-11-14",
+      "reviewAfter": "2027-11-14",
+      "validThrough": null,
+      "lifecycleStatus": "ACTIVE"
+    },
+    {
+      "sourceId": "usgs-flopy-workflows",
+      "kind": "OFFICIAL_GUIDANCE",
+      "title": "FloPy workflows for creating structured and unstructured MODFLOW models",
+      "publisher": "USGS",
+      "url": "https://www.usgs.gov/publications/flopy-workflows-creating-structured-and-unstructured-modflow-models",
+      "version": "2023",
+      "publishedAt": null,
+      "accessedAt": "2026-11-14",
+      "reviewAfter": "2027-11-14",
+      "validThrough": null,
+      "lifecycleStatus": "ACTIVE"
+    },
+    {
+      "sourceId": "usgs-pest-inversion",
+      "kind": "OFFICIAL_GUIDANCE",
+      "title": "Approaches to highly parameterized inversion, SIR 2010-5211",
+      "publisher": "USGS",
+      "url": "https://pubs.usgs.gov/publication/sir20105211",
+      "version": "2010",
+      "publishedAt": null,
+      "accessedAt": "2026-11-14",
+      "reviewAfter": "2027-11-14",
+      "validThrough": null,
+      "lifecycleStatus": "ACTIVE"
+    },
+    {
+      "sourceId": "pastas-2019",
+      "kind": "RESEARCH_PAPER",
+      "title": "Pastas: Open Source Software for the Analysis of Groundwater Time Series",
+      "publisher": "Groundwater",
+      "url": "https://doi.org/10.1111/gwat.12925",
+      "version": "2019",
+      "publishedAt": null,
+      "accessedAt": "2026-11-14",
+      "reviewAfter": "2027-11-14",
+      "validThrough": null,
+      "lifecycleStatus": "ACTIVE"
+    },
+    {
+      "sourceId": "usgs-kriging-sir20145038",
+      "kind": "OFFICIAL_GUIDANCE",
+      "title": "USGS Scientific Investigations Report 2014-5038",
+      "publisher": "USGS",
+      "url": "https://pubs.usgs.gov/sir/2014/5038/pdf/sir2014-5038.pdf",
+      "version": "2014",
+      "publishedAt": null,
+      "accessedAt": "2026-11-14",
+      "reviewAfter": "2027-11-14",
+      "validThrough": null,
+      "lifecycleStatus": "ACTIVE"
+    },
+    {
+      "sourceId": "usgs-transmissivity-interpretation",
+      "kind": "RESEARCH_PAPER",
+      "title": "Interpretation of transmissivity estimates from single-well pumping aquifer tests",
+      "publisher": "USGS",
+      "url": "https://www.usgs.gov/publications/interpretation-transmissivity-estimates-single-well-pumping-aquifer-tests",
+      "version": "2005",
+      "publishedAt": null,
+      "accessedAt": "2026-11-14",
+      "reviewAfter": "2027-11-14",
+      "validThrough": null,
+      "lifecycleStatus": "ACTIVE"
+    },
+    {
+      "sourceId": "usgs-specific-yield-wtf",
+      "kind": "OFFICIAL_GUIDANCE",
+      "title": "Water-Table Fluctuation Method: Estimating Specific Yield",
+      "publisher": "USGS",
+      "url": "https://water.usgs.gov/ogw/gwrp/methods/wtf/estimating_sy.html",
+      "version": null,
+      "publishedAt": null,
+      "accessedAt": "2026-11-14",
+      "reviewAfter": "2027-11-14",
+      "validThrough": null,
+      "lifecycleStatus": "ACTIVE"
+    }
+  ],
+  "documents": [
+    {
+      "knowledgeId": "gw-method-sen-slope",
+      "kind": "method",
+      "title": "Sen 斜率：地下水监测序列的稳健变化率",
+      "summary": "逐井用真实时间差计算成对斜率中位数，明确方向、时间单位、序列依赖与 Mann–Kendall 检验的关系。",
+      "aliases": [
+        "Sen slope",
+        "Theil–Sen",
+        "成对斜率中位数"
+      ],
+      "chunks": [
+        {
+          "content": "【定义与算法】对每个井和可比较层位，按时间排序，取所有 t_j>t_i 的 (y_j−y_i)/(t_j−t_i) 的中位数。当前 Mann–Kendall 算子使用实际经过天数，输出原量单位/日，并乘 365.2425 报告每年量。至少需要两个有效且不同的观测时点，重复时刻应先按明确规则复核；两个点能求斜率，不能据此判断估计稳定。输入为井号、时间和同口径观测，时间窗与频率由研究问题及覆盖确定。【适用与限制】用于单调或近似线性变化的稳健速率概括。换基准、换仪器、长缺测、季节与自相关会影响解释或推断，必要时分段或使用适当的季节方法。报告斜率的符号和时间单位；埋深正斜率和水头正斜率的物理方向不同。斜率是效应量，显著性需另看检验及其假设，不能据此归因。",
+          "sourceRefs": [
+            "sen-1968"
+          ],
+          "locator": {
+            "reference": "Sen (1968), pp. 1379–1389",
+            "implementation": "statistics.mann_kendall@1.0.0"
+          }
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-method-pettitt",
+      "kind": "method",
+      "title": "Pettitt 单变点检验：地下水序列的候选位置变化",
+      "summary": "用秩统计量检测逐井单个候选变点，核查缺测、两侧覆盖和基准变化，结合变化幅度解释。",
+      "aliases": [
+        "Pettitt test",
+        "Pettitt 变点",
+        "单变点秩检验"
+      ],
+      "chunks": [
+        {
+          "content": "【定义与算法】按井分组并将非空有效观测按时间排序。以平均秩 R_i 处理并列值，计算 U_t = 2∑_{i≤t} R_i − t(n+1)，取 K=max|U_t|，当前算子在并列最大值时选最早候选。采用近似 p=min(1, 2 exp(−6K²/(n³+n²)))，以 p<alpha 标记显著，默认 alpha=0.05；少于 4 条有效记录标为不可评估。输入须明确井号、时间、单位和观测口径。输出候选时刻、p 值、前后中位数及其差，报告原量单位、前后样本与缺测覆盖。【适用与限制】用于筛查单一分布位置变化。趋势、季节、自相关、时间缺口、换仪器或换垂向基准都可能产生候选变点。多个断点应使用合适方法复核。统计候选不提供变化原因，也不能把报告时刻解释为真实变化发生的精确时刻。",
+          "sourceRefs": [
+            "pettitt-1979"
+          ],
+          "locator": {
+            "reference": "Pettitt (1979), pp. 126–135",
+            "implementation": "statistics.pettitt_change_point@1.0.0"
+          }
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-aquifer-parameter-basis",
+      "kind": "definition",
+      "title": "含水层导水与储水参数口径",
+      "summary": "导水系数与水力传导系数、给水度的试验依据和适用条件。",
+      "aliases": [
+        "transmissivity",
+        "specific yield",
+        "给水度"
+      ],
+      "chunks": [
+        {
+          "content": "【定义与计算】导水系数 T 描述饱和厚度上水平输水能力。沿厚度积分 T=∫K_h dz，均质等厚近似为 K_h b，单位 m²/d 或 m²/s。给水度 Sy 是潜水下降时重力可排水体积与对应总体积之比，记录为无量纲比例。输入包括抽水或水位响应、层段、饱和厚度及方法，必要参数含试验尺度、边界和井结构。水位波动法估补给时需明确独立的 Sy 依据和外推基线，简化增量为 Sy×水位上升量。【适用与限制】抽水试验和水量法各有尺度与假设，井部分贯穿、各向异性和延迟排水会改变解释。不能把 Sy 当有效孔隙度、承压储水系数或区域常数。报告值、单位、时空代表性、方法和不确定范围。",
+          "sourceRefs": [
+            "usgs-transmissivity-interpretation",
+            "usgs-specific-yield-wtf"
+          ],
+          "locator": {
+            "reference": "USGS pumping tests and water-table fluctuation method"
+          }
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-method-kriging-variogram",
+      "kind": "method",
+      "title": "地下水克里金的变异函数与验证",
+      "summary": "从同层位同基准样点估计空间相关性，解释验证误差与条件预测方差。",
+      "aliases": [
+        "variogram",
+        "普通克里金",
+        "半方差"
+      ],
+      "chunks": [
+        {
+          "content": "【定义与计算】克里金以样点加权和估计未知位置；普通克里金的权重和为 1，由变异函数和空间位置确定。实验半方差 γ(h)=∑(z(x_i+h)−z(x_i))²/(2N(h))。输入为同量同层位的井点、坐标、基准、时点和数值，参数包括变异模型、块金、基台、变程、方向及邻域。【适用与限制】样点需支持所拟合的空间结构，地理坐标须先明确距离度量。重合点、趋势、非平稳、井网聚集和外推都应复核。用留一或空间留点检验偏差与误差，记录验证划分。预测方差依赖模型和采样几何，不能覆盖观测、概念模型和选参的全部不确定性。",
+          "sourceRefs": [
+            "usgs-kriging-sir20145038"
+          ],
+          "locator": {
+            "reference": "USGS SIR 2014-5038, spatial interpolation"
+          }
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-method-drastic-index",
+      "kind": "method",
+      "title": "DRASTIC 地下水相对脆弱性指数",
+      "summary": "七项因子评分、权重、栅格空间支持及结果解释。",
+      "aliases": [
+        "DRASTIC",
+        "污染潜势指数"
+      ],
+      "chunks": [
+        {
+          "content": "【定义与计算】DRASTIC 用埋深、净补给、含水层介质、土壤、地形、包气带和水力传导系数七因子构建相对指数。逐位置按已确认规则把各因子换成 rating，再求 Σ(weight×rating)。输入须声明数据时期、单位、适用区域、规则版本及坐标网格。对齐栅格并明确 NoData，缺测不填低风险值。【适用与限制】用于指定假设和尺度下的相对筛查。跨区域、跨版本或特定污染物应用应重新论证权重与分级可比性。指数不代表浓度、暴露概率、饮用水达标或现场独立验证。",
+          "sourceRefs": [
+            "epa-drastic-1987"
+          ],
+          "locator": {
+            "reference": "EPA/600/2-87/035, DRASTIC factors and rating"
+          }
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-method-modflow-six",
+      "kind": "method",
+      "title": "MODFLOW 6 地下水流动模型设计与结果诊断",
+      "summary": "从概念模型构建网格、应力期、边界与数值验证。",
+      "aliases": [
+        "MODFLOW 6",
+        "GWF",
+        "地下水数值模型"
+      ],
+      "chunks": [
+        {
+          "content": "【定义与过程】MODFLOW 6 GWF 将地下水流动方程离散为相邻单元间通量、边界源汇和储量变化的平衡。输入为网格、层位、初始水头、K、储水参数、边界、补给、抽水与应力期，时间和长度单位须统一。按概念模型选择包、边界和求解收敛容差。【适用与限制】适合边界、参数与观测可支撑的数值场景。先检查局部和全局水量预算、收敛、干湿状态、网格与时间步敏感性，再比较观测和独立时段。数值收敛、低预算残差或拟合良好均无法证明概念模型唯一。仓库独立验证以实际运行合同为准。",
+          "sourceRefs": [
+            "usgs-modflow6-tm6a55"
+          ],
+          "locator": {
+            "reference": "USGS TM 6-A55, Groundwater Flow model"
+          }
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-method-flopy-reproducibility",
+      "kind": "method",
+      "title": "FloPy 与 MODFLOW 6 的可复现运行",
+      "summary": "区分 Python 接口、求解器、输入文件和输出回执。",
+      "aliases": [
+        "FloPy",
+        "MODFLOW 输入生成"
+      ],
+      "chunks": [
+        {
+          "content": "【定义与过程】FloPy 是模型文件构建、运行和后处理的 Python 接口。以版本固定的 Python 包、外部 MODFLOW 可执行程序和模拟定义为输入，写出工作区及包文件，执行后读取水头、预算和运行日志。保存模型文件摘要、软件版本、单位、应力期、结果文件和收敛判据。【适用与限制】适合自动化已定义的数值模型和可复核的情景。外部程序缺失、版本不兼容或运行失败时不得把文件存在当作成功。FloPy 不替代概念模型、地质判断或率定。产品是否能执行由装配和部署决定。",
+          "sourceRefs": [
+            "usgs-flopy-workflows"
+          ],
+          "locator": {
+            "reference": "USGS FloPy workflows, reproducible model construction"
+          }
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-method-pest-and-inversion",
+      "kind": "method",
+      "title": "PEST 率定、参数反演与可辨识性",
+      "summary": "观测权重、参数边界、正则化和预测不确定性的证据要求。",
+      "aliases": [
+        "PEST",
+        "参数反演",
+        "正则化",
+        "可辨识性"
+      ],
+      "chunks": [
+        {
+          "content": "【定义与计算】模型反演以观测和先验约束可接受参数。常见目标函数 Φ=∑[w_i(y_i−g_i(θ))]²，加需要的正则化项。输入为固定模型版本、可比观测、权重、参数上下限和先验；确定率定时窗、监测量、残差检查、参数敏感性与预测目标。【适用与限制】PEST 可驱动模型独立参数估计。拟合残差小不排除多个等效参数集。报告参数范围、相关性、可辨识性、误差模型、独立验证及预测区间。单一倍率率定的结果不应泛化成空间参数分布，合成反演的误差也不能充当现场验证。",
+          "sourceRefs": [
+            "usgs-pest-inversion"
+          ],
+          "locator": {
+            "reference": "USGS SIR 2010-5211, highly parameterized inversion"
+          }
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-method-pastas-response",
+      "kind": "method",
+      "title": "Pastas 地下水时间序列应力响应分析",
+      "summary": "用应力与响应函数解释时序，记录单位、预热与残差验证。",
+      "aliases": [
+        "Pastas",
+        "应力响应",
+        "地下水时间序列模型"
+      ],
+      "chunks": [
+        {
+          "content": "【定义与计算】应力响应模型可写为 h(t)=d+∑_j∫s_j(t−τ)θ_j(τ)dτ+残差。输入为同基准水头以及降雨、蒸散、开采等候选应力，参数包括响应函数、模型时窗、预热、残差结构和单位。按实际时间对齐应力与水头，核对缺测并选独立验证段。【适用与限制】适合有足够应力覆盖、观测变化与分辨率的井序列。相关应力、非平稳管理和测量基准变化可导致辨识混淆。检查残差自相关、外推情景、参数稳定性与验证误差。响应拟合不证明因果，也不直接替代具有空间边界的地下水流动数值模型。",
+          "sourceRefs": [
+            "pastas-2019"
+          ],
+          "locator": {
+            "reference": "Collenteur et al. (2019), model structure and examples"
+          }
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-method-groundwater-uncertainty",
+      "kind": "method",
+      "title": "地下水预测不确定性的量化与报告",
+      "summary": "区分观测、参数、结构和情景不确定性，并说明预测区间的条件。",
+      "aliases": [
+        "预测不确定性",
+        "敏感性分析",
+        "地下水情景"
+      ],
+      "chunks": [
+        {
+          "content": "【定义与过程】以固定预测目标和模型身份组织观测误差、参数、概念模型结构、边界和未来情景的不确定性。输入应记录观测误差口径、参数范围或分布、相关性及情景。可按各假设传播多组可接受输入到预测，并按明确概率模型或情景集报告范围。敏感性反映扰动响应，概率区间还依赖概率假设及数据条件。【适用与限制】校准只约束观测能识别的方向。单一灵敏度或一组参数范围不能给出有校准含义的概率。报告预测时段、空间支持、主要误差来源、极端情景和留出验证；证据不足时明确范围为条件情景。",
+          "sourceRefs": [
+            "usgs-pest-inversion"
+          ],
+          "locator": {
+            "reference": "USGS SIR 2010-5211, predictive uncertainty"
+          }
+        }
+      ]
+    }
+  ]
+}

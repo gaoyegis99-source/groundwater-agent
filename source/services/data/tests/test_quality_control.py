@@ -180,6 +180,13 @@ def test_quality_suite_binding_complete_run_alert_and_replay(settings, worker) -
         assert run.status_code == 201, run.text
         result = run.json()
         assert result["status"] == "PASSED_WITH_WARNINGS"
+        discovery = client.post("/data/v3/discovery", headers=operator, json={})
+        assert discovery.status_code == 200, discovery.text
+        assert discovery.json()["items"][0]["quality"] == {
+            "qualityRunId": result["qualityRunId"],
+            "suiteVersionId": suite["suiteVersionId"],
+            "status": "PASSED_WITH_WARNINGS",
+        }
         assert result["summary"] == {
             "ruleCount": 3,
             "passedRuleCount": 2,
@@ -248,6 +255,19 @@ def test_quality_suite_binding_complete_run_alert_and_replay(settings, worker) -
             "quality_run",
             "quality_alert",
         }
+
+        changed = client.post(
+            f"/data/v3/versions/{output['versionId']}/semantics",
+            headers=operator,
+            json={"expectedSemanticId": output["semanticId"], "semantics": {
+                "description": "Revised semantics",
+            }},
+        )
+        assert changed.status_code == 200, changed.text
+        item = client.post("/data/v3/discovery", headers=operator, json={}).json()["items"][0]
+        assert item["semanticId"] == changed.json()["semanticId"]
+        assert item["quality"] is None
+        assert client.get(f"/data/v3/quality/runs/{result['qualityRunId']}", headers=auditor).status_code == 200
 
         with settings_database(settings) as connection:
             events = connection.execute(

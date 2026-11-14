@@ -1,4 +1,4 @@
-"""Session-owned immutable authoring drafts; this path creates no execution."""
+"""Session-owned immutable authoring drafts and their validated definitions."""
 from __future__ import annotations
 
 import json
@@ -54,15 +54,33 @@ def get_workflow_draft(database: Path, session_id: str, project_id: str, draft_i
         diagnostics = None if not failures else failures[-1]["data"].get("diagnostics")
         if diagnostics is not None and diagnostics.get("kind") != "WORKFLOW_VALIDATION":
             diagnostics = None
+        payload = None if row["payload_json"] is None else json.loads(row["payload_json"])
+        status = row["status"]
+        if payload is not None and payload.get("execution_allowed") is True:
+            status = "COMPLETE"
+        elif status in {None, "RUNNING"}:
+            status = "GENERATING"
         return {
             "schemaVersion": "workflow-draft-resource.v1", "draft_id": row["draft_id"],
             "session_id": session_id, "goal_revision": row["goal_revision"],
             "agent_run_id": row["agent_run_id"],
-            "status": "GENERATING" if row["status"] in {None, "RUNNING"} else row["status"],
-            "error_code": row["error"],
+            "status": status,
+            "error_code": row["error"] if status != "COMPLETE" else None,
             "diagnostics": diagnostics,
-            "payload": None if row["payload_json"] is None else json.loads(row["payload_json"]),
+            "payload": payload,
         }
+
+
+def frozen_composition(connection, agent_run_id: str, session_id: str, project_id: str) -> dict | None:
+    row = connection.execute(
+        """SELECT d.payload_json FROM workflow_drafts d JOIN sessions s ON s.session_id=d.session_id
+           WHERE d.agent_run_id=? AND d.session_id=? AND s.project_id=?""",
+        (agent_run_id, session_id, project_id),
+    ).fetchone()
+    if row is None or row["payload_json"] is None:
+        return None
+    draft = json.loads(row["payload_json"])
+    return draft.get("composition") if draft.get("execution_allowed") is True else None
 
 
 def _require_session(connection, session_id, project_id):

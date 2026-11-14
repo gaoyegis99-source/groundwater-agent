@@ -1,0 +1,236 @@
+{
+  "schemaVersion": "executable-model.v6",
+  "modelId": "groundwater.porous-calibration",
+  "version": "1.0.0",
+  "workflowRef": {
+    "workflowId": "groundwater.porous-calibration",
+    "version": "1.0.0",
+    "checksum": "sha256:41c2dccfb30b0dffc5ebaa7463b8c89bd29d807efd6ae011f8b033097c91cd00"
+  },
+  "tool": {
+    "name": "run_porous_pest_calibration",
+    "description": "用原生 PEST 拟合给定水头观测和全局参数倍率，随后用率定模型重新执行仿真。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "projectPackageVersionId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "calibrationObservationsVersionId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "includeCalibratedModel": {
+          "type": "boolean",
+          "const": true
+        }
+      },
+      "required": [
+        "projectPackageVersionId",
+        "calibrationObservationsVersionId"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "inputBindings": {
+    "project_package": "projectPackageVersionId",
+    "observations": "calibrationObservationsVersionId"
+  },
+  "fieldRequirements": [],
+  "semanticRequirements": [],
+  "defaultParameters": {
+    "includeCalibratedModel": true
+  },
+  "parameterBindings": {
+    "includeCalibratedModel": "includeCalibratedModel"
+  },
+  "deadlineSeconds": 7200,
+  "maxParallelNodes": 1,
+  "finalOutputs": [
+    "porous-calibrated-parameters",
+    "porous-calibration-residuals",
+    "porous-calibration-package",
+    "porous-calibrated-model",
+    "porous-calibrated-summary",
+    "porous-calibrated-result",
+    "porous-pest-compile-receipt",
+    "porous-pest-receipt",
+    "porous-pest-simulation-receipt"
+  ],
+  "executionService": "executor",
+  "executorId": "workflow-dag",
+  "outputPublications": {
+    "porous-calibrated-parameters": {
+      "title": "率定参数倍率",
+      "format": "json",
+      "mediaType": "application/json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "率定参数倍率",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    },
+    "porous-calibration-residuals": {
+      "title": "率定残差",
+      "format": "json",
+      "mediaType": "application/json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "率定残差",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    },
+    "porous-calibration-package": {
+      "title": "PEST 率定报告",
+      "format": "zip",
+      "mediaType": "application/zip",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "PEST 率定报告",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    },
+    "porous-calibrated-model": {
+      "title": "可重算的已率定模型包",
+      "format": "zip",
+      "mediaType": "application/zip",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "可重算的已率定模型包",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    },
+    "porous-calibrated-summary": {
+      "title": "率定后仿真摘要",
+      "format": "json",
+      "mediaType": "application/json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "率定后仿真摘要",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    },
+    "porous-calibrated-result": {
+      "title": "率定后仿真结果包",
+      "format": "zip",
+      "mediaType": "application/zip",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "率定后仿真结果包",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    },
+    "porous-pest-compile-receipt": {
+      "title": "率定前编译凭据",
+      "format": "json",
+      "mediaType": "application/json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "率定前编译凭据",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    },
+    "porous-pest-receipt": {
+      "title": "PEST 率定凭据",
+      "format": "json",
+      "mediaType": "application/json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "PEST 率定凭据",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    },
+    "porous-pest-simulation-receipt": {
+      "title": "率定后仿真凭据",
+      "format": "json",
+      "mediaType": "application/json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "率定后仿真凭据",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    }
+  }
+}

@@ -6,13 +6,16 @@ from ..catalog.service import version
 from ..errors import DataProblemError
 
 
-def submit(c, project, body, actor):
+def submit(c, project, body, actor, *, row_limit=None):
     # Serialize same-key submissions before resolving any mutable semantic pointer.
     c.execute(
         "SELECT pg_advisory_xact_lock(hashtextextended(%s,0))",
         (project + ":query:" + actor["subject"] + ":" + body.idempotency_key,),
     )
-    hashed = digest(body.model_dump())
+    plan = body.model_dump()
+    if row_limit is not None:
+        plan["row_limit"] = row_limit
+    hashed = digest(plan)
     old = c.execute(
         """SELECT id,digest FROM queries
         WHERE project=%s AND owner_subject=%s AND idem=%s""",
@@ -22,7 +25,6 @@ def submit(c, project, body, actor):
         if old["digest"] != hashed:
             raise DataProblemError("IDEMPOTENCY_CONFLICT", 409)
         return {"query_id": old["id"], "operation_id": old["id"]}
-    plan = body.model_dump()
     plan["inputs"] = []
     if set(body.semantic_ids) - set(body.version_ids):
         raise DataProblemError("SEMANTIC_VERSION_MISMATCH")

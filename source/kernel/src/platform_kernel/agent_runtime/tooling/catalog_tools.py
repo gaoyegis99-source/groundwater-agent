@@ -23,7 +23,7 @@ from ..governance import advance_from_discovery, governance
 from ..models import Utf8String
 
 
-def build_catalog_tools(operator_catalog: dict | None) -> list[Any]:
+def build_catalog_tools(operator_catalog: dict | None, composition_operators: dict | None = None) -> list[Any]:
     @function_tool(failure_error_function=None)
     def list_operators(
         context: RunContextWrapper[dict[str, Any]],
@@ -67,6 +67,7 @@ def build_catalog_tools(operator_catalog: dict | None) -> list[Any]:
             result = browse_operators(
                 operator_catalog, capability=capability, query=query,
                 domain=domain, after=after, limit=limit,
+                collection_operators=composition_operators,
             )
         except WorkflowValidationError as error:
             raise AgentRunError("AGENT_MODEL_OUTPUT_INVALID", diagnostics={"reason": error.code}) from error
@@ -83,6 +84,10 @@ def build_catalog_tools(operator_catalog: dict | None) -> list[Any]:
         count = len(result["items"])
         return {
             **result,
+            "items": [
+                {**item, "confirmation_supported": (item["operator_id"], item["operator_version"]) in composition_operators}
+                for item in result["items"]
+            ] if composition_operators is not None else result["items"],
             "progressOutcome": builtin_tool_outcome(
                 "list_operators",
                 "operators.found" if count else "operators.empty",
@@ -99,8 +104,14 @@ def build_catalog_tools(operator_catalog: dict | None) -> list[Any]:
         """Read one frozen operator's input/output ports and parameter schema. No execution."""
         validate_builtin_progress_intent("get_operator", progress_intent)
         try:
+            contract = (composition_operators or {}).get((operator_id, version))
+            collections = contract is not None and any(p.get("cardinality", {}).get("maxItems", 1) > 1 for p in contract["inputs"])
             return {
-                **read_operator(operator_catalog, operator_id, version),
+                **read_operator(operator_catalog, operator_id, version, collections=collections),
+                **({
+                    "confirmation_supported": (operator_id, version) in composition_operators,
+                    "composition_contract": contract,
+                } if composition_operators is not None else {}),
                 "progressOutcome": builtin_tool_outcome(
                     "get_operator", "operator.inspected", {}
                 ),

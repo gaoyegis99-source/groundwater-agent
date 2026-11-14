@@ -7,6 +7,8 @@ from dataclasses import dataclass
 import json
 from typing import Any
 
+from platform_protocol_contracts import canonical_json, sha256_bytes
+
 from ..contracts import DataVersionRefV2
 from ..errors import AgentRunError
 
@@ -24,6 +26,8 @@ class TurnEvidence:
         str, list[tuple[dict[str, object], str]]
     ]
     prepared_targets: frozenset[str]
+    semantic_checksums: dict[str, str]
+    raster_descriptors: dict[str, dict]
 
 
 def knowledge_identity(value: object) -> KnowledgeKey | None:
@@ -133,6 +137,8 @@ def collect_turn_evidence(input_items: list[dict[str, Any]]) -> TurnEvidence:
     }
     knowledge: dict[KnowledgeKey, str] = {}
     data_versions: dict[str, DataVersionRefV2] = {}
+    semantic_checksums: dict[str, str] = {}
+    raster_descriptors: dict[str, dict] = {}
     operators: dict[tuple[str, str], str] = {}
     latest_checks: dict[
         str, dict[str, tuple[int, tuple[dict[str, object], str] | None]]
@@ -246,6 +252,11 @@ def collect_turn_evidence(input_items: list[dict[str, Any]]) -> TurnEvidence:
                 continue
             reference = _data_reference(data)
             data_versions[reference.version_id] = reference
+            if tool == "inspect_data_version" and isinstance(data.get("semantics"), dict):
+                semantic_checksums[reference.version_id] = sha256_bytes(canonical_json(data["semantics"]))
+                descriptor = data.get("descriptor")
+                if isinstance(descriptor, dict) and isinstance(descriptor.get("raster"), dict):
+                    raster_descriptors[reference.version_id] = descriptor["raster"]
             continue
     return TurnEvidence(
         knowledge=knowledge,
@@ -256,4 +267,6 @@ def collect_turn_evidence(input_items: list[dict[str, Any]]) -> TurnEvidence:
             for target, checks in latest_checks.items()
         },
         prepared_targets=frozenset(prepared_targets),
+        semantic_checksums=semantic_checksums,
+        raster_descriptors=raster_descriptors,
     )

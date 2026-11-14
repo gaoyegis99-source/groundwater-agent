@@ -67,7 +67,7 @@
       "timeoutSeconds": 30
     },
     {
-      "description": "Discover current Data versions with explainable structured filters. A candidate is not executable evidence until its exact version is inspected.",
+      "description": "Find current datasets by metadata. Inspect the exact version before use.",
       "progress": {
         "capability": "data.discovery",
         "semanticRole": "DATA_DISCOVERY",
@@ -109,6 +109,28 @@
               "string",
               "null"
             ]
+          },
+          "quantity_kinds": {
+            "items": {"pattern": "^[a-z][a-z0-9_.-]{0,127}$", "type": "string"},
+            "maxItems": 20,
+            "type": "array"
+          },
+          "time_window": {
+            "description": "Required date coverage.",
+            "items": {"format": "date", "type": "string"},
+            "minItems": 2,
+            "maxItems": 2,
+            "type": "array"
+          },
+          "spatial_extent": {
+            "description": "Intersecting bbox in the same CRS.",
+            "additionalProperties": false,
+            "properties": {
+              "crs": {"minLength": 1, "maxLength": 200, "type": "string"},
+              "bbox": {"items": {"type": "number"}, "minItems": 4, "maxItems": 4, "type": "array"}
+            },
+            "required": ["crs", "bbox"],
+            "type": "object"
           },
           "field_terms": {
             "items": {
@@ -343,6 +365,16 @@
           },
           "sampleTruncated": {
             "type": "boolean"
+          },
+          "coverage": {
+            "type": "object",
+            "properties": {
+              "sourceRows": {"type": "integer", "minimum": 0},
+              "matchedRows": {"type": "integer", "minimum": 0},
+              "calculation": {"const": "all_matching_rows"}
+            },
+            "required": ["sourceRows", "matchedRows", "calculation"],
+            "additionalProperties": false
           },
           "status": {
             "enum": [

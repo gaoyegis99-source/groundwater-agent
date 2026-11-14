@@ -7,6 +7,7 @@ from pathlib import Path
 from zipfile import ZIP_STORED, ZipFile, ZipInfo
 
 from platform_workflow_compiler import compile_workflow as _compile_workflow  # noqa: F401
+from platform_workflow_compiler.composition.execution import ArtifactComposition
 
 from assembler_common import (
     AssemblyIR, CURRENT_MODULE_API_VERSION, DomainPackage, ProductContract,
@@ -50,6 +51,13 @@ def compile_product(
     services, selected_modules = _compile_services(product.service_names, modules)
     operators, catalog_digest = _load_operator_catalog(root)
     tools, workflows, models = _compile_domain(domain, services, selected_modules, operators)
+    model_checksums = {
+        (model["modelId"], model["version"]): model["modelChecksum"] for model in models
+    }
+    for document in domain.knowledge_documents:
+        ref = document.get("modelRef")
+        if ref and model_checksums.get((ref["modelId"], ref["version"])) != ref["checksum"]:
+            raise ValueError("DOMAIN_KNOWLEDGE_MODEL_IDENTITY_INVALID")
     remote_operations = {
         item["serviceId"]: set(item["allowedOperations"])
         for item in product.remote_services
@@ -82,6 +90,12 @@ def compile_product(
         domain.execution_cases,
     )
     worker_runtimes = {node["runtime"] for workflow in workflows for node in workflow["nodes"]}
+    composition_operators = manifest.get("compositionOperators", [])
+    if composition_operators:
+        selected = {f"{key[0]}@{key[1]}": operator for key, operator in operators.items()}
+        if not set(composition_operators) <= selected.keys() or "executor" not in services:
+            raise ValueError("PRODUCT_COMPOSITION_OPERATORS_INVALID")
+        worker_runtimes.add("native")
     # Assembly is the sole non-candidate entry point that maps legacy
     # EXECUTOR_* environment inputs into the immutable operational profile.
     # Everything below receives the profile, never independent capacity values.
@@ -129,6 +143,19 @@ def compile_product(
         },
         "models": models,
     }
+    if composition_operators:
+        composition = {
+            "operators": [selected[name] for name in sorted(composition_operators)],
+            "catalogDigest": catalog_digest,
+            "resourceLimits": {
+                "maxNodes": 12, "maxParallelNodes": 1,
+                "maxNodeMemoryBytes": executor_config["workerRuntimes"]["native"]["memoryBytes"],
+                "maxNodeTimeoutSeconds": 3600,
+            },
+        }
+        ArtifactComposition.from_config(composition)
+        kernel_config["workflowAuthoring"]["composition"] = composition
+        executor_config["workflowComposition"] = composition
     logical_dir = generated / ".releases" / manifest["productId"] / "_CONTENT_"
     compose = _compose(
         root,

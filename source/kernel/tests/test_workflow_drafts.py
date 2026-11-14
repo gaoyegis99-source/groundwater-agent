@@ -209,7 +209,7 @@ def _fan_in_draft():
     return draft
 
 
-def _operator(operator_id, *, call_id=None):
+def _operator(operator_id, *, call_id=None, version="1.0.0"):
     return ModelStep(
         output=[
             function_call(
@@ -221,7 +221,7 @@ def _operator(operator_id, *, call_id=None):
                         "template_key": "workflow.operator.inspect",
                     },
                     "operator_id": operator_id,
-                    "version": "1.0.0",
+                    "version": version,
                 },
                 call_id=call_id or operator_id,
             )
@@ -663,6 +663,22 @@ def test_deepseek_draft_repairs_one_unknown_catalog_identity(kernel_settings):
     _no_execution(app)
 
 
+def test_deepseek_draft_repairs_missing_catalog_progress_intent(kernel_settings):
+    invalid = ModelStep(output=[function_call(
+        "get_operator", {"operator_id": "table.sort", "version": "1.0.0"}, call_id="missing-progress",
+    )])
+    app, client, model = _app(kernel_settings, [invalid, *_steps()])
+    sid, path, _ = _create(client)
+
+    _drain(app, sid)
+
+    resource = client.get(path).json()
+    assert resource["status"] == "COMPLETE", resource
+    assert model.calls[1].model_settings.tool_choice == "get_operator"
+    assert "PROGRESS_INTENT_INVALID" in json.dumps(model.calls[1].input)
+    _no_execution(app)
+
+
 def test_deepseek_draft_repairs_one_semantically_invalid_graph(kernel_settings):
     invalid = _draft()
     invalid["graph"]["inputs"][0] = {
@@ -897,6 +913,19 @@ def test_sequence_check_rejects_connected_graph_in_reverse_requested_order():
         "WORKFLOW_DRAFT_SEQUENCE_INVALID",
         "/graph/nodes",
     )
+
+
+def test_chinese_sequence_ignores_input_details_after_downstream_sentence():
+    submitted = SubmittedReplyV6.model_validate_json(
+        _reply(_draft()).output[0].arguments,
+    )
+    submission = ReplySubmission(
+        Path("unused"),
+        {"current_message": "先做稳定排序（sort），再计算统计（statistics）。sort 的 rules 为已核对版本。"},
+        "deepseek",
+    )
+
+    assert submission._sequential_draft_issue(submitted.workflow_draft) is None
 
 
 def test_deepseek_draft_repairs_untrusted_knowledge_reference(kernel_settings):

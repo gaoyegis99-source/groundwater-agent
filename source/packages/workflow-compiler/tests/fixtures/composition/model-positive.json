@@ -1,0 +1,310 @@
+{
+  "schemaVersion": "workflow.v7",
+  "workflowId": "model-prediction",
+  "version": "1.0.0",
+  "projectId": "example",
+  "registryRef": {
+    "id": "sample-vocabulary",
+    "version": "1.0.0",
+    "digest": "sha256:74d6fbcfc6ffd7d621f2084d766e1a7bf9bb059363ecf3b57a146e56456ef279"
+  },
+  "validatorRef": {
+    "id": "workflow-composition",
+    "version": "1.0.0",
+    "digest": "sha256:9aa482686a29cf611d2cc84698b58839c8400a78f4999c9b17c3e0b88fe84667"
+  },
+  "environmentRef": {
+    "id": "sample-environment",
+    "version": "1.0.0",
+    "digest": "sha256:0debb42e2a65a17bac441d582c667b4fbe5f10ef4df14f884d08afa1c3e38929"
+  },
+  "requiredFeatures": [
+    "semantic-checks"
+  ],
+  "inputs": {
+    "features": {
+      "port": {
+        "name": "features",
+        "kind": "artifact",
+        "logicalType": "tensor",
+        "formatPairs": [
+          {
+            "format": "npy",
+            "mediaType": "application/x-npy"
+          }
+        ]
+      },
+      "dataRef": {
+        "kind": "data_version",
+        "service": "data-primary",
+        "datasetId": "features",
+        "versionId": "features-version",
+        "semanticId": "features-semantic",
+        "objectId": "features-object",
+        "mediaType": "application/x-npy",
+        "format": "npy",
+        "sizeBytes": 1024,
+        "checksum": "sha256:2bc03ddda62544e425bcc7a5aeffe22ba2c5dcf49b767a3708f006c440b0cbee",
+        "semanticChecksum": "sha256:f9fb7e175918347222fe4b43ca2a0afe3636461bbcc4e9b93c039a2b9f953798"
+      },
+      "facts": [
+        {
+          "subjectRef": {
+            "id": "features-version",
+            "version": "1.0.0",
+            "digest": "sha256:2bc03ddda62544e425bcc7a5aeffe22ba2c5dcf49b767a3708f006c440b0cbee"
+          },
+          "property": "dtype",
+          "state": "known",
+          "value": "float32",
+          "sourceRef": {
+            "id": "features-semantic",
+            "version": "1.0.0",
+            "digest": "sha256:f9fb7e175918347222fe4b43ca2a0afe3636461bbcc4e9b93c039a2b9f953798"
+          },
+          "verificationScope": "declared"
+        },
+        {
+          "subjectRef": {
+            "id": "features-version",
+            "version": "1.0.0",
+            "digest": "sha256:2bc03ddda62544e425bcc7a5aeffe22ba2c5dcf49b767a3708f006c440b0cbee"
+          },
+          "property": "featureOrder",
+          "state": "known",
+          "value": [
+            "rain",
+            "head"
+          ],
+          "sourceRef": {
+            "id": "features-semantic",
+            "version": "1.0.0",
+            "digest": "sha256:f9fb7e175918347222fe4b43ca2a0afe3636461bbcc4e9b93c039a2b9f953798"
+          },
+          "verificationScope": "declared"
+        },
+        {
+          "subjectRef": {
+            "id": "features-version",
+            "version": "1.0.0",
+            "digest": "sha256:2bc03ddda62544e425bcc7a5aeffe22ba2c5dcf49b767a3708f006c440b0cbee"
+          },
+          "property": "preprocessor",
+          "state": "known",
+          "value": {
+            "id": "training-scaler",
+            "version": "1.0.0",
+            "digest": "sha256:a3567b3d0ae5a4cf9db8cbbe77d64053dff2dc4638b1549e235e3820f8940a96"
+          },
+          "sourceRef": {
+            "id": "features-semantic",
+            "version": "1.0.0",
+            "digest": "sha256:f9fb7e175918347222fe4b43ca2a0afe3636461bbcc4e9b93c039a2b9f953798"
+          },
+          "verificationScope": "declared"
+        },
+        {
+          "subjectRef": {
+            "id": "features-version",
+            "version": "1.0.0",
+            "digest": "sha256:2bc03ddda62544e425bcc7a5aeffe22ba2c5dcf49b767a3708f006c440b0cbee"
+          },
+          "property": "evaluationInterval",
+          "state": "known",
+          "value": [
+            "2025-01-01T00:00:00Z",
+            "2026-01-01T00:00:00Z"
+          ],
+          "sourceRef": {
+            "id": "features-semantic",
+            "version": "1.0.0",
+            "digest": "sha256:f9fb7e175918347222fe4b43ca2a0afe3636461bbcc4e9b93c039a2b9f953798"
+          },
+          "verificationScope": "declared"
+        }
+      ]
+    },
+    "weights": {
+      "port": {
+        "name": "weights",
+        "kind": "artifact",
+        "logicalType": "model",
+        "formatPairs": [
+          {
+            "format": "pytorch-state-dict",
+            "mediaType": "application/vnd.pytorch"
+          }
+        ]
+      },
+      "dataRef": {
+        "kind": "data_version",
+        "service": "data-primary",
+        "datasetId": "weights",
+        "versionId": "weights-version",
+        "semanticId": "weights-semantic",
+        "objectId": "weights-object",
+        "mediaType": "application/vnd.pytorch",
+        "format": "pytorch-state-dict",
+        "sizeBytes": 1024,
+        "checksum": "sha256:61f738bc864a9be90913fbbd5c99c3f927ba609af5c9f92e34f59f1eed63fce1",
+        "semanticChecksum": "sha256:7ca34b27d74ad095b02ee0274900c44e3d6944b79e4e02ae76f749b6f00e2e9c"
+      },
+      "facts": [
+        {
+          "subjectRef": {
+            "id": "weights-version",
+            "version": "1.0.0",
+            "digest": "sha256:61f738bc864a9be90913fbbd5c99c3f927ba609af5c9f92e34f59f1eed63fce1"
+          },
+          "property": "dtype",
+          "state": "known",
+          "value": "float32",
+          "sourceRef": {
+            "id": "weights-semantic",
+            "version": "1.0.0",
+            "digest": "sha256:7ca34b27d74ad095b02ee0274900c44e3d6944b79e4e02ae76f749b6f00e2e9c"
+          },
+          "verificationScope": "declared"
+        },
+        {
+          "subjectRef": {
+            "id": "weights-version",
+            "version": "1.0.0",
+            "digest": "sha256:61f738bc864a9be90913fbbd5c99c3f927ba609af5c9f92e34f59f1eed63fce1"
+          },
+          "property": "featureOrder",
+          "state": "known",
+          "value": [
+            "rain",
+            "head"
+          ],
+          "sourceRef": {
+            "id": "weights-semantic",
+            "version": "1.0.0",
+            "digest": "sha256:7ca34b27d74ad095b02ee0274900c44e3d6944b79e4e02ae76f749b6f00e2e9c"
+          },
+          "verificationScope": "declared"
+        },
+        {
+          "subjectRef": {
+            "id": "weights-version",
+            "version": "1.0.0",
+            "digest": "sha256:61f738bc864a9be90913fbbd5c99c3f927ba609af5c9f92e34f59f1eed63fce1"
+          },
+          "property": "preprocessor",
+          "state": "known",
+          "value": {
+            "id": "training-scaler",
+            "version": "1.0.0",
+            "digest": "sha256:a3567b3d0ae5a4cf9db8cbbe77d64053dff2dc4638b1549e235e3820f8940a96"
+          },
+          "sourceRef": {
+            "id": "weights-semantic",
+            "version": "1.0.0",
+            "digest": "sha256:7ca34b27d74ad095b02ee0274900c44e3d6944b79e4e02ae76f749b6f00e2e9c"
+          },
+          "verificationScope": "declared"
+        },
+        {
+          "subjectRef": {
+            "id": "weights-version",
+            "version": "1.0.0",
+            "digest": "sha256:61f738bc864a9be90913fbbd5c99c3f927ba609af5c9f92e34f59f1eed63fce1"
+          },
+          "property": "trainingInterval",
+          "state": "known",
+          "value": [
+            "2020-01-01T00:00:00Z",
+            "2025-01-01T00:00:00Z"
+          ],
+          "sourceRef": {
+            "id": "weights-semantic",
+            "version": "1.0.0",
+            "digest": "sha256:7ca34b27d74ad095b02ee0274900c44e3d6944b79e4e02ae76f749b6f00e2e9c"
+          },
+          "verificationScope": "declared"
+        },
+        {
+          "subjectRef": {
+            "id": "weights-version",
+            "version": "1.0.0",
+            "digest": "sha256:61f738bc864a9be90913fbbd5c99c3f927ba609af5c9f92e34f59f1eed63fce1"
+          },
+          "property": "quantityKind",
+          "state": "known",
+          "value": "water-head.v1",
+          "sourceRef": {
+            "id": "weights-semantic",
+            "version": "1.0.0",
+            "digest": "sha256:7ca34b27d74ad095b02ee0274900c44e3d6944b79e4e02ae76f749b6f00e2e9c"
+          },
+          "verificationScope": "declared"
+        },
+        {
+          "subjectRef": {
+            "id": "weights-version",
+            "version": "1.0.0",
+            "digest": "sha256:61f738bc864a9be90913fbbd5c99c3f927ba609af5c9f92e34f59f1eed63fce1"
+          },
+          "property": "unit",
+          "state": "known",
+          "value": "m",
+          "sourceRef": {
+            "id": "weights-semantic",
+            "version": "1.0.0",
+            "digest": "sha256:7ca34b27d74ad095b02ee0274900c44e3d6944b79e4e02ae76f749b6f00e2e9c"
+          },
+          "verificationScope": "declared"
+        }
+      ]
+    }
+  },
+  "parameters": {},
+  "nodes": [
+    {
+      "nodeId": "predict",
+      "operator": {
+        "id": "sample.model.predict",
+        "version": "1.0.0",
+        "definitionDigest": "sha256:7af018377173ad6889d2bba609ac1ba9402f2e624001f69a0527db3229e762a8",
+        "implementationRevision": "sha256:30c8d5448f0f832b10a9f719e40bd5a053f21053177669d3861fef907635f4bb"
+      },
+      "inputs": {
+        "features": {
+          "workflowInput": "features"
+        },
+        "model": {
+          "workflowInput": "weights"
+        }
+      },
+      "parameters": {}
+    }
+  ],
+  "outputs": {
+    "result": {
+      "nodeOutput": {
+        "nodeId": "predict",
+        "port": "predictions"
+      },
+      "goal": {
+        "role": "requested-result",
+        "logicalType": "table",
+        "requires": {
+          "unit": "m",
+          "quantityKind": "water-head.v1"
+        }
+      },
+      "publication": {
+        "title": "model-prediction",
+        "format": "parquet",
+        "policy": "FILE_ONLY"
+      }
+    }
+  },
+  "resourceLimits": {
+    "maxNodes": 8,
+    "maxParallelNodes": 2,
+    "maxNodeMemoryBytes": 268435456,
+    "maxNodeTimeoutSeconds": 120
+  }
+}

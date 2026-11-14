@@ -412,7 +412,7 @@ def test_bootstrap_is_independent_and_does_not_expose_domain_to_runtime(source):
     compose = json.loads((out / "compose.json").read_text())["services"]
     lock = json.loads((out / "assembly-lock.json").read_text())
     assert lock["schemaVersion"] == "assembly-lock.v8"
-    assert len(lock["knowledgeBootstrap"]["documents"]) == 111
+    assert len(lock["knowledgeBootstrap"]["documents"]) == 121
     domain_version = lock["domainPackage"]["version"]
     domain_root = source / "domains/groundwater" / domain_version
     manifest = json.loads((domain_root / "domain-manifest.json").read_text())
@@ -424,9 +424,9 @@ def test_bootstrap_is_independent_and_does_not_expose_domain_to_runtime(source):
             idempotency_key=f"part-{index}",
         )
         documents.extend(package.documents)
-    assert len(documents) == lock["knowledgeBootstrap"]["documentCount"] == 111
-    assert sum(len(document.units) for document in documents) == 311
-    assert lock["knowledgeBootstrap"]["chunkCount"] == 311
+    assert len(documents) == lock["knowledgeBootstrap"]["documentCount"] == 121
+    assert sum(len(document.units) for document in documents) == 321
+    assert lock["knowledgeBootstrap"]["chunkCount"] == 321
     assert compose["knowledge-bootstrap"]["restart"] == "no"
     assert compose["knowledge-bootstrap"]["profiles"] == ["bootstrap"]
     assert all(
@@ -444,6 +444,16 @@ def test_bootstrap_is_independent_and_does_not_expose_domain_to_runtime(source):
         "executor-qgis-worker",
     ):
         assert all("/domain" not in volume for volume in compose[name]["volumes"])
+
+
+def test_knowledge_card_must_identify_the_exact_model_before_publication(source):
+    path = selected_domain(source) / "knowledge/model-cards.v1.json"
+    package = json.loads(path.read_text())
+    package["documents"][0]["modelRef"]["checksum"] = "sha256:" + "0" * 64
+    write(path, package)
+    pin(source, "groundwater")
+    with pytest.raises(ValueError, match="DOMAIN_KNOWLEDGE_MODEL_IDENTITY_INVALID"):
+        compile_product(source, "groundwater/product-manifest.json")
 
 
 def test_native_only_declarations_select_only_required_services(source):

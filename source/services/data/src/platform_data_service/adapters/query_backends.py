@@ -72,9 +72,11 @@ class DuckBackend:
                         conditions.append(f"{field} {operator} ?")
                         params.append(value)
                 where = " WHERE " + " AND ".join(conditions) if conditions else ""
-                matched = db.execute(
-                    "SELECT count(*) FROM data" + where, params
-                ).fetchone()[0]
+                source_rows = inp["descriptor"]["row_count"]
+                matched = (
+                    db.execute("SELECT count(*) FROM data" + where, params).fetchone()[0]
+                    if conditions else source_rows
+                )
                 groups = plan["group_by"]
                 if plan["aggregates"]:
                     selection = [quoted(x) for x in groups] + [
@@ -107,7 +109,8 @@ class DuckBackend:
                     + suffix
                     + " LIMIT ?"
                 )
-                cursor = db.execute(sql, [*params, settings.result_rows + 1])
+                row_limit = min(settings.result_rows, plan.get("row_limit", settings.result_rows))
+                cursor = db.execute(sql, [*params, row_limit + 1])
                 fields = [{"id": x[0], "type": str(x[1])} for x in cursor.description]
                 rows, size = [], 0
                 from .database import canonical
@@ -120,13 +123,13 @@ class DuckBackend:
                     rows.append(converted)
                 return {
                     "fields": fields,
-                    "rows": rows[: settings.result_rows],
+                    "rows": rows[:row_limit],
                     "coverage": {
-                        "source_rows": inp["descriptor"]["row_count"],
+                        "source_rows": source_rows,
                         "matched_rows": matched,
                         "calculation": "all_matching_rows",
                     },
-                    "truncated": len(rows) > settings.result_rows,
+                    "truncated": len(rows) > row_limit,
                     "engine": {"name": "duckdb", "version": duckdb.__version__},
                 }
         except duckdb.OutOfMemoryException:

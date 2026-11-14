@@ -128,6 +128,11 @@ async def _execute_agent(
         raise _execution_failure(
             str(error), True, previous_usage, usage_capture, memory_update, error
         ) from error
+    except _ProtocolRepairRequiredError as error:
+        raise _execution_failure(
+            "AGENT_MODEL_OUTPUT_INVALID", False, previous_usage, usage_capture,
+            memory_update, error,
+        ) from error
     except AgentRunError as error:
         raise _execution_failure(
             str(error), False, previous_usage, usage_capture, memory_update, error

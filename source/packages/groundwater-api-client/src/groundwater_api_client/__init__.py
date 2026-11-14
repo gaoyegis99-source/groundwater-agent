@@ -193,7 +193,7 @@ class GroundwaterClient:
             raise ProtocolError("DATA_VERSION_IDENTITY_MISMATCH")
         if object_id is None:
             obj = next(
-                (item for item in version.objects if item.role == models.Role.raw),
+            (item for item in version.objects if item.role is not None and item.role.value == "raw"),
                 next(iter(version.objects), None),
             )
         else:

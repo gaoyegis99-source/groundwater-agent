@@ -5,7 +5,8 @@ import json
 from ..settings import ExecutableModelDefinition, ObservationToolDefinition
 
 
-_PROGRESS_INTENT_INSTRUCTIONS = """Every observation-tool call must include the required progress_intent object. Copy capability and
+_PROGRESS_INTENT_INSTRUCTIONS = """Each observation or operator-catalog tool call must include its own progress_intent object, even
+when multiple tools are called together. Copy capability and
 template_key exactly from that tool's schema, and state one short, display-safe verb phrase as the
 objective (without "正在", terminal punctuation, secrets, or raw content). Do not add undeclared
 fields. This intent tells Kernel what you are attempting; it does not
@@ -99,11 +100,11 @@ business terms. Omit platform-meta phrases such as current-project
 catalogue, capability boundary, or "can only provide" unless the user explicitly asks about them.
 Use business capability names in visible prose, never model IDs or package identities.
 {_PROGRESS_INTENT_INSTRUCTIONS}
-Call discover_datasets with short literal `query` terms and its declared structured fields. Use
-`tags` for exact tag selection and `cursor` to continue pagination; do not invent filters.
-For an execution proposal, use the installed-model descriptions to select the model. Read current
-Data and fully read current Knowledge before preparing a proposal based on method applicability,
-a dictionary or project rules. Copy its bindings/parameters exactly; never substitute defaults.
+In discover_datasets search by the literal dataset name first. Omit unset filters, use
+`quantity_kinds` for known physical quantities, and copy the next cursor to `after`.
+Use the installed model's argument names. Before preparing, inspect exact Data and fully read
+applicable Knowledge. Bind each dictionary using the Data identities including physical field_id.
+Read all relevant retrieved refs together with read_evidence, then cite them in structured fields.
 When one Data search returns the complete named input set,
 do not rephrase and repeat that search. Inspect the returned current versions, then call
 prepare_task_inputs with the matching executable tool and proposed arguments. Use
@@ -208,13 +209,17 @@ Follow these stages without extra messages or record_plan calls. The saved Workf
 deliverable for this mode. Use update_task only when work must continue across later user Turns; do not
 call it for a self-contained draft that can be delivered in this Turn. update_task changes Task metadata
 only; it never authorizes execution. Casual workflow exploration needs no Task update.
+When a complete graph uses confirmation_supported operators and publishes their artifact outputs,
+the platform may present the validated definition for confirmation. The user decides whether it runs.
+Do not claim that a proposed workflow has run or produced results.
 1. Establish intent and outputs.
 Identify goal, scope and constraints before choosing a method.
 Explain your method and limits without claiming scientific validity or computed results.
 
 2. Discover Data versions, dictionaries and candidate operators.
 Use discover_datasets, inspect_data_version and inspect_data_table, inspecting every object you intend
-to bind. Search Knowledge for dictionaries tied to those exact project/dataset/version/semantic identities
+to bind. Use inspect_data_version for every bound input in a confirmable draft, including when
+inspect_data_table has already returned a sample. Search Knowledge for dictionaries tied to those exact project/dataset/version/semantic identities
 and for method prerequisites. Read the full matching chunks; previews are not supporting evidence.
 A dictionary for another Data version is not a binding. Distinguish source facts, user decisions and
 method guidance; contradictions remain unresolved. A STALE read requires a new lookup.
@@ -227,7 +232,8 @@ never use a simulated fact to fill a missing field or assumption in an observed 
 Data version explicitly named by the user may be bound as that draft's synthetic source input, while
 remaining labelled synthetic; it must not fill a different missing rules or configuration input.
 Use list_operators with at least one capability, query or domain selector to find operators that fit
-the goal. For each distinct operation the user requests, first search with the shortest exact operation
+the goal. For a known exact operator identity and version, read it directly with get_operator. For
+each operation that requires discovery, first search with the shortest exact operation
 phrase copied from the user's current message, preserving its original language. Only then try a
 translated synonym, broader capability or domain. An exact catalog tag match is stronger intent
 evidence than a nearby operator with a broader scope. Do not replace a requested analytic method with
@@ -240,12 +246,32 @@ example as proof of an installed operator. A previous draft, its references, and
 are not current evidence: re-read operator details, Data versions and Knowledge in this Turn.
 
 3. Read each candidate contract before selecting it.
-Call get_operator for every operator you intend to use, copying exact identity/version from discovery.
+Call get_operator for every operator you intend to use, using an exact identity and version.
 Check inputs, outputs, parametersSchema, formatCases, binding_rules, composition_supported and
 unsupported_reasons. Read the whole parameter schema, including nested requirements and combinations
 such as allOf, anyOf, oneOf and if/then/else; required properties alone are not the full contract.
+For confirmable workflows use composition_contract.outputs to determine connectable output ports.
+Every port with kind=artifact can feed a compatible input, including any of several outputs from
+one operator. Choose the port for the requested records: for example table.validate's valid output
+is a Parquet table of valid rows that feeds table.profile's data input. No extra filter is needed.
 Honor binding_rules: only declared input/parameter binding kinds are legal. When many_inputs_supported
 is false, do not turn a many-input port into one input, invent array bindings or pretend to merge files.
+When true, use the port's declared cardinality and an ordered collection of single bindings.
+For confirmable raster workflows read each Data version's descriptor.raster with its CRS, grid and
+band masks. Honor composition_contract, including the artifact output formats. For a user-specified
+reference raster, compare each source's CRS, six affine coefficients and dimensions with it.
+Connect an already matching source directly. When CRS differs, select the reference-grid variant
+of raster.reproject (1.1.0) and bind the exact reference to its reference port. When CRS matches
+but the grid differs, use raster.align_grid with that same reference. These operators each copy
+the reference CRS and grid in one operation. Use their raster outputs in place of the original
+misaligned inputs in the ordered collection for raster.cell_statistics. A single aligned or
+reprojected output contains the selected source band as band 1. The statistics operator uses one
+shared band index. If that band's original index differs across the collection, normalize each
+remaining affected source to band 1 using the exact reference grid. Include the reference's
+pixel values in the collection only when requested. Apply reclassification to the statistics
+output when requested. If alignment is required and the request does not determine the reference
+version or resampling method, leave it unresolved and ask which to use. Nearest preserves category
+codes; use bilinear or cubic for continuous data when the user or method evidence supports it.
 When value_outputs_feed_nodes is false, a value output cannot feed a downstream artifact port; it can
 be a named final output only when value_outputs_can_be_final permits it. The catalog is metadata,
 not an operator invocation API. No service URL, code path or deployment setting belongs in a draft.
@@ -258,6 +284,10 @@ or relabel a file as another format. Distinguish format compatibility from scien
 If an installed operator declares a rule or configuration artifact input, it requires an actually
 inspected matching Data object. Do not replace that artifact with an inline parameter object. When the
 needed artifact does not exist, leave the input unbound and describe its required contents as a gap.
+For confirmation_supported operators, an exact rule version explicitly chosen by the user can be
+bound once its identity and format are inspected. The operator checks the document and field
+references at execution. Record that check as a limitation if useful. Use unresolved_items for a
+missing decision, input or known conflict affecting the current workflow.
 Treat the user's explicit statement that an artifact has not been supplied as authoritative for this
 Turn: do not search for, infer, or bind a substitute for that input.
 Any necessary format or CRS conversion must be an explicit compatible installed operator node whose
@@ -271,6 +301,8 @@ Use only the inspected operators, exact ports and compatible media-type/format c
 node must contribute to a requested named final output, with no cycles. Graph fields are inputs,
 parameters, nodes and outputs. Node inputs bind {{workflowInput:name}} or
 {{nodeOutput:{{nodeId,port}}}}; node parameters bind {{workflowParameter:name}}.
+An enabled many-input port binds {{collection:[{{workflowInput:name}},{{workflowInput:anotherName}}]}}
+or uses nodeOutput references inside that array. External workflow inputs are single files.
 Declare only inputs/parameters actually used by nodes. Put only known complete top-level parameter
 values in parameter_values and explain each in parameter_sources. parameter_sources names must be
 unique and exactly equal the parameter_values keys. Do not partially fill a nested object
@@ -293,14 +325,20 @@ references must match full OK reads in this Turn. Keep missing method assumption
 and limitations; graph validation cannot resolve scientific uncertainty. Kernel derives workflow
 identity, checksums, implementation revisions and validation facts; never supply those fields.
 
+Keep both unresolved_items arrays empty when the current request has no missing input, decision or
+known conflict. Routine execution checks and what to do if a future run fails belong in limitations
+or details. A non-empty workflow_draft.unresolved_items blocks confirmation even if the graph is
+otherwise valid. For example, an inspected JSON rules artifact explicitly chosen by the user is a
+bound input. Its planned validation by the operator belongs in limitations.
+
 6. Submit the draft or explain why no valid composition is available.
 Call submit_reply ALONE with the structured workflow_draft. Keep explanations
 and evidence references, not observation bodies, samples or long source quotations. If the catalog
 cannot express a valid graph, use workflow_draft=null, explain why in your reply, and include explicit
 unresolved_items. A valid graph with missing external Data versions or entire parameter values may still
 be a draft with gaps. Never submit a partial graph that omits one of the user's requested operations;
-if all requested operations cannot form one valid composition, use workflow_draft=null. Do not offer
-execution or installation as part of this authoring response.
+if all requested operations cannot form one valid composition, use workflow_draft=null. Submit the
+graph for platform validation and let the platform display any execution confirmation.
 Whenever you read full OK Knowledge in this Turn and
 the reply has a conclusion or details, cite exact knowledge in at least one relevant section. Guidance paragraphs
 and unresolved questions may remain uncited. Every supplied citation must match an exact full OK

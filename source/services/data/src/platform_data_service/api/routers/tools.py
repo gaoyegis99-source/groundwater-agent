@@ -1,11 +1,13 @@
 from fastapi import FastAPI
+from pydantic import ValidationError
+from platform_protocol_contracts import to_camel
 
 from ... import access
 from ...catalog import service as catalog
 from ...composition import Application
 from ...errors import DataProblemError
 from ...table_inspection import TableInspector
-from ..models import ToolRequest
+from ..models import DiscoveryRequest, ToolRequest
 from ..responses import ToolResponse
 from ..wire import (
     fields_with_semantic_ids,
@@ -41,34 +43,22 @@ def tool_actor(body: ToolRequest) -> dict:
 
 
 def discovery_arguments(arguments: dict, *, tool: bool = False) -> dict:
-    field_terms_key = "field_terms" if tool else "fieldTerms"
-    allowed = {"query", "tags", "formats", field_terms_key, "units", "after", "limit"}
-    if (
-        not isinstance(arguments, dict)
-        or set(arguments) - allowed
-        or tool
-        and "query" not in arguments
-    ):
+    if not isinstance(arguments, dict) or (tool and "query" not in arguments):
         raise DataProblemError("TOOL_ARGUMENTS_INVALID", 422)
-    values = {
-        "query": arguments.get("query", ""), "tags": arguments.get("tags", []),
-        "formats": arguments.get("formats", []),
-        "field_terms": arguments.get(field_terms_key, []), "units": arguments.get("units", []),
-        "after": arguments.get("after"), "limit": arguments.get("limit", 20),
-    }
-    if (
-        not isinstance(values["query"], str)
-        or len(values["query"]) > 500
-        or any(
-            not isinstance(values[name], list) or len(values[name]) > 20
-            or any(not isinstance(item, str) or not item for item in values[name])
-            for name in ("tags", "formats", "field_terms", "units")
-        )
-        or values["after"] is not None
-        and (not isinstance(values["after"], str) or not values["after"].isdigit())
-        or isinstance(values["limit"], bool) or not isinstance(values["limit"], int)
-        or not 1 <= values["limit"] <= 100
-    ):
+    if tool and set(arguments) - DiscoveryRequest.model_fields.keys():
+        raise DataProblemError("TOOL_ARGUMENTS_INVALID", 422)
+    wire = {to_camel(key): value for key, value in arguments.items()} if tool else arguments
+    if "limit" in wire and type(wire["limit"]) is not int:
+        raise DataProblemError("TOOL_ARGUMENTS_INVALID", 422)
+    if tool and isinstance(wire.get("spatialExtent"), dict):
+        if set(wire["spatialExtent"]) != {"crs", "bbox"}:
+            raise DataProblemError("TOOL_ARGUMENTS_INVALID", 422)
+    try:
+        request = DiscoveryRequest.model_validate(wire)
+    except ValidationError as error:
+        raise DataProblemError("TOOL_ARGUMENTS_INVALID", 422) from error
+    values = request.model_dump()
+    if any(not item for name in ("tags", "formats", "field_terms", "units") for item in values[name]):
         raise DataProblemError("TOOL_ARGUMENTS_INVALID", 422)
     return values
 

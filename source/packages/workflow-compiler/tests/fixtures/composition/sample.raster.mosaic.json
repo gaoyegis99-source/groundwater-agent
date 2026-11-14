@@ -1,0 +1,119 @@
+{
+  "schemaVersion": "operator-manifest.v2",
+  "id": "sample.raster.mosaic",
+  "version": "1.0.0",
+  "implementationRevision": "sha256:def33ac501f691e9e3e334bc7203e023e2233383876f668ddd63a128d6ccb093",
+  "title": "sample.raster.mosaic",
+  "description": "Synthetic operator declaration for offline contract verification.",
+  "domain": "test",
+  "runtime": "native",
+  "timeoutSeconds": 60,
+  "memoryLimitBytes": 134217728,
+  "inputs": [
+    {
+      "name": "rasters",
+      "kind": "artifact",
+      "logicalType": "raster",
+      "formatPairs": [
+        {
+          "format": "geotiff",
+          "mediaType": "image/tiff"
+        }
+      ],
+      "cardinality": {
+        "minItems": 2,
+        "maxItems": 4
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "name": "raster",
+      "kind": "artifact",
+      "logicalType": "raster",
+      "formatPairs": [
+        {
+          "format": "geotiff",
+          "mediaType": "image/tiff"
+        }
+      ]
+    }
+  ],
+  "classification": {
+    "reuseScope": "generic",
+    "providerKind": "platform"
+  },
+  "portSemantics": {
+    "rasters": {
+      "requires": {
+        "quantityKind": "water-head.v1",
+        "unit": "m"
+      },
+      "requiredFacts": [
+        "grid",
+        "verticalDatum"
+      ]
+    }
+  },
+  "outputSemantics": {
+    "raster": {
+      "inherit": [
+        {
+          "inputPort": "rasters",
+          "facts": [
+            "grid",
+            "unit",
+            "quantityKind",
+            "verticalDatum"
+          ]
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "aligned-grids",
+      "condition": {
+        "all": [
+          {
+            "predicate": "sameGrid",
+            "arguments": [
+              {
+                "port": "rasters",
+                "property": "grid"
+              },
+              {
+                "port": "rasters",
+                "property": "grid"
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
+            "predicate": "sameDatum",
+            "arguments": [
+              {
+                "port": "rasters",
+                "property": "verticalDatum"
+              },
+              {
+                "port": "rasters",
+                "property": "verticalDatum"
+              }
+            ]
+          }
+        ]
+      },
+      "severity": "error",
+      "checkStage": "compile",
+      "validatorRef": {
+        "id": "workflow-composition",
+        "version": "1.0.0",
+        "digest": "sha256:9aa482686a29cf611d2cc84698b58839c8400a78f4999c9b17c3e0b88fe84667"
+      }
+    }
+  ],
+  "definitionDigest": "sha256:2a5b6e9f3cd12cfe5f6f4f81173650bb1b8a78c7f79bf03989676971535beb63"
+}

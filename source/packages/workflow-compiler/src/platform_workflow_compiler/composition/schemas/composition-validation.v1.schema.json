@@ -1,0 +1,219 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.platform.local/workflow-composition/composition-validation.v1.schema.json",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": "composition-validation.v1"
+    },
+    "status": {
+      "enum": [
+        "INVALID",
+        "INCOMPLETE",
+        "VALIDATED"
+      ]
+    },
+    "definitionDigest": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "topologicalOrder": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_.-]*$"
+      },
+      "uniqueItems": true
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^[A-Z0-9_]+$"
+          },
+          "path": {
+            "type": "string"
+          },
+          "expected": {},
+          "actual": {},
+          "factSources": {
+            "type": "array",
+            "items": {
+              "$ref": "composition-types.v1.schema.json#/$defs/evidenceRef"
+            },
+            "uniqueItems": true
+          },
+          "repairOptions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "severity": {
+            "enum": [
+              "error",
+              "warning",
+              "missing"
+            ]
+          }
+        },
+        "required": [
+          "code",
+          "path",
+          "expected",
+          "actual",
+          "factSources",
+          "repairOptions",
+          "severity"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "nodeId": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]*$"
+          },
+          "state": {
+            "enum": [
+              "PASS",
+              "FAIL",
+              "UNKNOWN",
+              "DEFERRED",
+              "SKIPPED"
+            ]
+          },
+          "stage": {
+            "enum": [
+              "compile",
+              "beforeNode",
+              "afterNode"
+            ]
+          },
+          "validatorRef": {
+            "$ref": "composition-types.v1.schema.json#/$defs/identity"
+          },
+          "reason": {
+            "const": "condition-not-applicable"
+          }
+        },
+        "required": [
+          "nodeId",
+          "id",
+          "state",
+          "stage",
+          "validatorRef"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "state": {
+                  "const": "SKIPPED"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "reason"
+              ]
+            },
+            "else": {
+              "not": {
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    "outputs": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "logicalType": {
+            "enum": [
+              "table",
+              "vector",
+              "raster",
+              "tensor",
+              "model",
+              "document",
+              "image",
+              "record"
+            ]
+          },
+          "formatPairs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "format": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_.-]*$"
+                },
+                "mediaType": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "format",
+                "mediaType"
+              ],
+              "additionalProperties": false
+            },
+            "uniqueItems": true
+          },
+          "facts": {
+            "$ref": "composition-types.v1.schema.json#/$defs/facts"
+          }
+        },
+        "required": [
+          "logicalType",
+          "formatPairs",
+          "facts"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "status",
+    "definitionDigest",
+    "topologicalOrder",
+    "diagnostics",
+    "checks",
+    "outputs"
+  ],
+  "additionalProperties": false
+}

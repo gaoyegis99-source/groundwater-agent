@@ -33,6 +33,7 @@ class JobRequestBodyV6(CamelModel):
     arguments: dict[str, Any]
     input_references: dict[str, DataVersionReferenceV2]
     deadline_at: str
+    composition: dict[str, Any] | None = None
 
 
 class JobStatusResponseV6(CamelModel):

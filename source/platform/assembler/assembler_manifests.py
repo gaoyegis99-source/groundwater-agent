@@ -32,7 +32,9 @@ def _load_manifest(root: Path, manifest_path: Path | str) -> tuple[Path, dict]:
         relative = candidate
     path = resolve_inside(products, relative, "PRODUCT_MANIFEST_INVALID")
     manifest = load_json(path)
-    require_fields(manifest, MANIFEST_FIELDS, "PRODUCT_MANIFEST_FIELDS_INVALID")
+    require_fields(manifest, MANIFEST_FIELDS | ({"compositionOperators"} & manifest.keys()), "PRODUCT_MANIFEST_FIELDS_INVALID")
+    if "compositionOperators" in manifest:
+        _string_set(manifest["compositionOperators"], "PRODUCT_COMPOSITION_OPERATORS_INVALID")
     if manifest["schemaVersion"] != "product-manifest.v8":
         raise ValueError("PRODUCT_MANIFEST_VERSION_INVALID")
     if manifest["publicApiVersion"] != "v12":
@@ -217,7 +219,26 @@ def load_domain(directory: Path) -> DomainPackage:
         for document in bundle["documents"]:
             if not isinstance(document, dict):
                 raise ValueError("DOMAIN_KNOWLEDGE_INVALID")
-            require_fields(document, {"knowledgeId", "title", "summary", "chunks"}, "DOMAIN_KNOWLEDGE_INVALID")
+            required = {"knowledgeId", "title", "summary", "chunks"}
+            if not required <= document.keys() <= required | {"kind", "aliases", "modelRef"}:
+                raise ValueError("DOMAIN_KNOWLEDGE_INVALID")
+            if document.get("kind", "knowledge") not in ("knowledge", "definition", "method", "case", "rule"):
+                raise ValueError("DOMAIN_KNOWLEDGE_INVALID")
+            aliases = document.get("aliases", [])
+            if not isinstance(aliases, list) or len(aliases) > 32 or any(
+                not isinstance(alias, str) or not alias.strip() or len(alias) > 160
+                for alias in aliases
+            ):
+                raise ValueError("DOMAIN_KNOWLEDGE_INVALID")
+            if "modelRef" in document:
+                ref = document["modelRef"]
+                if not isinstance(ref, dict) or ref.keys() != {"modelId", "version", "checksum"}:
+                    raise ValueError("DOMAIN_KNOWLEDGE_MODEL_IDENTITY_INVALID")
+                for key, pattern in (
+                    ("modelId", NAME_PATTERN), ("version", VERSION_PATTERN), ("checksum", CHECKSUM_PATTERN)
+                ):
+                    if not isinstance(ref[key], str) or not pattern.fullmatch(ref[key]):
+                        raise ValueError("DOMAIN_KNOWLEDGE_MODEL_IDENTITY_INVALID")
             knowledge_id = require_string(document["knowledgeId"], "DOMAIN_KNOWLEDGE_INVALID")
             if (
                 len(knowledge_id) > 128
@@ -239,9 +260,19 @@ def load_domain(directory: Path) -> DomainPackage:
             for chunk in chunks:
                 if not isinstance(chunk, dict):
                     raise ValueError("DOMAIN_KNOWLEDGE_INVALID")
-                require_fields(
-                    chunk, {"content", "sourceRefs"}, "DOMAIN_KNOWLEDGE_INVALID"
-                )
+                required = {"content", "sourceRefs"}
+                if not required <= chunk.keys() <= required | {"locator", "requiredChunks"}:
+                    raise ValueError("DOMAIN_KNOWLEDGE_INVALID")
+                locator = chunk.get("locator", {})
+                context = chunk.get("requiredChunks", [])
+                if (
+                    not isinstance(locator, dict) or len(locator) > 8
+                    or any(type(value) not in (str, int) for value in locator.values())
+                    or not isinstance(context, list) or len(context) > 16
+                    or any(type(index) is not int or not 0 <= index < len(chunks) for index in context)
+                    or len(context) != len(set(context))
+                ):
+                    raise ValueError("DOMAIN_KNOWLEDGE_INVALID")
                 content_value = require_string(
                     chunk["content"], "DOMAIN_KNOWLEDGE_INVALID"
                 )
@@ -353,7 +384,7 @@ def _validate_knowledge_source(source: object) -> None:
         or len(publisher) > 200
         or source["kind"] not in {
             "OFFICIAL_STANDARD", "OFFICIAL_GUIDANCE", "OFFICIAL_POLICY",
-            "DOMAIN_DEFINITION", "DEMO_ASSUMPTION", "PROJECT_TEMPLATE",
+            "DOMAIN_DEFINITION", "DEMO_ASSUMPTION", "PROJECT_TEMPLATE", "RESEARCH_PAPER",
         }
         or source["lifecycleStatus"] not in {"ACTIVE", "WITHDRAWN"}
     ):
@@ -363,7 +394,7 @@ def _validate_knowledge_source(source: object) -> None:
         not isinstance(version, str) or not version or len(version) > 100
     ):
         raise ValueError("DOMAIN_KNOWLEDGE_INVALID")
-    external = source["kind"].startswith("OFFICIAL_")
+    external = source["kind"].startswith("OFFICIAL_") or source["kind"] == "RESEARCH_PAPER"
     url = source["url"]
     accessed = source["accessedAt"]
     if external:

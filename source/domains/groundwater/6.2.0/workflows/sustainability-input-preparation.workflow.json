@@ -1,0 +1,73 @@
+{
+  "schemaVersion": "workflow.v6",
+  "workflowId": "groundwater.sustainability-input-preparation",
+  "version": "1.0.0",
+  "inputs": [
+    {
+      "name": "simulation",
+      "cardinality": "one",
+      "mediaTypes": [
+        "application/json"
+      ],
+      "formats": [
+        "json"
+      ]
+    },
+    {
+      "name": "monitoring",
+      "cardinality": "one",
+      "mediaTypes": [
+        "application/json"
+      ],
+      "formats": [
+        "json"
+      ]
+    },
+    {
+      "name": "management",
+      "cardinality": "one",
+      "mediaTypes": [
+        "application/json"
+      ],
+      "formats": [
+        "json"
+      ]
+    }
+  ],
+  "parameters": [],
+  "nodes": [
+    {
+      "nodeId": "execute",
+      "operatorId": "groundwater.source_sustainability.prepare",
+      "operatorVersion": "1.0.0",
+      "parameters": {},
+      "inputs": {
+        "simulation": {
+          "workflowInput": "simulation"
+        },
+        "monitoring": {
+          "workflowInput": "monitoring"
+        },
+        "management": {
+          "workflowInput": "management"
+        }
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "name": "assessment-input-candidate",
+      "nodeOutput": {
+        "nodeId": "execute",
+        "port": "assessment_input"
+      }
+    },
+    {
+      "name": "assessment-input-sources",
+      "nodeOutput": {
+        "nodeId": "execute",
+        "port": "field_sources"
+      }
+    }
+  ]
+}

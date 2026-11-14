@@ -3,11 +3,28 @@ from __future__ import annotations
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from platform_workflow_compiler.composition.execution import publication_declarations
+
 from .artifacts import ArtifactStore
 from .contracts import JobRequestV6
 from .data_client import DataClient, DataIntegrityError, DataUnavailableError, _sha256_file
 from .database import connect_database
 from .errors import ExecutionServiceError
+
+
+def result_model(models: dict, request: JobRequestV6) -> dict:
+    """Reconstruct publication from the definition accepted at job admission."""
+    if request.composition is None:
+        return models[request.model_id, request.model_version]
+    workflow = dict(request.composition)
+    return {
+        "workflow": {"outputs": [
+            {"name": name, "nodeOutput": item["nodeOutput"]}
+            for name, item in sorted(workflow["outputs"].items())
+        ]},
+        "finalOutputs": sorted(workflow["outputs"]),
+        "outputPublications": publication_declarations(workflow),
+    }
 
 
 def publication_contract(
@@ -35,6 +52,10 @@ def publication_contract(
         "workflow_version": request.workflow_version,
         "workflow_checksum": request.workflow_checksum,
         "operator_catalog_digest": catalog_digest,
+        **({
+            "composition_environment_digest": request.composition["environmentRef"]["digest"],
+            "composition_validator_digest": request.composition["validatorRef"]["digest"],
+        } if request.composition is not None else {}),
     }
     return outputs, provenance
 

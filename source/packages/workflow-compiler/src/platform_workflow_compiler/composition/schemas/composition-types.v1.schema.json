@@ -1,0 +1,796 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.platform.local/workflow-composition/composition-types.v1.schema.json",
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.-]*$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "identity": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "digest"
+      ],
+      "additionalProperties": false
+    },
+    "logicalType": {
+      "enum": [
+        "table",
+        "vector",
+        "raster",
+        "tensor",
+        "model",
+        "document",
+        "image",
+        "record"
+      ]
+    },
+    "formatPair": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "mediaType": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "format",
+        "mediaType"
+      ],
+      "additionalProperties": false
+    },
+    "port": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "kind": {
+              "const": "artifact"
+            },
+            "logicalType": {
+              "enum": [
+                "table",
+                "vector",
+                "raster",
+                "tensor",
+                "model",
+                "document",
+                "image",
+                "record"
+              ]
+            },
+            "cardinality": {
+              "type": "object",
+              "properties": {
+                "minItems": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "maxItems": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                },
+                "ordered": {
+                  "type": "boolean"
+                },
+                "duplicates": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "minItems",
+                "maxItems"
+              ],
+              "additionalProperties": false
+            },
+            "formatPairs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "format": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9_.-]*$"
+                  },
+                  "mediaType": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "format",
+                  "mediaType"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 1,
+              "uniqueItems": true
+            },
+            "selector": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "sheet",
+                    "layer",
+                    "band"
+                  ]
+                },
+                "parameter": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "kind",
+                "parameter"
+              ],
+              "additionalProperties": false
+            },
+            "formatCases": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "parameter": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "values": {
+                    "type": "array",
+                    "items": {},
+                    "minItems": 1,
+                    "uniqueItems": true
+                  },
+                  "formatPair": {
+                    "type": "object",
+                    "properties": {
+                      "format": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9_.-]*$"
+                      },
+                      "mediaType": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "format",
+                      "mediaType"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "parameter",
+                  "values",
+                  "formatPair"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "name",
+            "kind",
+            "logicalType",
+            "formatPairs"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "kind": {
+              "const": "value"
+            },
+            "logicalType": {
+              "const": "record"
+            },
+            "cardinality": {
+              "type": "object",
+              "properties": {
+                "minItems": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "maxItems": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                },
+                "ordered": {
+                  "type": "boolean"
+                },
+                "duplicates": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "minItems",
+                "maxItems"
+              ],
+              "additionalProperties": false
+            },
+            "schema": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "name",
+            "kind",
+            "logicalType",
+            "schema"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "sourceKind": {
+      "enum": [
+        "USER",
+        "DATA",
+        "KNOWLEDGE",
+        "OPERATOR_DEFAULT",
+        "DERIVED"
+      ]
+    },
+    "parameterSource": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "USER",
+            "DATA",
+            "KNOWLEDGE",
+            "OPERATOR_DEFAULT",
+            "DERIVED"
+          ]
+        },
+        "ref": {
+          "$ref": "composition-types.v1.schema.json#/$defs/evidenceRef"
+        },
+        "path": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "$ref": "composition-types.v1.schema.json#/$defs/evidenceRef"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "kind",
+        "ref",
+        "path",
+        "reason"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "DERIVED"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "dependencies"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "dependencies"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "facts": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1
+      },
+      "additionalProperties": {}
+    },
+    "fact": {
+      "type": "object",
+      "properties": {
+        "subjectRef": {
+          "$ref": "composition-types.v1.schema.json#/$defs/evidenceRef"
+        },
+        "property": {
+          "type": "string",
+          "minLength": 1
+        },
+        "state": {
+          "enum": [
+            "known",
+            "unknown",
+            "conflict"
+          ]
+        },
+        "value": {},
+        "sourceRef": {
+          "$ref": "composition-types.v1.schema.json#/$defs/evidenceRef"
+        },
+        "verificationScope": {
+          "enum": [
+            "declared",
+            "metadata",
+            "sample",
+            "full"
+          ]
+        },
+        "conflictingRefs": {
+          "type": "array",
+          "items": {
+            "$ref": "composition-types.v1.schema.json#/$defs/evidenceRef"
+          },
+          "minItems": 2,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "subjectRef",
+        "property",
+        "state",
+        "sourceRef",
+        "verificationScope"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "known"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "value"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "value"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "conflict"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "conflictingRefs"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "conflictingRefs"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "operand": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "port": {
+              "type": "string",
+              "minLength": 1
+            },
+            "property": {
+              "type": "string",
+              "minLength": 1
+            },
+            "direction": {
+              "enum": [
+                "input",
+                "output"
+              ]
+            }
+          },
+          "required": [
+            "port",
+            "property"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "parameter": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "parameter"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "value": {}
+          },
+          "required": [
+            "value"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "predicate": {
+      "type": "object",
+      "properties": {
+        "predicate": {
+          "type": "string",
+          "minLength": 1
+        },
+        "arguments": {
+          "type": "array",
+          "items": {
+            "$ref": "composition-types.v1.schema.json#/$defs/operand"
+          },
+          "minItems": 1,
+          "maxItems": 3
+        }
+      },
+      "required": [
+        "predicate",
+        "arguments"
+      ],
+      "additionalProperties": false
+    },
+    "condition": {
+      "oneOf": [
+        {
+          "$ref": "composition-types.v1.schema.json#/$defs/predicate"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "all": {
+              "type": "array",
+              "items": {
+                "$ref": "composition-types.v1.schema.json#/$defs/condition"
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "all"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "any": {
+              "type": "array",
+              "items": {
+                "$ref": "composition-types.v1.schema.json#/$defs/condition"
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "any"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "when": {
+              "$ref": "composition-types.v1.schema.json#/$defs/condition"
+            },
+            "then": {
+              "$ref": "composition-types.v1.schema.json#/$defs/condition"
+            }
+          },
+          "required": [
+            "when",
+            "then"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "check": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "condition": {
+          "$ref": "composition-types.v1.schema.json#/$defs/condition"
+        },
+        "severity": {
+          "enum": [
+            "error",
+            "warning"
+          ]
+        },
+        "checkStage": {
+          "enum": [
+            "compile",
+            "beforeNode",
+            "afterNode"
+          ]
+        },
+        "validatorRef": {
+          "$ref": "composition-types.v1.schema.json#/$defs/identity"
+        }
+      },
+      "required": [
+        "id",
+        "condition",
+        "severity",
+        "checkStage",
+        "validatorRef"
+      ],
+      "additionalProperties": false
+    },
+    "nodeOutput": {
+      "type": "object",
+      "properties": {
+        "nodeId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "port": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "nodeId",
+        "port"
+      ],
+      "additionalProperties": false
+    },
+    "bindingItem": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "workflowInput": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "workflowInput"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "nodeOutput": {
+              "$ref": "composition-types.v1.schema.json#/$defs/nodeOutput"
+            }
+          },
+          "required": [
+            "nodeOutput"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "binding": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "workflowInput": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "workflowInput"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "nodeOutput": {
+              "$ref": "composition-types.v1.schema.json#/$defs/nodeOutput"
+            }
+          },
+          "required": [
+            "nodeOutput"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "collection": {
+              "type": "array",
+              "items": {
+                "$ref": "composition-types.v1.schema.json#/$defs/bindingItem"
+              }
+            }
+          },
+          "required": [
+            "collection"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "absent": {
+              "const": true
+            }
+          },
+          "required": [
+            "absent"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "dataRef": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "data_version"
+        },
+        "service": {
+          "const": "data-primary"
+        },
+        "datasetId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "versionId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "semanticId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "objectId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mediaType": {
+          "type": "string",
+          "minLength": 1
+        },
+        "format": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "sizeBytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "checksum": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "semanticChecksum": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "outputName": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "kind",
+        "service",
+        "datasetId",
+        "versionId",
+        "semanticId",
+        "objectId",
+        "mediaType",
+        "format",
+        "sizeBytes",
+        "checksum",
+        "semanticChecksum"
+      ],
+      "additionalProperties": false
+    },
+    "evidenceRef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "digest"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

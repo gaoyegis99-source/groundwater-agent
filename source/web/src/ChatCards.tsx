@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { canConfirm, statusLabel, taskLabel } from './chat-state';
+import { canConfirm, isComposedConfirmation, statusLabel, taskLabel } from './chat-state';
 import { contentUrl } from './api';
 import { ArgumentValue, argumentGroup, argumentLabel, modelName, outputName } from './card-presentation';
 import { ErrorNotice } from './ErrorNotice';
@@ -32,10 +32,11 @@ function ParameterList({ entries, modelId, project, onResource }: {
     : <ArgumentValue value={value} name={name} modelId={modelId} />}</dd></div>)}</dl>;
 }
 
-export function ConfirmationCard({ confirmation, history, busy, onDecision, onEdit, onResource, project, verificationSession = false, current = false, readOnly = false, capabilities }: {
+export function ConfirmationCard({ confirmation, history, busy, onDecision, onEdit, onResource, project, verificationSession = false, current = false, readOnly = false, capabilities, draftOutputs }: {
   confirmation: Confirmation; history: History | null; busy: boolean;
   onDecision: (id: string, decision: 'confirm' | 'reject', reason?: string) => void;
   onEdit?: (id: string) => void;
+  draftOutputs?: string[];
   onResource: (id: string, reference?: ResourceReference) => void; project: string; verificationSession?: boolean; current?: boolean; readOnly?: boolean; capabilities?: Capabilities | null;
 }) {
   const [rejecting, setRejecting] = useState(false);
@@ -53,10 +54,11 @@ export function ConfirmationCard({ confirmation, history, busy, onDecision, onEd
   const caseLabel = confirmationCase(confirmation, history);
   const inputCount = confirmation.actions.reduce((count, action) => count + Object.keys(action.inputReferences ?? {}).length, 0);
   const firstAction = confirmation.actions[0];
+  const composed = isComposedConfirmation(confirmation);
   const declaredSummaries = firstAction ? productUi().models[firstAction.modelId]?.confirmationSummary ?? [] : [];
   const verification = verificationSession || isVerificationConfirmation(confirmation);
   const replaced = confirmation.replacesConfirmationId ? history?.turns.flatMap(turn => turn.confirmations).find(item => item.confirmationId === confirmation.replacesConfirmationId) : undefined;
-  const expectedOutputs = current ? confirmation.actions.flatMap<string | { name?: string }>(action => (
+  const expectedOutputs = current ? composed ? draftOutputs ?? [] : confirmation.actions.flatMap<string | { name?: string }>(action => (
     capabilities?.models.find(model => model.modelId === action.modelId && model.modelVersion === action.modelVersion &&
       model.workflowId === action.workflowId && model.workflowVersion === action.workflowVersion)?.finalOutputs ?? []
   )).map(item => typeof item === 'string' ? item : item.name).filter((name): name is string => !!name) : [];
@@ -71,7 +73,7 @@ export function ConfirmationCard({ confirmation, history, busy, onDecision, onEd
   const details = <details className="confirmation-details" open={expanded} onToggle={event => setExpanded(event.currentTarget.open)}><summary>{enabled ? '核对本批次资料与参数' : `查看本批次 ${confirmation.actions.length} 项分析的资料与参数`}</summary>
     {expanded && changes.length > 0 && <dl>{changes.map(({ action, name, before, after }) => <div key={`${action.toolCallId}:${name}`}><dt>{argumentLabel(name, action.modelId)}</dt><dd>{before === undefined ? '未设置' : <ArgumentValue name={name} modelId={action.modelId} value={before} />} → {after === undefined ? '已移除' : <ArgumentValue name={name} modelId={action.modelId} value={after} />}</dd></div>)}</dl>}
     {expanded && confirmation.actions.map((action, index) => { const entries = Object.entries(action.arguments); const groups = entries.reduce<Record<string, [string, unknown][]>>((result, entry) => { (result[argumentGroup(entry[0], action.modelId)] ??= []).push(entry); return result; }, {}); return <section className="frozen-action" key={action.toolCallId}>
-      <h4>{index + 1}. {modelName(action.modelId || action.tool)}</h4>
+      <h4>{index + 1}. {action.tool === 'run_composed_workflow' ? '组合工作流' : modelName(action.modelId || action.tool)}</h4>
       <p className="muted">模型 {action.modelId}@{action.modelVersion} · 工作流 {action.workflowId}@{action.workflowVersion}</p>
       {Object.entries(action.inputReferences ?? {}).map(([name, reference]) => <p key={name}>
         <button type="button" className="text-button" aria-label={`查看冻结资料 ${argumentLabel(name, action.modelId)}`}
@@ -92,7 +94,7 @@ export function ConfirmationCard({ confirmation, history, busy, onDecision, onEd
       )}</div>}
       {changes.slice(0, 2).map(({ action, name, before, after }) => <div key={`${action.toolCallId}:${name}`}>{argumentLabel(name, action.modelId)} · {before === undefined ? '未设置' : <ArgumentValue name={name} modelId={action.modelId} value={before} />} → {after === undefined ? '已移除' : <ArgumentValue name={name} modelId={action.modelId} value={after} />}</div>)}
       {!changes.length && firstAction && declaredSummaries.slice(0, 1).map(summary => <p key={summary.label}>{summary.label} · {summary.parameters.map(name => argumentLabel(name, firstAction.modelId) + ' ' + String(firstAction.arguments[name] ?? '未设置')).join('、')}</p>)}
-      <p>预期成果 · {expectedOutputs.length > 0 ? [...new Set(expectedOutputs)].map(outputName).join('、') : '未提供成果清单'}</p>
+      <p>预期成果 · {expectedOutputs.length > 0 ? [...new Set(expectedOutputs)].map(outputName).join('、') : composed ? '见编排草稿' : '未提供成果清单'}</p>
     </div>}
     {!current && changes.length > 0 && <p className="muted">用户已修改 {changes.length} 个参数字段</p>}
     {enabled && !current ? <p className="muted">请核对以下资料与参数；只有确认后才会执行。</p>
@@ -109,7 +111,7 @@ export function ConfirmationCard({ confirmation, history, busy, onDecision, onEd
         : summary.parameters.map(name => `${argumentLabel(name, firstAction.modelId)} ${String(firstAction.arguments[name])}`).join(' · ')}</dd></div>)}
     </dl>}
     {!current && details}
-    {enabled && <><div className="actions">{onEdit && <button className="secondary" data-testid="edit-confirmation" onClick={() => onEdit(confirmation.confirmationId)}>编辑参数</button>}<button className="primary" title="仅批准本批次，后续批次会单独确认" data-testid="confirm-execution" onClick={() => onDecision(confirmation.confirmationId, 'confirm')}>{current ? `确认执行修订 ${confirmation.revision ?? 1}` : '确认执行'}</button><button className="text-button" onClick={() => setRejecting(!rejecting)}>拒绝此批次</button></div>
+    {enabled && <><div className="actions">{onEdit && !composed && <button className="secondary" data-testid="edit-confirmation" onClick={() => onEdit(confirmation.confirmationId)}>编辑参数</button>}<button className="primary" title="仅批准本批次，后续批次会单独确认" data-testid="confirm-execution" onClick={() => onDecision(confirmation.confirmationId, 'confirm')}>{current ? `确认执行修订 ${confirmation.revision ?? 1}` : '确认执行'}</button><button className="text-button" onClick={() => setRejecting(!rejecting)}>拒绝此批次</button></div>
       {rejecting && <div className="reject-form"><label>拒绝原因<input aria-label="拒绝原因" value={reason} onChange={event => setReason(event.target.value)} placeholder="说明需要调整的地方" /></label><button disabled={!reason.trim()} onClick={() => onDecision(confirmation.confirmationId, 'reject', reason)}>提交拒绝</button></div>}</>}
     {current && details}
     {!enabled && pending && !confirmation.decisionState && <p className="muted">{busy ? '正在更新会话，请等待当前操作完成后核对。' : '此批次已无法审批，请核对当前确认。'}</p>}

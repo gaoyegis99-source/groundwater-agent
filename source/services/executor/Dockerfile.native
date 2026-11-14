@@ -45,12 +45,13 @@ RUN --network=none /usr/bin/python3 -m pip install --break-system-packages \
 ENV OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
 WORKDIR /build/executor
 COPY packages/protocol-contracts /build/protocol-contracts
+COPY packages/workflow-compiler /build/workflow-compiler
 COPY services/data/client /build/data-client
 COPY services/executor/pyproject.toml ./
 COPY services/executor/src ./src
 RUN --network=none /usr/bin/python3 -m pip install --break-system-packages \
     --no-index --no-deps --no-build-isolation \
-    /build/protocol-contracts /build/data-client .
+    /build/protocol-contracts /build/workflow-compiler /build/data-client .
 RUN groupadd --system platform && useradd --system --create-home --uid 10001 --gid platform platform && mkdir -p /work /config && chown -R platform:platform /work /config
 USER 10001
 WORKDIR /work

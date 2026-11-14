@@ -1,0 +1,114 @@
+{
+  "schemaVersion": "operator-manifest.v2",
+  "id": "sample.table.summary",
+  "version": "1.0.0",
+  "implementationRevision": "sha256:8973655d9a081087261b9684a82a5bba4e69691558cd0d1e08c2ab7be418368e",
+  "title": "sample.table.summary",
+  "description": "Synthetic operator declaration for offline contract verification.",
+  "domain": "test",
+  "runtime": "native",
+  "timeoutSeconds": 60,
+  "memoryLimitBytes": 134217728,
+  "inputs": [
+    {
+      "name": "data",
+      "kind": "artifact",
+      "logicalType": "table",
+      "formatPairs": [
+        {
+          "format": "parquet",
+          "mediaType": "application/vnd.apache.parquet"
+        }
+      ]
+    }
+  ],
+  "outputs": [
+    {
+      "name": "summary",
+      "kind": "artifact",
+      "logicalType": "table",
+      "formatPairs": [
+        {
+          "format": "parquet",
+          "mediaType": "application/vnd.apache.parquet"
+        }
+      ]
+    }
+  ],
+  "parametersSchema": {
+    "type": "object",
+    "properties": {
+      "minimum": {
+        "type": "integer",
+        "minimum": 1,
+        "default": 1
+      }
+    },
+    "required": [
+      "minimum"
+    ],
+    "additionalProperties": false
+  },
+  "classification": {
+    "reuseScope": "generic",
+    "providerKind": "platform"
+  },
+  "portSemantics": {
+    "data": {
+      "requires": {
+        "quantityKind": "water-head.v1",
+        "unit": "m"
+      }
+    }
+  },
+  "outputSemantics": {
+    "summary": {
+      "fixed": {
+        "grain": "dataset"
+      },
+      "inherit": [
+        {
+          "inputPort": "data",
+          "facts": [
+            "quantityKind",
+            "unit"
+          ]
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "minimum-rows",
+      "condition": {
+        "predicate": "minimumRows",
+        "arguments": [
+          {
+            "port": "data",
+            "property": "rowCount"
+          },
+          {
+            "parameter": "minimum"
+          }
+        ]
+      },
+      "severity": "error",
+      "checkStage": "beforeNode",
+      "validatorRef": {
+        "id": "workflow-composition",
+        "version": "1.0.0",
+        "digest": "sha256:9aa482686a29cf611d2cc84698b58839c8400a78f4999c9b17c3e0b88fe84667"
+      }
+    }
+  ],
+  "parameterPolicies": {
+    "minimum": {
+      "allowedSources": [
+        "USER",
+        "OPERATOR_DEFAULT"
+      ],
+      "defaultPolicy": "declared"
+    }
+  },
+  "definitionDigest": "sha256:1b0dbf11be4276a9e17486f70ba19cd6092117c7be53afbeffaae582426a23a6"
+}

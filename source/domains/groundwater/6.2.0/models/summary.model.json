@@ -1,0 +1,134 @@
+{
+  "schemaVersion": "executable-model.v6",
+  "modelId": "groundwater.summary",
+  "version": "3.1.0",
+  "workflowRef": {
+    "workflowId": "groundwater.summary",
+    "version": "1.1.0",
+    "checksum": "sha256:29e39ac874fd98a6a209552207f086352f15da98aeaa9e80ce3189fea094885a"
+  },
+  "tool": {
+    "name": "run_summary",
+    "description": "Run full staged-input descriptive statistics with explicit field, null, non-finite, optional group, and unit context for an exact Data version.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "versionId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "axis": {
+          "type": "string",
+          "enum": [
+            "columns",
+            "flatten"
+          ]
+        },
+        "column": {
+          "type": "string",
+          "minLength": 1
+        },
+        "groupField": {
+          "type": "string",
+          "minLength": 1
+        },
+        "unit": {
+          "type": "string",
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "versionId"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "inputBindings": {
+    "data": "versionId"
+  },
+  "fieldRequirements": [
+    {
+      "parameter": "column",
+      "inputParameter": "versionId",
+      "identifier": "name",
+      "allowedTypes": ["number"]
+    },
+    {
+      "parameter": "groupField",
+      "inputParameter": "versionId",
+      "identifier": "name",
+      "allowedTypes": ["boolean", "date-time", "integer", "number", "string"]
+    }
+  ],
+  "semanticRequirements": [
+    {
+      "kind": "fieldUnit",
+      "inputParameter": "versionId",
+      "fieldParameter": "column",
+      "unitParameter": "unit"
+    }
+  ],
+  "defaultParameters": {
+    "axis": "columns",
+    "unit": ""
+  },
+  "parameterBindings": {
+    "axis": "axis",
+    "column": "column",
+    "groupField": "groupField",
+    "unit": "unit"
+  },
+  "deadlineSeconds": 60,
+  "maxParallelNodes": 1,
+  "finalOutputs": [
+    "summary",
+    "summary-details"
+  ],
+  "executionService": "executor",
+  "executorId": "workflow-dag",
+  "outputPublications": {
+    "summary": {
+      "title": "Summary",
+      "mediaType": "application/json",
+      "format": "json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "Numeric statistics for the selected field or NPY series across the full staged input, with declared null and non-finite values excluded and counted.",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "Full staged input means the complete staged file or array, not a preview sample; it does not prove representativeness of a wider population.",
+          "Standard deviation uses population ddof=0 and quartiles use linear interpolation.",
+          "An explicit unit is a label only; the operator performs no unit conversion or field-meaning inference."
+        ],
+        "source": "workflow-declared"
+      }
+    },
+    "summary-details": {
+      "title": "Summary scope and semantics",
+      "mediaType": "application/json",
+      "format": "json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "Auditable full staged input scope, selected field and unit, null and non-finite counts, optional bounded group partitions, conventions, interpretation, and limitations.",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "At most 100 distinct groups are returned; higher cardinality fails instead of silently truncating.",
+          "Grouped summaries are descriptive partitions, not significance tests or causal comparisons.",
+          "The explicit unit is a label only; no unit conversion or field-meaning inference is performed.",
+          "The staged artifact can itself be a sample or subset of a wider population."
+        ],
+        "source": "workflow-declared"
+      }
+    }
+  }
+}

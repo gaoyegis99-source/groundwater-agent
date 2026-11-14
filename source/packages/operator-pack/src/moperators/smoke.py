@@ -472,7 +472,7 @@ def run_smokes(
                     operator,
                     _smoke_fixture_ids(smoke),
                     smoke.parameters,
-                    root / operator.id,
+                    root / f"{operator.id}@{operator.version}",
                     Path(sys.executable),
                 )
                 _validate_outputs(operator, smoke, result)

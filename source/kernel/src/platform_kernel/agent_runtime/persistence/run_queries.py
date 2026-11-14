@@ -175,13 +175,14 @@ def _project_current(
 def load_request_context(database: Path, agent_run_id: str) -> dict:
     with connect_database(database) as connection:
         row = connection.execute(
-            """SELECT a.*,
+            """SELECT a.*, d.message AS draft_message,
                       COALESCE(m.clarification_required, 0)
                       AS clarification_required,
                       COALESCE(m.input_references_json, '[]') AS input_references_json
                  FROM agent_requests AS a
                  LEFT JOIN message_requests AS m
                    ON m.agent_run_id = a.agent_run_id
+                 LEFT JOIN workflow_drafts AS d ON d.agent_run_id = a.agent_run_id
                 WHERE a.agent_run_id = ?""",
             (agent_run_id,),
         ).fetchone()

@@ -118,7 +118,7 @@ def _nginx_config(
             "        location ^~ /knowledge/ { try_files $uri $uri/ /knowledge/index.html; }",
             '        location = /product-ui.json { auth_request off; add_header Cache-Control "no-store" always; add_header Content-Security-Policy "default-src \'none\'; frame-ancestors \'none\'; base-uri \'none\'" always; add_header X-Content-Type-Options nosniff always; add_header Referrer-Policy no-referrer always; add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always; try_files /product-ui.json =404; }',
             '        location = /product-icon.svg { auth_request off; add_header Cache-Control "no-store" always; add_header Content-Security-Policy "default-src \'none\'; frame-ancestors \'none\'; base-uri \'none\'" always; add_header X-Content-Type-Options nosniff always; add_header Referrer-Policy no-referrer always; add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always; try_files /product-icon.svg =404; }',
-            "        location = / { auth_request off; try_files /index.html =404; }",
+            "        location = / { auth_request off; expires -1; try_files /index.html =404; }",
             "        location /assets/ { auth_request off; try_files $uri =404; }",
             "        location / { auth_request off; return 404; }",
             "        location /api/v12/ {"

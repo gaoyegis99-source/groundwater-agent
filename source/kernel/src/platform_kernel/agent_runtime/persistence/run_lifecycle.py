@@ -86,6 +86,7 @@ def save_waiting_result(
     agent_projection: AgentProjectionPort,
     task_updates: list | None = None,
     preparation: tuple[str, tuple[dict[str, object], ...]] | None = None,
+    workflow_draft: dict | None = None,
 ) -> None:
     state_json = json.dumps(
         state_payload, ensure_ascii=False, separators=(",", ":")
@@ -97,6 +98,19 @@ def save_waiting_result(
             refresh_task(connection, run.session_id)
             return
         save_memory_connection(connection, run.session_id, memory_update)
+        if workflow_draft is not None:
+            publish_workflow_draft(connection, run.agent_run_id, workflow_draft)
+            connection.execute(
+                "INSERT INTO agent_plans VALUES (?, ?, ?, ?, ?)",
+                (
+                    run.agent_run_id, 1, workflow_draft["title"],
+                    json.dumps([
+                        {"step_id": item["node_id"], "tool": item["operator_id"], "purpose": item["title"]}
+                        for item in workflow_draft["operators"]
+                    ], ensure_ascii=False),
+                    workflow_draft["summary"],
+                ),
+            )
         for action in actions:
             connection.execute(
                 """INSERT INTO agent_actions(
@@ -165,6 +179,8 @@ def save_waiting_result(
                 snapshots=snapshots,
             )
         _project_current(connection, run.agent_run_id, agent_projection)
+        if workflow_draft is not None:
+            refresh_task(connection, run.session_id)
 
 
 def mark_execution_queued(

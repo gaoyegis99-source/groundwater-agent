@@ -1,0 +1,85 @@
+{
+  "schemaVersion": "operator-manifest.v2",
+  "id": "sample.table.filter",
+  "version": "1.0.0",
+  "implementationRevision": "sha256:09d8ecc6e27daf37051a42a644b96ddc0f778ff4b0196aaca9a0104be0fa4ea1",
+  "title": "sample.table.filter",
+  "description": "Synthetic operator declaration for offline contract verification.",
+  "domain": "test",
+  "runtime": "native",
+  "timeoutSeconds": 60,
+  "memoryLimitBytes": 134217728,
+  "inputs": [
+    {
+      "name": "data",
+      "kind": "artifact",
+      "logicalType": "table",
+      "formatPairs": [
+        {
+          "format": "parquet",
+          "mediaType": "application/vnd.apache.parquet"
+        }
+      ]
+    }
+  ],
+  "outputs": [
+    {
+      "name": "data",
+      "kind": "artifact",
+      "logicalType": "table",
+      "formatPairs": [
+        {
+          "format": "parquet",
+          "mediaType": "application/vnd.apache.parquet"
+        }
+      ]
+    }
+  ],
+  "parametersSchema": {
+    "type": "object",
+    "properties": {
+      "column": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "required": [
+      "column"
+    ],
+    "additionalProperties": false
+  },
+  "classification": {
+    "reuseScope": "generic",
+    "providerKind": "platform"
+  },
+  "portSemantics": {
+    "data": {
+      "requiredFacts": [
+        "fields"
+      ],
+      "fieldBindings": {
+        "value": {
+          "parameter": "column"
+        }
+      }
+    }
+  },
+  "outputSemantics": {
+    "data": {
+      "inherit": [
+        {
+          "inputPort": "data",
+          "facts": [
+            "fields",
+            "quantityKind",
+            "unit"
+          ]
+        }
+      ],
+      "measured": [
+        "rowCount"
+      ]
+    }
+  },
+  "definitionDigest": "sha256:55db1b18ee950cd1b9f88e4aff299013939ce30cf77ec6ec3cefd54de8d8836a"
+}

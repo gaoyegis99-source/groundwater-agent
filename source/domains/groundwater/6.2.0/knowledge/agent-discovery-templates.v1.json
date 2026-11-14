@@ -1,0 +1,61 @@
+{
+  "schemaVersion": "domain-knowledge.v2",
+  "contentVersion": "1.2.0",
+  "language": "zh-CN",
+  "sources": [
+    {
+      "sourceId": "groundwater-project-templates",
+      "kind": "PROJECT_TEMPLATE",
+      "title": "Groundwater project knowledge templates",
+      "publisher": "Groundwater Platform",
+      "url": null,
+      "version": "1.1.0",
+      "publishedAt": "2026-10-09",
+      "accessedAt": null,
+      "reviewAfter": "2027-10-09",
+      "validThrough": null,
+      "lifecycleStatus": "ACTIVE"
+    }
+  ],
+  "documents": [
+    {
+      "knowledgeId": "gw-project-overview-template",
+      "title": "项目概览填写模板（演示，未绑定真实项目）",
+      "summary": "供项目维护者填写研究目标、资料分组、术语约定与已知限制；目录和版本须通过观察工具实时核实。",
+      "chunks": [
+        {
+          "content": "【模板状态】这是未填写的演示模板，不代表任何实际研究区域或数据现状。【项目背景】填写研究区域、时间范围、目标和负责维护的人员或资料来源。【资料导航】分别列出数据资源 family/版本引用、知识文档 ID 和可执行模型 ID；资源是否存在、当前版本与 checksum 必须通过 Data 确认，不能从本模板推断。【限制】填写缺失资料、未核实单位和需要业务确认的选择。",
+          "sourceRefs": [
+            "groundwater-project-templates"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-data-dictionary-template",
+      "title": "精确资源数据字典填写模板（演示，未绑定资源）",
+      "summary": "填写 dataset_id、version_id、checksum 与字段含义、单位、时间及坐标基准。未绑定模板和通用演示列名不可作为选定文件的事实。",
+      "chunks": [
+        {
+          "content": "【适用身份】dataset_id=<待填写>；version_id=<待填写>；checksum=<待填写 SHA-256>。三项均未填写，因此本模板不适用于任何真实文件。【逐字段填写】字段原名=<待填写>；业务含义=<待填写>；单位=<待核实>；时间/坐标/垂向基准=<按需填写>；声明来源=<资料或负责人>。通过 inspect_data_table 获取的字段名、文件声明类型和 HEAD_SAMPLE 样例是物理观察，语义与单位必须另有依据。不得把模板占位符或演示列名用于执行参数。",
+          "sourceRefs": [
+            "groundwater-project-templates"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-model-evidence-template",
+      "title": "模型参数依据填写模板（演示）",
+      "summary": "将任务、资源字段与已装配模型参数逐项对齐，区分文件观察、资料声明和用户选择；存在缺口时先澄清。",
+      "chunks": [
+        {
+          "content": "【任务选择】描述统计、监测趋势、流场、井点几何覆盖、迁移学习留出回测和静态制图分别查阅对应已装配模型的适用说明；支持能力以当前产品目录为准。本模板不提供真实输入资料。【参数依据】逐项填写模型参数、实际字段或参数值、依据类别（文件结构/数据字典/用户选择/模型显式默认值）、依据引用及未解决项。资源引用须带精确 dataset_id、version_id 和 checksum；知识引用须带versionId、unitId 和 checksum。【推荐与复核】推荐只提交候选步骤、已知参数、来源、知识与资源引用、缺失信息和限制，不执行模型。缺少输入不得填造 ID；依赖上游结果的制图步骤标注 requires_prior_results，待真实 RESULT 发布后重新核实。用户选择后重新读取证据，record_plan.reason 记录引用与映射依据，不复制样例或知识正文；业务选择未确定先澄清，再确认确切资源版本和参数。",
+          "sourceRefs": [
+            "groundwater-project-templates"
+          ]
+        }
+      ]
+    }
+  ]
+}

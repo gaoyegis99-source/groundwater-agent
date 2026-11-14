@@ -11,6 +11,9 @@ export function hasVerificationMarker(value: string | null | undefined) {
 export function isVerificationHistory(history: History | null) {
   return history?.items.some(message => hasVerificationMarker(message.content)) ?? false;
 }
+export function isComposedConfirmation(confirmation: Confirmation | null | undefined) {
+  return confirmation?.actions.some(action => action.tool === 'run_composed_workflow') ?? false;
+}
 export function canConfirm(confirmation: Confirmation, history: History | null, busy: boolean) {
   const current = history?.turns.find(turn => turn.goalRevision === history.goalRevision);
   // Recovery is a new decision on a frozen workflow attempt; the original

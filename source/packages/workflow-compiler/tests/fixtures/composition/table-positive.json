@@ -1,0 +1,206 @@
+{
+  "schemaVersion": "workflow.v7",
+  "workflowId": "table-summary",
+  "version": "1.0.0",
+  "projectId": "example",
+  "registryRef": {
+    "id": "sample-vocabulary",
+    "version": "1.0.0",
+    "digest": "sha256:74d6fbcfc6ffd7d621f2084d766e1a7bf9bb059363ecf3b57a146e56456ef279"
+  },
+  "validatorRef": {
+    "id": "workflow-composition",
+    "version": "1.0.0",
+    "digest": "sha256:9aa482686a29cf611d2cc84698b58839c8400a78f4999c9b17c3e0b88fe84667"
+  },
+  "environmentRef": {
+    "id": "sample-environment",
+    "version": "1.0.0",
+    "digest": "sha256:0debb42e2a65a17bac441d582c667b4fbe5f10ef4df14f884d08afa1c3e38929"
+  },
+  "requiredFeatures": [
+    "semantic-checks"
+  ],
+  "inputs": {
+    "observations": {
+      "port": {
+        "name": "observations",
+        "kind": "artifact",
+        "logicalType": "table",
+        "formatPairs": [
+          {
+            "format": "parquet",
+            "mediaType": "application/vnd.apache.parquet"
+          }
+        ]
+      },
+      "dataRef": {
+        "kind": "data_version",
+        "service": "data-primary",
+        "datasetId": "observations",
+        "versionId": "observations-version",
+        "semanticId": "observations-semantic",
+        "objectId": "observations-object",
+        "mediaType": "application/vnd.apache.parquet",
+        "format": "parquet",
+        "sizeBytes": 1024,
+        "checksum": "sha256:999971d25154a4d3ed15553226c195c98d070f9e21cf421b70e8cb7aeb4808bd",
+        "semanticChecksum": "sha256:dbfbd8fb32f07e548423cd32097d5a52439b675d44ae0e3d33fe9830b0496dae"
+      },
+      "facts": [
+        {
+          "subjectRef": {
+            "id": "observations-version",
+            "version": "1.0.0",
+            "digest": "sha256:999971d25154a4d3ed15553226c195c98d070f9e21cf421b70e8cb7aeb4808bd"
+          },
+          "property": "quantityKind",
+          "state": "known",
+          "value": "water-head.v1",
+          "sourceRef": {
+            "id": "observations-semantic",
+            "version": "1.0.0",
+            "digest": "sha256:dbfbd8fb32f07e548423cd32097d5a52439b675d44ae0e3d33fe9830b0496dae"
+          },
+          "verificationScope": "declared"
+        },
+        {
+          "subjectRef": {
+            "id": "observations-version",
+            "version": "1.0.0",
+            "digest": "sha256:999971d25154a4d3ed15553226c195c98d070f9e21cf421b70e8cb7aeb4808bd"
+          },
+          "property": "unit",
+          "state": "known",
+          "value": "m",
+          "sourceRef": {
+            "id": "observations-semantic",
+            "version": "1.0.0",
+            "digest": "sha256:dbfbd8fb32f07e548423cd32097d5a52439b675d44ae0e3d33fe9830b0496dae"
+          },
+          "verificationScope": "declared"
+        },
+        {
+          "subjectRef": {
+            "id": "observations-version",
+            "version": "1.0.0",
+            "digest": "sha256:999971d25154a4d3ed15553226c195c98d070f9e21cf421b70e8cb7aeb4808bd"
+          },
+          "property": "fields",
+          "state": "known",
+          "value": {
+            "head": {
+              "dtype": "float64",
+              "unit": "m",
+              "quantityKind": "water-head.v1"
+            }
+          },
+          "sourceRef": {
+            "id": "observations-semantic",
+            "version": "1.0.0",
+            "digest": "sha256:dbfbd8fb32f07e548423cd32097d5a52439b675d44ae0e3d33fe9830b0496dae"
+          },
+          "verificationScope": "declared"
+        }
+      ]
+    }
+  },
+  "parameters": {
+    "field": {
+      "value": "head",
+      "source": {
+        "kind": "USER",
+        "ref": {
+          "id": "sample-user-goal",
+          "version": "1.0.0",
+          "digest": "sha256:0a3d122d298acf5035b9741bb7a20f03dd124a17636b0348eb4802f1c2b0e5f9"
+        },
+        "path": "/parameters",
+        "reason": "Fixture value for this graph."
+      }
+    },
+    "minimum": {
+      "value": 1,
+      "source": {
+        "kind": "OPERATOR_DEFAULT",
+        "ref": {
+          "id": "sample.table.summary",
+          "version": "1.0.0",
+          "digest": "sha256:1b0dbf11be4276a9e17486f70ba19cd6092117c7be53afbeffaae582426a23a6"
+        },
+        "path": "/parameters",
+        "reason": "Fixture value for this graph."
+      }
+    }
+  },
+  "nodes": [
+    {
+      "nodeId": "filter",
+      "operator": {
+        "id": "sample.table.filter",
+        "version": "1.0.0",
+        "definitionDigest": "sha256:55db1b18ee950cd1b9f88e4aff299013939ce30cf77ec6ec3cefd54de8d8836a",
+        "implementationRevision": "sha256:09d8ecc6e27daf37051a42a644b96ddc0f778ff4b0196aaca9a0104be0fa4ea1"
+      },
+      "inputs": {
+        "data": {
+          "workflowInput": "observations"
+        }
+      },
+      "parameters": {
+        "column": {
+          "workflowParameter": "field"
+        }
+      }
+    },
+    {
+      "nodeId": "summary",
+      "operator": {
+        "id": "sample.table.summary",
+        "version": "1.0.0",
+        "definitionDigest": "sha256:1b0dbf11be4276a9e17486f70ba19cd6092117c7be53afbeffaae582426a23a6",
+        "implementationRevision": "sha256:8973655d9a081087261b9684a82a5bba4e69691558cd0d1e08c2ab7be418368e"
+      },
+      "inputs": {
+        "data": {
+          "nodeOutput": {
+            "nodeId": "filter",
+            "port": "data"
+          }
+        }
+      },
+      "parameters": {
+        "minimum": {
+          "workflowParameter": "minimum"
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "result": {
+      "nodeOutput": {
+        "nodeId": "summary",
+        "port": "summary"
+      },
+      "goal": {
+        "role": "requested-result",
+        "logicalType": "table",
+        "requires": {
+          "unit": "m",
+          "grain": "dataset"
+        }
+      },
+      "publication": {
+        "title": "table-summary",
+        "format": "parquet",
+        "policy": "FILE_ONLY"
+      }
+    }
+  },
+  "resourceLimits": {
+    "maxNodes": 8,
+    "maxParallelNodes": 2,
+    "maxNodeMemoryBytes": 268435456,
+    "maxNodeTimeoutSeconds": 120
+  }
+}

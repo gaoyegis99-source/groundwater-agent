@@ -1,0 +1,282 @@
+{
+  "schemaVersion": "executable-model.v6",
+  "modelId": "groundwater.porous-simulation",
+  "version": "1.0.0",
+  "workflowRef": {
+    "workflowId": "groundwater.porous-simulation",
+    "version": "1.0.0",
+    "checksum": "sha256:5805c3215561e9e095feea96c068598b673a6f8322f4ac2c2ac596ea71a9f895"
+  },
+  "tool": {
+    "name": "run_porous_simulation",
+    "description": "编译孔隙型地下水模型，计算地下水流与溶质运移，汇总结果并生成图件。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "projectPackageVersionId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "projectPackageVersionId"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "inputBindings": {
+    "project_package": "projectPackageVersionId"
+  },
+  "fieldRequirements": [],
+  "semanticRequirements": [],
+  "defaultParameters": {},
+  "parameterBindings": {},
+  "deadlineSeconds": 600,
+  "maxParallelNodes": 2,
+  "finalOutputs": [
+    "porous-model-package",
+    "porous-model-validation",
+    "porous-calculation-summary",
+    "porous-effective-parameters",
+    "porous-result-package",
+    "porous-analysis",
+    "porous-figure",
+    "porous-vtk-package",
+    "porous-compile-receipt",
+    "porous-simulation-receipt",
+    "porous-analysis-receipt",
+    "porous-render-receipt"
+  ],
+  "executionService": "executor",
+  "executorId": "workflow-dag",
+  "outputPublications": {
+    "porous-model-package": {
+      "title": "已编译的模型包",
+      "format": "zip",
+      "mediaType": "application/zip",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "已编译的模型包",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    },
+    "porous-model-validation": {
+      "title": "模型校验报告",
+      "format": "json",
+      "mediaType": "application/json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "模型校验报告",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    },
+    "porous-calculation-summary": {
+      "title": "仿真摘要",
+      "format": "json",
+      "mediaType": "application/json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "仿真摘要",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    },
+    "porous-effective-parameters": {
+      "title": "有效模型参数",
+      "format": "json",
+      "mediaType": "application/json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "有效模型参数",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    },
+    "porous-result-package": {
+      "title": "水头与浓度结果包",
+      "format": "zip",
+      "mediaType": "application/zip",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "水头与浓度结果包",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    },
+    "porous-analysis": {
+      "title": "按时段和层统计的结果",
+      "format": "json",
+      "mediaType": "application/json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "按时段和层统计的结果",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    },
+    "porous-figure": {
+      "title": "最终时刻结果图",
+      "format": "png",
+      "mediaType": "image/png",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "最终时刻结果图",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    },
+    "porous-vtk-package": {
+      "title": "VTU 和 PVD 文件包",
+      "format": "zip",
+      "mediaType": "application/zip",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "VTU 和 PVD 文件包",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    },
+    "porous-compile-receipt": {
+      "title": "模型编译运行凭据",
+      "format": "json",
+      "mediaType": "application/json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "模型编译运行凭据",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    },
+    "porous-simulation-receipt": {
+      "title": "仿真运行凭据",
+      "format": "json",
+      "mediaType": "application/json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "仿真运行凭据",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    },
+    "porous-analysis-receipt": {
+      "title": "分析运行凭据",
+      "format": "json",
+      "mediaType": "application/json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "分析运行凭据",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    },
+    "porous-render-receipt": {
+      "title": "制图运行凭据",
+      "format": "json",
+      "mediaType": "application/json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "制图运行凭据",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    }
+  }
+}

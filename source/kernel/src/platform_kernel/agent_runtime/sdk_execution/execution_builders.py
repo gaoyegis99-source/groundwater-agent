@@ -133,6 +133,10 @@ plus 2–3 mutually exclusive natural-language interaction_options.
             dependencies.observation_client,
             request_context=request_context,
             operator_catalog=dependencies.settings.operator_catalog,
+            composition_operators=(
+                None if dependencies.settings.workflow_composition is None
+                else dependencies.settings.workflow_composition.manifests
+            ),
             operator_catalog_digest=(
                 dependencies.settings.operator_catalog_digest
             ),

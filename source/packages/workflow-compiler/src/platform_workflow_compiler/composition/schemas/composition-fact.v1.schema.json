@@ -1,0 +1,5 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.platform.local/workflow-composition/composition-fact.v1.schema.json",
+  "$ref": "composition-types.v1.schema.json#/$defs/fact"
+}

@@ -1,0 +1,148 @@
+{
+  "schemaVersion": "operator-manifest.v2",
+  "id": "sample.model.predict",
+  "version": "1.0.0",
+  "implementationRevision": "sha256:30c8d5448f0f832b10a9f719e40bd5a053f21053177669d3861fef907635f4bb",
+  "title": "sample.model.predict",
+  "description": "Synthetic operator declaration for offline contract verification.",
+  "domain": "test",
+  "runtime": "native",
+  "timeoutSeconds": 60,
+  "memoryLimitBytes": 134217728,
+  "inputs": [
+    {
+      "name": "features",
+      "kind": "artifact",
+      "logicalType": "tensor",
+      "formatPairs": [
+        {
+          "format": "npy",
+          "mediaType": "application/x-npy"
+        }
+      ]
+    },
+    {
+      "name": "model",
+      "kind": "artifact",
+      "logicalType": "model",
+      "formatPairs": [
+        {
+          "format": "pytorch-state-dict",
+          "mediaType": "application/vnd.pytorch"
+        }
+      ]
+    }
+  ],
+  "outputs": [
+    {
+      "name": "predictions",
+      "kind": "artifact",
+      "logicalType": "table",
+      "formatPairs": [
+        {
+          "format": "parquet",
+          "mediaType": "application/vnd.apache.parquet"
+        }
+      ]
+    }
+  ],
+  "classification": {
+    "reuseScope": "generic",
+    "providerKind": "platform",
+    "methodId": "sample-gru"
+  },
+  "portSemantics": {
+    "features": {
+      "requires": {
+        "dtype": "float32"
+      },
+      "requiredFacts": [
+        "featureOrder",
+        "preprocessor",
+        "evaluationInterval"
+      ]
+    },
+    "model": {
+      "requires": {
+        "dtype": "float32"
+      },
+      "requiredFacts": [
+        "featureOrder",
+        "preprocessor",
+        "trainingInterval"
+      ]
+    }
+  },
+  "outputSemantics": {
+    "predictions": {
+      "fixed": {
+        "grain": "sample"
+      },
+      "inherit": [
+        {
+          "inputPort": "model",
+          "facts": [
+            "quantityKind",
+            "unit"
+          ]
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "input-model-match",
+      "condition": {
+        "all": [
+          {
+            "predicate": "featureOrderMatches",
+            "arguments": [
+              {
+                "port": "features",
+                "property": "featureOrder"
+              },
+              {
+                "port": "model",
+                "property": "featureOrder"
+              }
+            ]
+          },
+          {
+            "predicate": "preprocessorMatches",
+            "arguments": [
+              {
+                "port": "features",
+                "property": "preprocessor"
+              },
+              {
+                "port": "model",
+                "property": "preprocessor"
+              }
+            ]
+          },
+          {
+            "predicate": "trainingDisjointFromEvaluation",
+            "arguments": [
+              {
+                "port": "model",
+                "property": "trainingInterval"
+              },
+              {
+                "port": "features",
+                "property": "evaluationInterval"
+              }
+            ]
+          }
+        ]
+      },
+      "severity": "error",
+      "checkStage": "compile",
+      "validatorRef": {
+        "id": "workflow-composition",
+        "version": "1.0.0",
+        "digest": "sha256:9aa482686a29cf611d2cc84698b58839c8400a78f4999c9b17c3e0b88fe84667"
+      }
+    }
+  ],
+  "definitionDigest": "sha256:7af018377173ad6889d2bba609ac1ba9402f2e624001f69a0527db3229e762a8"
+}

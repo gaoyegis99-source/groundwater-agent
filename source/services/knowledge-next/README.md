@@ -50,7 +50,7 @@ CAS 前置条件；`expectedVersion` 不写入不可变知识正文。bootstrap 
 
 来源有效期和复核日期在导入时聚合为文档生命周期；后续人工生命周期变更需预期修订号和原因，并保留历史。管理版本详情允许查看撤回正文；取证接口不将其作为有效证据返回。
 
-现有 `domain-knowledge.v2` 用显式转换器转换，保留知识标识、来源、正文和块顺序：
+现有 `domain-knowledge.v2` 用显式转换器转换，保留知识标识、来源、正文、块顺序及已声明的分类、别名、模型身份、定位和上下文依赖：
 
 ```bash
 platform-knowledge convert PATH_TO_DOMAIN_KNOWLEDGE.json --project local-data --key seed-001 > /tmp/knowledge-package.json
@@ -105,7 +105,7 @@ PROJECT 对项目成员可读，PRIVATE 仅 owner/admin 可读。非项目成员
 
 每项证据返回派生 `scope` 与 `bindingMatch`：`GENERAL` 表示未绑定具体数据，`EXACT` 表示请求身份精确一致，`NOT_CHECKED` 表示专属证据没有任务上下文，`MISMATCH` 表示不一致；不存在的版本无法推断范围，返回 null。它们不替代 `status` 生命周期/checksum 核验。历史 `read/validate` 不接收任务绑定，专属证据保持 `NOT_CHECKED`，不声称适用于当前任务。新回执记录实际检索范围、请求绑定及各类候选/返回主单元与含上下文单元数；旧回执内容原样保留，不回填适用性结论。
 
-Data 绑定的 wire 身份固定为 `data-primary/projectId/datasetId/versionId/semanticId/fieldId`。字段绑定验证精确语义修订中的字段 ID，不能靠同名字段替代；新版本或新语义不自动继承旧绑定。`fieldId=null` 仅匹配整数据绑定，不是字段通配。导入验证仅证明引用存在，不证明知识解释正确或最新适用性。证据保留导入时核验时间 `bindingsVerifiedAt`，在线检索不访问 Data，也不声称已重新核验 Data 当前状态。数值查询和语义编辑仍归 Data。
+Data 绑定的 wire 身份固定为 `data-primary/projectId/datasetId/versionId/semanticId/fieldId`。字段绑定验证精确语义修订中的字段 ID，不能靠同名字段替代；新版本或新语义不自动继承旧绑定。`fieldId=null` 的请求仅匹配整版本绑定。指定字段的请求同时接受该精确版本的整版本绑定和同字段绑定，不扩大数据或语义版本范围。导入验证仅证明引用存在，不证明知识解释正确或最新适用性。证据保留导入时核验时间 `bindingsVerifiedAt`，在线检索不访问 Data，也不声称已重新核验 Data 当前状态。数值查询和语义编辑仍归 Data。
 
 `/internal/tools/v5/{retrieve_evidence,read_evidence,lookup_knowledge}` 提供严格 `{data: EvidenceBundleV1, outcome: ToolOutcome}` 输出，输入包装为 `callId/projectId/arguments`。`knowledge-tools-v5` [静态契约](src/platform_knowledge_next/contracts/observation-tools.v5.json) 同时声明进度能力、结果码和安全摘要模板，并由契约测试校验。公共 API 仍为 `/knowledge/v3`，知识包与证据身份版本不变。Domain Manifest 通过 `{service, contract, tool}` 选择这些工具，Assembler 校验后注册到 Kernel。
 

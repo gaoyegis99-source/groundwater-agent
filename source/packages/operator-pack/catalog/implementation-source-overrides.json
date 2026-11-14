@@ -13,6 +13,12 @@
     ],
     "table.classify@1.0.0": [
       "src/moperators/operators/table_classify.py"
+    ],
+    "raster.reproject@1.1.0": [
+      "src/moperators/operators/raster_reference_grid.py"
+    ],
+    "raster.align_grid@1.0.0": [
+      "src/moperators/operators/raster_reference_grid.py"
     ]
   }
 }

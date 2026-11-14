@@ -1,0 +1,122 @@
+{
+  "schemaVersion": "executable-model.v6",
+  "modelId": "groundwater.porous-inversion-training",
+  "version": "1.0.0",
+  "workflowRef": {
+    "workflowId": "groundwater.porous-inversion-training",
+    "version": "1.0.0",
+    "checksum": "sha256:03f026af842aa36fe57f4f40c5f98adea81393e70878067cc6a4343073a847a6"
+  },
+  "tool": {
+    "name": "run_porous_inversion_train",
+    "description": "用同批水头、地表形变与参数场训练条件扩散反演模型。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "inversionTrainingVersionId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "inversionTrainingVersionId"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "inputBindings": {
+    "training_data": "inversionTrainingVersionId"
+  },
+  "fieldRequirements": [],
+  "semanticRequirements": [],
+  "defaultParameters": {},
+  "parameterBindings": {},
+  "deadlineSeconds": 21600,
+  "maxParallelNodes": 1,
+  "finalOutputs": [
+    "porous-inversion-weights",
+    "porous-training-metrics",
+    "porous-training-report",
+    "porous-inversion-training-receipt"
+  ],
+  "executionService": "executor",
+  "executorId": "workflow-dag",
+  "outputPublications": {
+    "porous-inversion-weights": {
+      "title": "反演训练权重",
+      "format": "binary",
+      "mediaType": "application/octet-stream",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "反演训练权重",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    },
+    "porous-training-metrics": {
+      "title": "训练与验证指标",
+      "format": "json",
+      "mediaType": "application/json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "训练与验证指标",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    },
+    "porous-training-report": {
+      "title": "训练报告与缩放参数",
+      "format": "zip",
+      "mediaType": "application/zip",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "训练报告与缩放参数",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    },
+    "porous-inversion-training-receipt": {
+      "title": "运行凭据",
+      "format": "json",
+      "mediaType": "application/json",
+      "policy": "FILE_ONLY",
+      "semantics": {
+        "description": "运行凭据",
+        "fields": {},
+        "grain": null,
+        "time_range": null,
+        "timezone": null,
+        "crs": null,
+        "vertical_datum": null,
+        "limitations": [
+          "现场科学等价待验证。"
+        ],
+        "source": "porous-groundwater Linux v2.6.2 工作流"
+      }
+    }
+  }
+}

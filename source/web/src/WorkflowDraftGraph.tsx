@@ -40,6 +40,10 @@ const sourceNames = {
   USER: '用户说明', DATA: '数据', KNOWLEDGE: '知识', OPERATOR_DEFAULT: '算子默认值',
 };
 
+export function inputMembers(binding: WorkflowNode['inputs'][string]) {
+  return 'collection' in binding ? binding.collection : [binding];
+}
+
 function unique(values: string[]) {
   return [...new Set(values)];
 }
@@ -53,7 +57,7 @@ function safeId(value: string) {
 }
 
 function outputPorts(workflow: WorkflowDefinition, nodeId: string) {
-  const consumed = workflow.nodes.flatMap(node => Object.values(node.inputs).flatMap(binding => (
+  const consumed = workflow.nodes.flatMap(node => Object.values(node.inputs).flatMap(inputMembers).flatMap(binding => (
     'nodeOutput' in binding && binding.nodeOutput.nodeId === nodeId
       ? [binding.nodeOutput.port]
       : []
@@ -71,7 +75,7 @@ function nodeLevels(workflow: WorkflowDefinition) {
     let progressed = false;
     for (const node of workflow.nodes) {
       if (!remaining.has(node.nodeId)) continue;
-      const dependencies = unique(Object.values(node.inputs).flatMap(binding => (
+      const dependencies = unique(Object.values(node.inputs).flatMap(inputMembers).flatMap(binding => (
         'nodeOutput' in binding ? [binding.nodeOutput.nodeId] : []
       ))).filter(nodeId => remaining.has(nodeId) || levels.has(nodeId));
       if (dependencies.every(nodeId => levels.has(nodeId))) {
@@ -189,7 +193,7 @@ function NodeDetail({ payload, visual, detailId }: {
   return <section className="draft-node-detail" id={detailId} data-testid="draft-node-detail" aria-label={`${operator.title}节点详情`}>
     <div className="draft-node-detail-heading"><div><strong>{operator.title}</strong><p className="mono">节点 <code>{node.nodeId}</code> · {node.operatorId}@{node.operatorVersion}</p></div><span>{Object.keys(node.inputs).length} 入 · {ports.length} 出</span></div>
     <div className="draft-node-detail-grid">
-      <section><h5>输入端口</h5>{Object.keys(node.inputs).length > 0 ? <dl>{Object.entries(node.inputs).map(([port, binding]) => <div key={port}><dt><code>{port}</code></dt><dd>{'workflowInput' in binding ? <>工作流输入 <code>{binding.workflowInput}</code></> : <>节点 <code>{binding.nodeOutput.nodeId}</code> · 输出端口 <code>{binding.nodeOutput.port}</code></>}</dd></div>)}</dl> : <p className="muted">无数据输入端口</p>}</section>
+      <section><h5>输入端口</h5>{Object.keys(node.inputs).length > 0 ? <dl>{Object.entries(node.inputs).map(([port, binding]) => <div key={port}><dt><code>{port}</code></dt>{inputMembers(binding).map((member, index) => <dd key={index}>{'workflowInput' in member ? <>工作流输入 <code>{member.workflowInput}</code></> : <>节点 <code>{member.nodeOutput.nodeId}</code> · 输出端口 <code>{member.nodeOutput.port}</code></>}</dd>)}</div>)}</dl> : <p className="muted">无数据输入端口</p>}</section>
       <section><h5>输出端口</h5>{ports.length > 0 ? <dl>{ports.map(port => <div key={port}><dt><code>{port}</code></dt><dd>{published.filter(output => output.nodeOutput.port === port).map(output => outputName(output.name)).join('、') || '供下游步骤使用'}</dd></div>)}</dl> : <p className="muted">当前草稿没有引用此节点的输出端口</p>}</section>
     </div>
     <section><h5>参数与来源</h5>{Object.keys(node.parameters).length > 0 ? <dl className="argument-list readable-arguments">{Object.entries(node.parameters).map(([port, binding]) => {
@@ -224,18 +228,18 @@ export function WorkflowDraftGraph({ draftId, payload }: {
         <text className="draft-graph-column-label" x={LEFT + COLUMN_STEP} y="24">分析步骤</text>
         {layout.outputs.length > 0 && <text className="draft-graph-column-label" x={layout.outputs[0].x} y="24">预期输出</text>}
 
-        {payload.workflow.nodes.flatMap(node => Object.entries(node.inputs).map(([port, binding]) => {
+        {payload.workflow.nodes.flatMap(node => Object.entries(node.inputs).flatMap(([port, group]) => inputMembers(group).map((binding, index) => {
           const target = nodeById.get(node.nodeId);
           if (!target) return null;
           if ('workflowInput' in binding) {
             const source = inputByName.get(binding.workflowInput);
             if (!source) return null;
-            return <path key={`${node.nodeId}:${port}`} className="draft-graph-edge" data-dag-edge-kind="workflow-input" data-edge-source={`workflow:${binding.workflowInput}`} data-edge-target={`${node.nodeId}:${port}`} d={edgePath(inputAnchor(source), nodeInputAnchor(target, port))} markerEnd={`url(#${markerId})`} />;
+            return <path key={`${node.nodeId}:${port}:${index}`} className="draft-graph-edge" data-dag-edge-kind="workflow-input" data-edge-source={`workflow:${binding.workflowInput}`} data-edge-target={`${node.nodeId}:${port}`} d={edgePath(inputAnchor(source), nodeInputAnchor(target, port))} markerEnd={`url(#${markerId})`} />;
           }
           const source = nodeById.get(binding.nodeOutput.nodeId);
           if (!source) return null;
-          return <path key={`${node.nodeId}:${port}`} className="draft-graph-edge" data-dag-edge-kind="node-output" data-edge-source={`${binding.nodeOutput.nodeId}:${binding.nodeOutput.port}`} data-edge-target={`${node.nodeId}:${port}`} d={edgePath(nodeOutputAnchor(source, binding.nodeOutput.port), nodeInputAnchor(target, port))} markerEnd={`url(#${markerId})`} />;
-        }))}
+          return <path key={`${node.nodeId}:${port}:${index}`} className="draft-graph-edge" data-dag-edge-kind="node-output" data-edge-source={`${binding.nodeOutput.nodeId}:${binding.nodeOutput.port}`} data-edge-target={`${node.nodeId}:${port}`} d={edgePath(nodeOutputAnchor(source, binding.nodeOutput.port), nodeInputAnchor(target, port))} markerEnd={`url(#${markerId})`} />;
+        })))}
 
         {layout.outputs.map(({ output, x, y }) => {
           const { nodeId, port } = output.nodeOutput;

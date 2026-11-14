@@ -5,6 +5,9 @@ from __future__ import annotations
 import json
 from typing import Any, NoReturn
 
+from platform_workflow_compiler.composition.execution import TOOL, execution_arguments
+
+from ..contracts import DataVersionRefV2
 from ..errors import (
     AgentRunError,
     UpstreamServiceError,
@@ -32,6 +35,7 @@ from .persistence import (
 )
 from .run_dependencies import RunDependencies
 from .result_processing import (
+    PreparedAction,
     ResultProcessingError,
     prepare_interruption,
 )
@@ -339,6 +343,7 @@ def record_final(
                 result,
                 deps.settings,
                 context["workflow_draft_id"],
+                user_goal=context["draft_message"],
             )
             if draft_input is not None
             else None
@@ -350,6 +355,7 @@ def record_final(
             ]
             if draft_input.unresolved_items:
                 blockers.append("WORKFLOW_DRAFT_UNRESOLVED_ITEMS")
+            composition_check = workflow_draft.get("composition_check")
             blocking_issues = [
                 {
                     "code": f"WORKFLOW_DRAFT_MISSING_{item['kind']}",
@@ -371,6 +377,9 @@ def record_final(
                         "kind": "UNRESOLVED_ITEM",
                     }
                 )
+            if composition_check and composition_check["status"] != "VALIDATED":
+                blockers.append(composition_check["code"])
+                blocking_issues.append({"code": composition_check["code"], "kind": "UNRESOLVED_ITEM"})
             workflow_preparation = (
                 f"workflow-draft:{context['workflow_draft_id']}",
                 (
@@ -408,7 +417,7 @@ def record_final(
                             },
                             {
                                 "kind": "UNRESOLVED_ITEMS",
-                                "status": "PASS" if not blockers else "FAIL",
+                                "status": "FAIL" if draft_input.unresolved_items else "PASS",
                                 "count": len(draft_input.unresolved_items),
                             },
                         ],
@@ -432,6 +441,9 @@ def record_final(
             diagnostics=caught.diagnostics,
         ) from caught
     failed = next((action for action in run.actions if action.status == "FAILED"), None)
+    if workflow_draft is not None and workflow_draft["execution_allowed"]:
+        _offer_composition(deps, run, workflow_draft, usage, memory_update, workflow_preparation)
+        return get_run(deps.database, run.agent_run_id)
     status = "FAILED" if failed is not None else "COMPLETE"
     result_error = None if failed is None else failed.error
     finish_run(
@@ -453,6 +465,37 @@ def record_final(
         ),
     )
     return get_run(deps.database, run.agent_run_id)
+
+
+def _offer_composition(
+    deps: RunDependencies,
+    run: AgentRun,
+    draft: dict,
+    usage: UsageDelta,
+    memory_update: MemoryUpdate | None,
+    preparation: tuple[str, tuple[dict[str, object], ...]] | None,
+) -> None:
+    workflow = draft["composition"]
+    profile = deps.settings.workflow_composition
+    assert profile is not None
+    model, _ = profile.compile(workflow, run.project_id)
+    digest = workflow["definitionDigest"]
+    arguments, references = execution_arguments(workflow)
+    action = PreparedAction(
+        tool_call_id=f"composition:{run.agent_run_id}", position=0, tool=TOOL,
+        model_id=workflow["workflowId"], model_version=workflow["version"], model_checksum=digest,
+        workflow_id=workflow["workflowId"], workflow_version=workflow["version"], workflow_checksum=digest,
+        plan_revision=1, arguments_json=json.dumps(arguments, ensure_ascii=False),
+        schema_checksum=model["inputSchemaChecksum"], fingerprint=digest,
+        input_references_json=json.dumps({
+            name: DataVersionRefV2.from_dict(reference).as_storage_dict()
+            for name, reference in references.items()
+        }, ensure_ascii=False),
+    )
+    save_waiting_result(
+        deps.database, run, (action,), {"schema_version": "composition-confirmation.v1"},
+        usage, memory_update, deps.agent_projection, preparation=preparation, workflow_draft=draft,
+    )
 
 
 def fail_with_usage(

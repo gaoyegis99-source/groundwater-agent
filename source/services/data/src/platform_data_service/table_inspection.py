@@ -45,13 +45,14 @@ class TableInspector:
             f"{call_id}\n{version_id}".encode("utf-8")
         ).hexdigest()[:48]
         request = Query(
-            idempotency_key=f"inspect-{identity}",
+            idempotency_key=f"inspect-sample-{identity}",
             version_ids=[version_id],
             semantic_ids={version_id: data["semantic_id"]},
         )
         with self.application.db.transaction() as connection:
             accepted = queries.submit(
                 connection, self.settings.project, request, actor,
+                row_limit=self.sample_rows,
             )
 
         deadline = time.monotonic() + min(25, self.settings.query_seconds)
@@ -86,4 +87,5 @@ class TableInspector:
             "sample_truncated": bool(result.get("truncated"))
             or len(rows) > self.sample_rows,
             "sample_limit": self.sample_rows,
+            "coverage": result["coverage"],
         }

@@ -29,12 +29,21 @@ def convert_domain_package(body, *, project, idempotency_key, prefix=""):
                 "summary": d["summary"],
                 "content_version": body["contentVersion"],
                 "language": body["language"],
+                "kind": d.get("kind", "knowledge"),
+                "aliases": d.get("aliases", []),
+                "model_id": d.get("modelRef", {}).get("modelId"),
+                "model_version": d.get("modelRef", {}).get("version"),
+                "model_checksum": d.get("modelRef", {}).get("checksum"),
                 "sources": [s for k, s in sources.items() if k in refs],
                 "units": [
                     {
                         "unit_id": f"chunk-{i}",
                         "content": u["content"],
                         "source_refs": u["sourceRefs"],
+                        "locator": u.get("locator", {}),
+                        "required_units": [
+                            f"chunk-{index}" for index in u.get("requiredChunks", [])
+                        ],
                     }
                     for i, u in enumerate(d["chunks"])
                 ],

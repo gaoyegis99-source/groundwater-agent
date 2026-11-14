@@ -1,0 +1,110 @@
+{
+  "description": "Align one raster band to a reference raster with the same CRS, matching its transform and dimensions. Explicitly choose nearest, bilinear or cubic. Invalid and uncovered cells use NaN NoData.",
+  "domain": "raster",
+  "errorCodes": [
+    "CRS_REQUIRED",
+    "GRID_REQUIRED",
+    "CRS_MISMATCH",
+    "BAND_INVALID",
+    "NODATA_MASK_UNSUPPORTED",
+    "RESAMPLING_UNSUPPORTED",
+    "RASTER_WARP_FAILED"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-raster-align-grid",
+      "inputs": {
+        "raster": {
+          "artifactId": "art_example_01"
+        },
+        "reference": {
+          "artifactId": "art_example_02"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "raster.align_grid",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "band": 1,
+        "resampling": "nearest"
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "raster.align_grid",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "raster",
+      "required": true
+    },
+    {
+      "cardinality": "one",
+      "formats": [
+        "cog",
+        "geotiff"
+      ],
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "reference",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "formats": [
+        "geotiff"
+      ],
+      "kind": "artifact",
+      "mediaTypes": [
+        "image/tiff"
+      ],
+      "name": "raster"
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "band": {
+        "default": 1,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "resampling": {
+        "enum": [
+          "nearest",
+          "bilinear",
+          "cubic"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "resampling"
+    ],
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "raster",
+    "align-grid",
+    "grid alignment",
+    "reference grid",
+    "网格对齐",
+    "对齐"
+  ],
+  "timeoutSeconds": 3600,
+  "title": "Align raster to reference grid",
+  "version": "1.0.0"
+}

@@ -1,0 +1,335 @@
+{
+  "schemaVersion": "workflow.v7",
+  "workflowId": "raster-mosaic",
+  "version": "1.0.0",
+  "projectId": "example",
+  "registryRef": {
+    "id": "sample-vocabulary",
+    "version": "1.0.0",
+    "digest": "sha256:74d6fbcfc6ffd7d621f2084d766e1a7bf9bb059363ecf3b57a146e56456ef279"
+  },
+  "validatorRef": {
+    "id": "workflow-composition",
+    "version": "1.0.0",
+    "digest": "sha256:9aa482686a29cf611d2cc84698b58839c8400a78f4999c9b17c3e0b88fe84667"
+  },
+  "environmentRef": {
+    "id": "sample-environment",
+    "version": "1.0.0",
+    "digest": "sha256:0debb42e2a65a17bac441d582c667b4fbe5f10ef4df14f884d08afa1c3e38929"
+  },
+  "requiredFeatures": [
+    "semantic-checks",
+    "collection-inputs"
+  ],
+  "inputs": {
+    "left": {
+      "port": {
+        "name": "left",
+        "kind": "artifact",
+        "logicalType": "raster",
+        "formatPairs": [
+          {
+            "format": "geotiff",
+            "mediaType": "image/tiff"
+          }
+        ]
+      },
+      "dataRef": {
+        "kind": "data_version",
+        "service": "data-primary",
+        "datasetId": "left",
+        "versionId": "left-version",
+        "semanticId": "left-semantic",
+        "objectId": "left-object",
+        "mediaType": "image/tiff",
+        "format": "geotiff",
+        "sizeBytes": 1024,
+        "checksum": "sha256:dc28272762986336b3ce93b0f4f4b37cbed3ddac7147cc9d61e9a04e72cf6fb9",
+        "semanticChecksum": "sha256:16085749d464d526cb3c90dda2c51f917f49358a34864cc5f4939677f07ee158"
+      },
+      "facts": [
+        {
+          "subjectRef": {
+            "id": "left-version",
+            "version": "1.0.0",
+            "digest": "sha256:dc28272762986336b3ce93b0f4f4b37cbed3ddac7147cc9d61e9a04e72cf6fb9"
+          },
+          "property": "quantityKind",
+          "state": "known",
+          "value": "water-head.v1",
+          "sourceRef": {
+            "id": "left-semantic",
+            "version": "1.0.0",
+            "digest": "sha256:16085749d464d526cb3c90dda2c51f917f49358a34864cc5f4939677f07ee158"
+          },
+          "verificationScope": "declared"
+        },
+        {
+          "subjectRef": {
+            "id": "left-version",
+            "version": "1.0.0",
+            "digest": "sha256:dc28272762986336b3ce93b0f4f4b37cbed3ddac7147cc9d61e9a04e72cf6fb9"
+          },
+          "property": "unit",
+          "state": "known",
+          "value": "m",
+          "sourceRef": {
+            "id": "left-semantic",
+            "version": "1.0.0",
+            "digest": "sha256:16085749d464d526cb3c90dda2c51f917f49358a34864cc5f4939677f07ee158"
+          },
+          "verificationScope": "declared"
+        },
+        {
+          "subjectRef": {
+            "id": "left-version",
+            "version": "1.0.0",
+            "digest": "sha256:dc28272762986336b3ce93b0f4f4b37cbed3ddac7147cc9d61e9a04e72cf6fb9"
+          },
+          "property": "verticalDatum",
+          "state": "known",
+          "value": "sample-datum",
+          "sourceRef": {
+            "id": "left-semantic",
+            "version": "1.0.0",
+            "digest": "sha256:16085749d464d526cb3c90dda2c51f917f49358a34864cc5f4939677f07ee158"
+          },
+          "verificationScope": "declared"
+        },
+        {
+          "subjectRef": {
+            "id": "left-version",
+            "version": "1.0.0",
+            "digest": "sha256:dc28272762986336b3ce93b0f4f4b37cbed3ddac7147cc9d61e9a04e72cf6fb9"
+          },
+          "property": "grid",
+          "state": "known",
+          "value": {
+            "crs": "EPSG:32650",
+            "width": 64,
+            "height": 64,
+            "transform": [
+              10,
+              0,
+              500000,
+              0,
+              -10,
+              4000000
+            ]
+          },
+          "sourceRef": {
+            "id": "left-semantic",
+            "version": "1.0.0",
+            "digest": "sha256:16085749d464d526cb3c90dda2c51f917f49358a34864cc5f4939677f07ee158"
+          },
+          "verificationScope": "declared"
+        }
+      ]
+    },
+    "right": {
+      "port": {
+        "name": "right",
+        "kind": "artifact",
+        "logicalType": "raster",
+        "formatPairs": [
+          {
+            "format": "geotiff",
+            "mediaType": "image/tiff"
+          }
+        ]
+      },
+      "dataRef": {
+        "kind": "data_version",
+        "service": "data-primary",
+        "datasetId": "right",
+        "versionId": "right-version",
+        "semanticId": "right-semantic",
+        "objectId": "right-object",
+        "mediaType": "image/tiff",
+        "format": "geotiff",
+        "sizeBytes": 1024,
+        "checksum": "sha256:7cea2f579e1556f66b9773435648ae9769be468bfdcd343149ac9c7e4152fcc9",
+        "semanticChecksum": "sha256:8f00b86b34dca6420d6010e1864db724c26f2a228953b5a60b448b1d69aa2aab"
+      },
+      "facts": [
+        {
+          "subjectRef": {
+            "id": "right-version",
+            "version": "1.0.0",
+            "digest": "sha256:7cea2f579e1556f66b9773435648ae9769be468bfdcd343149ac9c7e4152fcc9"
+          },
+          "property": "quantityKind",
+          "state": "known",
+          "value": "water-head.v1",
+          "sourceRef": {
+            "id": "right-semantic",
+            "version": "1.0.0",
+            "digest": "sha256:8f00b86b34dca6420d6010e1864db724c26f2a228953b5a60b448b1d69aa2aab"
+          },
+          "verificationScope": "declared"
+        },
+        {
+          "subjectRef": {
+            "id": "right-version",
+            "version": "1.0.0",
+            "digest": "sha256:7cea2f579e1556f66b9773435648ae9769be468bfdcd343149ac9c7e4152fcc9"
+          },
+          "property": "unit",
+          "state": "known",
+          "value": "cm",
+          "sourceRef": {
+            "id": "right-semantic",
+            "version": "1.0.0",
+            "digest": "sha256:8f00b86b34dca6420d6010e1864db724c26f2a228953b5a60b448b1d69aa2aab"
+          },
+          "verificationScope": "declared"
+        },
+        {
+          "subjectRef": {
+            "id": "right-version",
+            "version": "1.0.0",
+            "digest": "sha256:7cea2f579e1556f66b9773435648ae9769be468bfdcd343149ac9c7e4152fcc9"
+          },
+          "property": "verticalDatum",
+          "state": "known",
+          "value": "sample-datum",
+          "sourceRef": {
+            "id": "right-semantic",
+            "version": "1.0.0",
+            "digest": "sha256:8f00b86b34dca6420d6010e1864db724c26f2a228953b5a60b448b1d69aa2aab"
+          },
+          "verificationScope": "declared"
+        },
+        {
+          "subjectRef": {
+            "id": "right-version",
+            "version": "1.0.0",
+            "digest": "sha256:7cea2f579e1556f66b9773435648ae9769be468bfdcd343149ac9c7e4152fcc9"
+          },
+          "property": "grid",
+          "state": "known",
+          "value": {
+            "crs": "EPSG:32650",
+            "width": 64,
+            "height": 64,
+            "transform": [
+              10,
+              0,
+              500000,
+              0,
+              -10,
+              4000000
+            ]
+          },
+          "sourceRef": {
+            "id": "right-semantic",
+            "version": "1.0.0",
+            "digest": "sha256:8f00b86b34dca6420d6010e1864db724c26f2a228953b5a60b448b1d69aa2aab"
+          },
+          "verificationScope": "declared"
+        }
+      ]
+    }
+  },
+  "parameters": {
+    "outputUnit": {
+      "value": "m",
+      "source": {
+        "kind": "USER",
+        "ref": {
+          "id": "sample-user-goal",
+          "version": "1.0.0",
+          "digest": "sha256:0a3d122d298acf5035b9741bb7a20f03dd124a17636b0348eb4802f1c2b0e5f9"
+        },
+        "path": "/parameters",
+        "reason": "Fixture value for this graph."
+      }
+    }
+  },
+  "nodes": [
+    {
+      "nodeId": "convert",
+      "operator": {
+        "id": "sample.raster.convert-unit",
+        "version": "1.0.0",
+        "definitionDigest": "sha256:38a8e79a28cd17a56103553196af4b80c0a9dde45862bf5a65442c44e8352626",
+        "implementationRevision": "sha256:55e7e59f8c5250fc66180ee700fb8e1789842ce6d6659d16cd80f5b6ee27e9cf"
+      },
+      "inputs": {
+        "data": {
+          "workflowInput": "right"
+        }
+      },
+      "parameters": {
+        "targetUnit": {
+          "workflowParameter": "outputUnit"
+        }
+      }
+    },
+    {
+      "nodeId": "mosaic",
+      "operator": {
+        "id": "sample.raster.mosaic",
+        "version": "1.0.0",
+        "definitionDigest": "sha256:2a5b6e9f3cd12cfe5f6f4f81173650bb1b8a78c7f79bf03989676971535beb63",
+        "implementationRevision": "sha256:def33ac501f691e9e3e334bc7203e023e2233383876f668ddd63a128d6ccb093"
+      },
+      "inputs": {
+        "rasters": {
+          "collection": [
+            {
+              "workflowInput": "left"
+            },
+            {
+              "nodeOutput": {
+                "nodeId": "convert",
+                "port": "data"
+              }
+            }
+          ]
+        }
+      },
+      "parameters": {}
+    }
+  ],
+  "outputs": {
+    "result": {
+      "nodeOutput": {
+        "nodeId": "mosaic",
+        "port": "raster"
+      },
+      "goal": {
+        "role": "requested-result",
+        "logicalType": "raster",
+        "requires": {
+          "unit": "m",
+          "grid": {
+            "crs": "EPSG:32650",
+            "width": 64,
+            "height": 64,
+            "transform": [
+              10,
+              0,
+              500000,
+              0,
+              -10,
+              4000000
+            ]
+          }
+        }
+      },
+      "publication": {
+        "title": "raster-mosaic",
+        "format": "geotiff",
+        "policy": "FILE_ONLY"
+      }
+    }
+  },
+  "resourceLimits": {
+    "maxNodes": 8,
+    "maxParallelNodes": 2,
+    "maxNodeMemoryBytes": 268435456,
+    "maxNodeTimeoutSeconds": 120
+  }
+}

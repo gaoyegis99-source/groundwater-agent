@@ -702,6 +702,57 @@ def test_inventory_and_structured_discovery_explain_current_catalog_matches(
     )
 
 
+def test_discovery_binds_quantity_and_unit_to_the_same_field(client, worker):
+    output = publish(client, worker)
+    response = client.post(
+        f"/data/v3/versions/{output['versionId']}/semantics",
+        json={"expectedSemanticId": output["semanticId"], "semantics": {
+            "fields": {
+                "f0": {"meaning": "head", "unit": "cm", "quantityKind": "hydraulic_head",
+                       "source": "survey-1", "applicability": "screen A"},
+                "f1": {"meaning": "depth", "unit": "m", "quantityKind": "depth_to_water"},
+            },
+            "timeRange": "2025-01/2025-12",
+            "spatialExtent": {"crs": "EPSG:4326", "bbox": [100, 30, 101, 31]},
+            "verticalDatum": "declared benchmark A",
+        }},
+    )
+    assert response.status_code == 200, response.text
+    route = "/data/v3/discovery"
+    common = {"quantityKinds": ["hydraulic_head"], "fieldTerms": ["head"]}
+    assert client.post(route, json={**common, "units": ["m"]}).json()["items"] == []
+    request = {
+        **common, "units": ["cm"], "timeWindow": ["2025-01-01", "2025-12-31"],
+        "spatialExtent": {"crs": "EPSG:4326", "bbox": [100.5, 30.5, 102, 32]},
+    }
+    found = client.post(route, json=request)
+    assert found.status_code == 200, found.text
+    item, = found.json()["items"]
+    assert item["currentVersion"] == output["versionId"]
+    assert item["semanticId"] == response.json()["semanticId"]
+    assert item["verticalDatum"] == "declared benchmark A"
+    assert [field["fieldId"] for field in item["matchedFields"]] == ["f0"]
+    tool = client.post("/internal/tools/v4/discover_datasets", json={
+        "callId": "structured-discovery",
+        "projectId": "local-data",
+        "arguments": {
+            "query": "", "quantity_kinds": ["hydraulic_head"], "field_terms": ["head"],
+            "units": ["cm"], "time_window": request["timeWindow"],
+            "spatial_extent": request["spatialExtent"],
+        },
+    })
+    assert tool.status_code == 200, tool.text
+    tool_item, = tool.json()["data"]["items"]
+    assert tool_item["semanticId"] == item["semanticId"]
+    assert tool_item["spatialExtent"] == item["spatialExtent"]
+    assert tool_item["matchedFields"][0]["quantityKind"] == "hydraulic_head"
+    for change in (
+        {"timeWindow": ["2024-12-31", "2025-12-31"]},
+        {"spatialExtent": {"crs": "EPSG:3857", "bbox": [100.5, 30.5, 102, 32]}},
+    ):
+        assert client.post(route, json={**request, **change}).json()["items"] == []
+
+
 def test_table_inspection_uses_query_worker_and_returns_bounded_sample(
     client, worker
 ):
@@ -737,6 +788,9 @@ def test_table_inspection_uses_query_worker_and_returns_bounded_sample(
     ]
     assert data["sampleLimit"] == 5
     assert data["sampleTruncated"] is True
+    assert data["coverage"] == {
+        "sourceRows": 6, "matchedRows": 6, "calculation": "all_matching_rows",
+    }
 
 
 def test_version_inspection_exposes_physical_field_id_at_the_tool_boundary(

@@ -123,11 +123,17 @@ def _normalize_observation_arguments(
         ):
             # DeepSeek occasionally adds an explanatory top-level field beside
             # an otherwise complete strict tool call. The advertised schema is
-            # authoritative: discard only unknown siblings, while incomplete
-            # or wrongly typed known fields still fail normal validation.
+            # authoritative: discard unknown siblings. For optional discovery
+            # scopes, null or an empty date range leaves the filter unset.
             arguments = {
                 name: value for name, value in arguments.items()
                 if name in properties
+                and not (
+                    tool_name == "discover_datasets"
+                    and name in {"spatial_extent", "time_window"}
+                    and name not in required
+                    and (value is None or (name == "time_window" and value == []))
+                )
             }
     if (
         provider != "minimax"
@@ -217,7 +223,12 @@ def _observation_tool(
         description=_observation_description(definition, provider),
         params_json_schema=_observation_input_schema(definition, provider),
         on_invoke_tool=invoke,
-        strict_json_schema=True,
+        # The SDK's strict conversion makes every property required. Discovery
+        # filters have omission semantics and remain validated against the
+        # service schema inside invoke.
+        strict_json_schema=not (
+            provider == "deepseek" and definition.name == "discover_datasets"
+        ),
         # ObservationClient validates service-owned JSON, including arbitrary RESULT
         # values. SDK strict output schemas cannot represent those open objects.
     )

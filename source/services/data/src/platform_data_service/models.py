@@ -29,6 +29,22 @@ class Conversion(Model):
 class FieldMeaning(Model):
     meaning: str | None = None
     unit: str | None = None
+    quantity_kind: str | None = Field(None, pattern=r"^[a-z][a-z0-9_.-]{0,127}$")
+    role: str | None = Field(None, pattern=r"^[a-z][a-z0-9_.-]{0,127}$")
+    source: str | None = Field(None, min_length=1, max_length=500)
+    applicability: str | None = Field(None, min_length=1, max_length=1000)
+
+
+class SpatialExtent(Model):
+    crs: str = Field(min_length=1, max_length=200)
+    bbox: tuple[float, float, float, float]
+
+    @model_validator(mode="after")
+    def ordered_bounds(self):
+        west, south, east, north = self.bbox
+        if not self.crs.strip() or west > east or south > north:
+            raise ValueError("spatial extent requires a CRS and ordered bounds")
+        return self
 
 
 class Semantics(Model):
@@ -39,6 +55,7 @@ class Semantics(Model):
     timezone: str | None = None
     crs: str | None = None
     vertical_datum: str | None = None
+    spatial_extent: SpatialExtent | None = None
     limitations: list[str] = Field(default_factory=list)
     source: str = Field(default="caller_declared", max_length=500)
 

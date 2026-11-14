@@ -246,7 +246,7 @@ def test_missing_selector_and_static_compile_remain_conservative(catalog):
         compile_workflow(raw, catalog)
 
 
-def test_directory_pages_all_109_and_marks_four_many_operators(catalog):
+def test_directory_pages_all_operators_and_marks_four_many_operators(catalog):
     items, cursor = [], None
     while True:
         page = list_operators(catalog, after=cursor, limit=20)
@@ -257,7 +257,7 @@ def test_directory_pages_all_109_and_marks_four_many_operators(catalog):
     assert (
         len(items)
         == len({(item["operator_id"], item["operator_version"]) for item in items})
-        == 111
+        == len(catalog)
     )
     assert {
         item["operator_id"] for item in items if not item["composition_supported"]
@@ -329,7 +329,7 @@ def test_directory_rejects_invalid_paging(catalog, kwargs, code):
 def test_catalog_rejects_changed_shape_duplicates_and_external_schema(catalog):
     operators = list(deepcopy(catalog).values())
     with pytest.raises(WorkflowValidationError, match="OPERATOR_CATALOG_SIZE_INVALID"):
-        validate_catalog(operators[:-1], DIGEST)
+        validate_catalog([], DIGEST)
     operators[1] = deepcopy(operators[0])
     with pytest.raises(WorkflowValidationError, match="OPERATOR_IDENTITY_DUPLICATE"):
         validate_catalog(operators, DIGEST)

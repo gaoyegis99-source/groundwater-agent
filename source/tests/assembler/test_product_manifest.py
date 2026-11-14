@@ -182,6 +182,14 @@ def _pin_domain(target: Path, product_name: str, domain: Path) -> Path:
     return manifest_path
 
 
+def _pin_test_model_card(domain: Path, model: dict) -> None:
+    path = domain / "knowledge/model-cards.v1.json"
+    package = json.loads(path.read_text())
+    card = next(item for item in package["documents"] if item["modelRef"]["modelId"] == model["modelId"])
+    card["modelRef"]["checksum"] = _checksum(model)
+    path.write_text(json.dumps(package))
+
+
 def test_remote_workflow_operation_must_be_enabled_by_product_binding(
     tmp_path: Path,
 ) -> None:
@@ -212,7 +220,15 @@ def test_groundwater_compiles_v12_research_outputs() -> None:
     assert kernel["schemaVersion"] == "kernel-config.v8"
     authoring = kernel["workflowAuthoring"]
     assert authoring["operatorCatalogDigest"] == executor["operatorCatalogDigest"]
-    assert len(authoring["operators"]) == 111
+    assert len(authoring["operators"]) == 113
+    assert {
+        "raster.align_grid@1.0.0", "raster.cell_statistics@1.0.0", "raster.reclassify@1.0.0",
+        "raster.reproject@1.1.0", "table.deduplicate@1.0.0", "table.filter@1.0.0",
+        "table.profile@1.0.0", "table.project@1.0.0", "table.sort@1.0.0", "table.validate@1.0.0",
+    } == {
+        f"{item['id']}@{item['version']}" for item in authoring["composition"]["operators"]
+    }
+    assert authoring["composition"] == executor["workflowComposition"]
     assert all("implementationRevision" in item for item in authoring["operators"])
     bindings = {
         row["serviceId"]: row["allowedOperations"]
@@ -449,7 +465,7 @@ def test_groundwater_compiles_v12_research_outputs() -> None:
     assert "resolver 127.0.0.11 valid=5s ipv6=off;" in nginx
     assert "set $upstream_kernel http://kernel-service:8000;" in nginx
     assert "root /usr/share/nginx/html;" in nginx
-    assert "location = / { auth_request off; try_files /index.html =404; }" in nginx
+    assert "location = / { auth_request off; expires -1; try_files /index.html =404; }" in nginx
     assert "location /assets/ { auth_request off; try_files $uri =404; }" in nginx
     assert "location / { auth_request off; return 404; }" in nginx
     assert compose["services"]["gateway"]["build"] == {
@@ -688,11 +704,10 @@ def test_groundwater_compiles_native_png_model_and_expected_parallelism() -> Non
     assert compose["services"]["knowledge-bootstrap"]["profiles"] == ["bootstrap"]
     domain_ref = json.loads(_manifest("groundwater").read_bytes())["domainPackage"]
     assert lock["domainPackage"]["version"] == domain_ref["version"]
-    additions = 8 if domain_ref["version"] == "6.1.0" else 0
     assert lock["knowledgeBootstrap"]["projects"] == ["groundwater-demo"]
-    assert lock["knowledgeBootstrap"]["documentCount"] == 103 + additions
-    assert lock["knowledgeBootstrap"]["chunkCount"] == 303 + additions
-    assert len(lock["knowledgeBootstrap"]["files"]) == (8 if additions else 7)
+    assert lock["knowledgeBootstrap"]["documentCount"] == 121
+    assert lock["knowledgeBootstrap"]["chunkCount"] == 321
+    assert len(lock["knowledgeBootstrap"]["files"]) == 9
     bootstrap = compose["services"]["knowledge-bootstrap"]
     assert bootstrap["command"][-2:] == ["--project", "groundwater-demo"]
     for name in (
@@ -1099,6 +1114,7 @@ def test_workflow_node_order_does_not_change_valid_graph(tmp_path):
     model = json.loads(model_path.read_text())
     model["workflowRef"]["checksum"] = _checksum(workflow)
     model_path.write_text(json.dumps(model))
+    _pin_test_model_card(domain, model)
     manifest_path = _pin_domain(tmp_path, "groundwater", domain)
 
     output = compile_product(tmp_path, manifest_path)
@@ -1165,6 +1181,7 @@ def test_model_input_default_covers_optional_bound_argument(tmp_path):
     model["tool"]["inputSchema"]["required"].remove("versionId")
     model["defaultParameters"]["versionId"] = "fixed-version-id"
     model_path.write_text(json.dumps(model))
+    _pin_test_model_card(domain, model)
     manifest_path = _pin_domain(tmp_path, "groundwater", domain)
 
     assert (compile_product(tmp_path, manifest_path) / "executor-config.json").exists()

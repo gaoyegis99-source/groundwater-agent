@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from moperators import smoke
 from moperators.catalog import (
     MEDIA_TYPE_FORMATS,
     OperatorCatalog,
@@ -29,6 +30,21 @@ def test_remote_http_smoke_does_not_import_native_numeric_runtime(
     assert len(completed) == 12
 
 
+def test_native_smokes_stage_each_operator_version_in_its_own_directory(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def stage(_catalog, _operator, _fixtures, _parameters, directory, _python):
+        (directory / "inputs").mkdir(parents=True)
+        return {}, {}, {}
+
+    monkeypatch.setattr(smoke, "_execute_case", stage)
+    monkeypatch.setattr(smoke, "_validate_outputs", lambda *_args: None)
+
+    completed = run_smokes(PACK_ROOT / "catalog/operators", "native")
+
+    assert {"raster.reproject@1.0.0", "raster.reproject@1.1.0"} <= set(completed)
+
+
 def test_native_dependencies_exclude_duckdb_without_arrow_table_api() -> None:
     project = tomllib.loads((PACK_ROOT / "pyproject.toml").read_text())
     assert "duckdb>=1.5.6,<2" in project["project"]["optional-dependencies"]["native"]
@@ -40,8 +56,9 @@ def test_catalog_lock_smokes_and_static_mapping_are_complete() -> None:
 
     assert ("cartography.render-png", "1.0.0") in identities
     assert not any(identity.startswith("mapfactory.") for identity, _ in identities)
-    assert len(identities) == 111
-    assert sum(item.runtime == "native" for item in catalog.operators) == 84
+    assert {("raster.reproject", "1.1.0"), ("raster.align_grid", "1.0.0")} <= identities
+    assert len(identities) == 113
+    assert sum(item.runtime == "native" for item in catalog.operators) == 86
     assert sum(item.runtime == "qgis" for item in catalog.operators) == 15
     assert sum(item.runtime == "remote_http" for item in catalog.operators) == 12
     assert set(catalog.smoke_cases) == identities

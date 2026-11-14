@@ -54,6 +54,33 @@ def classify_case(response, expected_knowledge_id):
     return ids, identities, failure
 
 
+def evaluate_professional_case(client, case):
+    response = retrieve(client, {"query": case["query"], "kind": case["kind"]})
+    items = [item for item in response["items"] if item["status"] == "OK"]
+    target = next((item for item in items if item["knowledgeId"] == case["expectedKnowledgeId"]), None)
+    identity = evidence_identity(target) if target else None
+    exact = None
+    if identity:
+        read = as_dict(client.read_evidence(models.EvidenceReadRequest.model_validate({
+            "refs": [identity],
+        })))
+        exact = next((item for item in read["items"] if evidence_identity(item) == identity), None)
+    forbidden = set(case.get("forbiddenKnowledgeIds", ()))
+    passed = (
+        exact is not None
+        and exact["status"] == "OK"
+        and exact.get("knowledgeId") == case["expectedKnowledgeId"]
+        and all(term in (exact.get("content") or "") for term in case["requiredTerms"])
+        and bool(exact.get("sources"))
+        and not forbidden.intersection(item["knowledgeId"] for item in items)
+    )
+    return {
+        "id": case["id"], "passed": passed,
+        "returned": [item["knowledgeId"] for item in items],
+        "evidenceIdentity": identity,
+    }
+
+
 def wait(client, iid):
     deadline = time.monotonic() + 600
     while time.monotonic() < deadline:
@@ -66,6 +93,18 @@ def wait(client, iid):
     raise TimeoutError(iid)
 
 
+def submit_domain_package(client, path, project):
+    body = path.read_bytes()
+    package = convert_domain_package(
+        json.loads(body),
+        project=project,
+        idempotency_key="eval-" + hashlib.sha256(body).hexdigest(),
+    )
+    request = models.KnowledgePackageRequest.model_validate(as_dict(package))
+    accepted = client.submit_import(request)
+    return accepted.import_id
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--url", default="http://127.0.0.1:8120")
@@ -74,6 +113,7 @@ def main():
     parser.add_argument("--domain", type=Path)
     parser.add_argument("--skip-import", action="store_true")
     parser.add_argument("--data-receipt", type=Path)
+    parser.add_argument("--professional-fixture", type=Path)
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[3]
     fixture = args.fixture or root / "tests/fixtures/groundwater-knowledge-retrieval.v1.json"
@@ -88,16 +128,14 @@ def main():
     client = KnowledgeClient(args.url, writes=True)
     caps = as_dict(client.capabilities())
     if not args.skip_import:
-        for path in sorted(domain.glob("*.json")):
-            package = convert_domain_package(
-                json.loads(path.read_text()),
-                project=caps["project"],
-                idempotency_key="eval-" + path.stem,
-            )
-            accepted = as_dict(client.submit_import(
-                models.KnowledgePackageRequest.model_validate(package)
-            ))
-            wait(client, accepted["importId"])
+        paths = (
+            sorted(domain.glob("*.json"))
+            if args.domain
+            else [selected.domain.root / relative
+                  for relative in selected.domain.manifest["knowledgeDocuments"]]
+        )
+        for path in paths:
+            wait(client, submit_domain_package(client, path, caps["project"]))
     categories = {c["expectedKnowledgeId"]: c["category"] for c in cases}
     rows = []
     for case in cases:
@@ -187,6 +225,13 @@ def main():
         passed = passed and all(
             row["exactPass"] and row["wrongVersionPass"] for row in binding_rows
         )
+    professional_rows = []
+    if args.professional_fixture:
+        professional_cases = json.loads(args.professional_fixture.read_text())["cases"]
+        if not professional_cases:
+            raise ValueError("PROFESSIONAL_EVALUATION_EMPTY")
+        professional_rows = [evaluate_professional_case(client, case) for case in professional_cases]
+        passed = passed and all(row["passed"] for row in professional_rows)
     report = {
         "status": "PASS" if passed else "FAIL",
         "time": datetime.now(timezone.utc).isoformat(),
@@ -216,6 +261,7 @@ def main():
             "rows": binding_rows,
         },
         "rows": rows,
+        "professionalGate": professional_rows,
     }
     args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2))
     print(

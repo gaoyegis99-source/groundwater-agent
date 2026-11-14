@@ -154,7 +154,25 @@ class DataDiscoveryField(BaseModel):
     field_id: str = Field(..., alias='fieldId', title='Fieldid')
     meaning: str = Field(..., title='Meaning')
     name: str = Field(..., title='Name')
+    quantity_kind: str | None = Field(None, alias='quantityKind', title='Quantitykind')
+    role: str | None = Field(None, title='Role')
     unit: str | None = Field(..., title='Unit')
+
+
+class Status(Enum):
+    passed = 'PASSED'
+    passed_with_warnings = 'PASSED_WITH_WARNINGS'
+    failed = 'FAILED'
+    error = 'ERROR'
+
+
+class DataDiscoveryQuality(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    quality_run_id: str = Field(..., alias='qualityRunId', title='Qualityrunid')
+    status: Status = Field(..., title='Status')
+    suite_version_id: str = Field(..., alias='suiteVersionId', title='Suiteversionid')
 
 
 class DataDiscoveryReason(BaseModel):
@@ -170,19 +188,12 @@ class After(RootModel[str]):
     root: str = Field(..., pattern='^[0-9]+$', title='After')
 
 
-class DataDiscoveryRequest(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    after: After | None = Field(None, title='After')
-    field_terms: list[str] | None = Field(
-        None, alias='fieldTerms', max_length=20, title='Fieldterms'
-    )
-    formats: list[str] | None = Field(None, max_length=20, title='Formats')
-    limit: int = Field(20, ge=1, le=100, title='Limit')
-    query: str = Field('', max_length=500, title='Query')
-    tags: list[str] | None = Field(None, max_length=20, title='Tags')
-    units: list[str] | None = Field(None, max_length=20, title='Units')
+class QuantityKind(RootModel[str]):
+    root: str = Field(..., pattern='^[a-z][a-z0-9_.-]{0,127}$')
+
+
+class TimeWindow(RootModel[list]):
+    root: list = Field(..., max_length=2, min_length=2, title='Timewindow')
 
 
 class DataEnumConstraint(BaseModel):
@@ -197,11 +208,33 @@ class DataEnumConstraint(BaseModel):
     )
 
 
+class Applicability(RootModel[str]):
+    root: str = Field(..., max_length=1000, min_length=1, title='Applicability')
+
+
+class QuantityKind1(RootModel[str]):
+    root: str = Field(..., pattern='^[a-z][a-z0-9_.-]{0,127}$', title='Quantitykind')
+
+
+class Role(RootModel[str]):
+    root: str = Field(..., pattern='^[a-z][a-z0-9_.-]{0,127}$', title='Role')
+
+
+class Source(RootModel[str]):
+    root: str = Field(..., max_length=500, min_length=1, title='Source')
+
+
 class DataFieldMeaning(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
+    applicability: Applicability | None = Field(None, title='Applicability')
     meaning: str | None = Field(None, title='Meaning')
+    quantity_kind: QuantityKind1 | None = Field(
+        None, alias='quantityKind', title='Quantitykind'
+    )
+    role: Role | None = Field(None, title='Role')
+    source: Source | None = Field(None, title='Source')
     unit: str | None = Field(None, title='Unit')
 
 
@@ -485,7 +518,7 @@ class DataNotNullConstraint(BaseModel):
     kind: Literal['notNull'] = Field(..., title='Kind')
 
 
-class Role(Enum):
+class Role1(Enum):
     raw = 'raw'
     query = 'query'
 
@@ -501,7 +534,7 @@ class DataObjectDescriptor(BaseModel):
     format: str | None = Field(None, title='Format')
     media_type: str | None = Field(None, alias='mediaType', title='Mediatype')
     object_id: str = Field(..., alias='objectId', title='Objectid')
-    role: Role | None = Field(None, title='Role')
+    role: Role1 | None = Field(None, title='Role')
     size: int = Field(..., title='Size')
     source_checksum: str | None = Field(
         None, alias='sourceChecksum', title='Sourcechecksum'
@@ -748,7 +781,7 @@ class Severity(Enum):
     info = 'INFO'
 
 
-class Status(Enum):
+class Status1(Enum):
     fail = 'FAIL'
     error = 'ERROR'
 
@@ -763,7 +796,7 @@ class DataQualityAlertResponse(BaseModel):
     quality_run_id: str = Field(..., alias='qualityRunId', title='Qualityrunid')
     rule_id: str = Field(..., alias='ruleId', title='Ruleid')
     severity: Severity = Field(..., title='Severity')
-    status: Status = Field(..., title='Status')
+    status: Status1 = Field(..., title='Status')
     version_id: str = Field(..., alias='versionId', title='Versionid')
     violation_count: int = Field(..., alias='violationCount', title='Violationcount')
 
@@ -801,7 +834,7 @@ class Code(RootModel[str]):
     root: str = Field(..., max_length=128, min_length=1, title='Code')
 
 
-class Status1(Enum):
+class Status2(Enum):
     pass_ = 'PASS'
     fail = 'FAIL'
     error = 'ERROR'
@@ -816,7 +849,7 @@ class DataQualityRuleResultRequest(BaseModel):
     rule_id: str = Field(
         ..., alias='ruleId', max_length=128, min_length=1, title='Ruleid'
     )
-    status: Status1 = Field(..., title='Status')
+    status: Status2 = Field(..., title='Status')
     violation_count: int = Field(
         0, alias='violationCount', ge=0, title='Violationcount'
     )
@@ -830,7 +863,7 @@ class DataQualityRuleResultResponse(BaseModel):
     evidence: dict[str, Any] = Field(..., title='Evidence')
     rule_id: str = Field(..., alias='ruleId', title='Ruleid')
     severity: Severity = Field(..., title='Severity')
-    status: Status1 = Field(..., title='Status')
+    status: Status2 = Field(..., title='Status')
     violation_count: int = Field(..., alias='violationCount', title='Violationcount')
 
 
@@ -877,7 +910,7 @@ class DataQualityRunRequest(BaseModel):
     )
 
 
-class Status3(Enum):
+class Status4(Enum):
     passed = 'PASSED'
     passed_with_warnings = 'PASSED_WITH_WARNINGS'
     failed = 'FAILED'
@@ -905,7 +938,7 @@ class DataQualityRunResponse(BaseModel):
     quality_run_id: str = Field(..., alias='qualityRunId', title='Qualityrunid')
     results: list[DataQualityRuleResultResponse] = Field(..., title='Results')
     semantic_id: str = Field(..., alias='semanticId', title='Semanticid')
-    status: Status3 = Field(..., title='Status')
+    status: Status4 = Field(..., title='Status')
     suite_version_id: str = Field(..., alias='suiteVersionId', title='Suiteversionid')
     summary: dict[str, Any] = Field(..., title='Summary')
     version_id: str = Field(..., alias='versionId', title='Versionid')
@@ -1103,23 +1136,6 @@ class DataSemanticUpdateResponse(BaseModel):
     version_id: str = Field(..., alias='versionId', title='Versionid')
 
 
-class DataSemantics(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    crs: str | None = Field(None, title='Crs')
-    description: str = Field('', max_length=10000, title='Description')
-    fields: dict[str, DataFieldMeaning] | None = Field(None, title='Fields')
-    grain: str | None = Field(None, title='Grain')
-    limitations: list[str] | None = Field(None, title='Limitations')
-    source: str = Field('caller_declared', max_length=500, title='Source')
-    time_range: str | None = Field(None, alias='timeRange', title='Timerange')
-    timezone: str | None = Field(None, title='Timezone')
-    vertical_datum: str | None = Field(
-        None, alias='verticalDatum', title='Verticaldatum'
-    )
-
-
 class Direction(Enum):
     asc = 'asc'
     desc = 'desc'
@@ -1131,6 +1147,14 @@ class DataSort(BaseModel):
     )
     direction: Direction = Field('asc', title='Direction')
     field: str = Field(..., pattern='^[a-zA-Z0-9_-]{1,128}$', title='Field')
+
+
+class DataSpatialExtent(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    bbox: list = Field(..., max_length=4, min_length=4, title='Bbox')
+    crs: str = Field(..., max_length=200, min_length=1, title='Crs')
 
 
 class DataToolActor(BaseModel):
@@ -1198,25 +1222,6 @@ class DataValidationIssue(BaseModel):
     )
     message: str = Field(..., title='Message')
     pointer: str = Field(..., title='Pointer')
-
-
-class DataVersionResponse(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    created_at: AwareDatetime = Field(..., alias='createdAt', title='Createdat')
-    current_version: str = Field(..., alias='currentVersion', title='Currentversion')
-    dataset_id: str = Field(..., alias='datasetId', title='Datasetid')
-    descriptor: dict[str, Any] = Field(..., title='Descriptor')
-    input_versions: list[str] = Field(..., alias='inputVersions', title='Inputversions')
-    objects: list[DataObjectDescriptor] = Field(..., title='Objects')
-    project: str = Field(..., title='Project')
-    publication_id: str = Field(..., alias='publicationId', title='Publicationid')
-    semantic_id: str = Field(..., alias='semanticId', title='Semanticid')
-    semantics: DataSemantics
-    tags: list[str] = Field(..., title='Tags')
-    title: str = Field(..., title='Title')
-    version_id: str = Field(..., alias='versionId', title='Versionid')
 
 
 class DataVersionSummary(BaseModel):
@@ -1343,7 +1348,7 @@ class KernelLoginResponse(BaseModel):
     current_user: KernelIdentityResponse = Field(..., alias='currentUser')
 
 
-class Role1(Enum):
+class Role2(Enum):
     admin = 'admin'
     researcher = 'researcher'
     viewer = 'viewer'
@@ -1353,14 +1358,14 @@ class KernelMembershipPatch(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    role: Role1 = Field(..., title='Role')
+    role: Role2 = Field(..., title='Role')
 
 
 class KernelMembershipPut(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    role: Role1 = Field(..., title='Role')
+    role: Role2 = Field(..., title='Role')
     user_id: str = Field(..., alias='userId', title='Userid')
 
 
@@ -1368,7 +1373,7 @@ class KernelMembershipResponse(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    role: Role1 = Field(..., title='Role')
+    role: Role2 = Field(..., title='Role')
     user_id: str = Field(..., alias='userId', title='Userid')
 
 
@@ -1760,7 +1765,7 @@ class KernelUserResponse(BaseModel):
     created_at: str | None = Field(None, alias='createdAt', title='Createdat')
     display_name: str = Field(..., alias='displayName', title='Displayname')
     enabled: bool = Field(..., title='Enabled')
-    role: Role1 | None = Field(None, title='Role')
+    role: Role2 | None = Field(None, title='Role')
     user_id: str = Field(..., alias='userId', title='Userid')
     username: str = Field(..., title='Username')
 
@@ -1838,7 +1843,7 @@ class Runtime(Enum):
     remote_http = 'remote_http'
 
 
-class Status4(Enum):
+class Status5(Enum):
     waiting = 'WAITING'
     ready = 'READY'
     leased = 'LEASED'
@@ -1868,7 +1873,7 @@ class KernelWorkflowNodeDiagnostic(BaseModel):
     )
     runtime: Runtime = Field(..., title='Runtime')
     started_at: AwareDatetime | None = Field(..., alias='startedAt', title='Startedat')
-    status: Status4 = Field(..., title='Status')
+    status: Status5 = Field(..., title='Status')
 
 
 class KernelWorkflowNodeDiagnosticsResponse(BaseModel):
@@ -2105,7 +2110,7 @@ class KnowledgeNextDocumentSummary(BaseModel):
     valid_through: date | None = Field(None, alias='validThrough', title='Validthrough')
 
 
-class Status5(Enum):
+class Status6(Enum):
     ok = 'OK'
     no_match = 'NO_MATCH'
     partial = 'PARTIAL'
@@ -2131,7 +2136,7 @@ class Scope(Enum):
     data_bound = 'DATA_BOUND'
 
 
-class Status6(Enum):
+class Status7(Enum):
     ok = 'OK'
     stale = 'STALE'
     withdrawn = 'WITHDRAWN'
@@ -2289,7 +2294,7 @@ class KnowledgeNextLifecycleBatchDiff(BaseModel):
     version_id: str = Field(..., alias='versionId', title='Versionid')
 
 
-class Status7(Enum):
+class Status8(Enum):
     active = 'ACTIVE'
     withdrawn = 'WITHDRAWN'
 
@@ -2311,7 +2316,7 @@ class KnowledgeNextLifecycleBatchItem(BaseModel):
     )
     reason: str = Field(..., max_length=1000, min_length=1, title='Reason')
     review_after: date = Field(..., alias='reviewAfter', title='Reviewafter')
-    status: Status7 = Field(..., title='Status')
+    status: Status8 = Field(..., title='Status')
     valid_through: date | None = Field(None, alias='validThrough', title='Validthrough')
     version_id: str = Field(
         ...,
@@ -2338,7 +2343,7 @@ class KnowledgeNextLifecycleBatchPreflightRequest(BaseModel):
     )
     reason: str = Field(..., max_length=1000, min_length=1, title='Reason')
     review_after: date = Field(..., alias='reviewAfter', title='Reviewafter')
-    status: Status7 = Field(..., title='Status')
+    status: Status8 = Field(..., title='Status')
     valid_through: date | None = Field(None, alias='validThrough', title='Validthrough')
 
 
@@ -2383,7 +2388,7 @@ class KnowledgeNextLifecycleUpdateRequest(BaseModel):
     )
     reason: str = Field(..., max_length=1000, min_length=1, title='Reason')
     review_after: date = Field(..., alias='reviewAfter', title='Reviewafter')
-    status: Status7 = Field(..., title='Status')
+    status: Status8 = Field(..., title='Status')
     valid_through: date | None = Field(None, alias='validThrough', title='Validthrough')
 
 
@@ -2764,12 +2769,37 @@ class DataDiscoveryItem(BaseModel):
     matched_fields: list[DataDiscoveryField] = Field(
         ..., alias='matchedFields', title='Matchedfields'
     )
+    quality: DataDiscoveryQuality | None = None
     score: int = Field(..., title='Score')
     semantic_id: str = Field(..., alias='semanticId', title='Semanticid')
+    spatial_extent: DataSpatialExtent | None = Field(None, alias='spatialExtent')
     tags: list[str] = Field(..., title='Tags')
     time_range: str | None = Field(..., alias='timeRange', title='Timerange')
     title: str = Field(..., title='Title')
     unknowns: list[str] = Field(..., title='Unknowns')
+    vertical_datum: str | None = Field(
+        None, alias='verticalDatum', title='Verticaldatum'
+    )
+
+
+class DataDiscoveryRequest(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    after: After | None = Field(None, title='After')
+    field_terms: list[str] | None = Field(
+        None, alias='fieldTerms', max_length=20, title='Fieldterms'
+    )
+    formats: list[str] | None = Field(None, max_length=20, title='Formats')
+    limit: int = Field(20, ge=1, le=100, title='Limit')
+    quantity_kinds: list[QuantityKind] | None = Field(
+        None, alias='quantityKinds', max_length=20, title='Quantitykinds'
+    )
+    query: str = Field('', max_length=500, title='Query')
+    spatial_extent: DataSpatialExtent | None = Field(None, alias='spatialExtent')
+    tags: list[str] | None = Field(None, max_length=20, title='Tags')
+    time_window: TimeWindow | None = Field(None, alias='timeWindow', title='Timewindow')
+    units: list[str] | None = Field(None, max_length=20, title='Units')
 
 
 class DataDiscoveryResponse(BaseModel):
@@ -2802,24 +2832,6 @@ class DataMlRunResponse(BaseModel):
     resolved_model_inputs: list[DataResolvedModelResponse] = Field(
         ..., alias='resolvedModelInputs', title='Resolvedmodelinputs'
     )
-
-
-class DataOutput(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    conversion: DataConversion | None = None
-    dataset_id: DatasetId | None = Field(None, alias='datasetId', title='Datasetid')
-    expected_version: ExpectedVersion | None = Field(
-        None, alias='expectedVersion', title='Expectedversion'
-    )
-    format: Format = Field(..., title='Format')
-    media_type: MediaType | None = Field(None, alias='mediaType', title='Mediatype')
-    name: str = Field(..., pattern='^[a-zA-Z0-9_-]{1,128}$', title='Name')
-    policy: Policy = Field('FILE_ONLY', title='Policy')
-    semantics: DataSemantics | None = None
-    tags: list[str] | None = Field(None, max_length=30, title='Tags')
-    title: str = Field(..., max_length=500, min_length=1, title='Title')
 
 
 class DataProblemDetailsV11(BaseModel):
@@ -2916,14 +2928,22 @@ class DataSemanticRevisionPage(BaseModel):
     next_cursor: str | None = Field(..., alias='nextCursor', title='Nextcursor')
 
 
-class DataSemanticUpdate(BaseModel):
+class DataSemantics(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expected_semantic_id: str = Field(
-        ..., alias='expectedSemanticId', min_length=1, title='Expectedsemanticid'
+    crs: str | None = Field(None, title='Crs')
+    description: str = Field('', max_length=10000, title='Description')
+    fields: dict[str, DataFieldMeaning] | None = Field(None, title='Fields')
+    grain: str | None = Field(None, title='Grain')
+    limitations: list[str] | None = Field(None, title='Limitations')
+    source: str = Field('caller_declared', max_length=500, title='Source')
+    spatial_extent: DataSpatialExtent | None = Field(None, alias='spatialExtent')
+    time_range: str | None = Field(None, alias='timeRange', title='Timerange')
+    timezone: str | None = Field(None, title='Timezone')
+    vertical_datum: str | None = Field(
+        None, alias='verticalDatum', title='Verticaldatum'
     )
-    semantics: DataSemantics
 
 
 class DataVersionPage(BaseModel):
@@ -2932,6 +2952,25 @@ class DataVersionPage(BaseModel):
     )
     items: list[DataVersionSummary] = Field(..., title='Items')
     next_cursor: str | None = Field(..., alias='nextCursor', title='Nextcursor')
+
+
+class DataVersionResponse(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    created_at: AwareDatetime = Field(..., alias='createdAt', title='Createdat')
+    current_version: str = Field(..., alias='currentVersion', title='Currentversion')
+    dataset_id: str = Field(..., alias='datasetId', title='Datasetid')
+    descriptor: dict[str, Any] = Field(..., title='Descriptor')
+    input_versions: list[str] = Field(..., alias='inputVersions', title='Inputversions')
+    objects: list[DataObjectDescriptor] = Field(..., title='Objects')
+    project: str = Field(..., title='Project')
+    publication_id: str = Field(..., alias='publicationId', title='Publicationid')
+    semantic_id: str = Field(..., alias='semanticId', title='Semanticid')
+    semantics: DataSemantics
+    tags: list[str] = Field(..., title='Tags')
+    title: str = Field(..., title='Title')
+    version_id: str = Field(..., alias='versionId', title='Versionid')
 
 
 class KernelCapabilitiesResponse(BaseModel):
@@ -3157,7 +3196,7 @@ class KnowledgeNextEvidenceItem(BaseModel):
     review_due: bool | None = Field(None, alias='reviewDue', title='Reviewdue')
     scope: Scope | None = Field(None, title='Scope')
     sources: list[KnowledgeNextSource] | None = Field(None, title='Sources')
-    status: Status6 = Field(..., title='Status')
+    status: Status7 = Field(..., title='Status')
     unit_id: str = Field(..., alias='unitId', title='Unitid')
     version_id: str = Field(..., alias='versionId', title='Versionid')
 
@@ -3273,21 +3312,32 @@ class KnowledgeNextVersionResponse(BaseModel):
     version_id: str = Field(..., alias='versionId', title='Versionid')
 
 
-class DataBeginPublicationRequest(BaseModel):
+class DataOutput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    idempotency_key: str = Field(
-        ...,
-        alias='idempotencyKey',
-        pattern='^[a-zA-Z0-9_-]{1,128}$',
-        title='Idempotencykey',
+    conversion: DataConversion | None = None
+    dataset_id: DatasetId | None = Field(None, alias='datasetId', title='Datasetid')
+    expected_version: ExpectedVersion | None = Field(
+        None, alias='expectedVersion', title='Expectedversion'
     )
-    input_versions: list[InputVersion] | None = Field(
-        None, alias='inputVersions', max_length=100, title='Inputversions'
+    format: Format = Field(..., title='Format')
+    media_type: MediaType | None = Field(None, alias='mediaType', title='Mediatype')
+    name: str = Field(..., pattern='^[a-zA-Z0-9_-]{1,128}$', title='Name')
+    policy: Policy = Field('FILE_ONLY', title='Policy')
+    semantics: DataSemantics | None = None
+    tags: list[str] | None = Field(None, max_length=30, title='Tags')
+    title: str = Field(..., max_length=500, min_length=1, title='Title')
+
+
+class DataSemanticUpdate(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
     )
-    outputs: list[DataOutput] = Field(..., max_length=32, min_length=1, title='Outputs')
-    provenance: dict[str, str] | None = Field(None, title='Provenance')
+    expected_semantic_id: str = Field(
+        ..., alias='expectedSemanticId', min_length=1, title='Expectedsemanticid'
+    )
+    semantics: DataSemantics
 
 
 class KnowledgeNextEvidenceBundleV1(BaseModel):
@@ -3306,7 +3356,7 @@ class KnowledgeNextEvidenceBundleV1(BaseModel):
     schema_version: Literal['evidence-bundle.v1'] = Field(
         'evidence-bundle.v1', alias='schemaVersion', title='Schemaversion'
     )
-    status: Status5 = Field(..., title='Status')
+    status: Status6 = Field(..., title='Status')
     timings_ms: dict[str, float] = Field(..., alias='timingsMs', title='Timingsms')
 
 
@@ -3324,3 +3374,20 @@ class KnowledgeNextToolResponse(BaseModel):
     )
     data: KnowledgeNextEvidenceBundleV1
     outcome: KnowledgeNextToolOutcome
+
+
+class DataBeginPublicationRequest(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    idempotency_key: str = Field(
+        ...,
+        alias='idempotencyKey',
+        pattern='^[a-zA-Z0-9_-]{1,128}$',
+        title='Idempotencykey',
+    )
+    input_versions: list[InputVersion] | None = Field(
+        None, alias='inputVersions', max_length=100, title='Inputversions'
+    )
+    outputs: list[DataOutput] = Field(..., max_length=32, min_length=1, title='Outputs')
+    provenance: dict[str, str] | None = Field(None, title='Provenance')

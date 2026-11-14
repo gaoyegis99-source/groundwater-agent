@@ -5,6 +5,7 @@ from copy import deepcopy
 import json
 
 from platform_workflow_compiler import compile_draft, WorkflowValidationError
+from platform_workflow_compiler.composition import definition_digest
 
 from ..errors import AgentRunError
 from .evidence import collect_turn_evidence
@@ -82,6 +83,7 @@ def _without_unset_optional_parameters(
             workflow_id=compiled["workflow"]["workflowId"],
             version=compiled["workflow"]["version"],
             operator_catalog_digest=settings.operator_catalog_digest,
+            collection_operators=settings.workflow_composition.manifests if settings.workflow_composition else None,
             parameter_values=draft.parameter_values,
             parameter_sources=[
                 source.model_dump() for source in draft.parameter_sources
@@ -95,7 +97,9 @@ def _without_unset_optional_parameters(
         return compiled
 
 
-def prepare_workflow_draft(draft: WorkflowDraftInput, result, settings, draft_id: str) -> dict:
+def prepare_workflow_draft(
+    draft: WorkflowDraftInput, result, settings, draft_id: str, *, user_goal: str,
+) -> dict:
     items = result.to_input_list()
     try:
         evidence = collect_turn_evidence(items)
@@ -133,6 +137,7 @@ def prepare_workflow_draft(draft: WorkflowDraftInput, result, settings, draft_id
             draft.graph.model_dump(by_alias=True), settings.operator_catalog,
             workflow_id=f"draft.{draft_id}", version="0.1.0",
             operator_catalog_digest=settings.operator_catalog_digest,
+            collection_operators=settings.workflow_composition.manifests if settings.workflow_composition else None,
             parameter_values=draft.parameter_values,
             parameter_sources=[source.model_dump() for source in draft.parameter_sources],
             data_bindings=[
@@ -153,8 +158,36 @@ def prepare_workflow_draft(draft: WorkflowDraftInput, result, settings, draft_id
         raise AgentRunError("AGENT_WORKFLOW_DRAFT_INVALID", diagnostics={
             "kind": "WORKFLOW_VALIDATION", "code": "WORKFLOW_DRAFT_VALUE_INVALID", "path": "",
         }) from error
-    return {
+    payload = {
         **compiled, "title": draft.title, "summary": _card_summary(draft.summary),
         "knowledge_refs": [ref.model_dump() for ref in draft.knowledge_refs],
         "unresolved_items": draft.unresolved_items, "limitations": draft.limitations,
     }
+    profile = settings.workflow_composition
+    if (
+        profile is not None and not compiled["missing_inputs"] and not draft.unresolved_items
+        and all((item["operator_id"], item["operator_version"]) in profile.manifests for item in compiled["operators"])
+    ):
+        missing_semantics = [
+            item["data_ref"]["version_id"] for item in compiled["data_bindings"]
+            if item["data_ref"]["version_id"] not in evidence.semantic_checksums
+        ]
+        if missing_semantics:
+            payload["composition_check"] = {
+                "status": "INCOMPLETE", "code": "COMPOSITION_SEMANTIC_EVIDENCE_REQUIRED",
+            }
+            return payload
+        try:
+            workflow = profile.candidate(compiled, settings.project_id, evidence.semantic_checksums, {
+                "id": f"goal.{draft_id}", "version": "1.0.0",
+                "digest": definition_digest({"message": user_goal}),
+            }, raster_descriptors=evidence.raster_descriptors)
+            _, report = profile.compile(workflow, settings.project_id)
+        except WorkflowValidationError as error:
+            payload["composition_check"] = {
+                "status": "INCOMPLETE" if error.code == "COMPOSITION_FACT_REQUIRED" else "INVALID",
+                "code": error.code, "path": error.path,
+            }
+        else:
+            payload.update(execution_allowed=True, composition=workflow, composition_check=report)
+    return payload

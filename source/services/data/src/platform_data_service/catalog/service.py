@@ -125,6 +125,9 @@ def discover_datasets(
     formats=(),
     field_terms=(),
     units=(),
+    quantity_kinds=(),
+    time_window=None,
+    spatial_extent=None,
     after=None,
     limit=20,
     actor=None,
@@ -143,13 +146,51 @@ def discover_datasets(
         + ") ORDER BY d.id",
         (project, *access_parameters),
     ).fetchall()
-    return project_discovery(
+    result = project_discovery(
         rows,
         query=query,
         tags=tags,
         formats=formats,
         field_terms=field_terms,
         units=units,
+        quantity_kinds=quantity_kinds,
+        time_window=time_window,
+        spatial_extent=spatial_extent,
         after=after,
         limit=limit,
     )
+    items = result["items"]
+    if not items:
+        return result
+    quality = c.execute(
+        """SELECT r.dataset_id,r.version_id,r.semantic_id,r.id AS quality_run_id,
+                  r.suite_version_id,r.status
+           FROM unnest(%s::text[],%s::text[],%s::text[]) AS selected(dataset_id,version_id,semantic_id)
+           JOIN LATERAL (
+               SELECT revision,enabled FROM quality_bindings b
+               WHERE b.project=%s AND b.dataset_id=selected.dataset_id
+               ORDER BY revision DESC LIMIT 1
+           ) b ON b.enabled
+           JOIN LATERAL (
+               SELECT r.* FROM quality_runs r
+               WHERE r.project=%s AND r.dataset_id=selected.dataset_id
+                   AND r.version_id=selected.version_id AND r.semantic_id=selected.semantic_id
+                   AND r.binding_revision=b.revision
+               ORDER BY r.created_at DESC,r.id DESC LIMIT 1
+           ) r ON true""",
+        (
+            [item["id"] for item in items],
+            [item["current_version"] for item in items],
+            [item["semantic_id"] for item in items],
+            project,
+            project,
+        ),
+    ).fetchall()
+    by_dataset = {row["dataset_id"]: row for row in quality}
+    for item in items:
+        run = by_dataset.get(item["id"])
+        if run:
+            item["quality"] = {
+                key: run[key] for key in ("quality_run_id", "suite_version_id", "status")
+            }
+    return result

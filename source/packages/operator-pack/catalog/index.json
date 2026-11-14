@@ -1,5 +1,5 @@
 {
-  "catalogDigest": "sha256:5a9d8c409454a44af27544a8a3d010953b8acd15543000dbfb5c7dddd473fcb8",
+  "catalogDigest": "sha256:2cdd11ce900a37642be750c972a2602dd832818e7cff5d6f668883c878860125",
   "operators": [
     {
       "domain": "cartography",
@@ -347,6 +347,14 @@
     },
     {
       "domain": "raster",
+      "id": "raster.align_grid",
+      "manifestDigest": "sha256:1dd1f9b930646f30b67529c9fd1ffb45102b58cc485312418e807c5ead7c8b7a",
+      "runtime": "native",
+      "smokeDigest": "sha256:d218d87f50bb7fa83a0d193c2c270e5bd708d732ac23cc6812ca740e8de50da1",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "raster",
       "id": "raster.aspect",
       "manifestDigest": "sha256:7a24716bee5fbca373e2348d8314407d48047b0696cac732e6e1b094ccf146d3",
       "runtime": "native",
@@ -440,6 +448,14 @@
       "runtime": "native",
       "smokeDigest": "sha256:97ce95704606928e59c1debe314bcfb864adfa9005935404692856097257118c",
       "version": "1.0.0"
+    },
+    {
+      "domain": "raster",
+      "id": "raster.reproject",
+      "manifestDigest": "sha256:fd0ef76b9d5a45132dd0168b56049ace4d2f1d22c9ffc8e24d4c75934d9050c8",
+      "runtime": "native",
+      "smokeDigest": "sha256:5ce251c9f0799983752fd142aad86e7ccf2a31430aeb71c97279fd70aaca74dc",
+      "version": "1.1.0"
     },
     {
       "domain": "raster",

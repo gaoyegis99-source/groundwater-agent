@@ -6,12 +6,14 @@ import json
 from pathlib import Path
 import sqlite3
 from uuid import uuid4
+from platform_workflow_compiler.composition.execution import TOOL, ArtifactComposition
 
 from ...database import append_event, begin_immediate, connect_database, utc_now
 from ...errors import ResourceNotFoundError, WorkflowDefinitionUnavailableError, WriteLockUnavailableError, scheduler_write
 from ...settings import ExecutableModelDefinition, ServiceBinding
 from ...application.query_dtos import ConfirmedAction
 from ..models import DispatchWork, WorkflowRun
+from ..composed import resolve_composed
 from .records import row_to_run
 
 
@@ -25,10 +27,19 @@ def enqueue_batch(
     actions: tuple[ConfirmedAction, ...],
     models: dict[str, ExecutableModelDefinition],
     services: dict[str, ServiceBinding],
+    composition: ArtifactComposition | None = None,
 ) -> tuple[WorkflowRun, ...]:
     resolved = []
     for action in actions:
-        model = models.get(action.model_id)
+        if action.tool == TOOL:
+            if confirmation_id is None:
+                raise WorkflowDefinitionUnavailableError("WORKFLOW_DEFINITION_UNAVAILABLE")
+            model, _ = resolve_composed(
+                connection, composition, agent_run_id=agent_run_id, session_id=session_id,
+                project_id=project_id, action=action,
+            )
+        else:
+            model = models.get(action.model_id)
         if model is None or (
             model.tool_name,
             model.model_id,

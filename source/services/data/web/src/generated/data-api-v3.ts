@@ -1067,6 +1067,10 @@ export interface components {
             meaning: string;
             /** Name */
             name: string;
+            /** Quantitykind */
+            quantityKind?: string | null;
+            /** Role */
+            role?: string | null;
             /** Unit */
             unit: string | null;
         };
@@ -1088,10 +1092,12 @@ export interface components {
             matchReasons: components["schemas"]["DiscoveryReason"][];
             /** Matchedfields */
             matchedFields: components["schemas"]["DiscoveryField"][];
+            quality?: components["schemas"]["DiscoveryQuality"] | null;
             /** Score */
             score: number;
             /** Semanticid */
             semanticId: string;
+            spatialExtent?: components["schemas"]["SpatialExtent"] | null;
             /** Tags */
             tags: string[];
             /** Timerange */
@@ -1100,6 +1106,20 @@ export interface components {
             title: string;
             /** Unknowns */
             unknowns: string[];
+            /** Verticaldatum */
+            verticalDatum?: string | null;
+        };
+        /** DiscoveryQuality */
+        DiscoveryQuality: {
+            /** Qualityrunid */
+            qualityRunId: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "PASSED" | "PASSED_WITH_WARNINGS" | "FAILED" | "ERROR";
+            /** Suiteversionid */
+            suiteVersionId: string;
         };
         /** DiscoveryReason */
         DiscoveryReason: {
@@ -1123,13 +1143,21 @@ export interface components {
              * @default 20
              */
             limit: number;
+            /** Quantitykinds */
+            quantityKinds?: string[];
             /**
              * Query
              * @default
              */
             query: string;
+            spatialExtent?: components["schemas"]["SpatialExtent"] | null;
             /** Tags */
             tags?: string[];
+            /** Timewindow */
+            timeWindow?: [
+                string,
+                string
+            ] | null;
             /** Units */
             units?: string[];
         };
@@ -1160,8 +1188,16 @@ export interface components {
         };
         /** FieldMeaning */
         FieldMeaning: {
+            /** Applicability */
+            applicability?: string | null;
             /** Meaning */
             meaning?: string | null;
+            /** Quantitykind */
+            quantityKind?: string | null;
+            /** Role */
+            role?: string | null;
+            /** Source */
+            source?: string | null;
             /** Unit */
             unit?: string | null;
         };
@@ -2268,6 +2304,7 @@ export interface components {
              * @default caller_declared
              */
             source: string;
+            spatialExtent?: components["schemas"]["SpatialExtent"] | null;
             /** Timerange */
             timeRange?: string | null;
             /** Timezone */
@@ -2285,6 +2322,18 @@ export interface components {
             direction: "asc" | "desc";
             /** Field */
             field: string;
+        };
+        /** SpatialExtent */
+        SpatialExtent: {
+            /** Bbox */
+            bbox: [
+                number,
+                number,
+                number,
+                number
+            ];
+            /** Crs */
+            crs: string;
         };
         /** ToolActor */
         ToolActor: {

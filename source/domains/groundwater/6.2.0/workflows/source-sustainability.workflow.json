@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "workflow.v6",
+  "workflowId": "groundwater.source-sustainability",
+  "version": "1.0.0",
+  "inputs": [
+    {
+      "name": "assessment_input",
+      "cardinality": "one",
+      "mediaTypes": ["application/json"],
+      "formats": ["json"]
+    }
+  ],
+  "parameters": [],
+  "nodes": [
+    {
+      "nodeId": "evaluate",
+      "operatorId": "groundwater.source_sustainability.evaluate",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "assessment_input": {"workflowInput": "assessment_input"}
+      },
+      "parameters": {}
+    }
+  ],
+  "outputs": [
+    {
+      "name": "sustainability-result",
+      "nodeOutput": {"nodeId": "evaluate", "port": "sustainability_result"}
+    },
+    {
+      "name": "sustainability-result-file",
+      "nodeOutput": {"nodeId": "evaluate", "port": "result_file"}
+    },
+    {
+      "name": "sustainability-run-receipt",
+      "nodeOutput": {"nodeId": "evaluate", "port": "run_receipt"}
+    }
+  ]
+}

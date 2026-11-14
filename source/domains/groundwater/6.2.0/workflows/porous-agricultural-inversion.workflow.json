@@ -1,0 +1,61 @@
+{
+  "schemaVersion": "workflow.v6",
+  "workflowId": "groundwater.porous-agricultural-inversion",
+  "version": "1.0.0",
+  "inputs": [
+    {
+      "name": "agricultural_data",
+      "cardinality": "one",
+      "mediaTypes": [
+        "application/zip"
+      ],
+      "formats": [
+        "zip"
+      ]
+    }
+  ],
+  "parameters": [],
+  "nodes": [
+    {
+      "nodeId": "execute",
+      "operatorId": "groundwater.porous.agri_invert",
+      "operatorVersion": "1.0.0",
+      "inputs": {
+        "agricultural_data": {
+          "workflowInput": "agricultural_data"
+        }
+      },
+      "parameters": {}
+    }
+  ],
+  "outputs": [
+    {
+      "name": "porous-agricultural-arrays",
+      "nodeOutput": {
+        "nodeId": "execute",
+        "port": "posterior_arrays"
+      }
+    },
+    {
+      "name": "porous-agricultural-metrics",
+      "nodeOutput": {
+        "nodeId": "execute",
+        "port": "metrics"
+      }
+    },
+    {
+      "name": "porous-agricultural-report",
+      "nodeOutput": {
+        "nodeId": "execute",
+        "port": "report_package"
+      }
+    },
+    {
+      "name": "porous-agricultural-inversion-receipt",
+      "nodeOutput": {
+        "nodeId": "execute",
+        "port": "run_receipt"
+      }
+    }
+  ]
+}

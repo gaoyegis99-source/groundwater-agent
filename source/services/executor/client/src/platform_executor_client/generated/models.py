@@ -80,6 +80,7 @@ class JobRequestBodyV6(BaseModel):
         extra='forbid',
     )
     arguments: dict[str, Any] = Field(..., title='Arguments')
+    composition: dict[str, Any] | None = Field(None, title='Composition')
     deadline_at: str = Field(..., alias='deadlineAt', title='Deadlineat')
     executor_id: str = Field(..., alias='executorId', title='Executorid')
     input_references: dict[str, DataVersionReferenceV2] = Field(

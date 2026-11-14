@@ -202,6 +202,32 @@ it('lays out fan-out and links each declared output to its exact node and port',
   expect(screen.getByTestId('draft-node-detail')).toHaveTextContent('并行结果使用同一份质量检查输出。');
 });
 
+it('draws every member of an ordered raster input collection', async () => {
+  const payload = draft.payload!;
+  const workflow = {
+    ...payload.workflow,
+    inputs: ['left', 'right'].map(name => ({
+      name, cardinality: 'one' as const, mediaTypes: ['image/tiff'], formats: ['geotiff'],
+    })),
+    parameters: [],
+    nodes: [{
+      nodeId: 'mean', operatorId: 'raster.cell_statistics', operatorVersion: '1.0.0',
+      inputs: { rasters: { collection: [{ workflowInput: 'left' }, { workflowInput: 'right' }] } },
+      parameters: {},
+    }],
+    outputs: [{ name: 'mean-raster', nodeOutput: { nodeId: 'mean', port: 'raster' } }],
+  };
+  render(<WorkflowDraftCard draft={{ ...draft, payload: { ...payload, workflow } }} onKnowledge={vi.fn()} onResource={vi.fn()} />);
+  fireEvent.click(screen.getByText('查看工作流依赖图'));
+  const graph = await screen.findByRole('group', { name: '工作流依赖图' });
+  const edges = Array.from(graph.querySelectorAll('[data-edge-target="mean:rasters"]'));
+  expect(edges.map(edge => edge.getAttribute('data-edge-source'))).toEqual(['workflow:left', 'workflow:right']);
+  fireEvent.click(screen.getByRole('button', { name: '查看raster.cell_statistics节点详情' }));
+  const details = screen.getByTestId('draft-node-detail');
+  expect(details).toHaveTextContent('工作流输入 left');
+  expect(details).toHaveTextContent('工作流输入 right');
+});
+
 it('dispatches known preparation blockers and leaves an unknown blocker read-only', () => {
   const onData = vi.fn(), onVersion = vi.fn(), onParameter = vi.fn();
   const onUseCurrentVersion = vi.fn();

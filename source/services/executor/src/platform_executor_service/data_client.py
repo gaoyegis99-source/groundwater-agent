@@ -9,7 +9,7 @@ from platform_data_client.generated import models as data_models
 from platform_data_client.generated import operations as data_operations
 from platform_protocol_contracts import ApiProblem, ProtocolError, TransportError
 
-from .contracts import DataVersionRefV2, JobRequestV6
+from .contracts import DataVersionRefV2, JobRequestV6, canonical_json, sha256_bytes
 from .errors import ExecutionServiceError, ExecutorUnavailableError
 
 
@@ -81,6 +81,8 @@ class DataClient:
             "size_bytes": reference.size_bytes,
             "checksum": reference.checksum,
             "execution_metadata": execution_metadata,
+            "semantic_checksum": sha256_bytes(canonical_json(value["semantics"])),
+            "raster_descriptor": value["descriptor"].get("raster"),
         }, StreamingBody(stream)
 
     def begin_publication(

@@ -1,0 +1,20 @@
+{
+  "cases": [
+    {
+      "id": "sen-elapsed-time",
+      "query": "地下水逐井监测时间不等距时，如何用真实天数计算 Sen 斜率及单位？",
+      "kind": "method",
+      "expectedKnowledgeId": "gw-method-sen-slope",
+      "requiredTerms": ["t_j−t_i", "中位数", "原量单位/日", "显著性"],
+      "forbiddenKnowledgeIds": ["gw-scenario-small-sample", "gw-model-card-monitoring-trend"]
+    },
+    {
+      "id": "pettitt-datum-confounder",
+      "query": "Pettitt 检出的地下水位单变点可能只是更换垂向基准吗？如何解释候选时刻？",
+      "kind": "method",
+      "expectedKnowledgeId": "gw-method-pettitt",
+      "requiredTerms": ["最大值", "换垂向基准", "前后样本", "变化原因"],
+      "forbiddenKnowledgeIds": ["gw-scenario-datum-change", "gw-model-card-monitoring-trend"]
+    }
+  ]
+}

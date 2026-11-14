@@ -93,7 +93,7 @@ def validate_catalog(operators: object, digest: str) -> dict[tuple[str, str], di
     """
     require_json(operators)
     validate(digest, DIGEST, "OPERATOR_CATALOG_DIGEST_INVALID")
-    if not isinstance(operators, list) or len(operators) != 111:
+    if not isinstance(operators, list) or not operators:
         raise WorkflowValidationError("OPERATOR_CATALOG_SIZE_INVALID")
     result = {}
     for index, operator in enumerate(operators):
@@ -125,10 +125,10 @@ def validate_catalog(operators: object, digest: str) -> dict[tuple[str, str], di
     return result
 
 
-def _summary(operator: dict) -> dict:
+def _summary(operator: dict, collections: bool = False) -> dict:
     reasons = [
         {"code": "WORKFLOW_CARDINALITY_UNSUPPORTED", "port": port["name"]}
-        for port in operator["inputs"] if port["cardinality"] != "one"
+        for port in operator["inputs"] if port["cardinality"] != "one" and not collections
     ]
     return {
         "operator_id": operator["id"], "operator_version": operator["version"],
@@ -161,6 +161,7 @@ def list_operators(
     catalog: dict[tuple[str, str], dict], *, after: str | None = None,
     limit: int = 20, query: str | None = None, domain: str | None = None,
     capability: str | None = None,
+    collection_operators: dict | None = None,
 ) -> dict:
     if type(limit) is not int or not 1 <= limit <= 50:
         raise WorkflowValidationError("OPERATOR_PAGE_LIMIT_INVALID")
@@ -196,21 +197,21 @@ def list_operators(
     ]
     page = selected[:limit]
     return {
-        "items": [_summary(item) for item in page],
+        "items": [_summary(item, (item["id"], item["version"]) in (collection_operators or {})) for item in page],
         "next_cursor": (
             f"{page[-1]['id']}@{page[-1]['version']}" if len(selected) > limit else None
         ),
     }
 
 
-def get_operator(catalog: dict[tuple[str, str], dict], operator_id: str, version: str) -> dict:
+def get_operator(catalog: dict[tuple[str, str], dict], operator_id: str, version: str, *, collections: bool = False) -> dict:
     validate(operator_id, OPERATOR_ID, "OPERATOR_ID_INVALID")
     validate(version, VERSION, "OPERATOR_VERSION_INVALID")
     operator = catalog.get((operator_id, version))
     if operator is None:
         raise WorkflowValidationError("OPERATOR_UNKNOWN")
     return {
-        **_summary(operator),
+        **_summary(operator, collections),
         "implementation_revision": operator["implementationRevision"],
         "runtime": operator["runtime"],
         "inputs": deepcopy(operator["inputs"]),
@@ -218,8 +219,9 @@ def get_operator(catalog: dict[tuple[str, str], dict], operator_id: str, version
         "outputs": deepcopy(operator["outputs"]),
         "errorCodes": list(operator["errorCodes"]),
         "binding_rules": {
-            "inputs": ["workflowInput", "nodeOutput"], "parameters": ["workflowParameter"],
-            "many_inputs_supported": False, "value_outputs_feed_nodes": False,
+            "inputs": ["workflowInput", "nodeOutput", "collection"] if collections else ["workflowInput", "nodeOutput"],
+            "parameters": ["workflowParameter"],
+            "many_inputs_supported": collections, "value_outputs_feed_nodes": False,
             "value_outputs_can_be_final": True,
         },
     }

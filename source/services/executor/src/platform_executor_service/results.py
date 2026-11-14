@@ -10,7 +10,7 @@ from .data_client import DataClient, DataUnavailableError
 from .database import connect_database, utc_now
 from .orchestration import NodeSnapshot, WorkflowSnapshot, finalization_ready
 from .result_finalization import PublicationFinalizer
-from .result_publication import PublicationSession, PublicationUpload, publication_contract
+from .result_publication import PublicationSession, PublicationUpload, publication_contract, result_model
 from .result_recovery import ResultRecovery
 
 
@@ -58,7 +58,7 @@ class PublicationOrchestrator:
 
     def publish(self, job) -> None:
         request = JobRequestV6.from_storage_dict(json.loads(job["request_json"]))
-        model = self.models[(request.model_id, request.model_version)]
+        model = result_model(self.models, request)
         job_id = job["job_id"]
         request_digest = self._request_digest(request)
         if job["stage"] == "DAG":
