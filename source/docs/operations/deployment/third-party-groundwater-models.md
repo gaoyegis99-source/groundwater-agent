@@ -142,7 +142,7 @@ V6 的“水源地评价输入准备”接受三个精确的 Data 版本。模�
 | 采样 `run_porous_inversion_sample` | `inversionWeightsVersionId`、`inversionSamplingVersionId` | 后验样本、指标、报告、凭据 |
 | 农业反演 `run_porous_agri_inversion` | `agriculturalDataVersionId`（ZIP） | 参数数组、指标、报告、凭据 |
 
-以上工具名和参数以当前 `domains/groundwater/6.1.0/models/*.model.json` 为准。
+以上工具名和参数以当前装配选中的 `domains/groundwater/6.2.0/models/*.model.json` 为准。
 训练发布的权重版本可以直接作为采样输入；PEST 工作流自动将已率定模型传给仿真。
 评价必须先复核候选 JSON，并单独确认。所有入口使用同一条 Data 原子发布链，不直接引用
 第三方服务的下载 URL 作为平台成果。

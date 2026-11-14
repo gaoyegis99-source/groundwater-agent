@@ -21,9 +21,9 @@ def test_product_selection_resolves_current_groundwater_workflow() -> None:
 
     workflow, path = resolve_selected_workflow(selected, "groundwater.flow-field")
 
-    assert selected.domain.identity["version"] == "6.1.0"
+    assert selected.domain.identity["version"] == "6.2.0"
     assert workflow["workflowId"] == "groundwater.flow-field"
-    assert path.is_relative_to(ROOT / "domains/groundwater/6.1.0")
+    assert path.is_relative_to(ROOT / "domains/groundwater/6.2.0")
 
 
 def test_product_selection_rejects_unknown_workflow() -> None:

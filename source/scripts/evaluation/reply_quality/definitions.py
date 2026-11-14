@@ -75,8 +75,8 @@ OPTION_FORBIDDEN = re.compile(
 )
 EXPECTED_DOMAIN_PACKAGE = {
     "domainId": "groundwater",
-    "version": "6.1.0",
-    "checksum": "sha256:8662efa7382bbe4f9fe7c35fd873bf7109a4d75ee3213fd4bb0fdc92b4c4b10d",
+    "version": "6.2.0",
+    "checksum": "sha256:9862f88dd7cce5bcdcf58dd008edb6465bcfde031d97548785a66eb3e14c5fc3",
 }
 EXPECTED_DATA_FIXTURE_CHECKSUM = (
     "sha256:86c257568bc21eda70434b523f13670da614a8444e01a968058bab96d3f4bf6a"

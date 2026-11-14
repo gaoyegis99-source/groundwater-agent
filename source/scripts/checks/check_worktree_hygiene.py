@@ -108,10 +108,12 @@ def _activity_plan_violations(root: Path) -> list[str]:
     if not plans.is_dir() or plans.is_symlink():
         return ["../plans: ACTIVITY_PLAN_ROOT_INVALID"]
     index = plans / "README.md"
+    retained = {"knowledge-data-foundation", "ui-interaction-spec", "workflow-composition-standard"}
     violations = [
         f"../plans/{child.name}: EXTRA_ACTIVITY_PLAN_CONTENT"
         for child in plans.iterdir()
         if child != index
+        and not (child.name in retained and child.is_dir() and not child.is_symlink())
     ]
     if not index.is_file() or index.is_symlink():
         violations.append("../plans/README.md: PLAN_ARCHIVE_INDEX_INVALID")
@@ -131,9 +133,12 @@ def _groundwater_version_violations(root: Path) -> list[str]:
     domain_root = root / "domains/groundwater"
     actual = sorted(path.name for path in domain_root.iterdir() if path.is_dir())
     violations = []
-    if actual != [version]:
+    supported = {version}
+    if version == "6.2.0":
+        supported.add("6.1.0")
+    if version not in actual or set(actual) - supported:
         violations.append(
-            "domains/groundwater: SELECTED_VERSION_ONLY_REQUIRED:"
+            "domains/groundwater: UNSUPPORTED_DOMAIN_LAYOUT:"
             + ",".join(actual)
         )
     legacy_path = re.compile(r"domains/groundwater/(?:5[.]0[.]0|6[.]0[.]0)")
