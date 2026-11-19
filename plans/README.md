@@ -7,4 +7,4 @@
 
 现行开发和验收入口见[执行手册](../source/docs/operations/execution-playbook.md)。本地验收日志放在 XDG state，运行数据放在 XDG data。
 
-当前版本保留的工程记录包括[知识与数据](knowledge-data-foundation/progress/PROGRESS.md)、[工作流编排](workflow-composition-standard/README.md)和[界面交互](ui-interaction-spec/README.md)。
+工程记录见[知识与数据](knowledge-data-foundation/progress/PROGRESS.md)和[工作流编排](workflow-composition-standard/README.md)。界面参考图见[设计参考目录](ui-interaction-spec/design-references/)。

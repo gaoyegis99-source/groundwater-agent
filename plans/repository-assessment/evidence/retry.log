@@ -1,0 +1,4 @@
+Command: ['/home/mtd/.cache/groundwater-v6/toolchains/v6-d2879b157dedc56a/bin/python', '-m', 'pytest', '-p', 'no:cacheprovider', '--basetemp', '/tmp/groundwater-assessment-1djwvqvm/pytest', '-q', 'tests/contracts/test_agent_evaluator.py::test_compose_compiles_temporary_sources_and_cleans_up', 'tests/contracts/test_groundwater_resource_wiring.py::test_sdk_configuration_error_terminalizes_run_session_and_trace']
+Isolated temporary root: /tmp/groundwater-assessment-1djwvqvm
+..                                                                       [100%]
+2 passed in 3.90s

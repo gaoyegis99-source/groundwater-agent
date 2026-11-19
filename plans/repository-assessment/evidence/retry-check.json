@@ -1,0 +1,23 @@
+{
+  "check": "retry",
+  "start_utc": "2026-11-14T10:55:26.773678+00:00",
+  "end_utc": "2026-11-14T10:55:34.056682+00:00",
+  "command": [
+    "/home/mtd/.cache/groundwater-v6/toolchains/v6-d2879b157dedc56a/bin/python",
+    "-m",
+    "pytest",
+    "-p",
+    "no:cacheprovider",
+    "--basetemp",
+    "/tmp/groundwater-assessment-1djwvqvm/pytest",
+    "-q",
+    "tests/contracts/test_agent_evaluator.py::test_compose_compiles_temporary_sources_and_cleans_up",
+    "tests/contracts/test_groundwater_resource_wiring.py::test_sdk_configuration_error_terminalizes_run_session_and_trace"
+  ],
+  "cwd": "/home/mtd/liweigis/workflow/groundwater-v6/source",
+  "exit_code": 0,
+  "temporary_root": "/tmp/groundwater-assessment-1djwvqvm",
+  "database_services_started": false,
+  "provider_calls_requested": false,
+  "note": "Python 3.12 project environment; selected checks, not release acceptance"
+}

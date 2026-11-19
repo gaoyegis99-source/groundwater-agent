@@ -1,0 +1,4 @@
+Command: ['/home/mtd/miniconda3/bin/python3', '-m', 'pytest', '-p', 'no:cacheprovider', '--basetemp', '/tmp/groundwater-assessment-6o4r_abr/pytest', '-q', '-c', '/tmp/groundwater-assessment-6o4r_abr/pytest.ini', 'source/packages/operator-pack/tests/test_flow_field_interpretation.py', 'source/packages/operator-pack/tests/test_kriging.py', 'source/packages/operator-pack/tests/test_monitoring_trend_expansion.py', 'source/packages/operator-pack/tests/test_drastic.py', 'source/packages/operator-pack/tests/test_table_classify.py', 'source/packages/operator-pack/tests/test_transfer_learning_audit_semantics.py', 'source/packages/operator-pack/tests/test_summary_scientific_semantics.py', 'source/packages/operator-pack/tests/test_render_map_scientific_expression.py']
+Isolated temporary root: /tmp/groundwater-assessment-6o4r_abr
+.............................................                            [100%]
+45 passed in 2.23s

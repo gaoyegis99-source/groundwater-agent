@@ -1,0 +1,344 @@
+{
+  "revision": "e6d8512797a128887cf2bab41a92629ddb06b668",
+  "tracked_files": 2139,
+  "python_test_functions": 2131,
+  "python_test_files": 254,
+  "js_test_files": 68,
+  "domain": {
+    "version": "6.2.0",
+    "models": 18,
+    "workflows": 18,
+    "knowledge_assets": 9,
+    "execution_cases": 1,
+    "observation_tools": 7
+  },
+  "catalog": {
+    "entries": 113,
+    "unique_ids": 111,
+    "runtime": {
+      "native": 86,
+      "qgis": 15,
+      "remote_http": 12
+    },
+    "workflow_referenced_entries": 54,
+    "manifest_files": 113
+  },
+  "modules": [
+    {
+      "module": ".gitignore",
+      "tracked_files": 1,
+      "text_lines": 39,
+      "python_files": 0,
+      "python_test_functions": 0
+    },
+    {
+      "module": ".ignore",
+      "tracked_files": 1,
+      "text_lines": 3,
+      "python_files": 0,
+      "python_test_functions": 0
+    },
+    {
+      "module": "README.md",
+      "tracked_files": 1,
+      "text_lines": 33,
+      "python_files": 0,
+      "python_test_functions": 0
+    },
+    {
+      "module": "bin",
+      "tracked_files": 5,
+      "text_lines": 21,
+      "python_files": 0,
+      "python_test_functions": 0
+    },
+    {
+      "module": "plans",
+      "tracked_files": 72,
+      "text_lines": 2544,
+      "python_files": 0,
+      "python_test_functions": 0
+    },
+    {
+      "module": "project-layout.json",
+      "tracked_files": 1,
+      "text_lines": 28,
+      "python_files": 0,
+      "python_test_functions": 0
+    },
+    {
+      "module": "source/.dockerignore",
+      "tracked_files": 1,
+      "text_lines": 18,
+      "python_files": 0,
+      "python_test_functions": 0
+    },
+    {
+      "module": "source/.env.example",
+      "tracked_files": 1,
+      "text_lines": 65,
+      "python_files": 0,
+      "python_test_functions": 0
+    },
+    {
+      "module": "source/.gitattributes",
+      "tracked_files": 1,
+      "text_lines": 2,
+      "python_files": 0,
+      "python_test_functions": 0
+    },
+    {
+      "module": "source/.gitignore",
+      "tracked_files": 1,
+      "text_lines": 26,
+      "python_files": 0,
+      "python_test_functions": 0
+    },
+    {
+      "module": "source/.npmrc",
+      "tracked_files": 1,
+      "text_lines": 6,
+      "python_files": 0,
+      "python_test_functions": 0
+    },
+    {
+      "module": "source/AGENTS.md",
+      "tracked_files": 1,
+      "text_lines": 29,
+      "python_files": 0,
+      "python_test_functions": 0
+    },
+    {
+      "module": "source/README.md",
+      "tracked_files": 1,
+      "text_lines": 60,
+      "python_files": 0,
+      "python_test_functions": 0
+    },
+    {
+      "module": "source/docs",
+      "tracked_files": 33,
+      "text_lines": 3997,
+      "python_files": 0,
+      "python_test_functions": 0
+    },
+    {
+      "module": "source/domains/groundwater",
+      "tracked_files": 95,
+      "text_lines": 24768,
+      "python_files": 0,
+      "python_test_functions": 0
+    },
+    {
+      "module": "source/environments",
+      "tracked_files": 11,
+      "text_lines": 4072,
+      "python_files": 0,
+      "python_test_functions": 0
+    },
+    {
+      "module": "source/kernel",
+      "tracked_files": 242,
+      "text_lines": 262276,
+      "python_files": 234,
+      "python_test_functions": 572
+    },
+    {
+      "module": "source/package-lock.json",
+      "tracked_files": 1,
+      "text_lines": 5386,
+      "python_files": 0,
+      "python_test_functions": 0
+    },
+    {
+      "module": "source/package.json",
+      "tracked_files": 1,
+      "text_lines": 21,
+      "python_files": 0,
+      "python_test_functions": 0
+    },
+    {
+      "module": "source/packages/embedding-client",
+      "tracked_files": 6,
+      "text_lines": 397,
+      "python_files": 4,
+      "python_test_functions": 13
+    },
+    {
+      "module": "source/packages/groundwater-api-client",
+      "tracked_files": 6,
+      "text_lines": 4928,
+      "python_files": 5,
+      "python_test_functions": 0
+    },
+    {
+      "module": "source/packages/lightweight-agent-core",
+      "tracked_files": 164,
+      "text_lines": 75429,
+      "python_files": 117,
+      "python_test_functions": 419
+    },
+    {
+      "module": "source/packages/operator-pack",
+      "tracked_files": 420,
+      "text_lines": 38850,
+      "python_files": 83,
+      "python_test_functions": 93
+    },
+    {
+      "module": "source/packages/operator-ui",
+      "tracked_files": 3,
+      "text_lines": 667,
+      "python_files": 0,
+      "python_test_functions": 0
+    },
+    {
+      "module": "source/packages/protocol-contracts",
+      "tracked_files": 16,
+      "text_lines": 2483,
+      "python_files": 15,
+      "python_test_functions": 24
+    },
+    {
+      "module": "source/packages/ui-boundary",
+      "tracked_files": 5,
+      "text_lines": 456,
+      "python_files": 0,
+      "python_test_functions": 0
+    },
+    {
+      "module": "source/packages/workflow-compiler",
+      "tracked_files": 36,
+      "text_lines": 8269,
+      "python_files": 15,
+      "python_test_functions": 50
+    },
+    {
+      "module": "source/platform",
+      "tracked_files": 20,
+      "text_lines": 3746,
+      "python_files": 11,
+      "python_test_functions": 0
+    },
+    {
+      "module": "source/products/groundwater",
+      "tracked_files": 56,
+      "text_lines": 34501,
+      "python_files": 27,
+      "python_test_functions": 22
+    },
+    {
+      "module": "source/pyproject.toml",
+      "tracked_files": 1,
+      "text_lines": 49,
+      "python_files": 0,
+      "python_test_functions": 0
+    },
+    {
+      "module": "source/pytest.ini",
+      "tracked_files": 1,
+      "text_lines": 38,
+      "python_files": 0,
+      "python_test_functions": 0
+    },
+    {
+      "module": "source/ruff.toml",
+      "tracked_files": 1,
+      "text_lines": 7,
+      "python_files": 0,
+      "python_test_functions": 0
+    },
+    {
+      "module": "source/schemas",
+      "tracked_files": 3,
+      "text_lines": 117,
+      "python_files": 0,
+      "python_test_functions": 0
+    },
+    {
+      "module": "source/scripts",
+      "tracked_files": 158,
+      "text_lines": 35691,
+      "python_files": 139,
+      "python_test_functions": 0
+    },
+    {
+      "module": "source/services/data",
+      "tracked_files": 142,
+      "text_lines": 41163,
+      "python_files": 85,
+      "python_test_functions": 86
+    },
+    {
+      "module": "source/services/executor",
+      "tracked_files": 62,
+      "text_lines": 13446,
+      "python_files": 53,
+      "python_test_functions": 120
+    },
+    {
+      "module": "source/services/gateway",
+      "tracked_files": 1,
+      "text_lines": 27,
+      "python_files": 0,
+      "python_test_functions": 0
+    },
+    {
+      "module": "source/services/knowledge-next",
+      "tracked_files": 96,
+      "text_lines": 34432,
+      "python_files": 46,
+      "python_test_functions": 75
+    },
+    {
+      "module": "source/system-deps.lock.json",
+      "tracked_files": 1,
+      "text_lines": 1,
+      "python_files": 0,
+      "python_test_functions": 0
+    },
+    {
+      "module": "source/tests",
+      "tracked_files": 115,
+      "text_lines": 26972,
+      "python_files": 107,
+      "python_test_functions": 606
+    },
+    {
+      "module": "source/toolchain.lock.json",
+      "tracked_files": 1,
+      "text_lines": 42,
+      "python_files": 0,
+      "python_test_functions": 0
+    },
+    {
+      "module": "source/uv.lock",
+      "tracked_files": 1,
+      "text_lines": 1686,
+      "python_files": 0,
+      "python_test_functions": 0
+    },
+    {
+      "module": "source/web",
+      "tracked_files": 286,
+      "text_lines": 37700,
+      "python_files": 0,
+      "python_test_functions": 0
+    },
+    {
+      "module": "third-party-services/groundwater-sustainability-service",
+      "tracked_files": 30,
+      "text_lines": 3911,
+      "python_files": 16,
+      "python_test_functions": 36
+    },
+    {
+      "module": "third-party-services/porous-groundwater-linux-service",
+      "tracked_files": 37,
+      "text_lines": 4490,
+      "python_files": 28,
+      "python_test_functions": 15
+    }
+  ],
+  "knowledge_exact_duplicates": []
+}

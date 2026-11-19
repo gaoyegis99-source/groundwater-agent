@@ -1,0 +1,22 @@
+{
+  "probe": "synthetic pure-function boundary, not live exploit",
+  "explicit_prepare_call": false,
+  "declared_source_elevation_unit": "ft",
+  "proposed_elevation_unit": "m",
+  "declared_current_version": "version-newer",
+  "selected_version": "version-probe",
+  "accepted_actions": 1,
+  "preparation_status": "READY",
+  "selection_policy": "PINNED",
+  "checks": [
+    {
+      "kind": "DATA_IDENTITY",
+      "input": "versionId",
+      "status": "PASS",
+      "version_id": "version-probe",
+      "semantic_id": "semantic-probe"
+    }
+  ],
+  "blocking_reasons": [],
+  "finding": "Without explicit preparation, proposal boundary validates schema and exact read identity but does not run field/semantic requirements; defaults policy to PINNED."
+}
