@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { containTabFocus, useWorkbenchModal } from './workbench-focus';
 import { ApiError } from './api';
 import { ErrorNotice } from './ErrorNotice';
 import { Icon } from './Icon';
@@ -17,12 +18,7 @@ export function UploadDialog({ file, project, storageScope = '', onClose, onUplo
   file: File; project: string; storageScope?: string; onClose: () => void; onUploaded: (resource: ResourceItem) => void; maxBytes?: number;
 }) {
   const dialogRef = useRef<HTMLElement>(null);
-  const nameRef = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    const previous = document.activeElement;
-    nameRef.current?.focus();
-    return () => { if (previous instanceof HTMLElement) previous.focus(); };
-  }, []);
+  useWorkbenchModal(dialogRef, true, '[name="resource-name"]');
   const extension = file.name.lastIndexOf('.') > 0 ? file.name.slice(file.name.lastIndexOf('.') + 1).toLowerCase() : '';
   const initial = formats[extension];
   const [format, setFormat] = useState(initial?.[0] ?? '');
@@ -96,24 +92,22 @@ export function UploadDialog({ file, project, storageScope = '', onClose, onUplo
     setError(new ApiError(0, confirmed ? 'UPLOAD_CANCELLED' : 'UPLOAD_UNCERTAIN'));
   }
   return <div className="modal-shade"><section ref={dialogRef} tabIndex={-1} className="upload-dialog" role="dialog" aria-modal="true" aria-labelledby="upload-title" onKeyDown={event => {
-    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); if (!busy) onClose(); }
-    if (event.key !== 'Tab') return;
-    const elements = [...event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), textarea:not(:disabled), summary')].filter(element => element.getClientRects().length > 0);
-    const first = elements[0], last = elements.at(-1);
-    if (event.shiftKey && (event.target === first || event.target === event.currentTarget)) { event.preventDefault(); last?.focus(); }
-    else if (!event.shiftKey && event.target === last) { event.preventDefault(); first?.focus(); }
+    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); if (!busy) onClose(); return; }
+    containTabFocus(event, event.currentTarget);
   }}>
     <div className="section-heading"><h2 id="upload-title">添加资料</h2><button aria-label="关闭上传" disabled={busy} onClick={onClose}><Icon name="close" /></button></div>
-    <div className="file-summary"><Icon name="upload" /><strong>{file.name}</strong><span>{sizeLabel(file.size)}</span></div>
-    <p className="limitations">上传资料对本项目的授权成员可见。禁止上传个人资料、未脱敏资料或单文件超过 {sizeLabel(maxBytes)} 的内容。</p>
-    <label>资料名称<input ref={nameRef} value={name} onChange={e => setName(e.target.value)} disabled={busy || uncertain} /></label>
-    <label>说明 <span className="muted">· 可选</span><textarea value={description} onChange={e => setDescription(e.target.value)} disabled={busy || uncertain} placeholder="简述文件内容" /></label>
-    {!initial && <p className="limitations">无法从文件名确定格式。请根据文件来源说明填写文件格式和媒体类型；填写完整后才能上传。</p>}
-    <details open={!initial}><summary>{initial && format === initial[0] && mediaType === initial[1] ? `${initial[2]} · 高级设置` : '文件格式与高级信息'}</summary><div className="field-row"><label>文件格式<input value={format} onChange={e => setFormat(e.target.value)} disabled={busy || uncertain} placeholder="例如 csv、geojson" /></label>
-      <label>媒体类型<input value={mediaType} onChange={e => setMediaType(e.target.value)} disabled={busy || uncertain} placeholder="例如 text/csv" /></label></div><p className="muted">媒体类型是文件的标准类型名称，例如 CSV 对应 text/csv。无法确定时，请向文件提供方核对。</p><p className="muted">所有格式统一限制为 {sizeLabel(maxBytes)}。</p></details>
-    {busy && <div role="status" data-testid="upload-progress"><div className="progress-label"><span>{phase === 'cancel' ? '正在取消上传，等待服务确认' : phase === 'hash' ? '检查文件完整性' : phase === 'verify' ? '文件已传送，等待校验和保存' : '正在上传文件'}</span>{phase !== 'verify' && phase !== 'cancel' && <span>{Math.round(progress * 100)}%</span>}</div>{phase === 'verify' || phase === 'cancel' ? <progress aria-label={phase === 'cancel' ? '正在取消上传' : '正在校验和保存'} /> : <progress aria-label={phase === 'hash' ? '文件检查进度' : '文件上传进度'} value={progress} max={1} />}</div>}
-    {error && <ErrorNotice error={error} title={uncertain ? '上传结果尚未确认' : '文件尚未上传成功'} />}
-    {uncertain && <p className="limitations" role="status">请保留当前文件并重新选择同一文件。系统会先查询已记录的 publication 状态；只有确认仍可继续时才会重新传送，避免产生重复版本。</p>}
+    <div className="upload-dialog-content">
+      <div className="file-summary"><Icon name="upload" /><strong>{file.name}</strong><span>{sizeLabel(file.size)}</span></div>
+      <p className="limitations">上传资料对本项目的授权成员可见。禁止上传个人资料、未脱敏资料或单文件超过 {sizeLabel(maxBytes)} 的内容。</p>
+      <label>资料名称<input name="resource-name" autoComplete="off" value={name} onChange={e => setName(e.target.value)} disabled={busy || uncertain} /></label>
+      <label>说明 <span className="muted">· 可选</span><textarea name="resource-description" autoComplete="off" value={description} onChange={e => setDescription(e.target.value)} disabled={busy || uncertain} placeholder="简述文件内容…" /></label>
+      {!initial && <p className="limitations">无法从文件名确定格式。请根据文件来源说明填写文件格式和媒体类型；填写完整后才能上传。</p>}
+      <details open={!initial}><summary>{initial && format === initial[0] && mediaType === initial[1] ? `${initial[2]} · 高级设置` : '文件格式与高级信息'}</summary><div className="field-row"><label>文件格式<input value={format} onChange={e => setFormat(e.target.value)} disabled={busy || uncertain} placeholder="例如 csv、geojson" /></label>
+        <label>媒体类型<input value={mediaType} onChange={e => setMediaType(e.target.value)} disabled={busy || uncertain} placeholder="例如 text/csv" /></label></div><p className="muted">媒体类型是文件的标准类型名称，例如 CSV 对应 text/csv。无法确定时，请向文件提供方核对。</p><p className="muted">所有格式统一限制为 {sizeLabel(maxBytes)}。</p></details>
+      {busy && <div role="status" data-testid="upload-progress"><div className="progress-label"><span>{phase === 'cancel' ? '正在取消上传，等待服务确认' : phase === 'hash' ? '检查文件完整性' : phase === 'verify' ? '文件已传送，等待校验和保存' : '正在上传文件'}</span>{phase !== 'verify' && phase !== 'cancel' && <span>{Math.round(progress * 100)}%</span>}</div>{phase === 'verify' || phase === 'cancel' ? <progress aria-label={phase === 'cancel' ? '正在取消上传' : '正在校验和保存'} /> : <progress aria-label={phase === 'hash' ? '文件检查进度' : '文件上传进度'} value={progress} max={1} />}</div>}
+      {error && <ErrorNotice error={error} title={uncertain ? '上传结果尚未确认' : '文件尚未上传成功'} />}
+      {uncertain && <p className="limitations" role="status">请保留当前文件并重新选择同一文件。系统会先查询已记录的 publication 状态；只有确认仍可继续时才会重新传送，避免产生重复版本。</p>}
+    </div>
     <div className="upload-actions">{busy && <button type="button" disabled={phase === 'cancel'} onClick={() => void cancel()}>{phase === 'cancel' ? '正在取消…' : '取消上传'}</button>}<button className="primary wide" disabled={busy || uncertain || !format.trim() || !mediaType.trim() || !name.trim()} onClick={() => void submit()}>上传并附加</button></div>
   </section></div>;
 }

@@ -71,8 +71,24 @@
       "kind": "value",
       "name": "summary",
       "schema": {
-        "type": "object"
-      }
+        "type": "object",
+        "properties": {
+          "groupCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "rowCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "groupCount",
+          "rowCount"
+        ],
+        "additionalProperties": false
+      },
+      "maxBytes": 1048576
     }
   ],
   "parametersSchema": {
@@ -124,7 +140,11 @@
   "runtime": "native",
   "tags": [
     "timeseries",
-    "seasonal_anomaly"
+    "seasonal_anomaly",
+    "capability:seasonal_anomaly",
+    "季节异常",
+    "同月异常",
+    "按历史同月基准计算季节异常"
   ],
   "timeoutSeconds": 1800,
   "title": "Calculate seasonal baseline anomalies",

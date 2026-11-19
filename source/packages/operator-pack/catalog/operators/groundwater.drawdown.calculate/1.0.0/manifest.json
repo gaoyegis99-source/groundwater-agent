@@ -72,8 +72,24 @@
       "kind": "value",
       "name": "summary",
       "schema": {
-        "type": "object"
-      }
+        "type": "object",
+        "properties": {
+          "groupCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "rowCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "groupCount",
+          "rowCount"
+        ],
+        "additionalProperties": false
+      },
+      "maxBytes": 1048576
     }
   ],
   "parametersSchema": {
@@ -148,7 +164,12 @@
   "tags": [
     "groundwater",
     "drawdown",
-    "calculate"
+    "calculate",
+    "capability:calculate",
+    "降深",
+    "水头差",
+    "水位降幅",
+    "按参考水头计算每口井的降深"
   ],
   "timeoutSeconds": 1800,
   "title": "Calculate groundwater drawdown",

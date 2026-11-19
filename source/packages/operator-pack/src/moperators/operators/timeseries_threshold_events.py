@@ -19,18 +19,21 @@ from moperators.operators.advanced_timeseries_common import (
     value_summary,
     write_rows,
 )
+from moperators.operators.analysis_common import input_null_values, input_timezone
 
 
 def run(inputs: dict[str, Any], parameters: dict[str, Any], output_dir: Path) -> dict[str, Any]:
+    observations = one(inputs)
+    timezone_ = input_timezone(observations)
     enabled = parameters.get("enabled", True)
     if not isinstance(enabled, bool):
         raise ValueError("THRESHOLD_INVALID")
     group_field = parameters["groupField"]
     time_field = parameters["timeField"]
     value_field = parameters["valueField"]
-    table = read_table(one(inputs))
+    table = read_table(observations, time_field, value_field)
     event_schema, classified_schema = _output_schemas(
-        table, group_field, time_field, value_field
+        table, group_field, time_field, value_field, timezone_
     )
     if not enabled:
         return {
@@ -57,8 +60,8 @@ def run(inputs: dict[str, Any], parameters: dict[str, Any], output_dir: Path) ->
         raise ValueError("THRESHOLD_INVALID")
     frequency = parameters["frequency"]
     groups = column(table, group_field).to_pylist()
-    periods = [bucket(value, frequency) for value in timestamps(table, time_field)]
-    values = numbers(table, value_field)
+    periods = [bucket(value, frequency) for value in timestamps(table, time_field, timezone_)]
+    values = numbers(table, value_field, input_null_values(observations))
     ensure_unique(zip(groups, periods, strict=True), "DUPLICATE_PERIOD")
     if source == "scalar":
         threshold = _threshold(parameters.get("thresholdValue"))
@@ -70,11 +73,9 @@ def run(inputs: dict[str, Any], parameters: dict[str, Any], output_dir: Path) ->
         thresholds = [_threshold(value) for value in column(table, threshold_field).to_pylist()]
 
     grouped: dict[Any, list[tuple[Any, float, float]]] = defaultdict(list)
-    for group, period, value, threshold in zip(
-        groups, periods, values, thresholds, strict=True
-    ):
+    for group, period, value, threshold in zip(groups, periods, values, thresholds, strict=True):
         if value is None:
-            raise AssertionError("strict numeric parsing cannot return null")
+            raise ValueError("NON_NUMERIC_VALUE")
         grouped[group].append((period, value, threshold))
 
     event_rows: list[dict[str, Any]] = []
@@ -147,17 +148,29 @@ def run(inputs: dict[str, Any], parameters: dict[str, Any], output_dir: Path) ->
 
 
 def _output_schemas(
-    table: pa.Table, group_field: str, time_field: str, value_field: str
+    table: pa.Table, group_field: str, time_field: str, value_field: str, timezone_
 ) -> tuple[pa.Schema, pa.Schema]:
     group_type = table.schema.field(group_field).type
     event_schema = pa.schema(
         [
             pa.field(group_field, group_type),
             pa.field("event_id", pa.string(), nullable=False),
-            pa.field("event_start", pa.timestamp("us"), nullable=False),
-            pa.field("event_end", pa.timestamp("us"), nullable=False),
+            pa.field(
+                "event_start",
+                pa.timestamp("us", tz=timezone_.key if timezone_ else None),
+                nullable=False,
+            ),
+            pa.field(
+                "event_end",
+                pa.timestamp("us", tz=timezone_.key if timezone_ else None),
+                nullable=False,
+            ),
             pa.field("period_count", pa.int64(), nullable=False),
-            pa.field("extreme_time", pa.timestamp("us"), nullable=False),
+            pa.field(
+                "extreme_time",
+                pa.timestamp("us", tz=timezone_.key if timezone_ else None),
+                nullable=False,
+            ),
             pa.field("extreme_value", pa.float64(), nullable=False),
             pa.field("threshold_min", pa.float64(), nullable=False),
             pa.field("threshold_max", pa.float64(), nullable=False),
@@ -168,7 +181,7 @@ def _output_schemas(
     classified_schema = pa.schema(
         [
             pa.field(group_field, group_type),
-            pa.field(time_field, pa.timestamp("us")),
+            pa.field(time_field, pa.timestamp("us", tz=timezone_.key if timezone_ else None)),
             pa.field(value_field, pa.float64()),
             pa.field("threshold", pa.float64()),
             pa.field("qualifies", pa.bool_(), nullable=False),

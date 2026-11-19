@@ -33,8 +33,7 @@
         "flatgeobuf",
         "geojson",
         "geopackage",
-        "geoparquet",
-        "parquet"
+        "geoparquet"
       ],
       "mediaTypes": [
         "application/geopackage+sqlite3",
@@ -76,7 +75,11 @@
   "runtime": "qgis",
   "tags": [
     "vector",
-    "centroid"
+    "centroid",
+    "capability:centroid",
+    "质心",
+    "几何重心",
+    "给每个多边形计算几何质心"
   ],
   "timeoutSeconds": 3600,
   "title": "Create feature centroids",

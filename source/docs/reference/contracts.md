@@ -6,7 +6,7 @@
 | --- | --- |
 | Public HTTP | v12 |
 | Product Manifest / Product UI / Module Contract / Assembly Lock | v8 / v1 / v9 / v8 |
-| Kernel HTTP / Config / SQLite | v12 / v8 / v34 |
+| Kernel HTTP / Config / SQLite | v12 / v8 / v36 |
 | Session Event / IntentDecision / message request | v20 / v4 / v5 |
 | AgentFinal / SubmittedReply | v5 / v6 |
 | Workflow / Executable Model | v6 / v6（当前产品）；装配仍接受 Executable Model v4、v5 |
@@ -128,7 +128,7 @@ Agent 与 Router 可以各自配置一个同 Provider、同模型备用 base URL
 
 ## 恢复与隔离
 
-当前源码初始化 Kernel SQLite v34、Executor SQLite v9、Data schema v8 和 Knowledge schema v7。
+当前源码初始化 Kernel SQLite v36、Executor SQLite v9、Data schema v8 和 Knowledge schema v7。
 `gw migrate plan/apply` 只接受 Kernel v29–v33、Data v4–v7、Knowledge v4–v6，并在已停止实例的
 可验证快照和影子存储上逐版本升级；普通服务启动只接受当前版本，不隐式跨版本写入。校验覆盖
 schema、记录数、外键、对象 checksum、owner 映射和 lineage，全部通过后才原子切换实例指针。

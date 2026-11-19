@@ -1,0 +1,73 @@
+/* Feedback never waits on paint or changes the space a control occupies. */
+@media (any-hover: hover) {
+  :where(button, .button, [role="tab"], summary):not(:disabled, [aria-disabled="true"]) {
+    -webkit-tap-highlight-color: transparent;
+  }
+  .text-button:hover:not(:disabled, [aria-disabled="true"]) { text-decoration: underline; text-underline-offset: 0.18em; }
+  summary:hover:not([aria-disabled="true"]) { text-decoration: underline; text-underline-offset: 0.19em; }
+  :is(.workspace-tabs) > button:hover:not(:disabled, [aria-selected="true"], [aria-current="page"]) {
+    background: var(--gw-surface-inset);
+    color: var(--gw-action);
+  }
+}
+
+:is(button, .button, [role="tab"]):is(:active, [data-pressed]):not(:disabled, [aria-disabled="true"], [data-overlay-dismiss], [data-pending]) {
+  outline: var(--gw-border-width) solid currentColor;
+  outline-offset: -3px;
+}
+:is(button, .button, [role="tab"]):is(:active, [data-pressed]):focus-visible {
+  outline: var(--gw-focus-width) solid var(--gw-focus);
+  outline-offset: var(--gw-focus-offset);
+}
+
+:is(input, textarea, select):focus:not(:disabled, [readonly], [aria-invalid="true"]) { border-color: var(--gw-focus); }
+@supports selector(select:open) {
+  select:open:not([aria-invalid="true"]) {
+    border-color: var(--gw-focus);
+    background-color: var(--gw-selection);
+  }
+}
+:is(.workspace-tabs, .gw-tab-list) :focus-visible { scroll-margin-block: var(--gw-space-2); }
+
+.send-button { min-inline-size: 5.25rem; }
+.send-button .send-spinner { inline-size: 0.8rem; block-size: 0.8rem; }
+
+.drawer-shade[data-open] {
+  background: var(--gw-scrim);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity var(--gw-motion-exit) var(--gw-ease), visibility 0s var(--gw-motion-exit);
+}
+.drawer-shade[data-open="true"] {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: opacity var(--gw-motion-panel) var(--gw-ease);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .gw-overlay[data-entering] { animation: workspace-fade-in var(--gw-motion-panel) var(--gw-ease); }
+  .gw-overlay[data-exiting] { animation: workspace-fade-out var(--gw-motion-exit) var(--gw-ease) both; }
+  .gw-overlay-drawer .gw-overlay-surface[data-entering],
+  .gw-overlay-drawer[data-entering] .gw-overlay-surface,
+  .knowledge-drawer, .workspace-panel.is-overlay, .project-task-history[aria-modal="true"] {
+    animation: workspace-drawer-in var(--gw-motion-panel) var(--gw-ease);
+  }
+  .gw-overlay-drawer .gw-overlay-surface[data-exiting],
+  .gw-overlay-drawer[data-exiting] .gw-overlay-surface {
+    animation: workspace-drawer-out var(--gw-motion-exit) var(--gw-ease) both;
+  }
+  .database-workbench, .upload-dialog { animation: workspace-reveal var(--gw-motion-panel) var(--gw-ease); }
+  :is(.main-panel:not([hidden]), .workspace-panel.is-route,
+      .workspace-scroll > [role="tabpanel"], .gw-tab-panel:not([data-inert]), .gw-tooltip[data-entering],
+      .gw-error, .session-list-error, .submission-recovery, .session-notice, .template-feedback, .copy-feedback,
+      .task-stage-label, .workspace-state-title .gw-badge) {
+    animation: workspace-reveal var(--gw-motion-fast) var(--gw-ease);
+  }
+  .workbench-skeleton { --workspace-reveal-from: 0.68; animation: workspace-reveal var(--gw-motion-panel) var(--gw-ease); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer-shade[data-open] { transition: none; }
+}

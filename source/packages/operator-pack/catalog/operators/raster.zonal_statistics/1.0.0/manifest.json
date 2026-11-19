@@ -46,8 +46,7 @@
         "flatgeobuf",
         "geojson",
         "geopackage",
-        "geoparquet",
-        "parquet"
+        "geoparquet"
       ],
       "mediaTypes": [
         "application/geopackage+sqlite3",
@@ -64,7 +63,6 @@
     {
       "formats": [
         "geopackage",
-        "geoparquet",
         "parquet"
       ],
       "kind": "artifact",
@@ -72,14 +70,48 @@
         "application/vnd.apache.parquet",
         "application/geopackage+sqlite3"
       ],
-      "name": "statistics"
+      "name": "statistics",
+      "parameterFormatCases": [
+        {
+          "parameter": "outputKind",
+          "values": [
+            "table"
+          ],
+          "format": "parquet",
+          "mediaType": "application/vnd.apache.parquet"
+        },
+        {
+          "parameter": "outputKind",
+          "values": [
+            "vector"
+          ],
+          "format": "geopackage",
+          "mediaType": "application/geopackage+sqlite3"
+        }
+      ]
     },
     {
       "kind": "value",
       "name": "summary",
       "schema": {
-        "type": "object"
-      }
+        "type": "object",
+        "properties": {
+          "emptyZoneCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "zoneCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "emptyZoneCount",
+          "zoneCount"
+        ],
+        "additionalProperties": false
+      },
+      "maxBytes": 1048576
     }
   ],
   "parametersSchema": {
@@ -111,7 +143,11 @@
   "runtime": "native",
   "tags": [
     "raster",
-    "zonal-statistics"
+    "zonal-statistics",
+    "capability:zonal_statistics",
+    "分区统计",
+    "区域统计",
+    "按行政区汇总栅格值"
   ],
   "timeoutSeconds": 3600,
   "title": "Raster zonal statistics",

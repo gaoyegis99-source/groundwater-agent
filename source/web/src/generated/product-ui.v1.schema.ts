@@ -77,6 +77,11 @@ export default {
       "type": "object",
       "additionalProperties": {"$ref": "#/$defs/parameterStage"}
     },
+    "quantityKindLabels": {
+      "type": "object",
+      "propertyNames": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$"},
+      "additionalProperties": {"$ref": "#/$defs/text"}
+    },
     "outputs": {
       "type": "object",
       "additionalProperties": {"$ref": "#/$defs/output"}
@@ -150,7 +155,67 @@ export default {
         "applicability": {"$ref": "#/$defs/text"},
         "inputs": {"type": "object", "additionalProperties": {"$ref": "#/$defs/input"}},
         "parameterOverrides": {"type": "object", "additionalProperties": {"$ref": "#/$defs/parameter"}},
-        "confirmationSummary": {"type": "array", "items": {"$ref": "#/$defs/summary"}}
+        "confirmationSummary": {"type": "array", "items": {"$ref": "#/$defs/summary"}},
+        "resultOverview": {"$ref": "#/$defs/resultOverview"},
+        "continuation": {"$ref": "#/$defs/continuation"},
+        "inputCaseTag": {"$ref": "#/$defs/text"},
+        "publishedOutputStep": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["output", "targetModel", "targetInput", "arguments"],
+          "properties": {
+            "output": {"$ref": "#/$defs/text"},
+            "targetModel": {"$ref": "#/$defs/text"},
+            "targetInput": {"$ref": "#/$defs/text"},
+            "arguments": {"type": "object"}
+          }
+        }
+      }
+    },
+    "continuation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["output", "targetModel", "targetInput", "label"],
+      "properties": {
+        "output": {"$ref": "#/$defs/text"},
+        "targetModel": {"$ref": "#/$defs/text"},
+        "targetInput": {"$ref": "#/$defs/text"},
+        "label": {"$ref": "#/$defs/text"},
+        "reviewReport": {"$ref": "#/$defs/text"}
+      }
+    },
+    "resultOverview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["description", "sections"],
+      "properties": {
+        "description": {"$ref": "#/$defs/text"},
+        "regressionMetrics": {"$ref": "#/$defs/text"},
+        "insight": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "output"],
+          "properties": {
+            "kind": {"enum": ["darcy", "kriging", "drastic", "calibration", "trend", "map", "statistics"]},
+            "output": {"$ref": "#/$defs/text"},
+            "schemaVersion": {"$ref": "#/$defs/text"},
+            "categoricalVisual": {"$ref": "#/$defs/text"}
+          }
+        },
+        "visuals": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/text"}},
+        "sections": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["label", "outputs"],
+            "properties": {
+              "label": {"$ref": "#/$defs/text"},
+              "outputs": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/text"}}
+            }
+          }
+        }
       }
     },
     "output": {

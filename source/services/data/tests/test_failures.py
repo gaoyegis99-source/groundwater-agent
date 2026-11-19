@@ -225,6 +225,27 @@ def test_user_upload_is_restricted_and_mutable_work_is_subject_owned(
             ).status_code
             == 404
         )
+        rule_body = {
+            "idempotencyKey": "operator-rules-join",
+            "outputs": [{
+                "name": "file", "title": "Join keys", "format": "json", "policy": "FILE_ONLY",
+                "semantics": {"source": "agent_operator_rules"},
+            }],
+            "provenance": {"client": "platform-agent", "purpose": "operator_rules"},
+        }
+        agent = {**user_a, "X-Client-Type": "agent"}
+        rule = trusted_client.post("/data/v3/publications", headers=agent, json=rule_body)
+        replay = trusted_client.post("/data/v3/publications", headers=agent, json=rule_body)
+        assert rule.status_code == replay.status_code == 201
+        assert rule.json()["publicationId"] == replay.json()["publicationId"]
+        assert trusted_client.post(
+            "/data/v3/publications", headers=agent,
+            json={**rule_body, "inputVersions": [shared["versionId"]]},
+        ).status_code == 403
+        assert trusted_client.post(
+            "/data/v3/publications", headers={**agent, "X-Platform-Roles": "viewer"},
+            json=rule_body,
+        ).status_code == 403
         content = b"well,value\n001,2\n"
         checksum = "sha256:" + hashlib.sha256(content).hexdigest()
         assert (

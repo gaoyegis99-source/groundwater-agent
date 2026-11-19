@@ -107,7 +107,11 @@
   "runtime": "native",
   "tags": [
     "crs",
-    "reproject"
+    "reproject",
+    "capability:reproject",
+    "坐标转换",
+    "矢量重投影",
+    "将矢量或点云重投影到指定坐标系"
   ],
   "timeoutSeconds": 3600,
   "title": "Reproject vector or point cloud",

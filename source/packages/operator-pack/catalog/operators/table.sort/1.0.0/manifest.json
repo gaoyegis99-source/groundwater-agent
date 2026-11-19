@@ -57,7 +57,9 @@
         "application/json"
       ],
       "name": "rules",
-      "required": true
+      "required": true,
+      "logicalType": "record",
+      "rulesSchema": "table-sort-rules.v1"
     }
   ],
   "memoryLimitBytes": 8589934592,
@@ -76,8 +78,19 @@
       "kind": "value",
       "name": "summary",
       "schema": {
-        "type": "object"
-      }
+        "type": "object",
+        "properties": {
+          "rowCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "rowCount"
+        ],
+        "additionalProperties": false
+      },
+      "maxBytes": 1048576
     }
   ],
   "parametersSchema": {
@@ -92,7 +105,10 @@
     "capability:stable-sort",
     "stable sorting",
     "稳定排序",
-    "表格排序"
+    "表格排序",
+    "capability:sort",
+    "排序表格",
+    "按井号和采样时间稳定排序"
   ],
   "timeoutSeconds": 1200,
   "title": "Sort table rows",

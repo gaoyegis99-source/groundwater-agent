@@ -94,7 +94,13 @@ def input_null_values(source: TableInput) -> frozenset[str]:
 
 
 def is_missing(value: Any, null_values: frozenset[str] = frozenset()) -> bool:
-    return value is None or (isinstance(value, str) and (not value.strip() or value in null_values))
+    if value is None or (isinstance(value, str) and (not value.strip() or value in null_values)):
+        return True
+    if type(value) in (int, float):
+        return str(value) in null_values or (
+            isinstance(value, float) and value.is_integer() and str(int(value)) in null_values
+        )
+    return False
 
 
 def _data_contract(source: TableInput) -> dict[str, Any]:

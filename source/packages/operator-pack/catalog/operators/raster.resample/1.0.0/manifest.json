@@ -45,7 +45,6 @@
   "outputs": [
     {
       "formats": [
-        "cog",
         "geotiff"
       ],
       "kind": "artifact",
@@ -87,7 +86,11 @@
   "runtime": "native",
   "tags": [
     "raster",
-    "resample"
+    "resample",
+    "capability:resample",
+    "重采样",
+    "调整分辨率",
+    "调整栅格像元分辨率"
   ],
   "timeoutSeconds": 3600,
   "title": "Resample raster",

@@ -7,6 +7,8 @@ capture and settlement modules.
 
 from __future__ import annotations
 
+import json
+
 from agents import ModelBehaviorError
 
 from .activity_projection import _minimax_final_text_json
@@ -62,6 +64,11 @@ def validate_terminal_output(
             raise ModelBehaviorError(
                 "Agent response must call a tool; submit_reply must stand alone"
             )
+        for call in calls:
+            try:
+                json.loads(call.arguments)
+            except json.JSONDecodeError:
+                raise ModelBehaviorError("Agent returned malformed tool arguments") from None
     elif not has_nonempty_output_text(response):
         raise ModelBehaviorError("Memory compactor returned no final text")
 

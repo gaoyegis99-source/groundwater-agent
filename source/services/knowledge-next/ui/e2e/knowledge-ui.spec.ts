@@ -420,13 +420,14 @@ test("previews append or replace effects before applying one binding to every do
 });
 
 
-for (const viewport of [{ width: 1440, height: 900 }, { width: 1366, height: 768 }, { width: 390, height: 844 }]) {
+for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }, { width: 1024, height: 768 }]) {
   test(`has no serious accessibility findings at ${viewport.width}x${viewport.height} and 200%`, async ({ page }, testInfo) => {
     await page.setViewportSize(viewport);
     await routeWorkspace(page);
     await page.goto("/knowledge/");
     await expect(page.getByRole("heading", { name: "知识管理" })).toBeVisible();
     await expect(page.getByText("没有找到匹配的知识")).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await expect(async () => {
       await page.screenshot({ path: testInfo.outputPath(`knowledge-catalog-${viewport.width}.png`), fullPage: true, animations: "disabled" });
     }).toPass({ timeout: 5000, intervals: [100, 250, 500] });

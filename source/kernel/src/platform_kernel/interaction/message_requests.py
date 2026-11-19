@@ -8,6 +8,7 @@ from uuid import uuid4
 
 from ..database import append_event, connect_database, utc_now
 from ..errors import ConfirmationConflictError, ResourceNotFoundError
+from ..workflow_selection import bind_workflow_selection, selected_model
 from .control_persistence import validate_correction
 from .control_intents import rule_intent
 from .control_proposal_commands import create_control_request, create_status_request
@@ -32,6 +33,8 @@ def create_message_request(
     corrects_agent_run_id: str | None = None,
     owner_subject: str = DEFAULT_LOCAL_ACTOR_SUBJECT,
     max_pending: int = 108,
+    workflow_selection: dict | None = None,
+    installed_models: tuple = (),
 ) -> tuple[dict[str, object], str | None]:
     normalized_references = tuple(input_references or ())
     references_json = json.dumps(
@@ -46,10 +49,25 @@ def create_message_request(
         ).fetchone()
         validate_correction(connection, session_id, request_id, corrects_agent_run_id, replay=existing is not None)
         if existing is not None:
+            row = connection.execute(
+                "SELECT selection_json FROM message_workflow_selections WHERE agent_run_id=?",
+                (existing["agent_run_id"],),
+            ).fetchone()
+            recorded = json.loads(row[0]) if row is not None else None
+            if recorded is not None:
+                recorded.pop("inputs")
+            if recorded != workflow_selection:
+                raise ConfirmationConflictError("MESSAGE_REQUEST_CONFLICT")
             require_same_request(
                 existing, message, requested_mode, corrects_request_id, references_json
             )
             return receipt_from_row(existing, corrects_agent_run_id), None
+        if workflow_selection is not None:
+            if requested_mode != "DIALOGUE" or corrects_request_id is not None:
+                raise ConfirmationConflictError("WORKFLOW_SELECTION_INPUT_INVALID")
+            workflow_selection = bind_workflow_selection(
+                workflow_selection, selected_model(workflow_selection, installed_models), normalized_references,
+            )
         require_request_shape(requested_mode)
         require_correction(
             connection, session_id, request_id, message, requested_mode,
@@ -87,7 +105,10 @@ def create_message_request(
         agent_run_id = str(uuid4())
         workflow_draft_id = str(uuid4()) if requested_mode == "WORKFLOW_DRAFT" else None
         mode = None if requested_mode == "AUTO" else requested_mode
-        dialogue_policy = "READ_ONLY" if requested_mode == "DIALOGUE" else None
+        dialogue_policy = (
+            "EXECUTION_PROPOSAL" if workflow_selection is not None
+            else "READ_ONLY" if requested_mode == "DIALOGUE" else None
+        )
         superseded = reserve_turn_connection(
             connection, session_id, message, agent_run_id, project_id, mode=mode,
             workflow_draft_id=workflow_draft_id,
@@ -121,7 +142,7 @@ def create_message_request(
                 (
                     None if requested_mode == "AUTO"
                     else "CREATE_WORKFLOW" if requested_mode == "WORKFLOW_DRAFT"
-                    else "UNSPECIFIED"
+                    else "EXECUTE_ON_DATA" if workflow_selection is not None else "UNSPECIFIED"
                 ),
                 None if requested_mode == "AUTO" else "NONE",
                 None,
@@ -130,6 +151,11 @@ def create_message_request(
                 created_at,
             ),
         )
+        if workflow_selection is not None:
+            connection.execute(
+                "INSERT INTO message_workflow_selections VALUES (?,?)",
+                (agent_run_id, json.dumps(workflow_selection, ensure_ascii=True, sort_keys=True, allow_nan=False)),
+            )
         if requested_mode != "AUTO":
             materialize_workflow_draft(
                 connection, session_id=session_id, request_id=request_id,

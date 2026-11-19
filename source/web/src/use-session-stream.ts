@@ -257,6 +257,7 @@ export function useSessionStream(activeId: string, project: string, storageScope
               const applied = applySnapshot(progress, messages.eventCursor);
               if (applied.accepted) {
                 progress = applied.state;
+                if (!latestMessages) setError(null);
                 latestMessages = messages;
                 const turn = messages.turns.find(item => item.goalRevision === messages.goalRevision);
                 setPreview(value => value && turn?.agentRunId === value.agentRunId && turn.status === 'RUNNING' && !turn.reply ? value : null);
@@ -289,6 +290,7 @@ export function useSessionStream(activeId: string, project: string, storageScope
     };
     refreshRequest.current = () => {
       progress = forceStreamRefresh(progress); detailsDirty = allDetails(); draftRefreshEpoch += 1;
+      if (!latestMessages) setLoading(true);
       if (timer !== undefined && inFlight === null) { clearTimeout(timer); timer = undefined; }
       return readMessages();
     };

@@ -25,6 +25,7 @@ py-modules = [
   "base_images",
   "deployment_topology",
   "executor_profile",
+  "operator_metadata",
 ]
 
 [tool.setuptools.data-files]

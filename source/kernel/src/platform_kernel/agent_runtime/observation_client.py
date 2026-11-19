@@ -26,7 +26,7 @@ class ObservationClient:
             default_actor_subject or LocalIdentity().subject
         )
 
-    def _actor_subject(
+    def actor_subject(
         self, actor_subject: str | None, agent_run_id: str | None
     ) -> str:
         if actor_subject:
@@ -50,7 +50,7 @@ class ObservationClient:
         actor_subject: str | None = None,
         agent_run_id: str | None = None,
     ) -> dict[str, object]:
-        subject = self._actor_subject(actor_subject, agent_run_id)
+        subject = self.actor_subject(actor_subject, agent_run_id)
         trace_context = trace_context_for_id(trace_id)
         try:
             response = await self.client.post(

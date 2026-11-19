@@ -42,13 +42,92 @@
     "groundwater.monitoring-trend": {
       "displayName": "监测趋势", "description": "按监测对象和时间分析完整性、缺测段、趋势、变化点、异常及阈值事件。", "applicability": "适用于带分组、时间和数值字段的长期监测表；季节趋势和阈值事件需显式启用并提供分析参数。",
       "inputs": {"versionId": {"label": "监测数据", "description": "一个精确且可查询的数据版本。", "formats": ["csv", "parquet", "arrow-ipc-file"]}},
-      "parameterOverrides": {}, "confirmationSummary": [{"label": "分析时段", "parameters": ["expectedStart", "expectedEnd"]}, {"label": "可选分析", "parameters": ["seasonalTrendEnabled", "seasonFrequency", "thresholdEventsEnabled", "eventComparison", "eventThreshold"]}]
+      "parameterOverrides": {}, "confirmationSummary": [
+        {"label": "监测字段", "parameters": ["groupField", "timeField", "valueField"]},
+        {"label": "聚合设置", "parameters": ["frequency", "aggregation"]},
+        {"label": "分析时段", "parameters": ["expectedStart", "expectedEnd"]},
+        {"label": "基准期", "parameters": ["baselineStart", "baselineEnd"]},
+        {"label": "对比期", "parameters": ["comparisonStart", "comparisonEnd"]}
+      ],
+      "resultOverview": {
+        "description": "逐井趋势及基准期与对比期的变化。",
+        "sections": [
+          {
+            "label": "主要成果",
+            "outputs": [
+              "mann-kendall-trends",
+              "aggregated-series",
+              "period-changes",
+              "mann-kendall-summary"
+            ]
+          },
+          {
+            "label": "诊断与其他成果",
+            "outputs": [
+              "aggregate-summary",
+              "completeness-profiles",
+              "completeness-summary",
+              "linear-trends",
+              "linear-summary",
+              "outlier-observations",
+              "outlier-summary",
+              "period-change-summary",
+              "change-points",
+              "change-point-summary",
+              "seasonal-trends",
+              "seasonal-trend-summary",
+              "gap-runs",
+              "gap-run-summary",
+              "threshold-classification",
+              "threshold-events",
+              "threshold-event-summary"
+            ]
+          }
+        ],
+        "insight": {
+          "kind": "trend",
+          "output": "mann-kendall-summary"
+        }
+      }
     },
     "groundwater.flow-field": {
       "displayName": "地下水流场", "description": "根据参考高程减地下水埋深计算水头，插值后推导水力梯度、达西通量与孔隙流速；这些结果不是流速观测。", "applicability": "适用于含井位、同一垂向基准的参考高程与埋深、观测时间的监测表；目标坐标系必须为米制投影，并需提供渗透系数和有效孔隙度。",
       "inputs": {"versionId": {"label": "井点观测", "description": "一个精确且可查询的井点数据版本。", "formats": ["csv", "parquet", "arrow-ipc-file"]}},
       "parameterOverrides": {"valueField": {"label": "新生成水头字段", "group": "基本参数"}},
-      "confirmationSummary": [{"label": "制图时点", "parameters": ["targetTime"]}]
+      "confirmationSummary": [{"label": "制图时点", "parameters": ["targetTime"]}],
+      "resultOverview": {
+        "description": "以选定时点的井点计算水头并推导流向及流速。",
+        "insight": {
+          "kind": "darcy",
+          "output": "summary"
+        },
+        "visuals": [
+          "head-raster",
+          "flow-direction",
+          "seepage-velocity"
+        ],
+        "sections": [
+          {
+            "label": "主要成果",
+            "outputs": [
+              "head-raster",
+              "flow-direction",
+              "seepage-velocity",
+              "summary"
+            ]
+          },
+          {
+            "label": "数据和诊断",
+            "outputs": [
+              "snapshot",
+              "snapshot-diagnostics",
+              "gradient",
+              "darcy-flux"
+            ]
+          }
+        ]
+      },
+      "publishedOutputStep": {"output": "head-raster", "targetModel": "groundwater.render-map", "targetInput": "sourceVersionId", "arguments": {"title": "Hydraulic head", "valueField": "", "unit": "m"}}
     },
     "groundwater.kriging": {
       "displayName": "克里金插值",
@@ -73,7 +152,37 @@
         {"label": "方法与变异函数", "parameters": ["krigingType", "variogramModel", "variogramRange", "variogramSill", "variogramNugget", "exact"]},
         {"label": "搜索邻域", "parameters": ["neighborCount", "minimumNeighbors", "searchRadius"]},
         {"label": "输出网格", "parameters": ["targetCrs", "pixelSize"]}
-      ]
+      ],
+      "resultOverview": {
+        "description": "查看空间预测与模型方差，结合留一验证判断误差。",
+        "insight": {
+          "kind": "kriging",
+          "output": "kriging-summary",
+          "schemaVersion": "kriging-summary.v1"
+        },
+        "visuals": [
+          "kriging-prediction",
+          "kriging-variance"
+        ],
+        "sections": [
+          {
+            "label": "主要成果",
+            "outputs": [
+              "kriging-prediction",
+              "kriging-variance",
+              "kriging-summary"
+            ]
+          },
+          {
+            "label": "插值诊断",
+            "outputs": [
+              "kriging-loo",
+              "variogram-diagnostics"
+            ]
+          }
+        ]
+      },
+      "publishedOutputStep": {"output": "kriging-prediction", "targetModel": "groundwater.render-map", "targetInput": "sourceVersionId", "arguments": {"title": "Kriging prediction", "valueField": "", "unit": ""}}
     },
     "groundwater.rule-classification": {
       "displayName": "规则分类",
@@ -97,7 +206,26 @@
         }
       },
       "parameterOverrides": {},
-      "confirmationSummary": []
+      "confirmationSummary": [],
+      "resultOverview": {
+        "description": "按本次输入的规则给出分级结果与指标分类。",
+        "sections": [
+          {
+            "label": "主要成果",
+            "outputs": [
+              "classified-table",
+              "classification-summary"
+            ]
+          },
+          {
+            "label": "诊断与其他成果",
+            "outputs": [
+              "indicator-classifications",
+              "classification-rule-summary"
+            ]
+          }
+        ]
+      }
     },
     "groundwater.drastic": {
       "displayName": "DRASTIC 相对脆弱性评价",
@@ -114,7 +242,31 @@
         "configVersionId": {"label": "DRASTIC 规则与权重配置", "description": "独立声明评分、权重、等级、来源和核验状态的 groundwater-drastic-config.v1 JSON。", "formats": ["json"]}
       },
       "parameterOverrides": {},
-      "confirmationSummary": []
+      "confirmationSummary": [],
+      "resultOverview": {
+        "description": "按输入配置对有效网格计算相对脆弱性等级。",
+        "insight": {
+          "kind": "drastic",
+          "output": "drastic-summary",
+          "schemaVersion": "groundwater-drastic-summary.v1",
+          "categoricalVisual": "drastic-classification"
+        },
+        "visuals": [
+          "drastic-classification",
+          "drastic-index"
+        ],
+        "sections": [
+          {
+            "label": "主要成果",
+            "outputs": [
+              "drastic-classification",
+              "drastic-index",
+              "drastic-summary"
+            ]
+          }
+        ]
+      },
+      "publishedOutputStep": {"output": "drastic-index", "targetModel": "groundwater.render-map", "targetInput": "sourceVersionId", "arguments": {"title": "DRASTIC index", "valueField": "", "unit": ""}}
     },
     "groundwater.transfer-learning-analysis": {
       "displayName": "迁移学习回测", "description": "在源域预训练、目标域训练段微调，并以观测历史执行目标域单步留出回测，生成评价和空间诊断成果。", "applicability": "适用于资料完整、边界明确且已冻结输入版本的迁移学习回测；目标域缩放器只用训练段拟合，结果不是递归未来预测。",
@@ -140,7 +292,27 @@
         "imagery-rulesVersionId": {"label": "影像处理规则", "description": "影像裁剪与重采样规则。", "formats": ["json"]}
       },
       "parameterOverrides": {},
-      "confirmationSummary": [{"label": "关键训练参数", "parameters": ["pretrain.epochs", "finetune.epochs", "pretrain.hiddenSize"]}, {"label": "制图目标日期", "parameters": ["map-month.targetTime"]}]
+      "confirmationSummary": [{"label": "关键训练参数", "parameters": ["pretrain.epochs", "finetune.epochs", "pretrain.hiddenSize"]}, {"label": "制图目标日期", "parameters": ["map-month.targetTime"]}],
+      "resultOverview": {
+        "description": "用已观测的历史数据做单步留出回测，检验模型在留出时段的预测误差。",
+        "regressionMetrics": "metrics",
+        "sections": [
+          {
+            "label": "主要成果",
+            "outputs": ["metrics", "predictions", "per-well-metrics", "map-points"]
+          },
+          {
+            "label": "训练与数据检查",
+            "outputs": ["target-split", "pretrain-loss", "finetune-loss", "source-scaler", "target-scaler", "pretrained-model-spec", "finetuned-model-spec", "pretrained-weights", "finetuned-weights"]
+          },
+          {
+            "label": "制图资料与检查",
+            "outputs": ["prediction-points", "map-month-diagnostics", "imagery-coverage", "extent", "boundary", "imagery", "counties", "townships", "rivers", "groundwater_systems", "railways", "basin_boundary"]
+          }
+        ]
+      },
+      "publishedOutputStep": {"output": "map-points", "targetModel": "groundwater.render-map", "targetInput": "sourceVersionId", "arguments": {"title": "Prediction points", "valueField": "predicted", "unit": ""}},
+      "inputCaseTag": "case:yaozhanbao-transfer-case"
     },
     "groundwater.summary": {
       "displayName": "数据概览", "description": "对完整输入文件或数组执行描述统计，分别报告有效值、声明空值和非有限值；可按已核实字段做有界分组。", "applicability": "表格输入必须选择数值字段，NPY 可按列或展平统计。完整输入不等于目标区域或业务总体，结果不代表总体分布、趋势或因果关系。",
@@ -149,12 +321,38 @@
         "groupField": {"label": "可选分组字段", "group": "统计字段"},
         "unit": {"label": "字段单位（仅标签）", "group": "统计字段"}
       },
-      "confirmationSummary": [{"label": "统计字段", "parameters": ["column", "groupField", "unit"]}, {"label": "数组统计范围", "parameters": ["axis"]}]
+      "confirmationSummary": [{"label": "统计字段", "parameters": ["column", "groupField", "unit"]}, {"label": "数组统计范围", "parameters": ["axis"]}],
+      "resultOverview": {
+        "description": "查看资料的描述统计和质量明细。",
+        "insight": {"kind": "statistics", "output": "summary-details", "schemaVersion": "statistics-describe-details.v1"},
+        "sections": [
+          {
+            "label": "主要成果",
+            "outputs": [
+              "summary",
+              "summary-details"
+            ]
+          }
+        ]
+      }
     },
     "groundwater.monitoring-coverage": {
       "displayName": "监测井覆盖", "description": "计算监测井点的几何凸包，报告重复点、唯一点及按坐标系计算的面积和周长；结果不是含水层边界或地下水影响范围。", "applicability": "至少需要三个唯一且不共线的 GeoJSON 点；重复坐标会计数但不改变凸包。地理坐标系采用椭球测地面积和周长，投影坐标系采用平面量测并换算为米。",
       "inputs": {"versionId": {"label": "井点资料", "description": "监测井点 GeoJSON 版本。", "formats": ["geojson"]}},
-      "parameterOverrides": {}, "confirmationSummary": []
+      "parameterOverrides": {}, "confirmationSummary": [],
+      "resultOverview": {
+        "description": "展示井点凸包及几何覆盖摘要。",
+        "sections": [
+          {
+            "label": "主要成果",
+            "outputs": [
+              "coverage",
+              "coverage-summary"
+            ]
+          }
+        ]
+      },
+      "publishedOutputStep": {"output": "coverage", "targetModel": "groundwater.render-map", "targetInput": "sourceVersionId", "arguments": {"title": "Monitoring well coverage", "valueField": "", "unit": ""}}
     },
     "groundwater.render-map": {
       "displayName": "静态地图", "description": "把一个单文件 GeoJSON、GeoTIFF 或 COG 按源 CRS 和数据范围渲染为 PNG，并报告色标、单位与无数据表达摘要。", "applicability": "只绘制一个已存在的空间文件且不重投影；不支持多图层、在线底图、交互地图、地图发布或 PDF。GeoJSON 可选数值字段着色，栅格固定绘制第一波段。",
@@ -166,7 +364,23 @@
         "height": {"label": "输出高度", "group": "输出尺寸", "unit": "像素"},
         "unit": {"label": "色标单位", "group": "地图表达"}
       },
-      "confirmationSummary": [{"label": "地图表达", "parameters": ["title", "valueField", "palette", "unit"]}, {"label": "输出尺寸", "parameters": ["width", "height"]}]
+      "confirmationSummary": [{"label": "地图表达", "parameters": ["title", "valueField", "palette", "unit"]}, {"label": "输出尺寸", "parameters": ["width", "height"]}],
+      "resultOverview": {
+        "description": "在源坐标系中绘制单个空间图层。",
+        "sections": [
+          {
+            "label": "主要成果",
+            "outputs": [
+              "map-image",
+              "map-summary"
+            ]
+          }
+        ],
+        "insight": {
+          "kind": "map",
+          "output": "map-summary"
+        }
+      }
     },
     "groundwater.source-sustainability": {
       "displayName": "水源地综合评价",
@@ -180,7 +394,25 @@
         }
       },
       "parameterOverrides": {},
-      "confirmationSummary": []
+      "confirmationSummary": [],
+      "resultOverview": {
+        "description": "查看水源地评价的指标结果和交付文件。",
+        "sections": [
+          {
+            "label": "主要成果",
+            "outputs": [
+              "sustainability-result",
+              "sustainability-result-file"
+            ]
+          },
+          {
+            "label": "诊断与其他成果",
+            "outputs": [
+              "sustainability-run-receipt"
+            ]
+          }
+        ]
+      }
     }
   },
   "parameterNames": {
@@ -216,6 +448,7 @@
     "workbookVersionId": {"label": "数据工作簿", "group": "输入资料"}, "monthMappingVersionId": {"label": "月份对应表", "group": "输入资料"}, "sourceFilterVersionId": {"label": "源域筛选规则", "group": "输入资料"}, "targetFilterVersionId": {"label": "目标域筛选规则", "group": "输入资料"}, "boundaryVersionId": {"label": "水源地边界资料", "group": "输入资料"}, "imageryVersionId": {"label": "影像资料", "group": "输入资料"}, "countiesVersionId": {"label": "县级区划资料", "group": "输入资料"}, "townshipsVersionId": {"label": "乡镇区划资料", "group": "输入资料"}, "riversVersionId": {"label": "河流资料", "group": "输入资料"}, "groundwater_systemsVersionId": {"label": "地下水系统资料", "group": "输入资料"}, "railwaysVersionId": {"label": "铁路资料", "group": "输入资料"}, "basin_boundaryVersionId": {"label": "流域边界资料", "group": "输入资料"},
     "source-scaler-rulesVersionId": {"label": "源域缩放规则", "group": "输入资料"}, "target-scaler-rulesVersionId": {"label": "目标域缩放规则", "group": "输入资料"}, "source-windows-rulesVersionId": {"label": "源域时间窗口规则", "group": "输入资料"}, "target-windows-rulesVersionId": {"label": "目标域时间窗口规则", "group": "输入资料"}, "holdout-windows-rulesVersionId": {"label": "留出集时间窗口规则", "group": "输入资料"}, "inverse-rulesVersionId": {"label": "逆变换规则", "group": "输入资料"}, "imagery-rulesVersionId": {"label": "影像处理规则", "group": "输入资料"}
   },
+  "quantityKindLabels": {"hydraulic_head": "水头高程", "depth_to_water": "地下水埋深"},
   "parameterStages": {
     "extract": {"label": "工作簿读取", "group": "数据准备"}, "unpivot": {"label": "表格转换", "group": "数据准备"}, "source-split": {"label": "源域数据划分", "group": "数据准备"}, "target-split": {"label": "目标域数据划分", "group": "数据准备"}, "source-windows": {"label": "源域时间窗口", "group": "数据准备"}, "target-windows": {"label": "目标域时间窗口", "group": "数据准备"}, "holdout-windows": {"label": "留出集时间窗口", "group": "数据准备"},
     "pretrain": {"label": "预训练", "group": "训练与评价"}, "finetune": {"label": "微调", "group": "训练与评价"}, "predict": {"label": "预测", "group": "训练与评价"}, "inverse": {"label": "逆变换", "group": "训练与评价"}, "evaluate": {"label": "效果评价", "group": "训练与评价"},

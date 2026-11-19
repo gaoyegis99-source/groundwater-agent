@@ -1,25 +1,108 @@
+@import "./fonts.css";
+
 :root {
-  --workspace-ink: #252a34;
-  --workspace-muted: #5f6977;
-  --workspace-canvas: #eceef2;
+  --workspace-ink: var(--product-theme-ink, #252a34);
+  --workspace-secondary: #45515e;
+  --workspace-muted: var(--product-theme-muted, #5f6977);
+  --workspace-canvas: var(--product-theme-canvas, #eceef2);
   --workspace-surface: #fff;
-  --workspace-surface-soft: #f7f8fa;
-  --workspace-line: #e4e7ed;
+  --workspace-surface-soft: var(--product-theme-surface-soft, #f7f8fa);
+  --workspace-line: var(--product-theme-line, #e4e7ed);
   --workspace-line-strong: #c8cdd8;
-  --workspace-accent: #4557c2;
-  --workspace-accent-active: #3445aa;
-  --workspace-accent-soft: #eef0fb;
-  --workspace-warning: #865711;
-  --workspace-warning-soft: #fff8e9;
-  --workspace-error: #a03336;
-  --workspace-error-soft: #fff2f1;
-  --workspace-success: #24705b;
-  --workspace-success-soft: #edf7f2;
+  --workspace-control-border: #778393;
+  --workspace-accent: var(--product-theme-accent, #4557c2);
+  --workspace-accent-hover: var(--product-theme-accent-active, #394bb0);
+  --workspace-accent-active: var(--product-theme-accent-active, #3445aa);
+  --workspace-accent-soft: var(--product-theme-accent-soft, #eef0fb);
+  --workspace-on-accent: #fff;
+  --workspace-data: #116e69;
+  --workspace-focus: #175faa;
+  --workspace-inset: #e9edf3;
+  --workspace-disabled-ink: #54616a;
+  --workspace-disabled-fill: #e7ebee;
+  --workspace-neutral: #495d65;
+  --workspace-neutral-soft: #e9eff0;
+  --workspace-warning: #795012;
+  --workspace-warning-soft: #fff1d8;
+  --workspace-error: #923b40;
+  --workspace-error-soft: #fbeaec;
+  --workspace-error-hover: #793136;
+  --workspace-error-active: #65282d;
+  --workspace-success: #225f47;
+  --workspace-success-soft: #e6f3ea;
+  --workspace-running: #315c7b;
+  --workspace-running-soft: #e7f0f7;
+
+  --workspace-font-ui: "Source Sans 3", "Noto Sans CJK SC", "Noto Sans SC", "Source Han Sans SC", "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", "Heiti SC", system-ui, sans-serif;
+  --workspace-font-title: "Spectral", "Noto Serif CJK SC", "Noto Serif SC", "Source Han Serif SC", "Songti SC", SimSun, serif;
+  --workspace-font-id: "IBM Plex Mono", "SFMono-Regular", Consolas, "DejaVu Sans Mono", "Noto Sans CJK SC", monospace;
+  --workspace-numeric: lining-nums tabular-nums;
+  --workspace-weight-normal: 400;
+  --workspace-weight-medium: 500;
+  --workspace-weight-strong: 600;
+  --workspace-type-display: clamp(1.875rem, 2.5vw, 2.125rem);
+  --workspace-type-page: 1.625rem;
+  --workspace-type-section: 1.25rem;
+  --workspace-type-subtitle: 1.125rem;
+  --workspace-type-body: 1rem;
+  --workspace-type-control: 0.875rem;
+  --workspace-type-note: 0.8125rem;
+  --workspace-type-detail: 0.75rem;
+  --workspace-leading-heading: 1.4;
+  --workspace-leading-body: 1.65;
+  --workspace-leading-control: 1.5;
+  --workspace-leading-note: 1.55;
+
+  --workspace-border-width: 1px;
+  --workspace-focus-width: 2px;
+  --workspace-focus-offset: 2px;
+  --workspace-control: 2.75rem;
+  --workspace-control-compact: 2.25rem;
+  --workspace-icon: 1.125rem;
+  --workspace-icon-inline: 1rem;
+  --workspace-shadow-overlay: 0 12px 32px rgb(19 45 58 / 14%);
+  --workspace-scrim: rgb(18 37 49 / 42%);
+  --workspace-motion-fast: 120ms;
+  --workspace-motion-panel: 170ms;
+  --workspace-motion-exit: 110ms;
+  --workspace-ease: cubic-bezier(0.2, 0, 0, 1);
   --workspace-space-1: 4px;
   --workspace-space-2: 8px;
   --workspace-space-3: 12px;
   --workspace-space-4: 16px;
   --workspace-space-6: 24px;
+  --workspace-radius-control: var(--product-theme-radius-control, 6px);
+  --workspace-radius-panel: var(--product-theme-radius-panel, 10px);
+  --workspace-page-width: 70rem;
+  --workspace-page-gutter: clamp(0.875rem, 3vw, 2rem);
+  --workspace-section-gap: clamp(1.25rem, 3vw, 2rem);
+}
+
+:root[data-product="groundwater"] {
+  --workspace-ink: #192f39;
+  --workspace-secondary: #3c525b;
+  --workspace-muted: #4e646c;
+  --workspace-canvas: #f0f4f3;
+  --workspace-surface-soft: #f5f8f7;
+  --workspace-inset: #e7eeec;
+  --workspace-line: #cdd7d5;
+  --workspace-line-strong: #a9bbb6;
+  --workspace-control-border: #70827e;
+  --workspace-accent: #244a68;
+  --workspace-accent-hover: #193a55;
+  --workspace-accent-active: #102e45;
+  --workspace-accent-soft: #dcebed;
   --workspace-radius-control: 6px;
   --workspace-radius-panel: 10px;
 }
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --workspace-motion-fast: 0ms; --workspace-motion-panel: 0ms; --workspace-motion-exit: 0ms; }
+}
+
+@keyframes workspace-reveal { from { opacity: var(--workspace-reveal-from, 0.92); } to { opacity: 1; } }
+@keyframes workspace-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes workspace-fade-out { to { opacity: 0; } }
+@keyframes workspace-drawer-in { from { opacity: 0.72; translate: 8px 0; } to { opacity: 1; translate: 0 0; } }
+@keyframes workspace-drawer-out { to { opacity: 0; translate: 6px 0; } }
+@keyframes workspace-spin { to { transform: rotate(1turn); } }

@@ -48,6 +48,7 @@ class SpatialExtent(Model):
 
 
 class Semantics(Model):
+    value_kind: str | None = Field(None, pattern=r"^[a-z][a-z0-9_.-]{0,127}$")
     description: str = Field(default="", max_length=10000)
     fields: dict[str, FieldMeaning] = Field(default_factory=dict)
     grain: str | None = None

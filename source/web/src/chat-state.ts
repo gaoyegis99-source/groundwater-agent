@@ -5,6 +5,13 @@ export function isBusy(history: History | null) {
   const turn = history?.turns.find(item => item.goalRevision === history.goalRevision);
   return !!turn && ['ROUTING', 'QUEUED', 'RUNNING', 'WAITING_EXECUTION'].includes(turn.status);
 }
+export function needsExecutionInputs(turn: Turn | null | undefined) {
+  if (!turn?.reply?.unresolvedItems.length || turn.dialoguePolicy === 'READ_ONLY'
+    || turn.confirmations.length || turn.executionTasks.length) return false;
+  return turn.dialoguePolicy === 'EXECUTION_PROPOSAL' || turn.intentDecision === 'WORKFLOW_DRAFT'
+    || turn.requestMode === 'WORKFLOW_DRAFT' || turn.semanticIntent === 'EXECUTE_ON_DATA'
+    || turn.semanticIntent === 'CREATE_WORKFLOW';
+}
 export function hasVerificationMarker(value: string | null | undefined) {
   return !!value && (value.includes('SYNTHETIC_TEST_ONLY') || value.startsWith('【验证会话】'));
 }

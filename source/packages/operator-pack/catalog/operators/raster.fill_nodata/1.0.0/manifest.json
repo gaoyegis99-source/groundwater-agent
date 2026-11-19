@@ -43,7 +43,6 @@
   "outputs": [
     {
       "formats": [
-        "cog",
         "geotiff"
       ],
       "kind": "artifact",
@@ -77,7 +76,12 @@
   "runtime": "native",
   "tags": [
     "raster",
-    "fill-nodata"
+    "fill-nodata",
+    "capability:fill_nodata",
+    "填补空值",
+    "填补空洞",
+    "栅格补洞",
+    "补小范围栅格空洞"
   ],
   "timeoutSeconds": 3600,
   "title": "Fill raster NoData regions",

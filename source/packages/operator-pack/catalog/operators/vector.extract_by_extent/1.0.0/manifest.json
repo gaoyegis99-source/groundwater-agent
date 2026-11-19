@@ -38,8 +38,7 @@
         "flatgeobuf",
         "geojson",
         "geopackage",
-        "geoparquet",
-        "parquet"
+        "geoparquet"
       ],
       "mediaTypes": [
         "application/geopackage+sqlite3",
@@ -95,7 +94,11 @@
   "runtime": "qgis",
   "tags": [
     "vector",
-    "extract-by-extent"
+    "extract-by-extent",
+    "capability:extract_by_extent",
+    "矩形筛选",
+    "范围提取",
+    "按矩形范围筛选矢量要素"
   ],
   "timeoutSeconds": 3600,
   "title": "Extract vector features by extent",

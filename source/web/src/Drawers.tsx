@@ -5,6 +5,7 @@ import { Icon } from './Icon';
 import { KnowledgeEvidenceView } from './KnowledgeEvidenceView';
 import type { KnowledgeEvidence, KnowledgeEvidenceBundle, KnowledgeReference, ResourceDetail } from './types';
 import './knowledge-polish.css';
+import { containTabFocus, useWorkbenchModal } from './workbench-focus';
 export { sizeLabel } from './format';
 
 export function ResourcePreview({ resource }: { resource: ResourceDetail; project: string }) {
@@ -41,13 +42,7 @@ function KnowledgeBrowser({ project, reference, onClose }: KnowledgeDrawerProps)
   const [detailLoading, setDetailLoading] = useState(Boolean(reference));
   const [detailError, setDetailError] = useState<ApiError | null>(null);
 
-  useEffect(() => {
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    drawerRef.current?.focus();
-    return () => { document.body.style.overflow = previousOverflow; if (opener?.isConnected) opener.focus(); };
-  }, []);
+  useWorkbenchModal(drawerRef, true);
 
   useEffect(() => {
     if (!catalogRequest) return;
@@ -109,16 +104,12 @@ function KnowledgeBrowser({ project, reference, onClose }: KnowledgeDrawerProps)
     if (!catalogRequest) setCatalogRequest({ query: search.trim() });
   }
   function keyDown(event: React.KeyboardEvent) {
-    if (event.key === 'Escape') { event.preventDefault(); onClose(); return; }
-    if (event.key !== 'Tab' || !drawerRef.current) return;
-    const controls = [...drawerRef.current.querySelectorAll<HTMLElement>('*')].filter(element => element.matches('button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),summary,[tabindex="0"]') && !element.closest('[hidden]') && (!element.closest('details:not([open])') || Boolean(element.closest('summary'))));
-    const first = controls[0]; const last = controls.at(-1);
-    if (!first || !last) { event.preventDefault(); drawerRef.current.focus(); return; }
-    if (event.shiftKey && (document.activeElement === first || document.activeElement === drawerRef.current)) { event.preventDefault(); last.focus(); }
-    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    if (event.defaultPrevented) return;
+    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); onClose(); return; }
+    containTabFocus(event, event.currentTarget as HTMLElement);
   }
 
-  return <aside ref={drawerRef} tabIndex={-1} className="drawer knowledge-drawer" role="dialog" aria-modal="true" aria-label="知识库" data-testid="knowledge-drawer" onKeyDown={keyDown}>
+  return <section ref={drawerRef} tabIndex={-1} className="drawer knowledge-drawer" role="dialog" aria-modal="true" aria-label="知识库" data-testid="knowledge-drawer" onKeyDown={keyDown}>
     <div className="drawer-heading"><div><span className="drawer-eyebrow">知识库</span><h2>知识与证据</h2><p>查找方法，核对引用原文与来源。</p></div><button className="icon-button" aria-label="关闭知识库" onClick={onClose}><Icon name="close" /></button></div>
     <div className="knowledge-directory" hidden={Boolean(selection)}>
       <form role="search" aria-label="知识目录搜索" className="knowledge-directory-search" onSubmit={event => { event.preventDefault(); selectedButton.current = null; directoryScroll.current = 0; setCatalogRequest({ query: search.trim() }); }}>
@@ -140,5 +131,5 @@ function KnowledgeBrowser({ project, reference, onClose }: KnowledgeDrawerProps)
       {!detailLoading && !detailError && !items.length && <div className="empty-inline" role="status">没有可读取的证据片段，请返回目录选择其他知识。</div>}
       {!detailLoading && !detailError && items.length > 0 && <KnowledgeEvidenceView items={items} reference={selection.kind === 'reference' ? selection.reference : undefined} project={project} />}
     </div>}
-  </aside>;
+  </section>;
 }

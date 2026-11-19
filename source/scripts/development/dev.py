@@ -1566,9 +1566,11 @@ def main(argv: list[str] | None = None) -> None:
             "up",
             "down",
             "status",
+            "migrate-kernel",
             "clean",
             "check",
             "operator-smoke",
+            "operator-impact",
             "workflow-golden",
             "real-case",
             "agent-replay",
@@ -1595,6 +1597,11 @@ def main(argv: list[str] | None = None) -> None:
     )
     parser.add_argument("--operator-id")
     parser.add_argument("--operator-version")
+    parser.add_argument("--previous-version")
+    parser.add_argument("--baseline-config", type=Path)
+    parser.add_argument("--gateway-url")
+    parser.add_argument("--operator-run")
+    parser.add_argument("--workflow-run", action="append", default=[])
     parser.add_argument("--fixture", action="append", default=[])
     parser.add_argument("--parameter", action="append", default=[])
     parser.add_argument("--output-dir", type=Path)
@@ -1626,6 +1633,32 @@ def main(argv: list[str] | None = None) -> None:
         or bool(args.fixture)
         or bool(args.parameter)
     )
+    impact_options = args.previous_version or args.baseline_config or args.gateway_url or args.operator_run or args.workflow_run
+    if args.command == "operator-impact":
+        if (
+            not args.operator_id or not args.operator_version or args.case or args.fixture
+            or args.parameter or args.repetitions or args.scope or args.output_dir or args.source_root
+            or args.dry_run or (not args.verify and (args.runtime_image or args.operator_run or args.workflow_run))
+        ):
+            parser.error("operator-impact requires --operator-id and --operator-version; supply --verify to run regressions")
+        from scripts.development.operator_impact import impact_plan, verify_impact
+        import httpx
+
+        product = _select_product(ROOT, args.product)
+        try:
+            result = impact_plan(ROOT, product, args.operator_id, args.operator_version, args.previous_version, args.baseline_config)
+            if args.verify:
+                result = verify_impact(ROOT, result, gateway_url=args.gateway_url, operator_run=args.operator_run,
+                                       workflow_runs=args.workflow_run, runtime_image=args.runtime_image)
+        except (ValueError, KeyError, OSError, httpx.HTTPError) as error:
+            print(json.dumps({"status": "FAILED", "detail": str(error)}, ensure_ascii=False), file=sys.stderr)
+            raise SystemExit(2) from error
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        if result.get("status") == "FAILED":
+            raise SystemExit(1)
+        return
+    if impact_options:
+        parser.error("--previous-version, --baseline-config, --gateway-url, --operator-run and --workflow-run require operator-impact")
     if args.command == "capability-inventory":
         if (
             operator_specific_arguments
@@ -1924,6 +1957,19 @@ def main(argv: list[str] | None = None) -> None:
         print(json.dumps(_status(product_id), ensure_ascii=False, indent=2))
         if bootstrap.returncode:
             raise SystemExit(1)
+        return
+    if args.command == "migrate-kernel":
+        active = _run_compose(product_id, ["ps", "-q", "kernel-service"])
+        if active.stdout.strip():
+            raise ValueError("KERNEL_MIGRATION_REQUIRES_STOPPED_SERVICE")
+        migration = _run_compose(product_id, [
+            "run", "--rm", "--no-deps", "-T", "--entrypoint", "python", "kernel-service", "-c",
+            "from pathlib import Path; from platform_kernel.database import migrate_database; "
+            "path = Path('/data/kernel.sqlite3'); "
+            "assert path.is_file(), 'KERNEL_DATABASE_NOT_FOUND'; migrate_database(path)",
+        ])
+        print(migration.stdout, end="")
+        print("Kernel storage migration PASS")
         return
     if args.command == "down":
         _run_compose(product_id, ["down"])

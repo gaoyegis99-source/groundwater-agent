@@ -215,7 +215,7 @@ test('keeps a real stop receipt separate from the final cancellation and publish
     await expect(turn.getByText('停止请求处理结束', { exact: true })).toBeVisible();
     const card = turn.locator(`[data-workflow-run-id="${run.workflowRunId}"]`);
     await expect(card).toHaveAttribute('data-status', outcome);
-    await expect(card.getByRole('link', { name: '下载', exact: true })).toHaveCount(runDetails.outputs.length);
+    await expect(card.getByRole('link', { name: /^下载/ })).toHaveCount(runDetails.outputs.length);
     const events = await clients.python<StreamEvent[]>(`
 import json
 import os
@@ -482,7 +482,7 @@ test('recovers an actual timed-out workflow across Web, TLI and SDK', async ({ p
   ]));
   const recover = workspace.getByRole('button', { name: '准备恢复未完成步骤', exact: true });
   await expect(recover).toBeEnabled();
-  await expect(card(failedTask.workflowRunId).getByRole('link', { name: '下载', exact: true })).toHaveCount(0);
+  await expect(card(failedTask.workflowRunId).getByRole('link', { name: /^下载/ })).toHaveCount(0);
   await screenshot('02-timeout-visible');
   const recovering = responseFor(path + `/workflow-runs/${failedTask.workflowRunId}/recoveries`);
   await recover.click();
@@ -560,9 +560,9 @@ with GroundwaterClient(origin, api_token=os.environ["GROUNDWATER_API_TOKEN"]) as
   const finalCard = card(restored.workflowRunId);
   await expect(finalCard).toHaveAttribute('data-status', 'SUCCEEDED');
   await expect(finalCard).toContainText('已通过第 2 次执行恢复');
-  await expect(finalCard.getByRole('link', { name: '下载', exact: true })).toHaveCount(2);
+  await expect(finalCard.getByRole('link', { name: /^下载/ })).toHaveCount(2);
   await expect(card(retained.workflowRunId)).toHaveAttribute('data-status', 'TIMED_OUT');
-  await expect(card(retained.workflowRunId).getByRole('link', { name: '下载', exact: true })).toHaveCount(0);
+  await expect(card(retained.workflowRunId).getByRole('link', { name: /^下载/ })).toHaveCount(0);
   const browserStream = await page.evaluate(() => (window as unknown as { recoveryStream: BrowserStream }).recoveryStream);
   expect(browserStream.opens).toBeGreaterThanOrEqual(2);
   expect(browserStream.events).toEqual(expect.arrayContaining([
@@ -603,10 +603,10 @@ with GroundwaterClient(origin, api_token=os.environ["GROUNDWATER_API_TOKEN"]) as
   record('workflow-graph', graph);
   record('node-diagnostics', { original: originalDiagnostics, recovered: restoredDiagnostics });
   await screenshot('06-workflow-node-diagnostics');
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize({ width: 1024, height: 768 });
   await restoredNodes.getByText('运行标识与时间', { exact: true }).scrollIntoViewIfNeeded();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await screenshot('07-workflow-node-diagnostics-mobile');
+  await screenshot('07-workflow-node-diagnostics-desktop-1024');
   await page.setViewportSize({ width: 1440, height: 1000 });
   await workspace.getByRole('button', { name: '返回对话' }).click();
   const resultPage = JSON.parse(await clients.cli('--session', sessionId, 'results')) as { items: Result[] };
@@ -621,7 +621,7 @@ with GroundwaterClient(origin, api_token=os.environ["GROUNDWATER_API_TOKEN"]) as
     expect(version.inputVersions).toContain(versionId);
     expect(version.publicationId).toBeTruthy();
     const downloading = page.waitForEvent('download');
-    await finalCard.locator(`[data-resource-id="${output.versionId}"]`).getByRole('link', { name: '下载', exact: true }).click();
+    await finalCard.locator(`[data-resource-id="${output.versionId}"]`).getByRole('link', { name: /^下载/ }).click();
     const destination = info.outputPath(`${output.outputName}.json`);
     await (await downloading).saveAs(destination);
     const data = readFileSync(destination);

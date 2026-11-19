@@ -1,8 +1,10 @@
 import type { ResourceItem } from './types';
+import { isWorkflowSelection, type WorkflowSelection } from './workflow-selection';
 import { isResourceItems } from './message-routing';
 import { scopedStorageKey } from './browser-scope';
 
 export interface QueuedMessage {
+  workflow?: WorkflowSelection;
   id: string; text: string; attachments: ResourceItem[]; createdAt: string;
   requestId?: string; correctsAgentRunId?: string;
 }
@@ -12,7 +14,7 @@ export function readQueue(scope: string, session: string): QueuedMessage[] {
   if (!raw) return [];
   try {
     const values: unknown = JSON.parse(raw);
-    if (!Array.isArray(values) || !values.every(item => item && typeof item.id === 'string' && typeof item.text === 'string' && typeof item.createdAt === 'string' && isResourceItems(item.attachments) && (item.requestId === undefined || typeof item.requestId === 'string') && (item.correctsAgentRunId === undefined || typeof item.correctsAgentRunId === 'string'))) throw new Error('invalid queue');
+    if (!Array.isArray(values) || !values.every(item => item && typeof item.id === 'string' && typeof item.text === 'string' && typeof item.createdAt === 'string' && isResourceItems(item.attachments) && (item.workflow === undefined || isWorkflowSelection(item.workflow)) && (item.requestId === undefined || typeof item.requestId === 'string') && (item.correctsAgentRunId === undefined || typeof item.correctsAgentRunId === 'string'))) throw new Error('invalid queue');
     return values as QueuedMessage[];
   } catch { localStorage.removeItem(key); return []; }
 }

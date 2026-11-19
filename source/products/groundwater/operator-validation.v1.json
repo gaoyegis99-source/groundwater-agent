@@ -1,0 +1,459 @@
+{
+  "schemaVersion": "operator-validation.v1",
+  "checkedOn": "2026-11-19",
+  "reportChecksum": "sha256:fc9eb2342d2badc75d055a0f12bb80407a86e529c7593086e96d12f00ea598e6",
+  "operators": {
+    "cartography.render-png@1.0.0": {
+      "implementationRevision": "sha256:b628061956daa0f3eff0e27943aa23f7f053fafdcde1c47fa1dbb212d413b6d1",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "crs.reproject@1.0.0": {
+      "implementationRevision": "sha256:2c74322d8e07774726187dd9254beedf959b67dc97de1e37dc8f7adf4f394556",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "data.convert@1.0.0": {
+      "implementationRevision": "sha256:e28388bb0bc9eddfee434bb2fd71e17ffdb2a43fcad86c66cdc74fbb14b38f60",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "data.inspect@1.0.0": {
+      "implementationRevision": "sha256:19c9fcb82e85d217766b2460d019c6fa51d78de95436a6c9a171637340bb0425",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "document.chunk@1.0.0": {
+      "implementationRevision": "sha256:2a3342be30ca5f1ebde11051ef562d633e1fb20fe5941d71da1206e58e6bada7",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "document.text_extract@1.0.0": {
+      "implementationRevision": "sha256:f26f46e5193068806faa7aa33cb41923aeb20a71ca31395e313f0f34919346fe",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "geometry.repair@1.0.0": {
+      "implementationRevision": "sha256:4b5c2d770d8f70acccd0c59f3d2454098bd357355173436898e33c6deb39b1d4",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "geometry.validate@1.0.0": {
+      "implementationRevision": "sha256:0ef1a298956a940185ef972c24008d5885b40c0837d4de7d60c3f01ef9f9323d",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "groundwater.darcy_velocity@1.0.0": {
+      "implementationRevision": "sha256:569a717cf06b7eaf5650257029a57790da8fbf57d36eda8b689b35385ef33b6c",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "groundwater.drastic.evaluate@1.0.0": {
+      "implementationRevision": "sha256:b689ef1f35ed69e31f0d0a751dc9fda696c4966b6bda7660fd8b3ea1039bc14b",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "groundwater.drawdown.calculate@1.0.0": {
+      "implementationRevision": "sha256:7cf6402c35a0c0db7217e35a0f827567e52c5232ae046587e0c78f895191511d",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "groundwater.head.calculate@1.0.0": {
+      "implementationRevision": "sha256:dbd47221e7a3535a13e60cda66db1612135c4c5ca75195b6e5ab67ddb4352fa9",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "groundwater.hydraulic_gradient@1.0.0": {
+      "implementationRevision": "sha256:8f79ef87f29c1542de45c009092800d3d2aef686ce725f511c22a9398ddb856b",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "groundwater.porous.agri_invert@1.0.0": {
+      "implementationRevision": "sha256:4c781080922d0feffb5279476d2baf105fe96c24630b94972ad69f2eb1e725c5",
+      "coverage": "REMOTE_PRESET_NODE"
+    },
+    "groundwater.porous.flow_transport_simulate@1.0.0": {
+      "implementationRevision": "sha256:19e81ad0bdc582920cd8ceca51be5e4c7f833b86f2851495ad0751cd6e8c43ee",
+      "coverage": "REMOTE_PRESET_NODE"
+    },
+    "groundwater.porous.inversion_sample@1.0.0": {
+      "implementationRevision": "sha256:c26d4966b6ddc4f365e9be04ec51152617ae93fa89e9871fc26546068dca9ea2",
+      "coverage": "REMOTE_PRESET_NODE"
+    },
+    "groundwater.porous.inversion_train@1.0.0": {
+      "implementationRevision": "sha256:297bec0abf4913fa33445d553bfbda1011faf71a382fd0e9c7511bbf738f089e",
+      "coverage": "REMOTE_PRESET_NODE"
+    },
+    "groundwater.porous.map_prepare@1.0.0": {
+      "implementationRevision": "sha256:25f5f85884da84a9b5c2f0863d581386270b2cdb77934d5582ab5c239c14862b",
+      "coverage": "REMOTE_PRESET_NODE"
+    },
+    "groundwater.porous.model_compile@1.0.0": {
+      "implementationRevision": "sha256:80b00c03eb1a56caea96bd7b9a866d7dfc78ba1b8bd83e544462614f12712a96",
+      "coverage": "REMOTE_PRESET_NODE"
+    },
+    "groundwater.porous.pest_calibrate@1.0.0": {
+      "implementationRevision": "sha256:06576b0c4b42006be964edc88b8c953a590d81e34e4bb8e73f1a2171ee63bc5b",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "groundwater.porous.pest_calibrate@1.1.0": {
+      "implementationRevision": "sha256:38fd68d8f63a93e39a5b1b6c18a3844969b1316bdb7a3ff1d0a052b6539f5462",
+      "coverage": "REMOTE_PRESET_NODE"
+    },
+    "groundwater.porous.result_analyze@1.0.0": {
+      "implementationRevision": "sha256:0e33e2dc5c6db3c24b53112f7841cafc6c3de2dac25bc9731aef3fe3c79774a6",
+      "coverage": "REMOTE_PRESET_NODE"
+    },
+    "groundwater.porous.result_render@1.0.0": {
+      "implementationRevision": "sha256:591cf819ee32b3ac4492becf52fd8aaa1fc00da54932ab859fbd79d404705b9b",
+      "coverage": "REMOTE_PRESET_NODE"
+    },
+    "groundwater.porous.scenario_compare@1.0.0": {
+      "implementationRevision": "sha256:5fa8294df4bd4e7ff258751cb2091610f73aed5848a696f9355c66203737bb86",
+      "coverage": "REMOTE_PRESET_NODE"
+    },
+    "groundwater.source_sustainability.evaluate@1.0.0": {
+      "implementationRevision": "sha256:d9380fa0035ed68ab1d00f2bab53b3915c08805b542d2d567e78f33c68b12912",
+      "coverage": "REMOTE_PRESET_NODE"
+    },
+    "groundwater.source_sustainability.prepare@1.0.0": {
+      "implementationRevision": "sha256:89a119a7dbe68c3f4a0c7029aba0b7bb82841167bd498f252f796586eb855db1",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "hydrology.basins@1.0.0": {
+      "implementationRevision": "sha256:8663ee91c2a9fd18caff1db47195bfcd07e4423131832250322de65440621c79",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "hydrology.fill_sinks@1.0.0": {
+      "implementationRevision": "sha256:0abde56fb85847a58490e9d423190afa31c494eb2dff552829aed2509ef88a29",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "hydrology.flow_accumulation@1.0.0": {
+      "implementationRevision": "sha256:998ea8027d8271088d28469850a2ae69bfd4e37337106eded92937ef1ef0f86f",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "hydrology.flow_direction@1.0.0": {
+      "implementationRevision": "sha256:47f5605b0626f4fa1a9612647402017d3e1f0346327ab8a29fe2d36608cb555f",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "hydrology.snap_pour_points@1.0.0": {
+      "implementationRevision": "sha256:7678b5a928c599eb87524ec414e6d2877505557ca4d7f59a565a6e667d549605",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "hydrology.stream_extract@1.0.0": {
+      "implementationRevision": "sha256:faf566924b22b8995fae0d484a246912ecd93ccaf83662ee3f3ec3918f148bce",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "hydrology.stream_order@1.0.0": {
+      "implementationRevision": "sha256:b0f7d035b4108e312cf485b3ccefc06ef2c8c6ce45138a76e76825b2360e7bd0",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "hydrology.watershed@1.0.0": {
+      "implementationRevision": "sha256:0982882ce9fb4f54dd5076b2f6c5ec2205c26cdcf2cb01398312e25589d13229",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "ml.gru_attention_finetune@1.0.0": {
+      "implementationRevision": "sha256:4a2959965b0c0c292b5954bedbf7b6fb039eb9aec720a2ea99fc9e2b3fd74da2",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "ml.gru_attention_predict@1.0.0": {
+      "implementationRevision": "sha256:0247267c538febb881c005022351711200d0322d826d1f605ee8283ef870def2",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "ml.gru_attention_pretrain@1.0.0": {
+      "implementationRevision": "sha256:4fa0db0956f20bc7ee054bf4a2cfc439bc2e9dcef7eaec9864d34c2051c3dc3e",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "points.interpolate.idw@1.0.0": {
+      "implementationRevision": "sha256:f9b075cffe5b6a89a4c09e2a48d4026c91fc3faa3c924d7da8eaf4be250e9661",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "points.interpolate.kriging@1.0.0": {
+      "implementationRevision": "sha256:2d54d41f769ba6a84165d4e9c6d3d8ae6144c73a94ed9c5c795981d9434aaa8d",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "preprocessing.standard_scaler_fit@1.0.0": {
+      "implementationRevision": "sha256:8c152fc4f87715e16771463bfaffc389cad1fcdb3fd7c490fe14fc2c9983bb16",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "preprocessing.standard_scaler_inverse@1.0.0": {
+      "implementationRevision": "sha256:6baf0d7f2f7557fbfdc1aa477a061dc443db3897a7269f1701277c62cddd5552",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "preprocessing.standard_scaler_transform@1.0.0": {
+      "implementationRevision": "sha256:057082e9de0228d1b7bcc177841fbd3e0ba898926efcda8ff0bbab1a73a79034",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "raster.algebra@1.0.0": {
+      "implementationRevision": "sha256:82419714c6062f383236dd342c6f02151eaafc8d2fc02a5d47ae8e5228e5e5c3",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "raster.align_grid@1.0.0": {
+      "implementationRevision": "sha256:2eb99a9b7257d27ba56d2b10961306c7a3b947de1c4161eb1089b4e8b50a613d",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "raster.aspect@1.0.0": {
+      "implementationRevision": "sha256:ad437053e7714c6b6e6f2e118e2167ff0edb2d25f186d574b9d97b544b15f92f",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "raster.cell_statistics@1.0.0": {
+      "implementationRevision": "sha256:f343d6047aa8ff51d80dfb1b090efeafe30305ad6f641e23a7f376df6d2e5e75",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "raster.clip@1.0.0": {
+      "implementationRevision": "sha256:d837e90595bfae36b7ca37722b281c460efb569093d4b61d45c57cbb090ccf49",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "raster.contour@1.0.0": {
+      "implementationRevision": "sha256:c4a46ae1057ebe6c3cf46244e1fba4f7aefd5a124ba76f6d2cbbd5ae83978c89",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "raster.fill_nodata@1.0.0": {
+      "implementationRevision": "sha256:c9f0d34e6824f52f03e3c543004e36eee4b512483b64e58df8548dd370d9a7a6",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "raster.hillshade@1.0.0": {
+      "implementationRevision": "sha256:9c696857c79887c81a7ac2b60d1d9229cd2afd64490ae8294c7362dcd095335a",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "raster.mosaic@1.0.0": {
+      "implementationRevision": "sha256:5bf6e0941a30a3cab41ed2c48cb7b8a6dc613b6f8522dc70115ea11b9c52e143",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "raster.polygonize@1.0.0": {
+      "implementationRevision": "sha256:a2846ac893c4a7a51d240a21bc85a453c8e1bb0a1ee0d6fe7421b8a9c2e37c01",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "raster.proximity@1.0.0": {
+      "implementationRevision": "sha256:8d863751540d0d4c8b607ca7a482cbf15be9038da7a2fb59bc052ae1bd675a1d",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "raster.rasterize@1.0.0": {
+      "implementationRevision": "sha256:9bf4fff9b34544b7833e2930f4c25e9fd2b01647ca5679523ab6a60d0cfcda5e",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "raster.reclassify@1.0.0": {
+      "implementationRevision": "sha256:9475535b2e1d1765a1e7aaeb7fcd944ff53a916b567a450b3ac6d229cabb05f3",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "raster.reproject@1.0.0": {
+      "implementationRevision": "sha256:ece9a2e74a171e0bf3ff24e19d38a5c79b04a7f750eff1314912252ff60ff2b7",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "raster.reproject@1.1.0": {
+      "implementationRevision": "sha256:68ac2e817fbf28c1878863c5af3869875e623985db0ef9bfa967f71049f3b0df",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "raster.resample@1.0.0": {
+      "implementationRevision": "sha256:66a97c657d467220af9c0f5090af801f9f26214564bb98385effbcb4d3934006",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "raster.sample_points@1.0.0": {
+      "implementationRevision": "sha256:d0a3abbbdb75cb303920b4dba3d60dd3b66d39ea6e011d9d10734bc79f5694d4",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "raster.slope@1.0.0": {
+      "implementationRevision": "sha256:2d03be9996259608376be8a1c3dc91978fd7fe566d0d2924c2e4ba249b39df92",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "raster.statistics@1.0.0": {
+      "implementationRevision": "sha256:4f21fa343be14816ddd3c2f2a3d2162dbae156fcfa15cc72ddc29456421cc421",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "raster.window@1.0.0": {
+      "implementationRevision": "sha256:af8d88ac9dd09426d4e9c7925e7008e125db2aab69b64184bd44b2e242008b87",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "raster.zonal_statistics@1.0.0": {
+      "implementationRevision": "sha256:4f8273e32dd476b0d4ab919e3261bb1421e82d7c651b7c3d7daf6b6179e3a347",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "spreadsheet.extract_table@1.0.0": {
+      "implementationRevision": "sha256:0cd71834f92a2ee8ffa3ecffdaff9cf5cc30c3dc01030e882d296223a0ea3039",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "statistics.describe@1.0.0": {
+      "implementationRevision": "sha256:329f3f807e679fc07b807a416015e9b91fe031ecfcb36bb0cdef9a5bd45d732b",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "statistics.linear_trend@1.0.0": {
+      "implementationRevision": "sha256:1ef5cc783fc656301aca0d076c2776926de5d15236095160f9339de376674fd0",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "statistics.mad_outliers@1.0.0": {
+      "implementationRevision": "sha256:e425e05c87082211533f7208e16aa028e5706ff36612afdbcc5f50c5700c8b3c",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "statistics.mann_kendall@1.0.0": {
+      "implementationRevision": "sha256:0ca0b3f637b2ac9402e5152ac4b9af736125bb0bb7133ab3ee26601d95995c03",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "statistics.pettitt_change_point@1.0.0": {
+      "implementationRevision": "sha256:39ffa9b0addb2f52c3b4d88bc03e9c66b99b809e94ceb48cd986c9fffd52a3f9",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "statistics.regression_metrics@1.0.0": {
+      "implementationRevision": "sha256:1850deb9fc48e244e3b738c05f871569596b0cf6c1667095e5b7be310d899cba",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "statistics.seasonal_mann_kendall@1.0.0": {
+      "implementationRevision": "sha256:aeca2bb8a85749af2601dee42c3d655beaa28193570c71eee90f0feb425cceb1",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "table.classify@1.0.0": {
+      "implementationRevision": "sha256:31acf51d96b35789d392175334514cbaa406ab146fe0bfed1e9c2efc6142f7b5",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "table.deduplicate@1.0.0": {
+      "implementationRevision": "sha256:ba24cafa861a795716e403e11c6e2c563df6e5afeae63223071ff911e004f0dc",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "table.filter@1.0.0": {
+      "implementationRevision": "sha256:ce903d395a236108bf869763862b787cc283ed2bb6915c8573c1ecc94277f976",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "table.join@1.0.0": {
+      "implementationRevision": "sha256:7f55244c9b728db2c3cd0e567f3f9306c71d5b9a796b65f16172cc5e03b6292f",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "table.profile@1.0.0": {
+      "implementationRevision": "sha256:15fcdcd49d8d3f7312b7cd80a75c6208544a262ce25d68eecbe7b5636844f825",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "table.project@1.0.0": {
+      "implementationRevision": "sha256:04bde4a7777f2c5baba667dc15ff431a2e98bdbe463bda894c8e3623a554c484",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "table.sort@1.0.0": {
+      "implementationRevision": "sha256:c69b176ae7ca25047ec348f7db80f69a4442def1b44351502f8ea8c371ed22cc",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "table.timeseries_unpivot@1.0.0": {
+      "implementationRevision": "sha256:b22891f1a48d37f401f7c93ce7902f93816c0ddeb36d0521c7e222848f3d410d",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "table.validate@1.0.0": {
+      "implementationRevision": "sha256:65444dfeea32267f8cc07d12e2b9ab11aa5715c4df061e5c76786f5df5ade6dd",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "timeseries.aggregate@1.0.0": {
+      "implementationRevision": "sha256:1606082b776142f429a9a0bf4bd93834f3898486e14a6de7715866487549857c",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "timeseries.autocorrelation@1.0.0": {
+      "implementationRevision": "sha256:18b9307bf52f50dfcce2ab8b5c3c610a573e5131f5a6f2bb731c8e8fa7529bec",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "timeseries.baseline_anomaly@1.0.0": {
+      "implementationRevision": "sha256:e2efd4187e85413abe17e4c79da80f7d0c0ad2de335e4ce110148b0a0c39b818",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "timeseries.chronological_split@1.0.0": {
+      "implementationRevision": "sha256:db160466ae842ee563331a62163d8e0da4ab080a071ed13d13464aa271ab973e",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "timeseries.completeness@1.0.0": {
+      "implementationRevision": "sha256:492696d286dfb4f45ac08406ba04190b87119f716fc3003880cff2bbbab078f7",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "timeseries.cross_correlation@1.0.0": {
+      "implementationRevision": "sha256:fac702761c9dea9c1a916616b1e4b4331640884e3fea25e6af280fabce3af1e7",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "timeseries.empirical_percentile@1.0.0": {
+      "implementationRevision": "sha256:306282f55b485bbc164660874c827916189d79819fd77fd6e51af75b78836f3a",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "timeseries.gap_runs@1.0.0": {
+      "implementationRevision": "sha256:2150fbb4dffdc38e6ba1e5f24fe25736fa77130358eb31031bbd6459e85b2264",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "timeseries.lag_change@1.0.0": {
+      "implementationRevision": "sha256:20ccd163084e94dc9e832a62e78fbd2cf505232c41a97ee906f131cf069badf2",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "timeseries.period_change@1.0.0": {
+      "implementationRevision": "sha256:7b5ac62e1a03658c4c880e8190feba25cf7f8d68a42aad30ded928f776fe2cce",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "timeseries.rate_of_change@1.0.0": {
+      "implementationRevision": "sha256:799f05284160064b55427f90be501483d3fb1597a918523ae475ab4ac6b14b62",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "timeseries.regularize@1.0.0": {
+      "implementationRevision": "sha256:79324d24e09ccde85ff4d0a0bb389e05c72380edb551f4f59af1031b1b73fec4",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "timeseries.rolling_statistics@1.0.0": {
+      "implementationRevision": "sha256:29ffa89e29ddabfc8bd1087e2b3afd940805352dfcc8476a41a7cb2151ab5104",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "timeseries.seasonal_anomaly@1.0.0": {
+      "implementationRevision": "sha256:6ee462d80c8052a726af5f78143f6ab30f68fced428db71b58c572a7ec956e36",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "timeseries.snapshot@1.0.0": {
+      "implementationRevision": "sha256:870bb13b7f16132aa51191168c4bb83d097719d7b96f8fce6cccf73439c1e339",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "timeseries.supervised_windows@1.0.0": {
+      "implementationRevision": "sha256:5cddcdbda8ef11860700104da443781947e75ae05719b0b66acfef7e81ea2a64",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "timeseries.threshold_events@1.0.0": {
+      "implementationRevision": "sha256:1097a9ee6b749eca1ca42096e47741fd2d2f167e353ce08a2398f2078fdbc139",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "vector.buffer@1.0.0": {
+      "implementationRevision": "sha256:0b478d086fe5c3f1655fcfe03fb097436de96da68d3f910968764ce0a68af2c8",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "vector.centroid@1.0.0": {
+      "implementationRevision": "sha256:8ca4c5891b0edb9b246fb128377f8db200dd80f75d56523870daf4c632cace5a",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "vector.clip@1.0.0": {
+      "implementationRevision": "sha256:2cfeeda126973a9f2818287db3fc36b87c8dbd39b083fba10115d43ebbf7447d",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "vector.convex_hull@1.0.0": {
+      "implementationRevision": "sha256:dfac8faaa284b54409400a9e1f7d9886a570f5e8c786e0efa0b3a1a4041493e0",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "vector.dissolve@1.0.0": {
+      "implementationRevision": "sha256:cc828cf04672dfb72be0df1a3c6e61e68061b1a68ffe5c008bae615d2c467897",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "vector.envelope@1.0.0": {
+      "implementationRevision": "sha256:c22f16f0133d4c83e21ef5a95ee3d71ba3a9b6fb0a0fee05240326504d11accf",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "vector.extract_by_extent@1.0.0": {
+      "implementationRevision": "sha256:e223db7a6eb9ba66f23bae694e1161cbee2c4e392cb60ccfc0e3e4483f3a35c5",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "vector.from_xy@1.0.0": {
+      "implementationRevision": "sha256:4728aafc6c1013cf86b0c5d9f1a398debed3921db60b6cfb7c07c3f98c95e10a",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    },
+    "vector.merge@1.0.0": {
+      "implementationRevision": "sha256:a9809522626931dbbbebb0d72e39fb28d08e3844dc7a047ce3891ed8906c407c",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "vector.multipart_to_singleparts@1.0.0": {
+      "implementationRevision": "sha256:ecb085298e6531e022cc7e1df64294032fd15d89b2a542058a753588844af7da",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "vector.nearest_join@1.0.0": {
+      "implementationRevision": "sha256:31cbffa4822ec57b5a774bba0fd3c6c0e6d37becf8b1ae874a0f28b3fece0f7e",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "vector.overlay@1.0.0": {
+      "implementationRevision": "sha256:d0b730f71cef928c0d6283bd2bbaa3c5bb10927fdf24670d6252e998952710cb",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "vector.point_on_surface@1.0.0": {
+      "implementationRevision": "sha256:928895fef7b7907f816b87c90968273470aad3bfe64880017f0f33e069e5213e",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "vector.simplify@1.0.0": {
+      "implementationRevision": "sha256:4c4ed9ce9b9d91a0934b69547764f51fed1caca8988c180511a7b74f8f5975fb",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "vector.spatial_join@1.0.0": {
+      "implementationRevision": "sha256:86a52e83dd51bd341aeaa80e05c53733de119f0dc373cc7da22c8e10be592e3b",
+      "coverage": "BROWSER_SINGLE_NODE"
+    },
+    "vector.tag_membership@1.0.0": {
+      "implementationRevision": "sha256:9f64f842e9926ef8ba5445816c7447d56e419dd64c20a84466f20bc2f5066744",
+      "coverage": "WORKER_SINGLE_OPERATOR"
+    }
+  }
+}

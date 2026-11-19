@@ -17,7 +17,7 @@ def test_session_directory_and_history_use_v20_without_recommendation_links(kern
     assert "recommendation_id" not in turn
     assert "selection_revision" not in turn
     with connect_database(app.database) as connection:
-        assert connection.execute("SELECT version FROM schema_version").fetchone()[0] == 34
+        assert connection.execute("SELECT version FROM schema_version").fetchone()[0] == 36
 
 
 def test_session_directory_marks_verification_marker_inside_message(kernel_settings):
@@ -80,3 +80,32 @@ def test_failed_run_with_persisted_output_still_projects_structured_reply(
     assert projected["reply"]["conclusion"]["markdown"] == (
         "Method comparison prepared."
     )
+
+
+def test_task_directory_pages_by_latest_event_and_isolates_projects_and_owners(kernel_settings):
+    from platform_kernel.interaction.actors import DEFAULT_LOCAL_ACTOR_SUBJECT
+    from platform_kernel.interaction.persistence import create_session
+    from platform_kernel.interaction.task_history import list_task_history
+    from kernel.tests.test_session_results import _client, _insert_run
+
+    app, client = _client(kernel_settings)
+    for session, project, subject in (
+        ("one", "p", DEFAULT_LOCAL_ACTOR_SUBJECT), ("two", "p", DEFAULT_LOCAL_ACTOR_SUBJECT),
+        ("private", "p", "someone-else"), ("elsewhere", "another", DEFAULT_LOCAL_ACTOR_SUBJECT),
+    ):
+        create_session(app.database, session, project, owner_subject=subject)
+        with connect_database(app.database) as db:
+            agent = _insert_run(db, session, 1, project_id=project)
+            db.execute("INSERT INTO messages(session_id,goal_revision,role,content) VALUES (?,1,'user',?)", (session, session))
+            db.execute("INSERT INTO confirmations(confirmation_id,session_id,goal_revision,agent_run_id,status) VALUES(?,?,1,?,'PENDING')",
+                       (session, session, agent))
+            append_event(db, session, "confirmation.pending", {"agent_run_id": agent, "confirmation_id": session})
+    with connect_database(app.database) as db:
+        append_event(db, "one", "confirmation.revised", {"confirmation_id": "one"})
+    listing = client.get("/api/v12/sessions/task-history", params={"limit": 1}).json()
+    assert [row["title"] for row in listing["items"]] == ["one"]
+    assert listing["items"][0]["status"] == "PENDING"
+    rest = client.get("/api/v12/sessions/task-history", params={"limit": 1, "cursor": listing["nextCursor"]}).json()
+    assert [row["title"] for row in rest["items"]] == ["two"]
+    assert rest["nextCursor"] is None
+    assert [row["title"] for row in list_task_history(app.database, "p", "someone-else", None, 10)["items"]] == ["private"]

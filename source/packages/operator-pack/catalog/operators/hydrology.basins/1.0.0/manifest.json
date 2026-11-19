@@ -44,7 +44,6 @@
   "outputs": [
     {
       "formats": [
-        "cog",
         "geotiff"
       ],
       "kind": "artifact",
@@ -63,9 +62,39 @@
   "tags": [
     "hydrology",
     "basin",
-    "d8"
+    "d8",
+    "capability:basins",
+    "流域分区",
+    "划分流域",
+    "出口分区",
+    "按 D8 出口给流域分区"
   ],
   "timeoutSeconds": 3600,
   "title": "Delineate D8 basins",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "composition": {
+    "portSemantics": {
+      "flowDirection": {
+        "requires": {
+          "valueKind": "d8-direction"
+        }
+      }
+    },
+    "outputSemantics": {
+      "basins": {
+        "fixed": {
+          "valueKind": "basin-labels"
+        },
+        "inherit": [
+          {
+            "inputPort": "flowDirection",
+            "facts": [
+              "crs",
+              "grid"
+            ]
+          }
+        ]
+      }
+    }
+  }
 }

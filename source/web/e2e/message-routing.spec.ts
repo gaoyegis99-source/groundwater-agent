@@ -89,6 +89,8 @@ async function fixture(page: Page, { holdAutoRouting = false, clarification = fa
   });
   await page.goto(debug ? '/?debug=1#/sessions/routing-browser' : '/#/sessions/routing-browser');
   await expect(page.getByRole('textbox', { name: '消息输入框' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: '发送消息', exact: true })).toBeVisible();
+  await expect(page.getByText('正在恢复对话…', { exact: true })).toHaveCount(0);
   return { posts, setFailure: (value: boolean) => { fail = value; }, history: () => history,
     resolveAutoRouting: () => {
       const turn = history.turns.find(item => item.requestedMode === 'AUTO' && item.status === 'ROUTING');
@@ -110,7 +112,9 @@ test('desktop composer exposes no mode override and submits former slash command
   const input = page.getByRole('textbox', { name: '消息输入框' });
   await expect(page.getByRole('button', { name: '高级发送选项' })).toHaveCount(0);
   await expect(page.getByRole('listbox')).toHaveCount(0);
-  await input.fill('/draft 自动处理 W01'); await input.press('Enter');
+  await input.fill('/draft 自动处理 W01');
+  await expect(page.getByRole('button', { name: '发送消息', exact: true })).toBeEnabled();
+  await input.press('Enter');
   await expect(page.getByText('第 1 轮已回复')).toBeVisible();
   expect(state.posts[0]).toMatchObject({ message: '/draft 自动处理 W01', requestedMode: 'AUTO' });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -119,8 +123,10 @@ test('desktop composer exposes no mode override and submits former slash command
 test('AUTO shows routing progress and keeps the resolved decision and usage inside debug details', async ({ page }) => {
   const state = await fixture(page, { holdAutoRouting: true, debug: true });
   const input = page.getByRole('textbox', { name: '消息输入框' });
-  await input.fill('解释监测数据 W01'); await input.press('Enter');
-  await expect(page.getByRole('status')).toContainText('正在判断需求');
+  await input.fill('解释监测数据 W01');
+  await expect(page.getByRole('button', { name: '发送消息', exact: true })).toBeEnabled();
+  await input.press('Enter');
+  await expect(page.getByRole('status').filter({ hasText: '正在判断需求' })).toBeVisible();
 
   state.resolveAutoRouting();
   await page.reload();
@@ -140,7 +146,9 @@ test('AUTO shows routing progress and keeps the resolved decision and usage insi
 test('reload restores an uncertain request and retries its exact identity and body once', async ({ page }) => {
   const state = await fixture(page); state.setFailure(true);
   const input = page.getByRole('textbox', { name: '消息输入框' });
-  await input.fill('先排序，再统计 W01'); await input.press('Enter');
+  await input.fill('先排序，再统计 W01');
+  await expect(page.getByRole('button', { name: '发送消息', exact: true })).toBeEnabled();
+  await input.press('Enter');
   await expect(page.getByRole('button', { name: '重试发送' })).toBeVisible();
   const original = state.posts[0];
   await page.reload();
@@ -156,7 +164,9 @@ test('reload restores an uncertain request and retries its exact identity and bo
 test('clarification offers contextual choices that remain ordinary AUTO messages', async ({ page }) => {
   const state = await fixture(page, { clarification: true });
   const input = page.getByRole('textbox', { name: '消息输入框' });
-  await input.fill('帮我整理一个可复用的工作流模板'); await input.press('Enter');
+  await input.fill('帮我整理一个可复用的工作流模板');
+  await expect(page.getByRole('button', { name: '发送消息', exact: true })).toBeEnabled();
+  await input.press('Enter');
   await expect(page.getByText('第 1 轮已回复')).toBeVisible();
   await expect(page.getByText('处理方式不对', { exact: true })).toHaveCount(0);
   const options = page.getByRole('region', { name: '下一步选项' });

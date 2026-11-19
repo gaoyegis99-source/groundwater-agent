@@ -6,6 +6,9 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path
 
+from starlette.concurrency import run_in_threadpool
+
+from ...interaction.continuations import continuation_report, verify_continuation_review
 from ...composition import PlatformApplication
 from ...interaction.access import update_session_metadata
 from ...interaction.control_persistence import request_stop
@@ -144,26 +147,31 @@ def dismiss_control_proposal(
     response_model=MessageReceiptResponse,
     operation_id="kernel_create_message",
 )
-def create_message(
+async def create_message(
     session_id: Annotated[str, Path(alias="sessionId")],
     request: MessageCreate,
     identity: Annotated[RequestIdentity, Depends(current_identity)],
     application: PlatformApplication = Depends(platform_application),
 ):
-    return to_wire(
-        application.interaction.message(
-            session_id,
-            request.request_id,
-            request.message,
-            request.requested_mode,
-            input_references=[
-                item.model_dump(exclude_none=True) for item in request.input_references
-            ],
-            corrects_request_id=request.corrects_request_id,
-            corrects_agent_run_id=request.corrects_agent_run_id,
-            owner_subject=identity.subject,
+    selection = request.workflow_selection.model_dump(by_alias=False) if request.workflow_selection else None
+    references = [item.model_dump(exclude_none=True) for item in request.input_references]
+    if selection and selection["continuation"]:
+        report = await run_in_threadpool(
+            continuation_report, application.database, session_id, application.settings.project_id,
+            request.request_id, selection, references, application.settings.workflow_continuations,
         )
-    )
+        if report is not None:
+            await verify_continuation_review(
+                application.client, application.settings.services_by_name["data"].internal_base_url,
+                application.settings.project_id, identity.subject, identity.display_name, report,
+            )
+    return to_wire(await run_in_threadpool(
+        application.interaction.message,
+        session_id, request.request_id, request.message, request.requested_mode,
+        input_references=references, workflow_selection=selection, installed_models=application.settings.models,
+        corrects_request_id=request.corrects_request_id, corrects_agent_run_id=request.corrects_agent_run_id,
+        owner_subject=identity.subject,
+    ))
 
 
 @router.post(

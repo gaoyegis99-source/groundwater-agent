@@ -9,6 +9,7 @@ from ..application.task_api import bind_confirmation
 from ..database import append_event, connect_database, utc_now
 from ..errors import ConfirmationConflictError, ResourceNotFoundError
 from .actors import DEFAULT_LOCAL_ACTOR_SUBJECT
+from .output_steps import copy_output_steps
 from .state_projection import confirmation_from_row
 
 
@@ -71,6 +72,18 @@ def create_recovery_confirmation(
             if action["tool_call_id"] in selected_ids
         ]
         actions.sort(key=lambda action: selected_ids.index(action["tool_call_id"]))
+        concrete = source.get("dependent_action")
+        if not actions and isinstance(concrete, dict) and selected_ids == (concrete["tool_call_id"],):
+            step = connection.execute(
+                "SELECT plan_json FROM published_output_steps WHERE confirmation_id=? AND tool_call_id=?",
+                (source["confirmation_id"], concrete["tool_call_id"]),
+            ).fetchone()
+            if step is not None:
+                plan = json.loads(step["plan_json"])
+                actions = [{
+                    **concrete, "tool": plan["tool"], "input_schema_checksum": plan["input_schema_checksum"],
+                    "fingerprint": hashlib.sha256(concrete["arguments_json"].encode()).hexdigest(),
+                }]
         if not actions:
             raise ConfirmationConflictError("WORKFLOW_RECOVERY_NOT_ALLOWED")
         confirmation_id = str(uuid4())
@@ -118,6 +131,7 @@ def create_recovery_confirmation(
                 "INSERT INTO confirmation_actions VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (confirmation_id, position, *values),
             )
+        copy_output_steps(connection, source["confirmation_id"], confirmation_id)
         bind_confirmation(connection, confirmation_id, session_id)
         append_event(
             connection,

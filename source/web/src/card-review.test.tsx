@@ -2,8 +2,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import { ConfirmationCard, ResultCard } from './ChatCards';
 import { productUi } from './product-ui';
-import { dataDetail, dataRef, historyFixture, taskFixture } from './test-fixtures';
-import type { Confirmation, Result } from './types';
+import { dataDetail, dataRef, historyFixture, instant, taskFixture } from './test-fixtures';
+import type { Confirmation, Result, WorkflowDraftPayload } from './types';
 
 const approval: Confirmation = {
   confirmationId: 'approval-review', goalRevision: 1, status: 'PENDING', agentRunId: 'agent-1',
@@ -15,6 +15,34 @@ const approval: Confirmation = {
       arguments: { valueField: 'depth', expectedStart: '2026-01-01', expectedEnd: '2026-12-31', alpha: 0.025 } },
   ],
 };
+
+it('shows both frozen spatial join ports and their exact versions before confirmation', () => {
+  const target = dataRef({ versionId: 'exact-target-version' });
+  const join = dataRef({ versionId: 'exact-join-version' });
+  const confirmation: Confirmation = {
+    ...approval, actions: [{ ...approval.actions[0], tool: 'run_composed_workflow', workflowChecksum: 'frozen-digest',
+      arguments: {}, inputReferences: { geom: target, attr: join } }],
+  };
+  const draft = {
+    compositionCheck: { status: 'VALIDATED', definitionDigest: 'frozen-digest' },
+    workflow: {
+      nodes: [{ nodeId: 'spatial', inputs: { target: { workflowInput: 'geom' }, join: { workflowInput: 'attr' } } }],
+      outputs: [],
+    },
+  } as unknown as WorkflowDraftPayload;
+  const onResource = vi.fn();
+  const history = historyFixture({ turns: [{ status: 'WAITING_CONFIRMATION', confirmations: [confirmation] }] });
+  const properties = { confirmation, history, busy: false, onDecision: vi.fn(), onResource, project: 'demo', current: true };
+  const { rerender } = render(<ConfirmationCard {...properties} />);
+  expect(screen.getByTestId('confirm-execution')).toBeDisabled();
+  rerender(<ConfirmationCard {...properties} draft={draft} />);
+  expect(screen.getByText('spatial · target')).toBeVisible();
+  expect(screen.getByText('spatial · join')).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: '查看target绑定的数据版本 exact-target-version' }));
+  expect(onResource).toHaveBeenCalledWith(target.versionId, target);
+  expect(screen.getByRole('button', { name: '查看join绑定的数据版本 exact-join-version' })).toBeVisible();
+  expect(screen.getByTestId('confirm-execution')).toBeEnabled();
+});
 
 it('keeps every frozen scientific value visible across a batch and opens the exact input identity without approving', async () => {
   const onResource = vi.fn(), onDecision = vi.fn();
@@ -28,7 +56,7 @@ it('keeps every frozen scientific value visible across a batch and opens the exa
   expect(screen.getByText('新生成水头字段')).toBeVisible();
   expect(screen.getByText('取值字段')).toBeVisible();
   expect(screen.getByText('渗透系数（米/天）')).toBeVisible();
-  fireEvent.click(await screen.findByRole('button', { name: /井水位原始资料.csv · exact-input-version-3/ }));
+  fireEvent.click(await screen.findByRole('button', { name: '井水位原始资料.csv' }));
   expect(fetch.mock.calls[0][0]).toBe('/api/v12/data/versions/exact-input-version-3');
   expect(onResource).toHaveBeenCalledExactlyOnceWith('exact-input-version-3');
   expect(onDecision).not.toHaveBeenCalled();
@@ -46,9 +74,79 @@ it('does not request resource names for collapsed historical confirmations and r
   expect(fetch).not.toHaveBeenCalled();
   expect(screen.queryByText('新生成水头字段')).not.toBeInTheDocument();
   fireEvent.click(screen.getByText('查看本批次 2 项分析的资料与参数'));
-  expect(await screen.findByRole('button', { name: /历史输入.csv · exact-input-version-3/ })).toBeVisible();
+  expect(await screen.findByRole('button', { name: '历史输入.csv' })).toBeVisible();
   expect(fetch.mock.calls.map(([url]) => url)).toEqual(['/api/v12/data/versions/exact-input-version-3']);
   expect(screen.queryByRole('button', { name: /^确认执行/ })).not.toBeInTheDocument();
+});
+
+it.each([
+  { quantity: 'hydraulic_head', meaning: '观测水头高程', dictionary: '观测水头数据字典', recorded: true },
+  { quantity: 'depth_to_water', meaning: '地下水埋深', dictionary: '埋深观测数据字典', recorded: false },
+])('distinguishes same-title metre observations by $quantity and verifies dictionary identity', async ({ quantity, meaning, dictionary, recorded }) => {
+  const input = dataRef({ versionId: `frozen-version-${quantity}`, semanticId: 'frozen-semantics' });
+  const args = {
+    groupField: 'well', timeField: 'observed_at', valueField: 'level', frequency: 'month', aggregation: 'mean',
+    expectedStart: '2025-01-01', expectedEnd: '2025-12-01', baselineStart: '2025-01-01', baselineEnd: '2025-06-01',
+    comparisonStart: '2025-07-01', comparisonEnd: '2025-12-01', seasonalTrendEnabled: false, seasonFrequency: 'month',
+  };
+  const action = { ...approval.actions[1], arguments: { versionId: input.versionId, ...args }, inputReferences: { versionId: input } };
+  const confirmation = { ...approval, actions: [action], ...(recorded ? {} : { status: 'CONFIRMED' }) };
+  const exact = { versionId: 'dictionary-version', unitId: 'level-entry', checksum: `sha256:${'b'.repeat(64)}` };
+  const sibling = { ...exact, unitId: 'other-entry' };
+  const binding = { serviceBinding: 'data-primary', projectId: 'demo', datasetId: input.datasetId,
+    versionId: input.versionId, semanticId: input.semanticId, fieldId: 'f2' };
+  const history = historyFixture({ turns: [{ status: 'WAITING_CONFIRMATION', confirmations: [confirmation] }],
+    preparation: recorded ? {
+      schemaVersion: 'task-preparation.v1', preparationId: 'preparation-1', revision: 1, sessionId: 'session-1', agentRunId: 'agent-1',
+      goalRevision: 1, taskId: null, baseTaskRevision: null, status: 'READY', freshForCurrentTurn: true, disposition: 'WAITING_CONFIRMATION',
+      entries: [{ targetKind: 'EXECUTABLE_MODEL', targetId: action.modelId, targetVersion: action.modelVersion, status: 'READY',
+        selectionPolicy: 'PINNED', inputs: { versionId: input }, parameters: args, parameterSources: {},
+        checks: [], blockingReasons: [], knowledgeRefs: [exact, sibling] }],
+    } : null,
+  });
+  const detail = dataDetail({ versionId: input.versionId, title: '合成验收观测表', semanticId: 'newer-semantics',
+    descriptor: { fields: [{ fieldId: 'f2', name: 'level', type: 'float64' }] },
+    semantics: { fields: { f2: { meaning: '资料当前修订的含义', unit: 'm' } } },
+  });
+  const json = (value: unknown) => new Response(JSON.stringify(value), { headers: { 'Content-Type': 'application/json' } });
+  const fetch = vi.fn(async (url: string, init?: RequestInit) => {
+    if (url.endsWith(`/data/versions/${input.versionId}`)) return json(detail);
+    if (url.endsWith(`/semantics/${input.semanticId}`)) return json({ versionId: input.versionId, semanticId: input.semanticId,
+      actor: {}, createdAt: instant, body: { fields: { f2: { quantityKind: quantity, meaning, unit: 'm' } } },
+    });
+    expect(url).toBe(recorded ? '/api/v12/knowledge/evidence/read' : '/api/v12/knowledge/lookup');
+    expect(JSON.parse(String(init?.body))).toMatchObject(recorded ? { refs: [exact, sibling] } : { binding });
+    const item = { ...exact, status: 'OK', content: meaning, scope: 'DATA_BOUND', bindingMatch: recorded ? 'NOT_CHECKED' : 'EXACT' };
+    return json({ schemaVersion: 'evidence-bundle.v1', status: 'OK', receiptId: 'receipt-1', knowledgeRevision: 1,
+      indexGeneration: 'generation-1', observedAt: instant, coverage: {}, budget: {}, timingsMs: {},
+      items: [{ ...item, bindings: [binding], documentTitle: dictionary },
+        { ...item, ...sibling, bindings: [{ ...binding, fieldId: 'f3' }], documentTitle: '同名表的其他字段依据' }],
+    });
+  });
+  vi.stubGlobal('fetch', fetch);
+  const onKnowledge = vi.fn(), onResource = vi.fn();
+  render(<ConfirmationCard current={recorded} confirmation={confirmation} history={history} busy={false}
+    onDecision={vi.fn()} onResource={onResource} onKnowledge={onKnowledge} project="demo" />);
+  const title = await screen.findByRole('button', { name: '合成验收观测表' });
+  expect(title).toHaveAccessibleDescription(`level · ${meaning}（米）`);
+  expect(screen.queryByText('资料当前修订的含义')).not.toBeInTheDocument();
+  fireEvent.click(title);
+  expect(onResource).toHaveBeenCalledExactlyOnceWith(input.versionId, input);
+  fireEvent.click(await screen.findByRole('button', { name: recorded ? `字段字典 · ${dictionary}` : dictionary }));
+  expect(onKnowledge).toHaveBeenCalledExactlyOnceWith(exact);
+  expect(screen.getByText(recorded ? '字段字典' : '绑定字段的字典')).toBeVisible();
+  expect(screen.queryByText('同名表的其他字段依据')).not.toBeInTheDocument();
+  for (const item of ['统计周期 month · 聚合方式 mean', '2025-01-01 至 2025-12-01', '2025-01-01 至 2025-06-01', '2025-07-01 至 2025-12-01']) {
+    expect(screen.getByText(item, { exact: true })).toBeVisible();
+  }
+  expect(screen.queryByText('季节周期')).not.toBeInTheDocument();
+  expect(screen.queryByText(input.versionId)).not.toBeInTheDocument();
+  fireEvent.click(screen.getByText(recorded ? '核对本批次资料与参数' : '查看本批次 1 项分析的资料与参数'));
+  const identity = await screen.findByText('模型与资料标识');
+  expect(screen.getByText(input.versionId)).not.toBeVisible();
+  fireEvent.click(identity);
+  expect(screen.getByText(input.versionId)).toBeVisible();
+  expect(screen.getByText(input.checksum)).toBeVisible();
 });
 
 it('explains a rejected verification batch and keeps a large transfer plan summarized and grouped', async () => {
@@ -142,10 +240,11 @@ it('presents released result names in Chinese while retaining the real download 
   expect(screen.getByText('地下水流场')).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: /水头栅格/ }));
   expect(onResource).toHaveBeenCalledExactlyOnceWith(result.remoteOutputs[0]);
-  expect(screen.getByText('geotiff · 版本 released-head')).toBeVisible();
+  expect(screen.getByText('geotiff', { exact: true })).toBeVisible();
+  expect(screen.getByText('released-head', { exact: true })).not.toBeVisible();
   expect(screen.getByText('head-semantics')).not.toBeVisible();
-  expect(screen.getByRole('link', { name: '下载' })).toHaveAttribute('href', '/api/v12/data/versions/released-head/objects/object-head/content');
-  expect(screen.getByRole('link', { name: '下载' })).toHaveAttribute('download', 'head-raster.tif');
+  expect(screen.getByRole('link', { name: '下载 插值水头栅格' })).toHaveAttribute('href', '/api/v12/data/versions/released-head/objects/object-head/content');
+  expect(screen.getByRole('link', { name: '下载 插值水头栅格' })).toHaveAttribute('download', 'head-raster.tif');
   expect(screen.queryByText(text => text.includes('"checksum": "sha256:exact-output"'))).not.toBeInTheDocument();
   expect(screen.queryByText('模型与结果身份')).not.toBeInTheDocument();
 });
@@ -164,13 +263,14 @@ it('dispatches each result reuse action with the exact immutable reference', () 
   expect(onCompare).toHaveBeenCalledExactlyOnceWith(output);
 });
 
-it('keeps long result identities inspectable behind the business name and short version', () => {
+it('keeps long result identities inspectable behind the business name and file format', () => {
   const output = dataRef({ versionId: 'cfd5fab9-652d-4a39-a8f9-b11c630a0623', semanticId: 'semantics-2026-11-11-long-identity', outputName: 'summary' });
   const task = taskFixture({ modelId: 'groundwater.summary', status: 'SUCCEEDED', stage: null, outputCount: 1 });
   const result: Result = { goalRevision: 1, agentRunId: 'agent-1', toolCallId: 'tool-1', modelId: task.modelId, status: 'SUCCEEDED', workflowRunId: task.workflowRunId, remoteOutputs: [output] };
   render(<ResultCard task={task} result={result} project="demo" onResource={vi.fn()} />);
   expect(screen.getByTestId('result-card')).toHaveAttribute('data-status', 'SUCCEEDED');
-  expect(screen.getByText(/版本 cfd5fab9…/)).toBeVisible();
+  expect(screen.getByText('json', { exact: true })).toBeVisible();
+  expect(screen.queryByText(/版本 cfd5fab9…/)).not.toBeInTheDocument();
   expect(screen.getByText(output.versionId, { exact: true })).not.toBeVisible();
   fireEvent.click(screen.getByText('数据身份'));
   expect(screen.getByText(output.versionId, { exact: true })).toBeVisible();
@@ -179,17 +279,32 @@ it('keeps long result identities inspectable behind the business name and short 
 });
 
 it('keeps a large result group compact with every published file reachable on expansion', () => {
-  const task = taskFixture({ modelId: 'groundwater.transfer-learning-analysis', status: 'SUCCEEDED', stage: null, outputCount: 25 });
+  const task = taskFixture({ modelId: 'groundwater.summary', status: 'SUCCEEDED', stage: null, outputCount: 25 });
   const result: Result = { goalRevision: 1, agentRunId: 'agent-1', toolCallId: 'tool-1', modelId: task.modelId, status: 'SUCCEEDED', workflowRunId: task.workflowRunId,
     remoteOutputs: Array.from({ length: 25 }, (_, index) => dataRef({ versionId: `published-${index + 1}`, objectId: `object-${index + 1}`, outputName: `结果 ${index + 1}` })) };
   render(<ResultCard task={task} result={result} project="demo" onResource={vi.fn()} />);
-  expect(screen.getAllByRole('link', { name: '下载' })).toHaveLength(3);
+  expect(screen.getAllByRole('link', { name: /^下载/ })).toHaveLength(3);
   fireEvent.click(screen.getByRole('button', { name: '查看全部 25 个结果' }));
-  const downloads = screen.getAllByRole('link', { name: '下载' });
+  const downloads = screen.getAllByRole('link', { name: /^下载/ });
   expect(downloads).toHaveLength(25);
   expect(downloads[24]).toHaveAttribute('href', '/api/v12/data/versions/published-25/objects/object-25/content');
   fireEvent.click(screen.getByRole('button', { name: '收起结果列表' }));
-  expect(screen.getAllByRole('link', { name: '下载' })).toHaveLength(3);
+  expect(screen.getAllByRole('link', { name: /^下载/ })).toHaveLength(3);
+});
+
+it('leaves the published metrics file accessible when a comparable numerical summary cannot be read', async () => {
+  const task = taskFixture({ modelId: 'groundwater.transfer-learning-analysis', status: 'SUCCEEDED', stage: null, outputCount: 1 });
+  const metrics = dataRef({ outputName: 'metrics' });
+  const result: Result = { goalRevision: 1, agentRunId: task.agentRunId, toolCallId: task.toolCallId, modelId: task.modelId, status: 'SUCCEEDED',
+    workflowRunId: task.workflowRunId, remoteOutputs: [metrics] };
+  const fetchMetrics = vi.fn(async () => new Response(JSON.stringify({
+    schemaVersion: 'regression-metrics.v1', rmse: 0.5, sample_count: 18, unit: 'm', baseline: { rmse: 0.3, sample_count: 12 },
+  })));
+  vi.stubGlobal('fetch', fetchMetrics);
+  render(<ResultCard task={task} result={result} project="demo" onResource={vi.fn()} />);
+  expect(await screen.findByRole('link', { name: '下载 留出回测总体指标' })).toBeVisible();
+  expect(fetchMetrics).toHaveBeenCalledOnce();
+  expect(screen.queryByText('模型 RMSE')).not.toBeInTheDocument();
 });
 
 it('uses a business label instead of exposing an unfamiliar model identity', () => {
@@ -197,4 +312,19 @@ it('uses a business label instead of exposing an unfamiliar model identity', () 
   render(<ResultCard task={task} project="demo" onResource={vi.fn()} />);
   expect(screen.getByText('分析任务')).toBeVisible();
   expect(screen.queryByText('internal.experimental-model')).not.toBeInTheDocument();
+});
+
+it.each([
+  ['groundwater.flow-field', 'summary', { resultKind: 'MODEL_DERIVED_NOT_OBSERVED', validCellCount: 120, hydraulicConductivityMetersPerDay: 4, effectivePorosity: 0.25 }, '有效网格数', '120'],
+  ['groundwater.kriging', 'kriging-summary', { schemaVersion: 'kriging-summary.v1', loo: { rmse: 0.3, evaluatedCount: 13, notEvaluatedCount: 1 }, valueUnit: 'm', variance: { unit: 'm^2' } }, '留一验证 RMSE', '0.3 m'],
+  ['groundwater.drastic', 'drastic-summary', { schemaVersion: 'groundwater-drastic-summary.v1', classes: [{ code: 1, label: '中等', ratioOfClassificationValid: 0.75 }], counts: { classificationValidCellCount: 16, outputNoDataCellCount: 4 } }, '中等', '75 %'],
+] as const)('shows the published figures and diagnostic indicators for %s', async (modelId, outputName, payload, label, value) => {
+  const task = taskFixture({ modelId, status: 'SUCCEEDED', stage: null, outputCount: 1 });
+  const output = dataRef({ outputName });
+  const result: Result = { goalRevision: 1, agentRunId: task.agentRunId, toolCallId: task.toolCallId, modelId, status: 'SUCCEEDED',
+    workflowRunId: task.workflowRunId, remoteOutputs: [output] };
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(payload))));
+  render(<ResultCard task={task} result={result} project="demo" onResource={vi.fn()} />);
+  expect(await screen.findByText(label, { exact: true })).toBeVisible();
+  expect(screen.getByText(value, { exact: true })).toBeVisible();
 });

@@ -11,6 +11,8 @@ const copy = () => JSON.parse(JSON.stringify(sourceProfile));
 it('strictly decodes the assembled profile and rejects unknown fields', () => {
   const profile = decodeProductUi(copy());
   expect(profile.brand.productName).toBe('地下水分析');
+  expect(profile.quantityKindLabels).toEqual(sourceProfile.quantityKindLabels);
+  expect(() => decodeProductUi({ ...copy(), quantityKindLabels: { hydraulic_head: '' } })).toThrow('PRODUCT_UI_INVALID');
   const invalid = copy();
   invalid.brand.script = '<script />';
   expect(() => decodeProductUi(invalid)).toThrow('PRODUCT_UI_INVALID');
@@ -28,11 +30,11 @@ it('requires product and model identities to exactly match capabilities', () => 
 it('applies validated workspace tokens and clears them when switching to a default profile', () => {
   const profile = decodeProductUi(copy());
   setProductUi(profile);
-  expect(document.documentElement.style.getPropertyValue('--workspace-accent')).toBe('#2563eb');
+  expect(document.documentElement.style.getPropertyValue('--product-theme-accent')).toBe('#2563eb');
   const unthemed = copy();
   delete unthemed.theme;
   setProductUi(decodeProductUi(unthemed));
-  expect(document.documentElement.style.getPropertyValue('--workspace-accent')).toBe('');
+  expect(document.documentElement.style.getPropertyValue('--product-theme-accent')).toBe('');
   expect(() => decodeProductUi({ ...unthemed, theme: { accent: 'url(/external)' } })).toThrow('PRODUCT_UI_INVALID');
   expect(() => decodeProductUi({ ...unthemed, theme: { unknown: '#123456' } })).toThrow('PRODUCT_UI_INVALID');
   setProductUi(profile);
@@ -48,7 +50,9 @@ it('falls back to auto when a recommended viewer is incompatible', () => {
 it.each([200, 503])('renders structured readiness returned with HTTP %s', async status => {
   vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ status: status === 200 ? 'READY' : 'DEGRADED', components: { kernel: { status: 'UP' }, data: { status: 'DOWN', error: 'DATA_UNAVAILABLE' } } }), { status, headers: { 'Content-Type': 'application/json' } })));
   render(<ReadinessDrawer onClose={vi.fn()} />);
-  expect(await screen.findByText(status === 200 ? 'READY' : 'DEGRADED')).toBeVisible();
+  expect(await screen.findByText(status === 200 ? 'READY' : 'DEGRADED')).toHaveAttribute('data-tone', status === 200 ? 'success' : 'warning');
+  expect(screen.getByText('UP')).toHaveAttribute('data-tone', 'success');
+  expect(screen.getByText('DOWN')).toHaveAttribute('data-tone', 'error');
   expect(screen.getByText('DATA_UNAVAILABLE')).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: '重新检查' }));
   await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));

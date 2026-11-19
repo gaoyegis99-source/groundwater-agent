@@ -44,7 +44,6 @@
   "outputs": [
     {
       "formats": [
-        "cog",
         "geotiff"
       ],
       "kind": "artifact",
@@ -84,9 +83,22 @@
   "runtime": "native",
   "tags": [
     "raster",
-    "aspect"
+    "aspect",
+    "capability:aspect",
+    "坡向",
+    "坡面朝向",
+    "根据高程计算坡向"
   ],
   "timeoutSeconds": 3600,
   "title": "Calculate terrain aspect",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "composition": {
+    "outputSemantics": {
+      "raster": {
+        "fixed": {
+          "valueKind": "aspect"
+        }
+      }
+    }
+  }
 }

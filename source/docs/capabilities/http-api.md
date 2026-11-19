@@ -42,6 +42,8 @@ SDK 提供 `send_message`、`input_reference`、`confirm`、`reject`、`events`�
 
 使用 `client.workflow_run(run_id, project_id=session.project_id)` 读取类型化工作流状态。若提交确认后连接断开，可先读取原会话和确认状态，再以同一个确认 ID 复核处理结果。
 
+从能力目录明确选择预置模型时，消息可附带 `workflowSelection`，并将 `requestedMode` 设为 `DIALOGUE`。选择包括能力目录中的模型和工作流版本身份、可选参数以及 `inputBindings`。绑定值是同一请求的 `inputReferences` 的零基索引。Kernel 保留此选择用于准备、提案和相同请求的重试。`continuation` 记录本会话已发布成果的运行和输出名称，Kernel 会核对接续映射与相关复核报告。
+
 ### 从 HTTP 或 SDK 接续一次分析
 
 准备已有会话的 `GROUNDWATER_SESSION_ID`、项目的 `GROUNDWATER_PROJECT_ID` 和个人 `GROUNDWATER_API_TOKEN`。在 `GROUNDWATER_MESSAGE` 填入本次分析请求，`GROUNDWATER_REQUEST_ID` 使用由调用方保存的唯一标识。以下命令使用 `curl` 和 `jq`。
@@ -131,10 +133,11 @@ with GroundwaterClient(
 | Method | Path | 含义 |
 | --- | --- | --- |
 | POST / GET | `/api/v12/sessions` | 创建 Session；按当前 owner 分页列出 Session，GET 支持 `query` 和 `archived`。 |
+| GET | `/api/v12/sessions/task-history` | 按最近更新列出当前项目和 owner 的分析任务，支持 `cursor` 和 `limit`。 |
 | PATCH | `/api/v12/sessions/{sessionId}` | 修改标题或归档状态，不删除历史事实。 |
 | GET | `/api/v12/sessions/{sessionId}` | Session 当前投影。 |
-| GET / POST | `/api/v12/sessions/{sessionId}/messages` | 分页读取消息；提交统一 `message-request.v5`，POST 返回 202。 |
-| GET | `/api/v12/sessions/{sessionId}/results` | 按 goal revision 读取执行结果引用。 |
+| GET / POST | `/api/v12/sessions/{sessionId}/messages` | 分页读取消息，可用 `goalRevision` 选择指定轮次；提交统一 `message-request.v5`，POST 返回 202。 |
+| GET | `/api/v12/sessions/{sessionId}/results` | 按轮次分页读取执行结果引用，传入 `goalRevision` 可仅读取该轮。 |
 | GET | `/api/v12/sessions/{sessionId}/task` | 当前 `TaskContextV1`。 |
 | GET | `/api/v12/sessions/{sessionId}/preparation` | 当前 `TaskPreparationV1` 动作准备集合；返回派生的新鲜度与生命周期。 |
 | POST | `/api/v12/sessions/{sessionId}/stop` | 持久化停止请求，返回 202。 |

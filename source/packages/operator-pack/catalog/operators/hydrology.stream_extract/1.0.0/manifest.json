@@ -45,7 +45,6 @@
   "outputs": [
     {
       "formats": [
-        "cog",
         "geotiff"
       ],
       "kind": "artifact",
@@ -72,9 +71,39 @@
   "tags": [
     "hydrology",
     "stream",
-    "accumulation"
+    "accumulation",
+    "capability:stream_extract",
+    "提取河网",
+    "河网提取",
+    "提取河道",
+    "按汇流像元数阈值提取河网"
   ],
   "timeoutSeconds": 3600,
   "title": "Extract stream raster",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "composition": {
+    "portSemantics": {
+      "accumulation": {
+        "requires": {
+          "valueKind": "contributing-cells"
+        }
+      }
+    },
+    "outputSemantics": {
+      "streams": {
+        "fixed": {
+          "valueKind": "stream-mask"
+        },
+        "inherit": [
+          {
+            "inputPort": "accumulation",
+            "facts": [
+              "crs",
+              "grid"
+            ]
+          }
+        ]
+      }
+    }
+  }
 }

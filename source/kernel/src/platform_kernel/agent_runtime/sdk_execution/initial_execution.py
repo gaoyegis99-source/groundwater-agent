@@ -153,7 +153,7 @@ async def execute_initial(
                     request_context["requires_project_evidence"] = True
                 explicit_request = parse_explicit_model_tool_request(
                     dependencies.settings, message,
-                )
+                ) if not request_context.get("workflow_selection") else None
                 if explicit_request is not None:
                     request_context["explicit_model_tool_request"] = {
                         "tool": explicit_request.tool,

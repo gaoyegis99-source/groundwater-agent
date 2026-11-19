@@ -82,8 +82,37 @@
       "kind": "value",
       "name": "summary",
       "schema": {
-        "type": "object"
-      }
+        "type": "object",
+        "properties": {
+          "pageCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "blockCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "characterCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "emptyTextPages": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "required": [
+          "pageCount",
+          "blockCount",
+          "characterCount",
+          "emptyTextPages"
+        ],
+        "additionalProperties": false
+      },
+      "maxBytes": 1048576
     }
   ],
   "parametersSchema": {
@@ -109,9 +138,24 @@
   "runtime": "native",
   "tags": [
     "document",
-    "text_extract"
+    "text_extract",
+    "capability:text_extract",
+    "文本提取",
+    "提取文本",
+    "提取报告",
+    "读取文字层",
+    "从报告中提取带出处的文本"
   ],
   "timeoutSeconds": 1200,
   "title": "Extract document text",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "composition": {
+    "outputSemantics": {
+      "blocks": {
+        "fixed": {
+          "valueKind": "document-blocks"
+        }
+      }
+    }
+  }
 }

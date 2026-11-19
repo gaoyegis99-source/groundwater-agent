@@ -55,8 +55,7 @@
         "flatgeobuf",
         "geojson",
         "geopackage",
-        "geoparquet",
-        "parquet"
+        "geoparquet"
       ],
       "mediaTypes": [
         "application/geopackage+sqlite3",
@@ -72,7 +71,6 @@
   "outputs": [
     {
       "formats": [
-        "cog",
         "geotiff"
       ],
       "kind": "artifact",
@@ -99,9 +97,39 @@
   "tags": [
     "hydrology",
     "watershed",
-    "d8"
+    "d8",
+    "capability:watershed",
+    "汇水区",
+    "集水区",
+    "流域边界",
+    "根据指定出口点划分汇水区"
   ],
   "timeoutSeconds": 3600,
   "title": "Delineate watersheds",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "composition": {
+    "portSemantics": {
+      "flowDirection": {
+        "requires": {
+          "valueKind": "d8-direction"
+        }
+      }
+    },
+    "outputSemantics": {
+      "watershed": {
+        "fixed": {
+          "valueKind": "watershed-labels"
+        },
+        "inherit": [
+          {
+            "inputPort": "flowDirection",
+            "facts": [
+              "crs",
+              "grid"
+            ]
+          }
+        ]
+      }
+    }
+  }
 }

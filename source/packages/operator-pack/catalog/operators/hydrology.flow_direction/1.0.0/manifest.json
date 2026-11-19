@@ -44,7 +44,6 @@
   "outputs": [
     {
       "formats": [
-        "cog",
         "geotiff"
       ],
       "kind": "artifact",
@@ -69,9 +68,39 @@
   "tags": [
     "hydrology",
     "dem",
-    "d8"
+    "d8",
+    "capability:flow_direction",
+    "流向",
+    "D8流向",
+    "排水方向",
+    "从处理过的 DEM 计算 D8 流向"
   ],
   "timeoutSeconds": 3600,
   "title": "D8 flow direction",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "composition": {
+    "portSemantics": {
+      "dem": {
+        "requires": {
+          "valueKind": "dem"
+        }
+      }
+    },
+    "outputSemantics": {
+      "flowDirection": {
+        "fixed": {
+          "valueKind": "d8-direction"
+        },
+        "inherit": [
+          {
+            "inputPort": "dem",
+            "facts": [
+              "crs",
+              "grid"
+            ]
+          }
+        ]
+      }
+    }
+  }
 }

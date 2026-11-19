@@ -13,20 +13,9 @@ import {
 } from "@platform/ui-boundary";
 import { operatorErrorText } from "@platform/operator-ui";
 import type { components, operations } from "./generated/data-api-v3";
-import type { requestValidators, responseValidators } from "./generated/data-api-v3.validators.js";
+import { loadDataValidators } from "./generated/data-api-v3.validators.loader.js";
 
-type DataValidators = { requestValidators: typeof requestValidators; responseValidators: typeof responseValidators };
-let initialValidatorsPromise: Promise<DataValidators> | undefined;
-let validatorsPromise: Promise<DataValidators> | undefined;
-export async function loadDataValidators(operationId?: string): Promise<DataValidators> {
-  if (operationId) {
-    const initial = await (initialValidatorsPromise ??= import("./generated/data-api-v3.validators.initial.js"));
-    if (Object.hasOwn(initial.responseValidators, operationId)) return initial;
-  }
-  return validatorsPromise ??= import("./generated/data-api-v3.validators.js");
-}
-
-export { PlatformUiError };
+export { loadDataValidators, PlatformUiError };
 export const dataDiagnostics: DiagnosticSink = createDiagnosticSink();
 export type Schema = components["schemas"];
 export type Dataset = Schema["DatasetSummary"];

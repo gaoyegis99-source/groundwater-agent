@@ -392,7 +392,7 @@ def run(output: Path) -> dict[str, Any]:
                     knowledge, KNOWLEDGE_LINEAGE_QUERIES
                 )
             if (
-                kernel_version != 34
+                kernel_version != 36
                 or previous_kernel_version != 33
                 or previous_owners != {"legacy:alice"}
                 or owners & LEGACY_SUBJECTS

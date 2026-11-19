@@ -94,12 +94,13 @@ it('renders an accessible DAG with external inputs, missing callouts and expanda
   const interpolation = graph.querySelector('[data-node-id="interpolate"]')!;
   const map = graph.querySelector('[data-node-id="map"]')!;
   expect(interpolation).toHaveTextContent('空间插值');
-  expect(interpolation).toHaveTextContent('interpolate');
-  expect(interpolation).toHaveTextContent('2 入 · 1 出');
-  expect(map).toHaveTextContent('1 入 · 1 出');
+  expect(interpolation.parentElement).toHaveTextContent('interpolate');
+  expect(interpolation.parentElement).toHaveTextContent('2 入 · 1 出');
+  expect(interpolation).toHaveAccessibleDescription(/interpolate.*2 入 · 1 出/);
+  expect(map.parentElement).toHaveTextContent('1 入 · 1 出');
   expect(container.querySelectorAll('[data-dag-edge-kind="node-output"]')).toHaveLength(1);
 
-  fireEvent.click(screen.getByRole('button', { name: '查看空间插值节点详情' }));
+  fireEvent.click(screen.getByRole('button', { name: /查看空间插值节点详情/ }));
   let detail = screen.getByTestId('draft-node-detail');
   expect(detail).toHaveTextContent('节点 interpolate');
   expect(detail).toHaveTextContent('data');
@@ -109,7 +110,7 @@ it('renders an accessible DAG with external inputs, missing callouts and expanda
   expect(detail).toHaveTextContent('数据 · 根据已核对字段整理的嵌套规则。');
   expect(detail).toHaveTextContent('静态图不表示预测置信区间');
 
-  fireEvent.click(screen.getByRole('button', { name: '查看静态地图节点详情' }));
+  fireEvent.click(screen.getByRole('button', { name: /查看静态地图节点详情/ }));
   detail = screen.getByTestId('draft-node-detail');
   expect(detail).toHaveTextContent('节点 map');
   expect(detail).toHaveTextContent('title');
@@ -118,7 +119,7 @@ it('renders an accessible DAG with external inputs, missing callouts and expanda
   fireEvent.click(toggle);
   await waitFor(() => expect(container.querySelector('.draft-graph')).not.toBeInTheDocument());
   fireEvent.click(toggle);
-  expect(await screen.findByRole('button', { name: '查看静态地图节点详情' })).toHaveAttribute('aria-expanded', 'false');
+  expect(await screen.findByRole('button', { name: /查看静态地图节点详情/ })).toHaveAttribute('aria-expanded', 'false');
 });
 
 it('keeps a long workflow in the summary and mounts its full dependency graph on demand', async () => {
@@ -195,10 +196,10 @@ it('lays out fan-out and links each declared output to its exact node and port',
   expect(graph.querySelector('[data-edge-source="gaps:table"][data-edge-target="output:missing-table"]')).toBeInTheDocument();
   expect(trend).toHaveAttribute('data-terminal-output-count', '1');
   expect(gaps).toHaveAttribute('data-terminal-output-count', '1');
-  expect(trend.getAttribute('transform')).not.toBe(gaps.getAttribute('transform'));
+  expect(trend.parentElement?.getAttribute('transform')).not.toBe(gaps.parentElement?.getAttribute('transform'));
   expect(graph.querySelector('[data-missing-input]')).not.toBeInTheDocument();
 
-  fireEvent.keyDown(screen.getByRole('button', { name: '查看缺测分析节点详情' }), { key: 'Enter' });
+  fireEvent.keyDown(screen.getByRole('button', { name: /查看缺测分析节点详情/ }), { key: 'Enter' });
   expect(screen.getByTestId('draft-node-detail')).toHaveTextContent('并行结果使用同一份质量检查输出。');
 });
 
@@ -222,7 +223,7 @@ it('draws every member of an ordered raster input collection', async () => {
   const graph = await screen.findByRole('group', { name: '工作流依赖图' });
   const edges = Array.from(graph.querySelectorAll('[data-edge-target="mean:rasters"]'));
   expect(edges.map(edge => edge.getAttribute('data-edge-source'))).toEqual(['workflow:left', 'workflow:right']);
-  fireEvent.click(screen.getByRole('button', { name: '查看raster.cell_statistics节点详情' }));
+  fireEvent.click(screen.getByRole('button', { name: /查看raster\.cell_statistics节点详情/ }));
   const details = screen.getByTestId('draft-node-detail');
   expect(details).toHaveTextContent('工作流输入 left');
   expect(details).toHaveTextContent('工作流输入 right');
@@ -257,11 +258,14 @@ it('dispatches known preparation blockers and leaves an unknown blocker read-onl
   fireEvent.click(screen.getByRole('button', { name: '补充未解决事项' }));
   expect(onUseCurrentVersion).toHaveBeenCalledExactlyOnceWith('current-version', input.datasetId);
   expect(onVersion).toHaveBeenCalledExactlyOnceWith('stale-version', input);
-  expect(onData).toHaveBeenCalledExactlyOnceWith(['csv', 'json', 'parquet', 'arrow-ipc-file', 'npy']);
+  expect(onData).toHaveBeenCalledExactlyOnceWith(['csv', 'json', 'parquet', 'arrow-ipc-file', 'npy'], {
+    modelId: 'groundwater.summary', modelVersion: '3.0.0', name: 'versionId',
+  });
   expect(onParameter).toHaveBeenNthCalledWith(1, 'column');
   expect(onParameter).toHaveBeenNthCalledWith(2, '未解决事项');
-  expect(screen.getByText('阻塞：FUTURE_UNKNOWN_BLOCKER')).toBeVisible();
-  expect(screen.getAllByRole('button')).toHaveLength(5);
+  const unknown = screen.getByText('阻塞：FUTURE_UNKNOWN_BLOCKER');
+  expect(unknown).toBeVisible();
+  expect(unknown.parentElement?.querySelector('button')).toBeNull();
 });
 
 it('shows semantic preflight facts and routes unknown metadata to the exact version', () => {
@@ -450,7 +454,7 @@ it('revalidates a terminal draft after publication without allowing an older gen
 });
 
 it('revalidates a cached terminal draft after SSE reconnect', async () => {
-  window.location.hash = '#/sessions/session-1';
+  window.location.hash = '#/sessions/session-1/workbench/draft';
   vi.stubGlobal('EventSource', TestEvents);
   let draftReads = 0;
   vi.stubGlobal('fetch', vi.fn(async (url: string) => {
@@ -468,10 +472,11 @@ it('revalidates a cached terminal draft after SSE reconnect', async () => {
   }));
 
   render(<App />);
-  await screen.findByText('插值与制图草稿');
+  const workbench = within(await screen.findByRole('tabpanel', { name: '草稿' }));
+  expect(await workbench.findByText('插值与制图草稿')).toBeVisible();
   act(() => { TestEvents.latest.onopen?.(); TestEvents.latest.onopen?.(); });
 
-  expect(await screen.findByText('重连后的草稿')).toBeVisible();
+  expect(await workbench.findByText('重连后的草稿')).toBeVisible();
   expect(draftReads).toBe(2);
 });
 
@@ -527,12 +532,14 @@ it('keeps preparation decisions local to each analysis and disables remedies for
   const view = render(<PreparationDetails history={history} {...props} />);
   expect(screen.getByText('可提案')).toBeVisible();
   expect(screen.getByText('待补充')).toBeVisible();
-  expect(screen.getByText(/状态待核实.*FIELD_UNIT/)).toBeVisible();
+  expect(screen.getByText('字段单位').parentElement).toHaveTextContent('状态待核实');
   fireEvent.click(screen.getByRole('button', { name: '选择所需数据' }));
   expect(choose).toHaveBeenCalledOnce();
   view.rerender(<PreparationDetails history={{ ...history,
     preparation: { ...history.preparation!, freshForCurrentTurn: false, disposition: 'STALE' },
   }} {...props} />);
-  expect(screen.getByText(/需要本轮重新核验/)).toBeVisible();
+  const preparationHistory = screen.getByText(/需要本轮重新核验/);
+  expect(preparationHistory).toBeVisible();
+  expect(preparationHistory.closest('details')).not.toHaveAttribute('open');
   expect(screen.queryByRole('button', { name: '选择所需数据' })).not.toBeInTheDocument();
 });

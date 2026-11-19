@@ -69,8 +69,29 @@
       "kind": "value",
       "name": "summary",
       "schema": {
-        "type": "object"
-      }
+        "type": "object",
+        "properties": {
+          "groupCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "rowCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "lagPeriods": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "groupCount",
+          "rowCount",
+          "lagPeriods"
+        ],
+        "additionalProperties": false
+      },
+      "maxBytes": 1048576
     }
   ],
   "parametersSchema": {
@@ -115,7 +136,11 @@
   "runtime": "native",
   "tags": [
     "timeseries",
-    "lag_change"
+    "lag_change",
+    "capability:lag_change",
+    "滞后变化",
+    "周期差值",
+    "计算与上一观测周期相比的变化"
   ],
   "timeoutSeconds": 1800,
   "title": "Calculate lagged period change",

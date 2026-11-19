@@ -3,6 +3,7 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import { ArtifactViewer } from './ArtifactViewer';
 import type { DataQueryResponse, ResourceDetail } from './types';
 import { dataDetail } from './test-fixtures';
+import { toDataFilters } from './viewers/query';
 
 const queryMock = vi.fn();
 const setOptionMock = vi.fn();
@@ -31,15 +32,22 @@ const resource: ResourceDetail = dataDetail({ title: '表格', descriptor: { pol
 it('shows immutable Data identity and opens exact lineage inputs', () => {
   const open = vi.fn();
   render(<ArtifactViewer resource={dataDetail({ inputVersions: ['input-version-1'], objects: [{ objectId: 'object-result', size: 2, checksum: 'b'.repeat(64), role: 'raw', format: 'bin', mediaType: 'application/octet-stream' }] })} project="groundwater-demo" onResource={open} />);
-  expect(screen.getByText('数据集')).toBeVisible();
-  expect(screen.getByText('dataset-1')).toBeVisible();
   expect(screen.getByText('数据版本')).toBeVisible();
   expect(screen.getByText('version-1')).toBeVisible();
+  fireEvent.click(screen.getByText('查看精确版本与来源'));
+  expect(screen.getByText('数据集')).toBeVisible();
+  expect(screen.getByText('dataset-1')).toBeVisible();
   expect(screen.getByText('语义版本')).toBeVisible();
   expect(screen.getByText('semantics-1')).toBeVisible();
   expect(screen.getByText('血缘输入')).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: /input-version-1/ }));
   expect(open).toHaveBeenCalledExactlyOnceWith('input-version-1');
+});
+
+it('leaves an unavailable selected object empty without querying another object in the version', () => {
+  render(<ArtifactViewer resource={resource} objectId="unavailable-object" project="groundwater-demo" />);
+  expect(screen.getByRole('status')).toHaveTextContent('该数据版本没有可读取对象。');
+  expect(queryMock).not.toHaveBeenCalled();
 });
 
 it('queries typed table controls and configures a grouped chart with up to four Y fields', async () => {
@@ -78,15 +86,72 @@ it('queries typed table controls and configures a grouped chart with up to four 
     expect.any(AbortSignal),
   ));
   await waitFor(() => expect(setOptionMock).toHaveBeenCalled());
-  const option = setOptionMock.mock.calls.at(-1)?.[0];
-  expect(option.xAxis).toMatchObject({ type: 'value', name: 'time' });
+  const option = setOptionMock.mock.calls.at(-1)?.[0].baseOption;
+  expect(option.xAxis).toMatchObject([{ type: 'value', name: 'time' }, { type: 'value', name: 'time' }]);
+  expect(option.series.map((series: { yAxisIndex: number }) => series.yAxisIndex)).toEqual([0, 1]);
   expect(option.series[0].data[0][0]).toBe(1);
 
   fireEvent.change(screen.getByLabelText('横轴'), { target: { value: 'f2' } });
-  await waitFor(() => expect(setOptionMock.mock.calls.at(-1)?.[0]).toMatchObject({
-    xAxis: { type: 'category', name: 'group' },
+  await waitFor(() => expect(setOptionMock.mock.calls.at(-1)?.[0].baseOption).toMatchObject({
+    xAxis: [{ type: 'category', name: 'group' }, { type: 'category', name: 'group' }],
     series: [{ data: [['a', 1]] }, { data: [['a', 3]] }],
   }));
+});
+
+it('sends one exact integer filter after editing and never queries an invalid range', async () => {
+  queryMock.mockResolvedValue(table);
+  render(<ArtifactViewer resource={resource} project="groundwater-demo" />);
+  await screen.findByRole('region', { name: '查询结果表' });
+  vi.useFakeTimers();
+  try {
+    fireEvent.click(screen.getByText('字段、筛选与排序'));
+    fireEvent.click(screen.getByRole('button', { name: '添加筛选' }));
+    const input = screen.getByRole('textbox', { name: '筛选值 1' });
+    fireEvent.change(input, { target: { value: '900719925474099' } });
+    fireEvent.change(input, { target: { value: '9007199254740993' } });
+    expect(input).toHaveValue('9007199254740993');
+    expect(queryMock).toHaveBeenCalledTimes(1);
+    await act(async () => vi.advanceTimersByTimeAsync(250));
+    expect(queryMock).toHaveBeenCalledTimes(2);
+    expect(queryMock.mock.lastCall?.[0].filters).toEqual([{ field: 'f0', op: 'eq', value: '9007199254740993' }]);
+
+    fireEvent.change(input, { target: { value: '9223372036854775808' } });
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+    await act(async () => vi.advanceTimersByTimeAsync(250));
+    expect(queryMock).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole('region', { name: '查询结果表' })).not.toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: '' } });
+    await act(async () => vi.advanceTimersByTimeAsync(250));
+    expect(queryMock.mock.lastCall?.[0].filters).toEqual([]);
+    expect(input).toHaveValue('');
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it('supports the signed and unsigned integer boundaries in range filters', () => {
+  const fields = [{ fieldId: 'signed', type: 'int64' }, { fieldId: 'unsigned', type: 'uint64' }];
+  expect(toDataFilters([
+    { field: 'signed', operator: 'GTE', value: '-9223372036854775808' },
+    { field: 'unsigned', operator: 'LTE', value: '18446744073709551615' },
+    { field: 'unsigned', operator: 'EQ', value: '+001' },
+  ], fields)).toEqual({
+    filters: [
+      { field: 'signed', op: 'ge', value: '-9223372036854775808' },
+      { field: 'unsigned', op: 'le', value: '18446744073709551615' },
+      { field: 'unsigned', op: 'eq', value: 1 },
+    ],
+    errors: [null, null, null],
+  });
+  const invalid = toDataFilters([
+    { field: 'signed', operator: 'EQ', value: '-9223372036854775809' },
+    { field: 'unsigned', operator: 'EQ', value: '18446744073709551616' },
+    { field: 'unsigned', operator: 'EQ', value: '-1' },
+    { field: 'signed', operator: 'EQ', value: '1.5' },
+  ], fields);
+  expect(invalid.filters).toEqual([]);
+  expect(invalid.errors.every(Boolean)).toBe(true);
 });
 
 it('requests an ordered timestamp series and renders a scatter plot with null-safe numeric data', async () => {
@@ -111,12 +176,16 @@ it('requests an ordered timestamp series and renders a scatter plot with null-sa
   await waitFor(() => expect(queryMock).toHaveBeenCalledWith(
     expect.objectContaining({ sort: [{ field: 'f0', direction: 'asc' }] }), 0, 1000, expect.any(AbortSignal),
   ));
-  await waitFor(() => expect(setOptionMock.mock.calls.at(-1)?.[0]).toMatchObject({
-    xAxis: { type: 'time', name: 'recordedAt' },
-    yAxis: { type: 'value', name: 'level（m）' },
+  await waitFor(() => expect(setOptionMock.mock.calls.at(-1)?.[0].baseOption).toMatchObject({
+    xAxis: [{ type: 'time', name: 'recordedAt', axisLabel: { formatter: { day: '{M}/{d}' } } }],
+    yAxis: [{ type: 'value', name: 'level（m）' }],
     tooltip: { trigger: 'item' },
-    series: [{ type: 'scatter', data: [[Date.UTC(2026, 0, 1, 10), 2.5], [Date.UTC(2026, 0, 1, 13), null]] }],
+    series: [{ type: 'scatter', connectNulls: false, data: [[Date.UTC(2026, 0, 1, 10), 2.5], [Date.UTC(2026, 0, 1, 13), null]] }],
   }));
+  const responsive = setOptionMock.mock.calls.at(-1)?.[0];
+  expect(responsive.baseOption.legend.show).toBe(false);
+  expect(responsive.media[0]).toMatchObject({ query: { maxWidth: 420 }, option: { xAxis: [{ splitNumber: 3 }] } });
+  expect(screen.getByText(/保留原时钟读数/)).toBeVisible();
 });
 
 it('resets table state when the selected resource changes and ignores the old response', async () => {
@@ -145,7 +214,7 @@ it.each(['receipt', 'next page'])('discloses truncated chart data from the %s', 
   render(<ArtifactViewer resource={resource} project="groundwater-demo" />);
   await screen.findByText('3');
   fireEvent.click(screen.getByRole('button', { name: '图表' }));
-  expect(await screen.findByText('图表仅显示查询返回的前 1,000 行和前 8 组，共读取 1 组。')).toBeVisible();
+  expect(await screen.findByText(/查询返回 1 行（查询结果有截断）/)).toBeVisible();
 });
 
 it('does not replace a new chart query with a late response from the previous grouping', async () => {
@@ -158,9 +227,9 @@ it('does not replace a new chart query with a late response from the previous gr
   await screen.findByText('3');
   fireEvent.click(screen.getByRole('button', { name: '图表' }));
   fireEvent.change(await screen.findByLabelText('分组字段'), { target: { value: 'f2' } });
-  await waitFor(() => expect(setOptionMock.mock.calls.at(-1)?.[0].series[0].data[0][0]).toBe(200));
+  await waitFor(() => expect(setOptionMock.mock.calls.at(-1)?.[0].baseOption.series[0].data[0][0]).toBe(200));
   const renders = setOptionMock.mock.calls.length;
   await act(async () => { resolveOld(table); await old; });
   expect(setOptionMock).toHaveBeenCalledTimes(renders);
-  expect(setOptionMock.mock.calls.at(-1)?.[0].series[0].data[0][0]).toBe(200);
+  expect(setOptionMock.mock.calls.at(-1)?.[0].baseOption.series[0].data[0][0]).toBe(200);
 });

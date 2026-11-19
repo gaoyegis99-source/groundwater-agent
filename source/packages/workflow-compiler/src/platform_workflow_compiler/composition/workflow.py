@@ -8,6 +8,7 @@ from importlib.resources import files
 
 from jsonschema.exceptions import ValidationError
 
+from ..formats import logical_type
 from ..graph import _named_list, _topological_order
 from ..validation import WorkflowValidationError, pointer
 from .documents import SCHEMA_NAMES, definition_digest, validate_document, validate_parameter_schema
@@ -191,7 +192,9 @@ class _Validation:
             actual = source.contract
             cardinality = actual.get("cardinality", SINGLE_ITEM)
             if (
-                actual["kind"] != target["kind"] or actual["logicalType"] != target["logicalType"]
+                actual["kind"] != target["kind"] or (
+                    actual["logicalType"] != target["logicalType"] and target["logicalType"] != "byFormat"
+                )
                 or cardinality["maxItems"] != 1
                 or ("nodeOutput" in item and cardinality["minItems"] != 1)
                 or not format_pairs(actual) <= format_pairs(target)
@@ -267,6 +270,9 @@ class _Validation:
             # all values to be frozen in this release.
             if schema.keys() - {"type", "properties", "required", "additionalProperties", "title", "description", "$schema"}:
                 raise WorkflowValidationError("FEATURE_UNSUPPORTED", path)
+        for name, prop in properties.items():
+            if name not in bindings and "default" in prop:
+                values[name] = prop["default"]
         return values, dynamic
 
     def _requirements(self, required, names, port, path):
@@ -390,6 +396,15 @@ class _Validation:
                 if not selected:
                     raise WorkflowValidationError("COMPOSITION_FORMAT_CASE_INVALID", location)
                 port = {**port, "formatPairs": selected}
+        if cases := port.get("inputFormatCases"):
+            upstream = inputs[cases[0]["inputPort"]]
+            formats = {fmt for source in upstream for _, fmt in format_pairs(source.contract)}
+            selected = [case["formatPair"] for case in cases if formats.intersection(case["inputFormats"])]
+            if not selected:
+                raise WorkflowValidationError("COMPOSITION_FORMAT_CASE_INVALID", location)
+            port = {**port, "formatPairs": selected}
+        if port["logicalType"] == "byFormat":
+            port = {**port, "logicalType": logical_type({fmt for _, fmt in format_pairs(port)})}
         return Port(port, result, frozenset(measured))
 
     def _check(self, node, check, inputs, outputs, values, path):
@@ -434,11 +449,13 @@ class _Validation:
         self._requirements(goal["requires"], [], source, path + "/goal")
         publication = output["publication"]
         cardinality = source.contract.get("cardinality", SINGLE_ITEM)
+        publish_formats = {"json"} if source.contract["kind"] == "value" else {
+            fmt for _, fmt in format_pairs(source.contract)
+        }
         if (
-            source.contract["kind"] != "artifact"
-            or cardinality["minItems"] != 1
+            cardinality["minItems"] != 1
             or cardinality["maxItems"] != 1
-            or {format_id for _, format_id in format_pairs(source.contract)} != {publication["format"]}
+            or publish_formats != {publication["format"]}
             or (publication["policy"] == "FILE_QUERYABLE" and publication["format"] not in {"csv", "parquet"})
             or (publication["policy"] == "FILE_AND_METRICS" and publication["format"] != "json")
         ):

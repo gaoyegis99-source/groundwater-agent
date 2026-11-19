@@ -67,8 +67,24 @@
       "kind": "value",
       "name": "summary",
       "schema": {
-        "type": "object"
-      }
+        "type": "object",
+        "properties": {
+          "groupCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "rowCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "groupCount",
+          "rowCount"
+        ],
+        "additionalProperties": false
+      },
+      "maxBytes": 1048576
     }
   ],
   "parametersSchema": {
@@ -107,7 +123,12 @@
   "runtime": "native",
   "tags": [
     "timeseries",
-    "rolling_statistics"
+    "rolling_statistics",
+    "capability:rolling_statistics",
+    "滚动均值",
+    "滚动统计",
+    "滑动窗口",
+    "计算各井过去七天的滚动均值"
   ],
   "timeoutSeconds": 1800,
   "title": "Calculate rolling statistics",

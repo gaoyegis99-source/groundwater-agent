@@ -44,7 +44,6 @@
   "outputs": [
     {
       "formats": [
-        "cog",
         "geotiff"
       ],
       "kind": "artifact",
@@ -92,9 +91,23 @@
   "runtime": "native",
   "tags": [
     "raster",
-    "hillshade"
+    "hillshade",
+    "capability:hillshade",
+    "晕渲",
+    "山体阴影",
+    "地形阴影",
+    "按太阳方位生成地形晕渲"
   ],
   "timeoutSeconds": 3600,
   "title": "Create terrain hillshade",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "composition": {
+    "outputSemantics": {
+      "raster": {
+        "fixed": {
+          "valueKind": "hillshade"
+        }
+      }
+    }
+  }
 }

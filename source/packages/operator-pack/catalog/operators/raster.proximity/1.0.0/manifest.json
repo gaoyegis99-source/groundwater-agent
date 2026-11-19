@@ -46,7 +46,6 @@
   "outputs": [
     {
       "formats": [
-        "cog",
         "geotiff"
       ],
       "kind": "artifact",
@@ -88,9 +87,23 @@
   "runtime": "native",
   "tags": [
     "raster",
-    "proximity"
+    "proximity",
+    "capability:proximity",
+    "距离栅格",
+    "邻近距离",
+    "距离目标",
+    "计算各像元距目标值的距离"
   ],
   "timeoutSeconds": 3600,
   "title": "Calculate raster proximity",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "composition": {
+    "outputSemantics": {
+      "raster": {
+        "fixed": {
+          "valueKind": "distance"
+        }
+      }
+    }
+  }
 }

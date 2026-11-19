@@ -8,7 +8,7 @@ from ..application.agent_api import (
     project_activities,
     session_run_summaries,
 )
-from ..application.workflow_api import session_execution_tasks
+from ..application.workflow_api import related_output_runs, session_execution_tasks
 from ..database import connect_database, utc_now
 from ..application.task_api import (
     preparation_in_connection,
@@ -145,6 +145,10 @@ def session_view(database: Path, project_id: str, session_id: str) -> SessionVie
             for action in run.actions
             for reference in action.remote_outputs
         )
+        if run is not None:
+            dependent_runs = related_output_runs(connection, session_id, project_id, run.agent_run_id)
+            workflow_ids += tuple(run_id for run_id, _ in dependent_runs)
+            remote_outputs += tuple(ref for _, outputs in dependent_runs for ref in outputs)
         session = Session(
             session_id=row["session_id"],
             project_id=row["project_id"],
@@ -162,7 +166,7 @@ def session_view(database: Path, project_id: str, session_id: str) -> SessionVie
 
 
 def message_history(database: Path, project_id: str, session_id: str,
-                    before: int | None, limit: int) -> dict:
+                    before: int | None, limit: int, *, requested_revision: int | None = None) -> dict:
     with connect_database(database) as connection:
         # Every domain projects through this connection so a completion cannot
         # split the messages, process history, approval state and event cursor.
@@ -175,8 +179,8 @@ def message_history(database: Path, project_id: str, session_id: str,
         rows = connection.execute(
             "SELECT message_id,goal_revision,role,content FROM messages "
             "WHERE session_id=? AND (? IS NULL OR message_id < ?) "
-            "ORDER BY message_id DESC LIMIT ?",
-            (session_id, before, before, limit + 1),
+            "AND (? IS NULL OR goal_revision=?) ORDER BY message_id DESC LIMIT ?",
+            (session_id, before, before, requested_revision, requested_revision, limit + 1),
         ).fetchall()
         page = list(reversed(rows[:limit]))
         revisions = tuple(sorted({row["goal_revision"] for row in page}))
@@ -343,7 +347,7 @@ def message_history(database: Path, project_id: str, session_id: str,
             "preparation": preparation_in_connection(
                 connection,
                 session_id,
-                current_goal_revision=session["goal_revision"],
+                current_goal_revision=requested_revision if requested_revision is not None else session["goal_revision"],
             ),
             "control_requests": [dict(item) for item in connection.execute(
                 "SELECT request_id,agent_run_id,status FROM run_controls WHERE session_id=? ORDER BY rowid", (session_id,))],

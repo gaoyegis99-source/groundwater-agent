@@ -157,7 +157,7 @@ def load_product_ui(
         raise ValueError("PRODUCT_UI_INVALID") from cause
     if not isinstance(profile, dict):
         raise ValueError("PRODUCT_UI_INVALID")
-    require_fields(profile, PROFILE_FIELDS | ({"theme"} & profile.keys()), "PRODUCT_UI_FIELDS_INVALID")
+    require_fields(profile, PROFILE_FIELDS | ({"theme", "quantityKindLabels"} & profile.keys()), "PRODUCT_UI_FIELDS_INVALID")
     if profile["schemaVersion"] != "product-ui.v1" or profile["productId"] != product_id:
         raise ValueError("PRODUCT_UI_IDENTITY_INVALID")
     if SAFE_LOCALE.fullmatch(_nonempty(profile["locale"])) is None:
@@ -209,7 +209,7 @@ def load_product_ui(
         presentation = model_profiles[model["modelId"]]
         if not isinstance(presentation, dict):
             raise ValueError("PRODUCT_UI_MODELS_INVALID")
-        require_fields(presentation, MODEL_FIELDS, "PRODUCT_UI_MODEL_FIELDS_INVALID")
+        require_fields(presentation, MODEL_FIELDS | ({"resultOverview", "continuation", "inputCaseTag", "publishedOutputStep"} & presentation.keys()), "PRODUCT_UI_MODEL_FIELDS_INVALID")
         for key in ("displayName", "description", "applicability"):
             _nonempty(presentation[key])
         for key in ("inputs", "parameterOverrides"):
@@ -258,6 +258,49 @@ def load_product_ui(
             _nonempty(summary["label"])
             if not isinstance(summary["parameters"], list) or not summary["parameters"] or set(summary["parameters"]) - set(properties):
                 raise ValueError("PRODUCT_UI_CONFIRMATION_INVALID")
+        overview = presentation.get("resultOverview")
+        if overview is not None:
+            sections = overview["sections"]
+            output_names = [name for section in sections for name in section["outputs"]]
+            metric = overview.get("regressionMetrics")
+            insight = overview.get("insight", {}).get("output")
+            visuals = overview.get("visuals", [])
+            categorical = overview.get("insight", {}).get("categoricalVisual")
+            if (len(set(output_names)) != len(output_names) or set(output_names) != set(model["finalOutputs"])
+                or any(item not in sections[0]["outputs"] for item in [*visuals, *[metric, insight]] if item is not None)
+                or len(set(visuals)) != len(visuals)
+                or (categorical is not None and categorical not in visuals)):
+                raise ValueError("PRODUCT_UI_RESULT_OVERVIEW_INVALID")
+        step = presentation.get("publishedOutputStep")
+        if step is not None:
+            target = next((item for item in models if item["modelId"] == step["targetModel"]), None)
+            if (target is None or target["modelId"] == model["modelId"]
+                or step["targetInput"] not in target["inputBindings"].values()
+                or step["output"] not in model["finalOutputs"]):
+                raise ValueError("PRODUCT_UI_PUBLISHED_OUTPUT_STEP_INVALID")
+            port = next(name for name, parameter in target["inputBindings"].items() if parameter == step["targetInput"])
+            target_input = next(item for item in target["workflow"]["inputs"] if item["name"] == port)
+            arguments = {**target["defaultParameters"], **step["arguments"]}
+            if (step["targetInput"] in arguments
+                or set(target["inputBindings"].values()) != {step["targetInput"]}
+                or model["outputPublications"][step["output"]]["format"] not in target_input["formats"]):
+                raise ValueError("PRODUCT_UI_PUBLISHED_OUTPUT_STEP_INVALID")
+            if not Draft202012Validator(target["tool"]["inputSchema"]).is_valid({**arguments, step["targetInput"]: "pending-version"}):
+                raise ValueError("PRODUCT_UI_PUBLISHED_OUTPUT_STEP_INVALID")
+        continuation = presentation.get("continuation")
+        if continuation is not None:
+            target = next((item for item in models if item["modelId"] == continuation["targetModel"]), None)
+            report = continuation.get("reviewReport")
+            if (target is None or continuation["targetInput"] not in target["inputBindings"].values()
+                or continuation["output"] not in model["finalOutputs"]
+                or (report is not None and (report == continuation["output"] or report not in model["finalOutputs"]))):
+                raise ValueError("PRODUCT_UI_CONTINUATION_INVALID")
+            target_port = next(name for name, parameter in target["inputBindings"].items() if parameter == continuation["targetInput"])
+            target_contract = next(item for item in target["workflow"]["inputs"] if item["name"] == target_port)
+            publications = model["outputPublications"]
+            if (publications[continuation["output"]]["format"] not in target_contract["formats"]
+                or (report is not None and publications[report]["format"] != "json")):
+                raise ValueError("PRODUCT_UI_CONTINUATION_INVALID")
 
     if (
         set(parameter_names) != used_parameter_names

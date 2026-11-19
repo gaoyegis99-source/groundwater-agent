@@ -19,9 +19,14 @@ _PRE_SUBMIT_BLOCK_CODES = frozenset({
 })
 
 
-def save_job_status(database: Path, work: DispatchWork, status: JobStatusV6) -> bool:
+def save_job_status(database: Path, work: DispatchWork, status: JobStatusV6, *, on_published=None) -> bool:
     with connect_database(database) as connection:
         connection.execute("BEGIN IMMEDIATE")
+        current = connection.execute(
+            "SELECT status FROM workflow_runs WHERE run_id=?", (work.run.run_id,),
+        ).fetchone()
+        if current is None or current["status"] not in {"QUEUED", "RUNNING"}:
+            return True
         if status.status in {"QUEUED", "RUNNING"}:
             _record_stage(connection, work.run, status)
             _communication_changed(connection, work.run, None)
@@ -36,7 +41,7 @@ def save_job_status(database: Path, work: DispatchWork, status: JobStatusV6) -> 
                 """UPDATE workflow_runs SET remote_job_id = ?, status = ?,
                        started_at = COALESCE(started_at, ?)
                    WHERE run_id = ?""",
-                (status.job_id, status.status, utc_now(), work.run.run_id),
+                (status.job_id, status.status, status.started_at or (utc_now() if status.status == "RUNNING" else None), work.run.run_id),
             )
             if work.run.remote_job_id is None or work.run.status != status.status:
                 _event(connection, work.run, f"job.{status.status.lower()}",
@@ -45,13 +50,16 @@ def save_job_status(database: Path, work: DispatchWork, status: JobStatusV6) -> 
         if work.run.remote_job_id is None:
             connection.execute(
                 "UPDATE workflow_runs SET started_at = COALESCE(started_at, ?) WHERE run_id = ?",
-                (utc_now(), work.run.run_id),
+                (status.started_at, work.run.run_id),
             )
             _event(connection, work.run, f"job.{status.status.lower()}",
                    status.status, status.job_id, status.error)
         _finish_terminal(
             connection, work.run, status.status, status.job_id, status.outputs, status.error,
+            started_at=status.started_at, finished_at=status.finished_at,
         )
+        if status.status == "SUCCEEDED" and on_published is not None:
+            on_published(connection, work.run, status.outputs)
     return True
 
 
@@ -129,31 +137,35 @@ def _finish_terminal(
     job_id: str | None,
     outputs: tuple[DataVersionRefV2, ...],
     error: str | None,
+    *,
+    started_at: str | None = None,
+    finished_at: str | None = None,
 ) -> None:
     _communication_changed(connection, run, None)
     succeeded = job_status == "SUCCEEDED"
     final_status = "SUCCEEDED" if succeeded else (
         job_status if job_status in {"TIMED_OUT", "CANCELLED"} else "FAILED"
     )
-    finished = utc_now()
+    finished = finished_at or utc_now()
     outputs_json = json.dumps(
         [item.as_storage_dict() for item in outputs],
         ensure_ascii=False,
         separators=(",", ":"),
     )
-    started_at = run.started_at or run.created_at
+    actual_start = started_at or run.started_at
     connection.execute(
         """UPDATE workflow_runs
            SET status = ?, remote_job_id = COALESCE(remote_job_id, ?),
-               outputs_json = ?, error = ?, finished_at = ?, duration_ms = ?
+               outputs_json = ?, error = ?, started_at = COALESCE(?, started_at), finished_at = ?, duration_ms = ?
            WHERE run_id = ?""",
         (
             final_status,
             job_id,
             outputs_json,
             error,
+            actual_start,
             finished,
-            duration_ms(started_at, finished),
+            duration_ms(actual_start or run.created_at, finished),
             run.run_id,
         ),
     )
@@ -165,6 +177,12 @@ def _finish_terminal(
         (job_status, job_id, run.run_id),
     )
     _event(connection, run, f"workflow.{final_status.lower()}", job_status, job_id, error)
+    dependent = connection.execute(
+        "SELECT 1 FROM workflow_output_sources WHERE workflow_run_id=?", (run.run_id,),
+    ).fetchone()
+    if dependent is not None:
+        _record_recovery_terminal(connection, run)
+        return
     if succeeded:
         connection.execute(
             """UPDATE workflow_dispatches SET state = 'REQUESTED'

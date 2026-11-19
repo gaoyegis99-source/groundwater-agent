@@ -100,7 +100,8 @@ test('research overview restores the current Task revision and fits a narrow wor
   await expect(header.getByText('等待补充信息')).toBeVisible();
   await expect(header.getByText('缺少两口监测井的井口高程。')).toBeVisible();
   const transcript = page.getByTestId('message-list');
-  await transcript.evaluate(node => { node.scrollTop = node.scrollHeight; });
+  await expect(transcript.getByText('比较趋势前，请补充缺失的井口高程。')).toBeAttached();
+  await expect.poll(() => transcript.evaluate(node => node.scrollHeight - node.clientHeight - node.scrollTop)).toBeLessThanOrEqual(40);
   expect(await transcript.evaluate(node => node.scrollTop)).toBeGreaterThan(0);
   await expect(header).toBeInViewport({ ratio: 1 });
   await expect(header.getByRole('button', { name: '查看任务概览' })).toBeInViewport({ ratio: 1 });
@@ -132,25 +133,22 @@ test('research overview restores the current Task revision and fits a narrow wor
   await expect(overview.getByText('缺少两口监测井的井口高程。')).toHaveCount(0);
   expect(snapshotReads).toBeGreaterThan(readsBeforeReload);
 
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize({ width: 1024, height: 768 });
   await expect(overview.getByRole('heading', { name: '原始研究目标' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.screenshot({ path: info.outputPath('task-overview-mobile.png') });
+  await page.screenshot({ path: info.outputPath('task-overview-desktop-1024.png') });
   await page.getByRole('button', { name: '返回对话', exact: true }).click();
   await expect(header.getByText('正在分析')).toBeVisible();
   await transcript.evaluate(node => { node.scrollTop = node.scrollHeight; });
   expect(await transcript.evaluate(node => node.scrollTop)).toBeGreaterThan(0);
   await expect(header).toBeInViewport({ ratio: 1 });
   await expect(header.getByRole('button', { name: '查看任务概览' })).toBeInViewport({ ratio: 1 });
-  await page.screenshot({ path: info.outputPath('task-header-mobile.png') });
+  await page.screenshot({ path: info.outputPath('task-header-desktop-1024.png') });
   waitingConfirmation = true;
   await page.reload();
   await expect(header.getByText('等待执行确认')).toBeVisible();
-  await expect(header.getByRole('button', { name: '查看任务概览' })).toBeInViewport({ ratio: 1 });
-  await expect(header.getByRole('button', { name: '查看当前执行确认' })).toBeInViewport({ ratio: 1 });
-  await header.getByRole('button', { name: '查看当前执行确认' }).click();
-  await expect(page.locator('#current-confirmation[data-confirmation-id="confirmation-current"]')).toBeFocused();
-  await page.getByRole('button', { name: '打开会话导航' }).click();
+  await expect(header.locator('#current-confirmation')).toBeVisible();
+  await expect(page.getByRole('navigation', { name: '会话详情' }).getByRole('link', { name: '运行' })).toBeVisible();
   await page.getByRole('link', { name: '地下水术语咨询' }).click();
   await expect(page.getByText('潜水面是潜水含水层的自由水面。')).toBeVisible();
   await expect(header).toHaveCount(0);
@@ -265,11 +263,11 @@ test('reviews exact Task evidence and submits changes through the current conver
   await expect(page.getByText(changes, { exact: true })).toBeVisible();
   await page.getByRole('button', { name: '查看任务概览' }).click();
 
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize({ width: 1024, height: 768 });
   await details.getByRole('heading', { name: '科研交付条件' }).scrollIntoViewIfNeeded();
   await expect(details.getByRole('button', { name: '确认此项满足' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.screenshot({ path: info.outputPath('task-review-mobile.png') });
+  await page.screenshot({ path: info.outputPath('task-review-desktop-1024.png') });
   await page.getByRole('button', { name: '返回对话', exact: true }).click();
   await composer.fill(draft);
   await page.getByRole('button', { name: '查看任务概览' }).click();
@@ -289,10 +287,10 @@ test('reviews exact Task evidence and submits changes through the current conver
   await expect(details.getByText(reviewText, { exact: true })).toBeVisible();
   await expect(details.getByRole('button', { name: '确认此项满足' })).toHaveCount(0);
   await details.getByRole('heading', { name: '科研交付条件' }).scrollIntoViewIfNeeded();
-  await page.screenshot({ path: info.outputPath('task-reviewed-mobile.png') });
+  await page.screenshot({ path: info.outputPath('task-reviewed-desktop-1024.png') });
   await details.getByText('依赖：比较统一基准后的水位').scrollIntoViewIfNeeded();
   await expect(details.getByText('关联条件：趋势说明可用于研究记录')).toBeInViewport();
-  await page.screenshot({ path: info.outputPath('task-steps-mobile.png') });
+  await page.screenshot({ path: info.outputPath('task-steps-desktop-1024.png') });
   await page.getByRole('button', { name: '返回对话', exact: true }).click();
   await expect(composer).toHaveValue(draft);
 });
@@ -373,7 +371,7 @@ test('shows scoped input preparation and verified data quality at desktop and na
   await summary.getByText('数据质量与来源').click();
   await expect(page.getByText('survey-2025', { exact: true })).toBeVisible();
   await page.screenshot({ path: info.outputPath('data-preparation-desktop.png') });
-  for (const [width, height] of [[1024, 768], [768, 1024], [390, 844]]) {
+  for (const [width, height] of [[1280, 800], [1024, 768]]) {
     await page.setViewportSize({ width, height });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await expect(page.getByRole('button', { name: '返回对话' })).toBeInViewport();

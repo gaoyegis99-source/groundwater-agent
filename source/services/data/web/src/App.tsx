@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { identityScope } from "@platform/ui-boundary";
 import {
   DiagnosticsPanel,
@@ -11,8 +11,6 @@ import {
   useVisitedViews,
 } from "@platform/operator-ui";
 import { CatalogPanel } from "./CatalogPanel";
-import { PublicationPanel } from "./PublicationPanel";
-import { QueryPanel } from "./QueryPanel";
 import {
   api,
   dataDiagnostics,
@@ -23,9 +21,10 @@ import {
 } from "./api";
 import { readRecovery, recoveryKey } from "./recovery";
 import { useCatalog } from "./use-catalog";
-import { usePublication } from "./use-publication";
-import { useQuery } from "./use-query";
 import { copyText } from "./clipboard";
+
+const PublicationPanel = lazy(() => import("./PublicationPanel").then(module => ({ default: module.PublicationPanel })));
+const QueryPanel = lazy(() => import("./QueryPanel").then(module => ({ default: module.QueryPanel })));
 
 type DataView = "catalog" | "query" | "publication";
 const DATA_VIEW_IDS: readonly DataView[] = ["catalog", "query", "publication"];
@@ -37,7 +36,10 @@ export function App() {
     const controller = new AbortController();
     void api("data_capabilities", "capabilities", undefined, { signal: controller.signal })
       .then(value => {
-        setCapabilities(decodeCapabilities(value));
+        if (controller.signal.aborted) return;
+        const decoded = decodeCapabilities(value);
+        document.documentElement.dataset.product = decoded.productId;
+        setCapabilities(decoded);
         setError(null);
       })
       .catch(caught => {
@@ -48,7 +50,7 @@ export function App() {
     return () => controller.abort();
   }, []);
   if (error) return <InitializationError error={error} />;
-  if (!capabilities) return <main><p role="status">正在读取 Data 管理边界…</p></main>;
+  if (!capabilities) return <main className="workspace-shell"><p role="status" className="operator-loading">正在读取 Data 管理边界…</p></main>;
   return <DataWorkspace capabilities={capabilities} />;
 }
 
@@ -103,24 +105,6 @@ function DataWorkspace({ capabilities }: { capabilities: DataCapabilities }) {
     visitedViews.has("catalog"),
     capabilities.permissions.semanticWrite,
   );
-  const query = useQuery(
-    catalog.selected,
-    catalog.history,
-    scope,
-    queryRecoveryKey,
-    capabilities.limits.querySeconds ?? 60,
-    visitedViews.has("query"),
-  );
-  const publication = usePublication(
-    scope,
-    publicationRecoveryKey,
-    capabilities.formats,
-    capabilities.formatMediaTypes,
-    capabilities.limits.uploadBytes ?? 1_073_741_824,
-    capabilities.limits.prepareSeconds ?? 3_600,
-    catalog.load,
-    visitedViews.has("publication"),
-  );
   const tabs: Array<{ id: DataView; label: string }> = [
     { id: "catalog", label: "数据目录" },
     { id: "query", label: "查询分析" },
@@ -174,16 +158,29 @@ function DataWorkspace({ capabilities }: { capabilities: DataCapabilities }) {
         />
       </div>}
       {visitedViews.has("query") && <div id={tabIds("data-task", "query").panel} role="tabpanel" aria-labelledby={tabIds("data-task", "query").tab} hidden={view !== "query"}>
-        <QueryPanel
-          controller={query}
-          run={run}
-          allowed={capabilities.permissions.queryCreate}
-          onChooseDataset={() => setView("catalog")}
-        />
+        <Suspense fallback={<p role="status" className="operator-loading">正在加载查询分析…</p>}>
+          <QueryPanel
+            selected={catalog.selected}
+            versions={catalog.history}
+            scope={scope}
+            recoveryKey={queryRecoveryKey}
+            capabilities={capabilities}
+            run={run}
+            onChooseDataset={() => setView("catalog")}
+          />
+        </Suspense>
       </div>}
       {capabilities.permissions.managedPublicationWrite && visitedViews.has("publication") && (
         <div id={tabIds("data-task", "publication").panel} role="tabpanel" aria-labelledby={tabIds("data-task", "publication").tab} hidden={view !== "publication"}>
-          <PublicationPanel controller={publication} run={run} formats={capabilities.formats} />
+          <Suspense fallback={<p role="status" className="operator-loading">正在加载发布数据…</p>}>
+            <PublicationPanel
+              scope={scope}
+              recoveryKey={publicationRecoveryKey}
+              capabilities={capabilities}
+              run={run}
+              onPublished={catalog.load}
+            />
+          </Suspense>
         </div>
       )}
       <DiagnosticsPanel sink={dataDiagnostics} />

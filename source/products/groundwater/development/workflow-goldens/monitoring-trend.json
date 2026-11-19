@@ -92,7 +92,7 @@
       "thresholdValue": 10.0
     }
   },
-  "operatorCatalogDigest": "sha256:2cdd11ce900a37642be750c972a2602dd832818e7cff5d6f668883c878860125",
+  "operatorCatalogDigest": "sha256:3881423fa69deae67a4d31bbab2c202541b8c7ccaf7c1182497da74a67b672ab",
   "outputs": {
     "aggregate-summary": {
       "kind": "value",

@@ -62,6 +62,40 @@ def test_missing_or_revoked_session_is_rejected(kernel_settings):
         assert client.get("/internal/identity/verify").status_code == 401
 
 
+@pytest.mark.parametrize("original_method", ["GET", "POST"])
+def test_single_admin_identity_matches_gateway_and_api(kernel_settings, original_method):
+    application = _application(kernel_settings)
+    admin = research_auth.list_users(application.database)[0]
+    application.settings = replace(
+        application.settings,
+        research_auth_required=False,
+        local_identity_subject=admin["userId"],
+        local_identity_display_name=admin["displayName"],
+        local_identity_roles=("admin",),
+    )
+    headers = {
+        "X-Original-Method": original_method,
+        "X-Platform-Subject": "forged",
+        "X-Platform-Roles": "viewer",
+        "X-Platform-Required-Role": "admin",
+        "Authorization": "Bearer expired",
+    }
+    with TestClient(create_app(application=application)) as client:
+        ingress = client.get("/internal/identity/verify", headers=headers)
+        capabilities = client.get("/api/v12/capabilities", headers=headers)
+        created = client.post("/api/v12/sessions", json={"projectId": "p"})
+        session = client.get("/api/v12/sessions/" + created.json()["sessionId"])
+
+    assert ingress.status_code == 204
+    assert ingress.headers["x-platform-subject"] == admin["userId"]
+    assert ingress.headers["x-platform-roles"] == "admin"
+    assert capabilities.status_code == 200
+    assert capabilities.json()["authenticationRequired"] is False
+    assert capabilities.json()["currentUser"]["subject"] == admin["userId"]
+    assert created.status_code == 200
+    assert session.status_code == 200
+
+
 def test_required_role_is_enforced_from_project_membership(kernel_settings):
     application = _application(kernel_settings)
     user = create_user(application.database, "viewer", "Viewer", PASSWORD)

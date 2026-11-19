@@ -11,6 +11,10 @@ export function modelName(name: string) {
   return profile.models[name]?.displayName ?? '分析任务';
 }
 
+export function taskModelName(name: string) {
+  return productUi().models[name]?.resultOverview?.insight?.kind === 'statistics' ? '描述统计' : modelName(name);
+}
+
 export function parameterPresentation(name: string, modelId?: string): ParameterPresentation {
   const profile = productUi();
   const override = modelId ? profile.models[modelId]?.parameterOverrides[name] : undefined;

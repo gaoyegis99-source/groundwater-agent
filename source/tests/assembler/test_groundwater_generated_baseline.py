@@ -10,13 +10,13 @@ from assembler import compile_product  # noqa: E402
 
 # Groundwater product assembly with the composition capability catalog.
 GENERATED_ARTIFACT_DIGESTS = {
-    "kernel-config.json": "deb81a1abc455ab29b500b6e7109a17047369af264bba56bbd81b8eaeec0a704",
+    "kernel-config.json": "d1e0a9c515bfa08a6aabdc1656e077d7e88d8617532b754641bf61424948c0ce",
     "executor-config.json": "cdd55c9aab424cd082e009ee9b03160aa0302d7fd43ecaf03a335cb37827e345",
-    "compose.json": "0a49a99487fa4f815492fe704234910ad113d9e38379e7e6aec0ce9bfd13287b",
-    "nginx.conf": "2921970a6397dec6f4b4f81c2afaa334e8bdf651be8d12d5b90f71f3a7919d23",
-    "product-ui.json": "9b7295796133f112e00ec356650072ad1d8040d3b35f358d37c47d1e304bdf85",
+    "compose.json": "78fd01ffab2246c88f238b91ce2b18bc06c5d3814b72784b2424e1d79bdfd052",
+    "nginx.conf": "c81e59fd7defcb52d99c9879c0a844abb0048167281f3278fcf802de63f51ecf",
+    "product-ui.json": "cb970a637a5424bb8495dd0a125c3b21b4ad88d89c14cf5f406e1821bf5f31d2",
     "product-icon.svg": "e484a9befc9ff8ccabff776babccdcb0f0c8cf6adebc6da25bb64fccf5a0dfab",
-    "assembly-lock.json": "8d04cda61150fcb7732bc6ce0bd0c760d33028836bb5223a8d7e76125a2c3529"
+    "assembly-lock.json": "6cb499edf0e5cc77e071afed36ded5a6552f3cc4c0462db5fc648a796bc48798"
 }
 
 

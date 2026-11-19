@@ -235,6 +235,10 @@ class KernelSettings:
     workflow_dispatch_concurrency: int = 8
     agent_shutdown_grace_seconds: int = 30
     workflow_composition: ArtifactComposition | None = None
+    workflow_continuations: tuple[dict, ...] = ()
+    published_output_steps: tuple[dict, ...] = ()
+    operator_uses: dict[str, list[dict]] = field(default_factory=dict)
+    operator_validation: dict[str, dict] = field(default_factory=dict)
 
     @property
     def services_by_name(self) -> dict[str, ServiceBinding]:
@@ -391,7 +395,7 @@ class KernelSettings:
         }
         if (
             not isinstance(raw, dict)
-            or set(raw) != required
+            or set(raw) - {"workflowContinuations", "publishedOutputSteps"} != required
             or raw["schemaVersion"] != "kernel-config.v8"
             or raw["publicApiVersion"] != "v12"
         ):
@@ -408,7 +412,7 @@ class KernelSettings:
         execution_cases = _parse_execution_cases(raw["executionCases"], models)
         authoring = raw["workflowAuthoring"]
         authoring_fields = {"operatorCatalogDigest", "operators", "enabledOperators"}
-        if not isinstance(authoring, dict) or set(authoring) - {"composition"} != authoring_fields:
+        if not isinstance(authoring, dict) or set(authoring) - {"composition", "operatorUses", "operatorValidation"} != authoring_fields:
             raise ValueError("KERNEL_CONFIG_INVALID")
         _digest(authoring["operatorCatalogDigest"])
         complete_catalog = validate_catalog(
@@ -433,6 +437,16 @@ class KernelSettings:
             identities[identity]: complete_catalog[identities[identity]]
             for identity in enabled
         }
+        operator_uses = authoring.get("operatorUses", {})
+        operator_validation = authoring.get("operatorValidation", {})
+        if (
+            not isinstance(operator_uses, dict)
+            or not operator_uses.keys() <= identities.keys()
+            or any(not isinstance(value, list) for value in operator_uses.values())
+            or not isinstance(operator_validation, dict)
+            or any(not isinstance(value, dict) for value in operator_validation.values())
+        ):
+            raise ValueError("KERNEL_CONFIG_INVALID")
         composition = None
         if "composition" in authoring:
             composition_config = authoring["composition"]
@@ -462,8 +476,12 @@ class KernelSettings:
             services=services,
             observation_tools=tools,
             models=models,
+            workflow_continuations=tuple(raw.get("workflowContinuations", [])),
+            published_output_steps=tuple(raw.get("publishedOutputSteps", [])),
             execution_cases=execution_cases,
             operator_catalog=catalog,
+            operator_uses=operator_uses,
+            operator_validation=operator_validation,
             workflow_composition=composition,
             operator_catalog_digest=authoring["operatorCatalogDigest"],
             manifest_checksum=raw["manifestChecksum"],

@@ -8,7 +8,7 @@ import {
   type JsonValidator,
   type ProblemIssue,
 } from '@platform/ui-boundary';
-import { decodeDataPreviewResponse, decodeDataQueryResponse, decodeResourceDetail, decodeResults } from './api-contract';
+import { decodeDataPreviewResponse, decodeDataQueryResponse, decodeResourceDetail, decodeResults, parseDataQueryJson } from './api-contract';
 import { newRequestId } from './message-routing';
 import type { operations as PublicApiOperations, paths as PublicApiPaths } from './generated/public-api-v12';
 import { loadRequestValidator, loadResponseValidator } from './generated/public-api-v12.validators.lazy.js';
@@ -24,6 +24,7 @@ export const webContractPaths = [
   '/api/v12/ready',
   '/api/v12/capabilities',
   '/api/v12/sessions',
+  '/api/v12/sessions/task-history',
   '/api/v12/sessions/{sessionId}/messages',
   '/api/v12/sessions/{sessionId}/stop',
   '/api/v12/sessions/{sessionId}/confirm',
@@ -61,7 +62,7 @@ export const webContractPaths = [
   '/api/v12/knowledge/lookup',
 ] as const satisfies readonly PublicApiPath[];
 
-export interface ReadinessSnapshot { status: string; components: Record<string, { status: string; error?: string }> }
+export interface ReadinessSnapshot { status: string; components: Record<string, { status: string; error?: string; components?: Record<string, string> }> }
 export async function readReadiness(signal?: AbortSignal): Promise<ReadinessSnapshot> {
   const started = performance.now();
   const requestId = newRequestId();
@@ -81,8 +82,11 @@ export async function readReadiness(signal?: AbortSignal): Promise<ReadinessSnap
   }
   const components = Object.fromEntries(Object.entries(componentValue).map(([name, value]) => {
     if (!value || typeof value !== 'object' || typeof (value as { status?: unknown }).status !== 'string') return [name, { status: 'UNKNOWN' }];
-    const component = value as { status: string; error?: unknown };
-    return [name, { status: component.status, ...(typeof component.error === 'string' ? { error: component.error } : {}) }];
+    const component = value as { status: string; error?: unknown; components?: unknown };
+    const nested = component.components && typeof component.components === 'object' && !Array.isArray(component.components)
+      ? Object.fromEntries(Object.entries(component.components).filter((item): item is [string, string] => typeof item[1] === 'string'))
+      : undefined;
+    return [name, { status: component.status, error: typeof component.error === 'string' ? component.error : undefined, components: nested }];
   }));
   return { status: (raw as { status: string }).status, components };
 }
@@ -215,6 +219,7 @@ export async function callApi<Name extends keyof PublicApiOperations, Decoded = 
     value = await readValidatedJson(
       response,
       await loadResponseValidator(String(operationId)) as JsonValidator | undefined,
+      operationId === 'data_get_query' ? parseDataQueryJson : undefined,
     );
   } catch (caught) {
     const error = asApiError(caught, response.status, responseRequestId);
@@ -271,6 +276,7 @@ export interface DataQueryRequest {
   versionId: string;
   semanticId: string;
   fields?: string[];
+  aggregates?: { function: 'count'; alias: string }[];
   filters?: { field: string; op: 'eq' | 'ne' | 'lt' | 'le' | 'gt' | 'ge' | 'contains' | 'is_null'; value: unknown }[];
   sort?: { field: string; direction: 'asc' | 'desc' }[];
 }
@@ -333,7 +339,7 @@ export async function runDataQuery(query: DataQueryRequest, offset: number, limi
     fields: query.fields ?? [],
     filters: query.filters ?? [],
     groupBy: [],
-    aggregates: [],
+    aggregates: query.aggregates ?? [],
     sort: query.sort ?? [],
   }), signal);
   const path = dataQueryPath(accepted.queryId);
@@ -455,9 +461,19 @@ const errorDescriptions: Record<string, string> = {
   CONFIRMATION_DATA_VERSION_INVALID: '所选数据的版本、语义或原始对象未通过核验。请关闭参数编辑器，再打开并重新选择数据。',
   WORKFLOW_PORT_INCOMPATIBLE: '编排步骤的输入与上游输出不兼容，请核对端口和文件格式。',
   WORKFLOW_INPUT_BINDING_INVALID: '编排步骤的输入绑定不完整或无效，请核对所需资料和连接。',
+  WORKFLOW_INPUT_ROLE_MISMATCH: '编排草稿中的资料与指定输入角色不一致，请核对端口绑定后重试。',
+  WORKFLOW_INPUT_ROLE_AMBIGUOUS: '输入角色需要唯一指向一个节点端口，请补充节点或算子名称。',
+  WORKFLOW_INPUT_ROLE_VERSION_REQUIRED: '请附加并指定此输入角色的精确数据版本。',
   WORKFLOW_PARAMETER_BINDING_INVALID: '编排步骤的参数绑定无效，请核对参数名称和引用。',
   WORKFLOW_OPERATOR_UNKNOWN: '草稿引用的算子不在当前已安装目录中，请重新选择可用算子。',
   WORKFLOW_NODE_DIAGNOSTICS_UNAVAILABLE: '暂时无法读取节点状态，请重试。',
+  WORKFLOW_SELECTION_STALE: '所选工作流版本已变化，请重新选择。',
+  WORKFLOW_SELECTION_INPUT_INVALID: '所选资料或参数与工作流不匹配，请核对绑定。',
+  WORKFLOW_SELECTION_ARGUMENTS_CHANGED: '准备使用的参数与您选择的值不一致，请核对资料和参数。',
+  WORKFLOW_SELECTION_DATA_CHANGED: '资料身份发生变化，请核对原版本或重新绑定。',
+  WORKFLOW_CONTINUATION_INVALID: '这份成果无法用于当前接续，请返回原成果重新选择。',
+  WORKFLOW_CONTINUATION_BLOCKED: '候选输入仍有缺项或口径冲突，请查看指标来源。',
+  WORKFLOW_CONTINUATION_REVIEW_UNAVAILABLE: '暂时无法核对候选输入的复核状态。',
   WORKFLOW_DRAFT_IDENTITY_MISMATCH: '返回的草稿与本轮记录不一致，请重试读取。',
   WORKFLOW_CYCLE: '草稿的步骤形成了循环依赖，请调整执行顺序与连接。',
   WORKFLOW_NODE_UNREACHABLE: '草稿中有步骤不通向任何预期输出，请调整连接或移除该步骤。',
@@ -483,6 +499,7 @@ const errorDescriptions: Record<string, string> = {
   RASTER_MINIMUM_VALID_INPUTS_EXCEEDS_COLLECTION: '每像元要求的有效输入数不能超过栅格输入总数。',
   VALIDATION_ERROR: '提交内容未通过检查，请核对填写的信息。',
   WORKER_LOST: '计算进程中断，本次任务未能完成。请先检查运行环境。',
+  WORKFLOW_PUBLISHED_OUTPUT_UNAVAILABLE: '分析已发布，但制图所需的具名图层暂无法核对。',
   ALGORITHM_FAILED: '分析计算未成功，请核对输入资料和参数，并查看技术详情。',
   RESOURCE_CHECKSUM_MISMATCH: '资料内容与记录的版本不一致，不能继续使用。请重新核对资料。',
   PREVIEW_INPUT_TOO_LARGE: '文件超过在线预览上限，请查看元数据或下载原文件。',

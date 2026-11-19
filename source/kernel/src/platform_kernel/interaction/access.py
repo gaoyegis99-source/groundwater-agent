@@ -94,7 +94,10 @@ def dispatch_confirmation_current(database: Path, run: DispatchAuthorizationRun)
                 run.workflow_version, run.workflow_checksum,
             ),
         ).fetchone()
-        if row is None or not _action_payload_matches(row, run) or row["decision"] != "CONFIRM" or not (
+        if row is None:
+            if not _published_step_dispatch_current(connection, run):
+                return False
+        elif not _action_payload_matches(row, run) or row["decision"] != "CONFIRM" or not (
             row["status"] == "CONFIRMED"
             or (
                 row["status"] == "PENDING"
@@ -107,6 +110,38 @@ def dispatch_confirmation_current(database: Path, run: DispatchAuthorizationRun)
         except ConfirmationConflictError:
             return False
         return True
+
+
+def _published_step_dispatch_current(connection, run) -> bool:
+    row = connection.execute(
+        """SELECT p.plan_json, source.outputs_json
+           FROM workflow_output_sources deps
+           JOIN workflow_runs source ON source.run_id=deps.source_workflow_run_id
+           JOIN published_output_steps p ON p.confirmation_id=source.confirmation_id
+              AND p.source_tool_call_id=source.tool_call_id
+           JOIN confirmations c ON c.confirmation_id=p.confirmation_id
+           JOIN sessions s ON s.session_id=c.session_id
+           WHERE deps.workflow_run_id=? AND p.confirmation_id=? AND p.tool_call_id=?
+             AND source.status='SUCCEEDED' AND source.agent_run_id=? AND source.session_id=?
+             AND source.project_id=? AND s.project_id=?
+             AND c.status='CONFIRMED' AND c.decision='CONFIRM'""",
+        (run.run_id, run.confirmation_id, run.tool_call_id, run.agent_run_id, run.session_id,
+         run.project_id, run.project_id),
+    ).fetchone()
+    if row is None:
+        return False
+    plan = json.loads(row["plan_json"])
+    outputs = [ref for ref in json.loads(row["outputs_json"]) if ref.get("output_name") == plan["output"]]
+    if len(outputs) != 1:
+        return False
+    reference = outputs[0]
+    return (
+        all(getattr(run, key) == plan[key] for key in (
+            "model_id", "model_version", "model_checksum", "workflow_id", "workflow_version", "workflow_checksum",
+        ))
+        and run.arguments == {**plan["arguments"], plan["input"]: reference["version_id"]}
+        and {key: ref.as_storage_dict() for key, ref in run.input_references.items()} == {plan["input"]: reference}
+    )
 
 
 def _direct_dispatch_authorized(database: Path, run: DispatchAuthorizationRun) -> bool:

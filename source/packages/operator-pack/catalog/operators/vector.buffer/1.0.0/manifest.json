@@ -35,8 +35,7 @@
         "flatgeobuf",
         "geojson",
         "geopackage",
-        "geoparquet",
-        "parquet"
+        "geoparquet"
       ],
       "mediaTypes": [
         "application/geopackage+sqlite3",
@@ -84,7 +83,11 @@
   "runtime": "native",
   "tags": [
     "vector",
-    "buffer"
+    "buffer",
+    "capability:buffer",
+    "缓冲区",
+    "距离缓冲",
+    "沿井点生成指定米数的缓冲区"
   ],
   "timeoutSeconds": 1800,
   "title": "Buffer vector features",

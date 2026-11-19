@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { KeyboardEvent } from "react";
+import type { ComponentPropsWithoutRef, KeyboardEvent } from "react";
 import { newRequestId } from "@platform/ui-boundary";
 import type { DiagnosticSink, UiDiagnostic } from "@platform/ui-boundary";
 
@@ -282,7 +282,7 @@ export function OperationCenter({ enabled = true }: { enabled?: boolean }) {
                       <code>操作 ID {item.operationId}{errorCode ? ` · 错误码 ${errorCode}` : ""} · {item.subject} · {new Date(item.updatedAt).toLocaleString()}</code>
                     </details>
                   </div>
-                  <span className={`operation-state state-${item.state.toLowerCase().replaceAll("_", "-")}`}>{activityStateLabels[item.state] ?? item.state}</span>
+                  <span className={`operation-state state-${item.state.toLowerCase().replaceAll("_", "-")}`}><span className="operation-state-label" key={item.state}>{activityStateLabels[item.state] ?? item.state}</span></span>
                 </li>
               );
             })}
@@ -297,8 +297,8 @@ export function OperationCenter({ enabled = true }: { enabled?: boolean }) {
 export function WorkspaceHeader({ current }: { current: OperatorService }) {
   return (
     <header className="workspace-header">
-      <a className="operator-brand" href={current === "data" ? "/data/" : "/knowledge/"}>
-        管理工作台
+      <a className="operator-brand" href="/">
+        <span aria-hidden="true">←</span> 科研工作区
       </a>
       <nav className="service-nav" aria-label="管理服务">
         <a aria-current={current === "data" ? "page" : undefined} href="/data/">数据</a>
@@ -306,6 +306,13 @@ export function WorkspaceHeader({ current }: { current: OperatorService }) {
       </nav>
     </header>
   );
+}
+
+export function FilePicker({ action, ...input }: Omit<ComponentPropsWithoutRef<"input">, "type"> & { action: string }) {
+  return <span className="operator-file-picker">
+    <span className="operator-file-action" aria-hidden="true">{action}</span>
+    <input {...input} type="file" />
+  </span>;
 }
 
 export function SystemInformation({ service, currentUser, project, productId, writeEnabled, note }: {

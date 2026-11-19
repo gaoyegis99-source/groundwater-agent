@@ -44,7 +44,6 @@
   "outputs": [
     {
       "formats": [
-        "cog",
         "geotiff"
       ],
       "kind": "artifact",
@@ -63,9 +62,39 @@
   "tags": [
     "hydrology",
     "d8",
-    "accumulation"
+    "accumulation",
+    "capability:flow_accumulation",
+    "汇流累积",
+    "汇流累积量",
+    "集水量",
+    "把流向栅格换算为上游汇流像元数"
   ],
   "timeoutSeconds": 3600,
   "title": "D8 flow accumulation",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "composition": {
+    "portSemantics": {
+      "flowDirection": {
+        "requires": {
+          "valueKind": "d8-direction"
+        }
+      }
+    },
+    "outputSemantics": {
+      "accumulation": {
+        "fixed": {
+          "valueKind": "contributing-cells"
+        },
+        "inherit": [
+          {
+            "inputPort": "flowDirection",
+            "facts": [
+              "crs",
+              "grid"
+            ]
+          }
+        ]
+      }
+    }
+  }
 }

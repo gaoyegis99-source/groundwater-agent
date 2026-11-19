@@ -4,8 +4,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from ...readiness import ServiceReadinessProbe
+from ...operator_metadata import operator_metadata
 from ...settings import (
     ExecutableModelDefinition,
+    KernelSettings,
     ObservationToolDefinition,
     ServiceBinding,
 )
@@ -13,7 +16,7 @@ from ..mode import AgentModeCapabilities, resolve_mode_capabilities
 from ..model_tool import build_model_tool
 from ..observation_client import ObservationClient
 from ..preparation_tool import build_preparation_tool
-from .catalog_tools import build_catalog_tools
+from .catalog_tools import add_workflow_validation, build_catalog_tools
 from .observations import _observation_tool
 from .read_governance import _prepare_tools
 from .reply_submission import ReplySubmission
@@ -30,13 +33,19 @@ def build_agent_tools(
     operator_catalog: dict | None = None,
     operator_catalog_digest: str | None = None,
     composition_operators: dict | None = None,
+    composition_settings: KernelSettings | None = None,
+    catalog_settings: KernelSettings | None = None,
     capabilities: AgentModeCapabilities | None = None,
     provider: str = "deepseek",
     include_execution_facts: bool = True,
 ) -> list[Any]:
     all_installed_models = models
-    capabilities = capabilities or resolve_mode_capabilities(request_context, models)
+    capabilities = capabilities or resolve_mode_capabilities(
+        request_context, models, composition_available=bool(composition_operators),
+        catalog_available=bool(catalog_settings and catalog_settings.operator_uses),
+    )
     models = capabilities.models
+    allow_catalog = capabilities.allow_operator_catalog and operator_catalog is not None
     converge_read_only_evidence = (
         capabilities.mode == "DIALOGUE" and capabilities.read_only
     )
@@ -72,6 +81,8 @@ def build_agent_tools(
             observation_client=observation_client,
             provider=provider,
             explicit_model_tool_request=explicit_model_tool_request,
+            workflow_selection=request_context.get("workflow_selection") if request_context else None,
+            composition=composition_settings.workflow_composition if composition_settings else None,
         ))
     tools.append(ReplySubmission(
         database,
@@ -96,8 +107,34 @@ def build_agent_tools(
             )
             for item in active_observations
         )
-    if capabilities.allow_operator_catalog:
-        tools.extend(build_catalog_tools(operator_catalog, composition_operators))
+    if allow_catalog:
+        settings = catalog_settings or composition_settings
+        worker_status = None
+        executor = services_by_name.get("executor")
+        if settings is not None and executor is not None and (composition_settings is not None or settings.operator_uses):
+            readiness_probe = ServiceReadinessProbe(
+                name="executor", url=executor.internal_base_url + "/internal/health/ready",
+                project_id=settings.project_id, client=observation_client.client,
+                timeout_seconds=settings.readiness_timeout_seconds,
+                success_cache_seconds=settings.readiness_success_cache_seconds,
+                failure_cache_seconds=settings.readiness_failure_cache_seconds,
+            )
+
+            async def worker_status(runtime):
+                readiness = await readiness_probe.check()
+                if readiness.get("status") != "UP":
+                    return "UNAVAILABLE"
+                if readiness.get("definition_set_digest") != settings.definition_set_digest:
+                    return "DEFINITION_SET_MISMATCH"
+                components = readiness.get("components", {})
+                return components.get(runtime, "UNKNOWN")
+
+        tools.extend(build_catalog_tools(
+            operator_catalog, composition_operators,
+            rule_schemas=composition_settings.workflow_composition.rule_schemas if composition_settings else None,
+            worker_status=worker_status,
+            metadata=(lambda operator: operator_metadata(operator, settings)) if settings is not None else None,
+        ))
     if capabilities.allow_model_tools:
         tools.extend(
             build_model_tool(
@@ -105,7 +142,7 @@ def build_agent_tools(
                 explicit_model_tool_request=explicit_model_tool_request,
             ) for item in models
         )
-    return _prepare_tools(
+    tools = _prepare_tools(
         tools,
         database=database,
         provider=provider,
@@ -124,7 +161,7 @@ def build_agent_tools(
                 item.name for item in active_observations
                 if capabilities.allow_observations
             ),
-            *({"list_operators", "get_operator"} if capabilities.allow_operator_catalog else set()),
+            *({"list_operators", "get_operator"} if allow_catalog else set()),
             *(
                 {"list_execution_facts", "get_execution_fact"}
                 if include_execution_facts else set()
@@ -132,3 +169,6 @@ def build_agent_tools(
             *({"prepare_task_inputs"} if capabilities.allow_model_tools else set()),
         },
     )
+    if allow_catalog and composition_settings is not None and request_context is not None:
+        return add_workflow_validation(tools, composition_settings, request_context)
+    return tools

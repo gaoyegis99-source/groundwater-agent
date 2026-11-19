@@ -132,7 +132,9 @@ it('posts the selected Data identity and keeps the editor open on a revision con
   fireEvent.click(await screen.findByRole('button', { name: '编辑参数' }));
   await screen.findByRole('option', { name: /new-input/ });
   fireEvent.change(screen.getByRole('combobox', { name: /输入资料/ }), { target: { value: 'new-input' } });
-  fireEvent.click(screen.getByRole('button', { name: '保存为新修订' }));
+  const save = screen.getByRole('button', { name: '保存为新修订' });
+  await waitFor(() => expect(save).toBeEnabled());
+  fireEvent.click(save);
   expect(await screen.findByText(/所选数据的版本、语义或原始对象未通过核验/)).toBeVisible();
   expect(screen.getByTestId('confirmation-editor')).toBeVisible();
   const post = fetchMock.mock.calls.find(([url]) => url.endsWith('/original/revisions'));
@@ -172,7 +174,7 @@ it('keeps stop disabled while the server is processing the durable control reque
     ? json(snapshot({ turns: [{ status: 'RUNNING' }], controlRequests: [{ requestId: 'stop-1', agentRunId: 'agent-1', status: 'PROCESSING' }] }))
     : basics(url)));
   render(<App />);
-  expect(await screen.findByRole('button', { name: '正在请求停止…' })).toBeDisabled();
+  expect(await screen.findByRole('button', { name: '等待停止结果' })).toBeDisabled();
   expect(screen.getByText('正在处理停止', { exact: true })).toBeVisible();
   expect(screen.queryByText('本轮已取消', { exact: true })).not.toBeInTheDocument();
 });
@@ -374,6 +376,7 @@ it('a business event already covered by history still refreshes its details and 
 });
 
 it('replaces results with each authoritative response, including retry removal and output correction', async () => {
+  window.history.replaceState({}, '', '/#/sessions/session-1/workbench/results');
   let messageReads = 0;
   let resultReads = 0;
   const resultPages = [
@@ -407,6 +410,7 @@ it('replaces results with each authoritative response, including retry removal a
 });
 
 it('ignores an older result response that finishes after a newer authoritative read', async () => {
+  window.history.replaceState({}, '', '/#/sessions/session-1/workbench/results');
   const staleRead = delayed();
   let messageReads = 0;
   let resultReads = 0;
@@ -454,10 +458,10 @@ it('verifies the exact result identity before offering download without a recomm
     return basics(url);
   }));
   render(<App />);
-  await screen.findByText('精确版本尚未通过读取核验。');
-  expect(screen.queryByRole('link', { name: '下载' })).not.toBeInTheDocument();
+  await screen.findByText('正在核验精确版本…');
+  expect(screen.queryByRole('link', { name: /^下载/ })).not.toBeInTheDocument();
   await act(async () => verified.finish(json(dataDetail({ versionId: output.versionId }))));
-  await screen.findByRole('link', { name: '下载' });
+  await screen.findByRole('link', { name: /^下载/ });
   expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes('/recommendations/'))).toBe(false);
 });
 
@@ -506,7 +510,8 @@ it('a connection failure retains the task state and never posts or starts an HTT
   const count = calls.mock.calls.length;
   await act(async () => { await new Promise(resolve => setTimeout(resolve, 160)); });
   expect(calls.mock.calls).toHaveLength(count);
-  expect(screen.getByRole('status')).toHaveTextContent('获取所需信息');
+  expect(within(screen.getByTestId('activity-panel')).getByRole('status')).toHaveTextContent('获取所需信息');
+  expect(screen.getByText(/显示最近快照/)).toBeVisible();
   expect(screen.getByText('实时更新尚未连接，当前显示最后收到的状态。')).toBeVisible();
 });
 

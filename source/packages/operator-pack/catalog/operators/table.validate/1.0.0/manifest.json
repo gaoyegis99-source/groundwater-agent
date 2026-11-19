@@ -58,7 +58,9 @@
         "application/json"
       ],
       "name": "rules",
-      "required": true
+      "required": true,
+      "logicalType": "record",
+      "rulesSchema": "table-validation-rules.v1"
     }
   ],
   "memoryLimitBytes": 8589934592,
@@ -97,8 +99,29 @@
       "kind": "value",
       "name": "summary",
       "schema": {
-        "type": "object"
-      }
+        "type": "object",
+        "properties": {
+          "invalidRowCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "validRowCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "violationCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "invalidRowCount",
+          "validRowCount",
+          "violationCount"
+        ],
+        "additionalProperties": false
+      },
+      "maxBytes": 1048576
     }
   ],
   "parametersSchema": {
@@ -109,7 +132,12 @@
   "runtime": "native",
   "tags": [
     "table",
-    "validate"
+    "validate",
+    "capability:validate",
+    "表格校验",
+    "质量检查",
+    "违规明细",
+    "把质量不合格的观测单独列出"
   ],
   "timeoutSeconds": 1200,
   "title": "Validate table rows",

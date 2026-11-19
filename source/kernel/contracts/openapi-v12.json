@@ -250,6 +250,11 @@
       "CapabilitiesResponse": {
         "additionalProperties": false,
         "properties": {
+          "authenticationRequired": {
+            "default": true,
+            "title": "Authenticationrequired",
+            "type": "boolean"
+          },
           "currentUser": {
             "$ref": "#/components/schemas/CurrentUser"
           },
@@ -265,6 +270,13 @@
               "$ref": "#/components/schemas/ObservationToolCapability"
             },
             "title": "Observationtools",
+            "type": "array"
+          },
+          "operators": {
+            "items": {
+              "$ref": "#/components/schemas/OperatorCapability"
+            },
+            "title": "Operators",
             "type": "array"
           },
           "orchestrationOwner": {
@@ -476,6 +488,7 @@
         "title": "IdentityResponse",
         "type": "object"
       },
+      "JsonValue": {},
       "LoginRequest": {
         "additionalProperties": false,
         "properties": {
@@ -637,6 +650,16 @@
             ],
             "title": "Requestedmode",
             "type": "string"
+          },
+          "workflowSelection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MessageWorkflowSelection"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -1044,6 +1067,99 @@
         "title": "MessageReceiptResponse",
         "type": "object"
       },
+      "MessageWorkflowContinuation": {
+        "additionalProperties": false,
+        "properties": {
+          "outputName": {
+            "minLength": 1,
+            "title": "Outputname",
+            "type": "string"
+          },
+          "runId": {
+            "minLength": 1,
+            "title": "Runid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "runId",
+          "outputName"
+        ],
+        "title": "MessageWorkflowContinuation",
+        "type": "object"
+      },
+      "MessageWorkflowSelection": {
+        "additionalProperties": false,
+        "properties": {
+          "continuation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MessageWorkflowContinuation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "inputBindings": {
+            "additionalProperties": {
+              "minimum": 0.0,
+              "type": "integer"
+            },
+            "maxProperties": 100,
+            "title": "Inputbindings",
+            "type": "object"
+          },
+          "modelChecksum": {
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Modelchecksum",
+            "type": "string"
+          },
+          "modelId": {
+            "minLength": 1,
+            "title": "Modelid",
+            "type": "string"
+          },
+          "modelVersion": {
+            "minLength": 1,
+            "title": "Modelversion",
+            "type": "string"
+          },
+          "parameters": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "maxProperties": 200,
+            "title": "Parameters",
+            "type": "object"
+          },
+          "workflowChecksum": {
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Workflowchecksum",
+            "type": "string"
+          },
+          "workflowId": {
+            "minLength": 1,
+            "title": "Workflowid",
+            "type": "string"
+          },
+          "workflowVersion": {
+            "minLength": 1,
+            "title": "Workflowversion",
+            "type": "string"
+          }
+        },
+        "required": [
+          "modelId",
+          "modelVersion",
+          "modelChecksum",
+          "workflowId",
+          "workflowVersion",
+          "workflowChecksum"
+        ],
+        "title": "MessageWorkflowSelection",
+        "type": "object"
+      },
       "ModelCapability": {
         "additionalProperties": false,
         "properties": {
@@ -1168,6 +1284,244 @@
           "outputSchema"
         ],
         "title": "ObservationToolCapability",
+        "type": "object"
+      },
+      "OperatorCapability": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmationSupported": {
+            "title": "Confirmationsupported",
+            "type": "boolean"
+          },
+          "domain": {
+            "title": "Domain",
+            "type": "string"
+          },
+          "operatorId": {
+            "title": "Operatorid",
+            "type": "string"
+          },
+          "runtime": {
+            "enum": [
+              "native",
+              "qgis",
+              "remote_http"
+            ],
+            "title": "Runtime",
+            "type": "string"
+          },
+          "scientificReview": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OperatorScientificReview"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scientificStatus": {
+            "enum": [
+              "REQUIRES_CASE_AND_REVIEW",
+              "REVIEW_EVIDENCE_ATTACHED"
+            ],
+            "title": "Scientificstatus",
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "validation": {
+            "$ref": "#/components/schemas/OperatorValidationEvidence"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          },
+          "workflowUses": {
+            "items": {
+              "$ref": "#/components/schemas/OperatorWorkflowUse"
+            },
+            "title": "Workflowuses",
+            "type": "array"
+          }
+        },
+        "required": [
+          "operatorId",
+          "version",
+          "title",
+          "domain",
+          "tags",
+          "runtime",
+          "confirmationSupported",
+          "workflowUses",
+          "validation",
+          "scientificStatus",
+          "scientificReview"
+        ],
+        "title": "OperatorCapability",
+        "type": "object"
+      },
+      "OperatorModelUse": {
+        "additionalProperties": false,
+        "properties": {
+          "modelId": {
+            "title": "Modelid",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "modelId",
+          "version"
+        ],
+        "title": "OperatorModelUse",
+        "type": "object"
+      },
+      "OperatorReviewReference": {
+        "additionalProperties": false,
+        "properties": {
+          "checksum": {
+            "title": "Checksum",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "checksum"
+        ],
+        "title": "OperatorReviewReference",
+        "type": "object"
+      },
+      "OperatorScientificReview": {
+        "additionalProperties": false,
+        "properties": {
+          "benchmark": {
+            "$ref": "#/components/schemas/OperatorReviewReference"
+          },
+          "domainReview": {
+            "$ref": "#/components/schemas/OperatorReviewReference"
+          }
+        },
+        "required": [
+          "benchmark",
+          "domainReview"
+        ],
+        "title": "OperatorScientificReview",
+        "type": "object"
+      },
+      "OperatorValidationEvidence": {
+        "additionalProperties": false,
+        "properties": {
+          "checkedOn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checkedon"
+          },
+          "coverage": {
+            "anyOf": [
+              {
+                "enum": [
+                  "BROWSER_SINGLE_NODE",
+                  "WORKER_SINGLE_OPERATOR",
+                  "REMOTE_PRESET_NODE"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage"
+          },
+          "implementationRevision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Implementationrevision"
+          },
+          "reportChecksum": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reportchecksum"
+          },
+          "status": {
+            "enum": [
+              "PASSED",
+              "STALE",
+              "NOT_RECORDED"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "coverage",
+          "checkedOn",
+          "reportChecksum",
+          "implementationRevision"
+        ],
+        "title": "OperatorValidationEvidence",
+        "type": "object"
+      },
+      "OperatorWorkflowUse": {
+        "additionalProperties": false,
+        "properties": {
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/OperatorModelUse"
+            },
+            "title": "Models",
+            "type": "array"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          },
+          "workflowId": {
+            "title": "Workflowid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "workflowId",
+          "version",
+          "models"
+        ],
+        "title": "OperatorWorkflowUse",
         "type": "object"
       },
       "PreparationResponse": {
@@ -1923,6 +2277,88 @@
           "status"
         ],
         "title": "StopResponse",
+        "type": "object"
+      },
+      "TaskHistoryItem": {
+        "additionalProperties": false,
+        "properties": {
+          "goalRevision": {
+            "title": "Goalrevision",
+            "type": "integer"
+          },
+          "modelId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modelid"
+          },
+          "sessionId": {
+            "title": "Sessionid",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "updatedAt": {
+            "title": "Updatedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionId",
+          "goalRevision",
+          "title",
+          "modelId",
+          "updatedAt",
+          "status"
+        ],
+        "title": "TaskHistoryItem",
+        "type": "object"
+      },
+      "TaskHistoryPage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TaskHistoryItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextcursor"
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "title": "TaskHistoryPage",
         "type": "object"
       },
       "TaskResponse": {
@@ -3808,6 +4244,125 @@
         "summary": "Create Session"
       }
     },
+    "/api/v12/sessions/task-history": {
+      "get": {
+        "operationId": "kernel_list_task_history",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskHistoryPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Task History"
+      }
+    },
     "/api/v12/sessions/{sessionId}": {
       "get": {
         "operationId": "kernel_get_session",
@@ -4664,6 +5219,23 @@
               "title": "Limit",
               "type": "integer"
             }
+          },
+          {
+            "in": "query",
+            "name": "goalRevision",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Goalrevision"
+            }
           }
         ],
         "responses": {
@@ -5206,6 +5778,23 @@
               "minimum": 0,
               "title": "Cursor",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "goalRevision",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Goalrevision"
             }
           }
         ],

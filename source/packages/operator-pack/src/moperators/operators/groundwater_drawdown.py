@@ -2,10 +2,19 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import numpy as np
 
-from moperators.operators.analysis_common import field, number, rows, timestamp
+from moperators.operators.analysis_common import (
+    field,
+    input_null_values,
+    input_timezone,
+    is_missing,
+    number,
+    rows,
+    timestamp,
+)
 from moperators.operators.extension_common import one, summary, write_rows
 
 UNITS = {"m": 1.0, "cm": 0.01, "mm": 0.001}
@@ -21,14 +30,19 @@ def run(inputs: dict[str, Any], parameters: dict[str, Any], output_dir: Path) ->
     head_field = parameters["headField"]
     parsed: list[tuple[Any, Any, float, dict[str, Any]]] = []
     seen: set[tuple[Any, Any]] = set()
-    for row in rows(one(inputs, "observations")):
+    source = one(inputs, "observations")
+    timezone_ = input_timezone(source)
+    null_values = input_null_values(source)
+    for row in rows(source):
         group = field(row, group_field)
-        moment = timestamp(field(row, time_field))
+        moment = timestamp(field(row, time_field), timezone_)
         if (group, moment) in seen:
             raise ValueError("DUPLICATE_TIMESTAMP")
         seen.add((group, moment))
-        parsed.append((group, moment, number(field(row, head_field)) * factor, row))
-    references = _references(parsed, parameters, group_field)
+        raw = field(row, head_field)
+        if not is_missing(raw, null_values):
+            parsed.append((group, moment, number(raw) * factor, row))
+    references = _references(parsed, parameters, timezone_, null_values)
     output = [
         {
             group_field: group,
@@ -48,7 +62,8 @@ def run(inputs: dict[str, Any], parameters: dict[str, Any], output_dir: Path) ->
 def _references(
     values: list[tuple[Any, Any, float, dict[str, Any]]],
     parameters: dict[str, Any],
-    group_field: str,
+    timezone_: ZoneInfo | None,
+    null_values: frozenset[str],
 ) -> dict[Any, float]:
     mode = parameters["referenceMode"]
     result: dict[Any, float] = {}
@@ -58,15 +73,18 @@ def _references(
         if not reference_field or reference_unit not in UNITS:
             raise ValueError("REFERENCE_INVALID")
         for group, _, _, row in values:
-            reference = number(field(row, reference_field)) * UNITS[reference_unit]
+            raw = field(row, reference_field)
+            if is_missing(raw, null_values):
+                raise ValueError("REFERENCE_INVALID")
+            reference = number(raw) * UNITS[reference_unit]
             if group in result and not np.isclose(result[group], reference):
                 raise ValueError("REFERENCE_INVALID")
             result[group] = reference
         return result
     if mode != "baselinePeriod":
         raise ValueError("REFERENCE_INVALID")
-    start = timestamp(parameters.get("baselineStart"))
-    end = timestamp(parameters.get("baselineEnd"))
+    start = timestamp(parameters.get("baselineStart"), timezone_)
+    end = timestamp(parameters.get("baselineEnd"), timezone_)
     if start > end:
         raise ValueError("TIME_RANGE_INVALID")
     statistic = parameters.get("baselineStatistic")

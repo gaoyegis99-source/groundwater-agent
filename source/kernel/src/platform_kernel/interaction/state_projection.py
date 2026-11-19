@@ -9,16 +9,17 @@ from ..application.query_dtos import AgentRunView
 from ..contracts import DataVersionRefV2
 from ..database import append_event, connect_database, utc_now
 from .models import Confirmation, ConfirmationAction
+from .output_steps import freeze_output_steps
 from ..application.task_api import bind_confirmation
 
 
-def apply_agent_run(database: Path, run: AgentRunView) -> bool:
+def apply_agent_run(database: Path, run: AgentRunView, *, models=(), output_steps=()) -> bool:
     with connect_database(database) as connection:
         connection.execute("BEGIN IMMEDIATE")
-        return project_agent_run(connection, run)
+        return project_agent_run(connection, run, models=models, output_steps=output_steps)
 
 
-def project_agent_run(connection: sqlite3.Connection, run: AgentRunView) -> bool:
+def project_agent_run(connection: sqlite3.Connection, run: AgentRunView, *, models=(), output_steps=()) -> bool:
     session = connection.execute(
         "SELECT * FROM sessions WHERE session_id = ?", (run.session_id,)
     ).fetchone()
@@ -44,7 +45,7 @@ def project_agent_run(connection: sqlite3.Connection, run: AgentRunView) -> bool
     if run.status == "WAITING_CONFIRMATION" and any(
         action.status == "PENDING" for action in run.actions
     ):
-        ensure_confirmation(connection, run)
+        ensure_confirmation(connection, run, models=models, output_steps=output_steps)
     return True
 
 
@@ -87,7 +88,7 @@ def activity_counts(
     return counts.get("MODEL_REQUEST", 0), counts.get("TOOL", 0)
 
 
-def ensure_confirmation(connection: sqlite3.Connection, run: AgentRunView) -> str:
+def ensure_confirmation(connection: sqlite3.Connection, run: AgentRunView, *, models=(), output_steps=()) -> str:
     actions = tuple(action for action in run.actions if action.status == "PENDING")
     action_ids = tuple(action.tool_call_id for action in actions)
     rows = connection.execute(
@@ -147,6 +148,7 @@ def ensure_confirmation(connection: sqlite3.Connection, run: AgentRunView) -> st
                 ),
             ),
         )
+    freeze_output_steps(connection, confirmation_id, actions, models, output_steps)
     append_event(
         connection,
         run.session_id,
@@ -173,6 +175,13 @@ def confirmation_from_row(connection, row) -> Confirmation:
            WHERE confirmation_id = ? ORDER BY position""",
         (row["confirmation_id"],),
     ).fetchall()
+    decision = connection.execute(
+        """SELECT created_at FROM session_events
+           WHERE session_id=? AND event_type='confirmation.processing'
+             AND json_extract(payload_json,'$.confirmation_id')=?
+           ORDER BY event_id LIMIT 1""",
+        (row["session_id"], row["confirmation_id"]),
+    ).fetchone() if row["decision"] is not None else None
     return Confirmation(
         confirmation_id=row["confirmation_id"],
         goal_revision=row["goal_revision"],
@@ -205,4 +214,25 @@ def confirmation_from_row(connection, row) -> Confirmation:
         source_workflow_run_id=row["source_workflow_run_id"],
         request_id=row["request_id"],
         created_at=row["created_at"],
+        decision_requested_at=decision["created_at"] if decision else None,
+        published_output_steps=tuple(
+            {
+                "tool_call_id": step["tool_call_id"],
+                "source_tool_call_id": step["source_tool_call_id"],
+                **{key: plan[key] for key in ("model_id", "output", "outputs", "arguments")},
+                **({"error_code": step["error_code"]} if step["error_code"] else {}),
+
+            }
+            for step in connection.execute(
+                """SELECT p.*, (SELECT json_extract(e.payload_json,'$.error_code')
+                                FROM session_events e
+                                WHERE e.session_id=? AND e.event_type='workflow.output_step_blocked'
+                                  AND json_extract(e.payload_json,'$.tool_call_id')=p.tool_call_id
+                                  AND json_extract(e.payload_json,'$.confirmation_id')=p.confirmation_id
+                                ORDER BY e.event_id DESC LIMIT 1) AS error_code
+                   FROM published_output_steps p WHERE p.confirmation_id=? ORDER BY p.rowid""",
+                (row["session_id"], row["confirmation_id"]),
+            )
+            for plan in (json.loads(step["plan_json"]),)
+        ),
     )

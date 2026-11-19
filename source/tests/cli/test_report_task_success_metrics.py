@@ -58,7 +58,7 @@ def test_task_success_report_projects_body_free_preparation_funnel(
 
     report = build_report(application.database)
 
-    assert report["database_schema_version"] == 34
+    assert report["database_schema_version"] == 36
     assert report["stages"]["relevant_runs"] == 1
     assert report["stages"]["blocked_preparation"] == 1
     assert report["stages"]["confirmation_confirmed"] == 1

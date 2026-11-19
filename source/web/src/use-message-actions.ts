@@ -4,6 +4,7 @@ import { canConfirm, isBusy } from './chat-state';
 import { inputReferences, isResourceItems, messageBody, newRequestId, savedSubmission, savedSubmissionForKey, saveSubmission, type SavedSubmission } from './message-routing';
 import { readJsonCache } from './browser-cache';
 import { readQueue, saveQueue, type QueuedMessage } from './task-state';
+import { saveWorkflowSelection, storedWorkflowSelection, workflowFileKey, workflowSelectionBody, type WorkflowSelection } from './workflow-selection';
 import type { Confirmation, ConfirmationRevisionAction, History, ResourceItem, Session } from './types';
 import type { SessionStreamRefs } from './use-session-stream';
 import { scopedStorageKey } from './browser-scope';
@@ -13,6 +14,15 @@ const naturalControls = new Set(['批准', '同意', '确认执行', '批准执�
 const statusQueries = new Set(['状态', '查看状态', '当前状态', '查询状态', '进度怎么样', '进度怎么样？', '现在怎么样了', '现在怎么样了？']);
 export function isNaturalControl(message: string, hasAttachments = false) { return !hasAttachments && naturalControls.has(message.trim()); }
 function isStatusQuery(message: string, hasAttachments = false) { return !hasAttachments && statusQueries.has(message.trim()); }
+function queuedRequest(item: QueuedMessage, requestId: string) {
+  return {
+    requestId, message: item.text || (item.workflow ? '请准备所选工作流。' : '请处理已附加的数据。'),
+    requestedMode: item.workflow ? 'DIALOGUE' as const : 'AUTO' as const,
+    ...(item.workflow && { workflowSelection: workflowSelectionBody(item.workflow, item.attachments) }),
+    ...(item.attachments.length && { inputReferences: inputReferences(item.attachments) }),
+    ...(item.correctsAgentRunId && { correctsAgentRunId: item.correctsAgentRunId }),
+  };
+}
 function savedAttachments(scope: string, id: string): ResourceItem[] {
   return readJsonCache(scopedStorageKey(scope, 'draft-attachments', id), isResourceItems) ?? [];
 }
@@ -85,6 +95,14 @@ export function useMessageActions({
   const [queue, setQueue] = useState<QueuedMessage[]>(() => storageScope ? readQueue(storageScope, activeId) : []);
   const queueSending = useRef(false);
   const [draft, setDraft] = useState(() => storageScope ? sessionStorage.getItem(scopedStorageKey(storageScope, 'draft', activeId)) ?? '' : '');
+  const [selection, setSelection] = useState<{ scope: string; session: string; value: WorkflowSelection | null }>();
+  const workflow = selection?.scope === storageScope && selection.session === activeId
+    ? selection.value : (storageScope ? storedWorkflowSelection(storageScope, activeId) : null);
+  function setWorkflow(value: WorkflowSelection | null) {
+    if (!storageScope) return;
+    saveWorkflowSelection(storageScope, activeId, value);
+    setSelection({ scope: storageScope, session: activeId, value });
+  }
   const [attachments, setAttachments] = useState<ResourceItem[]>(() => storageScope ? savedAttachments(storageScope, activeId) : []);
   const [submission, setSubmission] = useState(() => storageScope ? savedSubmission(storageScope, activeId) : null);
   const [pendingOperation, setPendingOperation] = useState<{ id: number; sessionId: string; generation: number; label: string } | null>(null);
@@ -179,24 +197,30 @@ export function useMessageActions({
       saveQueue(storageScope, id, remaining); if (activeRef.current === id) { setQueue(remaining); queueSending.current = false; }
     }
     saveSubmission(storageScope, id, null);
+    const retained = sent.draftText !== null && sent.body.workflowSelection ? new Set(
+      Object.values(sent.body.workflowSelection.inputBindings ?? {}).map(index => sent.attachments[index]).filter(Boolean).map(workflowFileKey),
+    ) : new Set<string>();
+    const remaining = (item: ResourceItem) => retained.has(workflowFileKey(item))
+      || !sent.attachments.some(resource => workflowFileKey(resource) === workflowFileKey(item));
     if (sent.body.requestedMode === 'AUTO' && sent.draftText !== null) sessionStorage.setItem(scopedStorageKey(storageScope, 'routing-draft', id), JSON.stringify(sent));
     if (sent.draftText !== null) {
       if (sessionStorage.getItem(scopedStorageKey(storageScope, 'draft', id)) === sent.draftText) sessionStorage.removeItem(scopedStorageKey(storageScope, 'draft', id));
     }
-    sessionStorage.setItem(scopedStorageKey(storageScope, 'draft-attachments', id), JSON.stringify(savedAttachments(storageScope, id).filter(item => !sent.attachments.some(resource => resource.versionId === item.versionId))));
+    sessionStorage.setItem(scopedStorageKey(storageScope, 'draft-attachments', id), JSON.stringify(savedAttachments(storageScope, id).filter(remaining)));
     if (activeRef.current !== id) return;
     setSubmission(previous => previous?.body.requestId === sent.body.requestId ? null : previous);
     if (!updateView) return;
     if (sent.draftText !== null && draftRef.current === sent.draftText) {
       setDraft(''); sessionStorage.removeItem(scopedStorageKey(storageScope, 'draft', id));
     }
-    setAttachments(previous => previous.filter(item => !sent.attachments.some(resource => resource.versionId === item.versionId)));
+    setAttachments(previous => previous.filter(remaining));
   }
   function changeQueue(items: QueuedMessage[]) { saveQueue(storageScope, activeId, items); setQueue(items); }
   function enqueue(correctsAgentRunId?: string) {
-    if (!activeId || (!draft.trim() && !attachments.length)) return;
-    const item: QueuedMessage = { id: newRequestId(), text: draft, attachments, createdAt: new Date().toISOString(), ...(correctsAgentRunId ? { correctsAgentRunId } : {}) };
-    changeQueue([...queue, item]); updateDraft(''); setAttachments([]);
+    if (!activeId || (!draft.trim() && !attachments.length && !workflow)) return;
+    const item: QueuedMessage = { id: newRequestId(), text: draft, attachments, createdAt: new Date().toISOString(),
+      ...(workflow && { workflow }), ...(correctsAgentRunId ? { correctsAgentRunId } : {}) };
+    changeQueue([...queue, item]); updateDraft(''); setAttachments([]); setWorkflow(null);
   }
   async function stopRun(correct = false) {
     if (!lastTurn || history?.sessionId !== activeId || stopping) return;
@@ -234,7 +258,7 @@ export function useMessageActions({
     // A persisted ID means the previous POST may have reached Kernel. Recover the
     // receipt first and offer only the existing request for an explicit retry.
     if (head.requestId) {
-      const sent: SavedSubmission = { queueItemId: head.id, body: { requestId: head.requestId, message: head.text || '请处理已附加的数据。', requestedMode: 'AUTO', ...(head.attachments.length ? { inputReferences: inputReferences(head.attachments) } : {}), ...(head.correctsAgentRunId ? { correctsAgentRunId: head.correctsAgentRunId } : {}) }, draftText: null, attachments: head.attachments };
+      const sent: SavedSubmission = { queueItemId: head.id, body: queuedRequest(head, head.requestId), draftText: null, attachments: head.attachments };
       if (history?.turns.some(turn => turn.requestId === head.requestId)) acceptSubmission(activeId, sent);
       else { setSubmission(sent); saveSubmission(storageScope, activeId, sent); }
       return;
@@ -242,11 +266,11 @@ export function useMessageActions({
     queueSending.current = true;
     const item = { ...head, requestId: head.requestId ?? newRequestId() };
     const updated = [item, ...queue.slice(1)]; saveQueue(storageScope, activeId, updated); setQueue(updated);
-    void send({ queueItemId: item.id, body: { requestId: item.requestId, message: item.text || '请处理已附加的数据。', requestedMode: 'AUTO', ...(item.attachments.length ? { inputReferences: inputReferences(item.attachments) } : {}), ...(item.correctsAgentRunId ? { correctsAgentRunId: item.correctsAgentRunId } : {}) }, draftText: null, attachments: item.attachments });
+    void send({ queueItemId: item.id, body: queuedRequest(item, item.requestId), draftText: null, attachments: item.attachments });
   }, [activeId, busy, stopping, awaitingConfirmation, submission, error, connected, queue]);
   function updateDraft(value: string) { setDraft(value); if (storageScope) sessionStorage.setItem(scopedStorageKey(storageScope, 'draft', activeId), value); }
   function navigate(id: string) { window.location.hash = `/sessions/${id}`; }
-  async function createSession(operation: number, initialDraft?: { text: string; attachments: ResourceItem[]; submission?: SavedSubmission }) {
+  async function createSession(operation: number, initialDraft?: { text: string; attachments: ResourceItem[]; submission?: SavedSubmission; workflow?: WorkflowSelection }) {
     const generation = viewGeneration.current;
     const created = await callApi('kernel_create_session', '/sessions', { projectId: project }) as Session;
     if (viewGeneration.current !== generation || currentSessionId() !== activeId) {
@@ -256,6 +280,7 @@ export function useMessageActions({
     if (initialDraft !== undefined) {
       sessionStorage.setItem(scopedStorageKey(storageScope, 'draft', created.sessionId), initialDraft.text);
       sessionStorage.setItem(scopedStorageKey(storageScope, 'draft-attachments', created.sessionId), JSON.stringify(initialDraft.attachments));
+      if (initialDraft.workflow) saveWorkflowSelection(storageScope, created.sessionId, initialDraft.workflow);
       if (initialDraft.submission) saveSubmission(storageScope, created.sessionId, initialDraft.submission);
     }
     setPendingOperation(previous => previous?.id === operation ? { ...previous, sessionId: created.sessionId, generation: generation + 1 } : previous);
@@ -270,26 +295,29 @@ export function useMessageActions({
     try { await createSession(operation); } catch (caught) { if (operation === mutationSerial.current && generation === viewGeneration.current && activeRef.current === activeId) showError(caught); }
     finally { sessionCreationPending.current = false; setPendingOperation(previous => previous?.id === operation ? null : previous); }
   }
-  async function newChatWithAttachments(nextAttachments: ResourceItem[], text = '') {
+  async function newChatWithAttachments(nextAttachments: ResourceItem[], text = '', workflow?: WorkflowSelection) {
     if (pending || sessionCreationPending.current || !project) return;
     sessionCreationPending.current = true;
     setContinuationVersionId(nextAttachments[0]?.versionId ?? null);
     const operation = ++mutationSerial.current;
     const generation = viewGeneration.current;
     setPendingOperation({ id: operation, sessionId: activeId, generation: viewGeneration.current, label: '正在创建对话' }); setActionError(null);
-    try { await createSession(operation, { text, attachments: nextAttachments }); }
+    try { await createSession(operation, { text, attachments: nextAttachments, workflow }); }
     catch (caught) { if (operation === mutationSerial.current && generation === viewGeneration.current && activeRef.current === activeId) showError(caught); }
     finally { sessionCreationPending.current = false; setContinuationVersionId(null); setPendingOperation(previous => previous?.id === operation ? null : previous); }
   }
   async function send(retry?: SavedSubmission, suggestedMessage?: string) {
     if (suggestedMessage && optionSubmission.current) return;
-    const message = suggestedMessage ?? (draft.trim() || (attachments.length ? '请处理已附加的数据。' : ''));
-    const controlAllowed = isNaturalControl(message, attachments.length > 0)
+    const selected = suggestedMessage ? null : workflow;
+    const message = suggestedMessage ?? (draft.trim() || (selected ? '请准备所选工作流。' : attachments.length ? '请处理已附加的数据。' : ''));
+    const controlAllowed = isNaturalControl(message, attachments.length > 0 || !!selected)
       && (!pendingControl || isStatusQuery(message, attachments.length > 0));
     if ((!retry && ((busy && !controlAllowed) || submission)) || pending || !project) return;
     if (!retry && !message) return;
     const sent: SavedSubmission = retry ?? {
-      body: { ...messageBody(message), ...(!suggestedMessage && attachments.length ? { inputReferences: inputReferences(attachments) } : {}) },
+      body: { ...messageBody(message),
+        ...(selected && { requestedMode: 'DIALOGUE' as const, workflowSelection: workflowSelectionBody(selected, attachments) }),
+        ...(!suggestedMessage && attachments.length ? { inputReferences: inputReferences(attachments) } : {}) },
       draftText: suggestedMessage ? null : draft, attachments: suggestedMessage ? [] : attachments,
     };
     const startedAt = performance.now();
@@ -307,12 +335,13 @@ export function useMessageActions({
     const current = () => activeRef.current === id && viewGeneration.current === generation + (migrated ? 1 : 0);
     try {
       if (!id) {
-        const created = await createSession(operation, { text: draft, attachments, submission: sent });
+        const created = await createSession(operation, { text: draft, attachments, submission: sent, workflow: selected ?? undefined });
         if (created === null) return;
         id = created; migrated = true;
         saveSubmission(storageScope, '', null);
         sessionStorage.removeItem(scopedStorageKey(storageScope, 'draft'));
         sessionStorage.removeItem(scopedStorageKey(storageScope, 'draft-attachments'));
+        saveWorkflowSelection(storageScope, '', null);
       }
       await callApi('kernel_create_message', `/sessions/${id}/messages`, sent.body);
       acceptSubmission(id, sent, current());
@@ -413,10 +442,12 @@ export function useMessageActions({
     clearExternalError();
   }
 
-  const canSend = !pending && (!busy || (isNaturalControl(draft, attachments.length > 0) && (!pendingControl || isStatusQuery(draft, attachments.length > 0))))
-    && !submission && !!project && (!!draft.trim() || !!attachments.length);
+  const canSend = !pending && (!busy || (isNaturalControl(draft, attachments.length > 0 || !!workflow) && (!pendingControl || isStatusQuery(draft, attachments.length > 0))))
+    && !submission && !!project && (!!draft.trim() || !!attachments.length || !!workflow);
 
   return {
+    workflow,
+    setWorkflow,
     queue,
     changeQueue,
     enqueue,

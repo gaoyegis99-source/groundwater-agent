@@ -111,6 +111,7 @@ KERNEL_MODULE_IMPORTS = {
         "platform_kernel.settings",
         "platform_kernel.tool_progress",
         "platform_kernel.workflow_execution",
+        "platform_kernel.workflow_selection",
     },
     "api": {
         "platform_kernel.access",
@@ -158,6 +159,7 @@ KERNEL_MODULE_IMPORTS = {
         "platform_kernel.database",
         "platform_kernel.errors",
         "platform_kernel.workflow_execution",
+        "platform_kernel.workflow_selection",
     },
     "intent_routing": {
         "platform_kernel.agent_runtime",
@@ -201,6 +203,7 @@ KERNEL_MODULE_IMPORTS = {
     "settings_types": set(),
     "settings_values": set(),
     "task_supervisor": set(),
+    "workflow_selection": {"platform_kernel.contracts", "platform_kernel.errors", "platform_kernel.settings_types"},
     # Stateless validation and presentation policy shared by manifest parsing
     # and Agent execution. It owns no persistence or lifecycle state.
     "tool_progress": {
@@ -496,6 +499,7 @@ TABLE_OWNERS = {
             "platform_kernel.interaction",
             "platform_kernel.agent_runtime.persistence.context",
         ),
+        "message_workflow_selections": "platform_kernel.interaction",
         "message_requests": (
             "platform_kernel.interaction",
             "platform_kernel.agent_runtime.persistence",
@@ -505,6 +509,8 @@ TABLE_OWNERS = {
             "platform_kernel.agent_runtime.persistence",
         ),
         "confirmation_actions": "platform_kernel.interaction",
+        "published_output_steps": "platform_kernel.interaction",
+        "workflow_output_sources": "platform_kernel.workflow_execution",
         "agent_runs": (
             "platform_kernel.agent_runtime",
             "platform_kernel.application.route_commands",

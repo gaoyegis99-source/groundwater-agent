@@ -1,8 +1,10 @@
 """Read-only task metadata in the caller's Session-history snapshot."""
 
+import json
 import re
 import sqlite3
 
+from ..contracts import DataVersionRefV2
 from ..database import read_session_events
 from .persistence import communication_error_code
 
@@ -21,9 +23,10 @@ def session_execution_tasks(
                   w.workflow_version, w.status, w.created_at, w.started_at,
                   w.finished_at, w.duration_ms, w.error,
                   json_array_length(w.outputs_json) AS output_count,
-                  d.last_communication_error
+                  d.last_communication_error, dep.source_workflow_run_id
            FROM workflow_runs w
            JOIN workflow_dispatches d ON d.workflow_run_id = w.run_id
+           LEFT JOIN workflow_output_sources dep ON dep.workflow_run_id=w.run_id
            WHERE w.session_id = ? AND w.project_id = ?
              AND w.agent_run_id IN (""" + placeholders + ") ORDER BY w.position, w.attempt",
         (session_id, project_id, *agent_run_ids),
@@ -56,6 +59,25 @@ def session_execution_tasks(
         error = row["error"]
         task["error_code"] = error if error is None or re.fullmatch(r"[A-Z][A-Z0-9_]*", error) else "WORKFLOW_FAILED"
         task["communication_error"] = communication_error_code(row["last_communication_error"])
+        if row["source_workflow_run_id"] is not None:
+            task["source_workflow_run_id"] = row["source_workflow_run_id"]
         task["blocked_by_workflow_run_id"] = blocked.get(row["workflow_run_id"])
         tasks.setdefault(row["agent_run_id"], []).append(task)
     return tasks
+
+def related_output_runs(
+    connection: sqlite3.Connection, session_id: str, project_id: str, agent_run_id: str,
+) -> tuple[tuple[str, tuple[DataVersionRefV2, ...]], ...]:
+    rows = connection.execute(
+        """SELECT w.run_id, w.outputs_json
+           FROM workflow_runs w JOIN workflow_output_sources d ON d.workflow_run_id=w.run_id
+           WHERE w.session_id=? AND w.project_id=? AND w.agent_run_id=?
+             AND w.attempt=(SELECT MAX(other.attempt) FROM workflow_runs other
+                            WHERE other.agent_run_id=w.agent_run_id AND other.tool_call_id=w.tool_call_id)
+           ORDER BY w.position""",
+        (session_id, project_id, agent_run_id),
+    )
+    return tuple(
+        (row["run_id"], tuple(DataVersionRefV2.from_storage_dict(ref) for ref in json.loads(row["outputs_json"])))
+        for row in rows
+    )

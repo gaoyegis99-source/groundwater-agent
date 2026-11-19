@@ -6,6 +6,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+import pyarrow as pa
 import pyarrow.parquet as parquet
 from jsonschema import Draft202012Validator
 
@@ -13,6 +14,7 @@ from moperators.operators import (
     seasonal_mann_kendall,
     statistics_pettitt,
     timeseries_gap_runs,
+    timeseries_rate_of_change,
     timeseries_threshold_events,
 )
 
@@ -160,6 +162,39 @@ def test_gap_runs_reports_contiguous_runs_separately_from_completeness(tmp_path:
     assert summary["gapRunCount"] == 2
     assert "contiguous" in summary["interpretation"].lower()
     assert "overall completeness" in summary["limitations"][0].lower()
+
+
+def test_rate_uses_elapsed_time_and_declared_nulls(tmp_path: Path) -> None:
+    timestamps = [
+        "2025-11-02T01:30:00-04:00",
+        "2025-11-02T01:45:00-04:00",
+        "2025-11-02T01:30:00-05:00",
+    ]
+    source = _source(tmp_path, [
+        ("A", timestamp, value)
+        for timestamp, value in zip(timestamps, ("2", "-9999", "4"), strict=True)
+    ])
+    source.metadata["dataContract"].update(timezone="America/New_York", nullValues=["-9999"])
+
+    path = tmp_path / "observations.parquet"
+    parquet.write_table(
+        pa.table({"station": ["A"] * 3, "time": timestamps, "value": [2, -9999, 4]}),
+        path,
+    )
+    for name, input_ in (
+        ("csv", source),
+        (
+            "parquet",
+            StagedInput(path, "application/vnd.apache.parquet", "parquet", source.metadata),
+        ),
+    ):
+        result = timeseries_rate_of_change.run(
+            {"observations": [input_]}, COMMON, _output(tmp_path, name),
+        )
+        rows = _rows(result["rates"])
+        assert len(rows) == 2
+        assert rows[1]["elapsed_days"] == 1 / 24
+        assert rows[1]["rate_per_day"] == 48
 
 
 def test_threshold_events_are_disabled_without_an_explicit_user_threshold(tmp_path: Path) -> None:

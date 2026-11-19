@@ -119,6 +119,15 @@ def write(
             "parameters": parameters,
         }],
     }
+    if operation == "pest.calibrate" and version == VERSION:
+        manifest["tags"].extend([
+            "capability:pest_calibrate", "参数校准", "模型率定", "校准参数",
+            "PEST", "校准含水层模型参数并查看残差",
+        ])
+        manifest["outputs"] = [
+            {**output, "maxBytes": 1048576} if output["kind"] == "value" else output
+            for output in outputs
+        ]
     smoke = {
         "schemaVersion": "operator-smoke-test.v1",
         "operator": {"id": operator_id, "version": version},

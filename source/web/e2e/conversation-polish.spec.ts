@@ -1,9 +1,92 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { capabilitiesForProfile, historyFixture, replyFixture, sessionResponseFixture, sessionResultsFixture, sessionSummaryFixture } from '../src/test-fixtures';
+import { once } from 'node:events';
+import { createServer, request } from 'node:http';
+import { identityStorageScope, scopedStorageKey } from '../src/browser-scope';
+import { capabilitiesForProfile, dataDetail, dataRef, historyFixture, messageReceiptFixture, replyFixture, sessionResponseFixture, sessionResultsFixture, sessionSummaryFixture, taskFixture } from '../src/test-fixtures';
 
 const profile = JSON.parse(readFileSync(new URL('../../products/groundwater/ui/product-ui.json', import.meta.url), 'utf8'));
+
+test('the conversation can select every installed workflow and send the selected request with its attachment', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  const product = JSON.parse(readFileSync(new URL('../../products/groundwater/ui/product-ui-porous.v1.json', import.meta.url), 'utf8'));
+  const capabilities = capabilitiesForProfile(product);
+  const sessionId = 'workflow-choices';
+  const reference = dataRef({ format: 'geotiff', mediaType: 'image/tiff' });
+  const scope = identityStorageScope(product.productId, capabilities.projectId, capabilities.currentUser.subject);
+  await page.addInitScript(({ key, attachments }) => sessionStorage.setItem(key, JSON.stringify(attachments)), {
+    key: scopedStorageKey(scope, 'draft-attachments', sessionId),
+    attachments: [{ ...reference, familyId: reference.datasetId, name: '研究区.tif' }],
+  });
+  const posts: unknown[] = [];
+  await page.route('**/product-ui.json', route => route.fulfill({ json: product }));
+  await page.route('**/api/v12/**', route => {
+    const { pathname } = new URL(route.request().url());
+    if (pathname.endsWith('/capabilities')) return route.fulfill({ json: capabilities });
+    if (pathname.endsWith('/sessions')) return route.fulfill({ json: { items: [sessionSummaryFixture({ sessionId })], nextCursor: null } });
+    if (pathname.endsWith('/messages') && route.request().method() === 'POST') {
+      expect(pathname).toBe(`/api/v12/sessions/${sessionId}/messages`);
+      const body = route.request().postDataJSON();
+      posts.push(body);
+      return route.fulfill({ status: 202, json: messageReceiptFixture({
+        sessionId, goalRevision: 2, request: body, requestId: body.requestId, routingStatus: 'DECIDED',
+      }) });
+    }
+    if (pathname.endsWith('/messages')) return route.fulfill({ json: historyFixture({ sessionId }) });
+    if (pathname.endsWith('/results')) return route.fulfill({ json: sessionResultsFixture([], { sessionId }) });
+    if (pathname.endsWith('/events') || pathname.endsWith('/preview')) return route.fulfill({ contentType: 'text/event-stream', body: ': connected\n\n' });
+    throw new Error(`Unexpected workflow selection request: ${pathname}`);
+  });
+  await page.goto(`/#/sessions/${sessionId}`);
+  const picker = page.getByRole('button', { name: '工作流', exact: true });
+  const input = page.getByRole('textbox', { name: '消息输入框' });
+  const attachment = page.getByTestId('pending-attachments').getByRole('button', { name: /^研究区\.tif/ });
+  const context = '请在结果中保留坐标参考系。';
+  await expect(attachment).toBeVisible();
+  await input.fill(context);
+  await picker.click();
+  const catalog = page.getByRole('dialog', { name: '能力目录' });
+  await expect(catalog.getByRole('button', { name: /^在会话中使用/ })).toHaveCount(18);
+  for (const entry of await catalog.getByRole('button', { name: /^在会话中使用/ }).all()) await expect(entry).toBeEnabled();
+  await page.keyboard.press('Escape');
+  await expect(picker).toBeFocused();
+  await picker.click();
+  const search = catalog.getByRole('searchbox', { name: '搜索工作流' });
+  await search.fill('迁移学习回测');
+  await catalog.getByRole('button', { name: '在会话中使用迁移学习回测' }).click();
+  const transfer = page.getByRole('region', { name: '选中的工作流' });
+  await expect(transfer.getByText(/资料已绑定 0\/19/)).toBeVisible();
+  await page.getByRole('button', { name: '撤销填入' }).click();
+  await picker.click();
+  await search.fill('栅格地图准备');
+  await expect(catalog.getByRole('button', { name: /^在会话中使用/ })).toHaveCount(1);
+  await catalog.getByRole('button', { name: '在会话中使用孔隙型栅格地图准备' }).click();
+  await expect(input).toBeFocused();
+  await expect(input).toHaveValue(new RegExp(`^请准备执行「孔隙型栅格地图准备」工作流。.*\\n\\n${context}$`));
+  await expect(attachment).toBeVisible();
+  expect(posts).toHaveLength(0);
+  await page.getByRole('button', { name: '撤销填入' }).click();
+  await expect(input).toHaveValue(context);
+  await picker.click();
+  await search.fill('栅格地图准备');
+  await catalog.getByRole('button', { name: '在会话中使用孔隙型栅格地图准备' }).click();
+  const selection = page.getByRole('region', { name: '选中的工作流' });
+  await selection.getByText('资料已绑定 0/1').click();
+  await selection.getByRole('combobox').first().selectOption({ label: '研究区.tif' });
+  await expect(selection.getByText('资料已绑定 1/1')).toBeVisible();
+  const message = '请检查坐标系后准备执行。';
+  await input.fill(message);
+  await page.reload();
+  await expect(selection.getByText('资料已绑定 1/1')).toBeVisible();
+  await expect(input).toHaveValue(message);
+  await page.getByRole('button', { name: '发送消息', exact: true }).click();
+  await expect.poll(() => posts.length).toBe(1);
+  expect(posts[0]).toMatchObject({ message, requestedMode: 'DIALOGUE', inputReferences: [reference], workflowSelection: {
+    modelId: 'groundwater.porous-map', modelVersion: '1.0.0', workflowId: 'groundwater.porous-map', workflowVersion: '1.0.0',
+    inputBindings: { geoTiffVersionId: 0 },
+  } });
+});
 
 test('archived sessions and operation feedback remain visible on desktop', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 900 });
@@ -44,50 +127,76 @@ test('archived sessions and operation feedback remain visible on desktop', async
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
-test('a second tab can create a conversation after one workspace login', async ({ page, context }) => {
+test('a second tab can create a conversation after one workspace login', async ({ page, context, baseURL }) => {
   const capabilities = capabilitiesForProfile(profile);
-  await context.route('**/product-ui.json', route => route.fulfill({ json: profile }));
-  await context.route('**/api/v12/**', async route => {
-    const request = route.request();
-    const path = new URL(request.url()).pathname;
-    const headers = await request.allHeaders();
-    if (path.endsWith('/auth/login')) return route.fulfill({
-      json: { currentUser: capabilities.currentUser, csrfToken: 'test-shared-csrf' },
-      headers: { 'Set-Cookie': 'gw_research_session=test-session; Path=/; HttpOnly; SameSite=Strict' },
-    });
-    if (!headers.cookie?.includes('gw_research_session=test-session')) {
-      return route.fulfill({ status: 401, json: { code: 'AUTHENTICATION_REQUIRED' } });
+  const server = createServer((incoming, response) => {
+    const url = new URL(incoming.url ?? '/', baseURL);
+    const path = url.pathname;
+    const json = (value: unknown, status = 200) => {
+      response.writeHead(status, { 'Content-Type': 'application/json' });
+      response.end(JSON.stringify(value));
+    };
+    if (path === '/product-ui.json') return json(profile);
+    if (path.endsWith('/auth/login')) {
+      response.setHeader('Set-Cookie', 'gw_research_session=test-session; Path=/; HttpOnly; SameSite=Strict');
+      return json({ currentUser: capabilities.currentUser, csrfToken: 'test-shared-csrf' });
     }
-    if (path.endsWith('/capabilities')) return route.fulfill({ json: capabilities });
-    if (path.endsWith('/sessions') && request.method() === 'POST') {
-      if (headers['x-csrf-token'] !== 'test-shared-csrf') {
-        return route.fulfill({ status: 403, json: { code: 'ROLE_FORBIDDEN' } });
+    if (path.startsWith('/api/v12/')) {
+      if (!incoming.headers.cookie?.includes('gw_research_session=test-session')) {
+        return json({ code: 'AUTHENTICATION_REQUIRED' }, 401);
       }
-      return route.fulfill({ status: 201, json: sessionResponseFixture() });
+      if (path.endsWith('/capabilities')) return json(capabilities);
+      if (path.endsWith('/sessions') && incoming.method === 'POST') {
+        if (incoming.headers['x-csrf-token'] !== 'test-shared-csrf') return json({ code: 'ROLE_FORBIDDEN' }, 403);
+        return json(sessionResponseFixture(), 201);
+      }
+      if (path.endsWith('/sessions') || path.endsWith('/results')) return json({ items: [], nextCursor: null });
+      if (path.endsWith('/messages')) return json(historyFixture());
+      if (path.endsWith('/events') || path.endsWith('/preview')) {
+        response.writeHead(200, { 'Content-Type': 'text/event-stream' }).end(': connected\n\n');
+        return;
+      }
+      return json({ code: 'UNEXPECTED_WORKSPACE_REQUEST' }, 404);
     }
-    if (path.endsWith('/sessions')) return route.fulfill({ json: { items: [], nextCursor: null } });
-    if (path.endsWith('/messages')) return route.fulfill({ json: historyFixture() });
-    if (path.endsWith('/results')) return route.fulfill({ json: { items: [], nextCursor: null } });
-    if (path.endsWith('/events') || path.endsWith('/preview')) return route.fulfill({ contentType: 'text/event-stream', body: ': connected\n\n' });
-    throw new Error(`Unexpected workspace request: ${path}`);
+    const forward = request(url, { method: incoming.method }, upstream => {
+      response.writeHead(upstream.statusCode ?? 502, upstream.headers);
+      upstream.pipe(response);
+    });
+    forward.on('error', () => response.destroy());
+    incoming.pipe(forward);
   });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  try {
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('Local workspace fixture address unavailable');
+    const url = `http://127.0.0.1:${address.port}/`;
+    await page.goto(url);
+    for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }, { width: 1024, height: 768 }]) {
+      await page.setViewportSize(viewport);
+      await expect(page.getByLabel('用户名')).toBeInViewport();
+      await expect(page.getByRole('button', { name: '登录', exact: true })).toBeInViewport();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    }
+    await page.getByLabel('用户名').fill('researcher');
+    await page.getByLabel('密码').fill('fixture-password');
+    await page.getByRole('button', { name: '登录', exact: true }).click();
+    await expect(page.getByRole('button', { name: '新建对话' })).toBeEnabled();
 
-  await page.goto('/');
-  await page.getByLabel('用户名').fill('researcher');
-  await page.getByLabel('密码').fill('fixture-password');
-  await page.getByRole('button', { name: '登录', exact: true }).click();
-  await expect(page.getByRole('button', { name: '新建对话' })).toBeEnabled();
-
-  const other = await context.newPage();
-  await other.goto('/');
-  const created = other.waitForResponse(response =>
-    response.url().endsWith('/api/v12/sessions') && response.request().method() === 'POST',
-  );
-  await other.getByRole('button', { name: '新建对话' }).click();
-  expect((await created).status()).toBe(201);
+    const other = await context.newPage();
+    await other.goto(url);
+    const created = other.waitForResponse(response =>
+      response.url().endsWith('/api/v12/sessions') && response.request().method() === 'POST',
+    );
+    await other.getByRole('button', { name: '新建对话' }).click();
+    expect((await created).status()).toBe(201);
+  } finally {
+    server.closeAllConnections();
+    await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+  }
 });
 
-test('UI-03A directory supports Session operations and navigation at desktop and mobile sizes', async ({ page }, info) => {
+test('UI-03A directory supports Session operations and navigation at desktop widths', async ({ page }, info) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const records = [
     sessionSummaryFixture({ sessionId: 'session-1', title: '华北平原地下水位变化' }),
@@ -188,7 +297,7 @@ test('UI-03A directory supports Session operations and navigation at desktop and
   await page.getByRole('button', { name: '归档', exact: true }).click();
   await expect(page).toHaveURL(/#\/$/);
   await page.getByRole('checkbox', { name: '显示归档' }).check();
-  await expect(directory.getByRole('link', { name: '监测井水位质量复核' }).getByText('已归档')).toBeVisible();
+  await expect(directory.getByRole('link', { name: '监测井水位质量复核' })).toHaveAccessibleDescription(/已归档/);
   await directory.getByRole('link', { name: '监测井水位质量复核' }).click();
   await page.getByRole('button', { name: '取消归档' }).click();
   await expect(page.getByText('已恢复到最近对话。')).toBeVisible();
@@ -198,23 +307,66 @@ test('UI-03A directory supports Session operations and navigation at desktop and
   await expect(page).toHaveURL(/#\/sessions\/new-session$/);
   await expect(directory.getByRole('link', { name: '新的对话' })).toHaveAttribute('aria-current', 'page');
 
-  await page.setViewportSize({ width: 390, height: 844 });
-  const open = page.getByRole('button', { name: '打开会话导航' });
-  await open.focus();
-  await page.keyboard.press('Enter');
-  await expect(page.getByRole('button', { name: '关闭会话导航' })).toBeFocused();
+  await page.setViewportSize({ width: 1024, height: 768 });
   await expect(search).toBeVisible();
   await expect(page.getByRole('checkbox', { name: '显示归档' })).toBeVisible();
   await expect(directory.getByRole('button', { name: '更早的对话' })).toBeVisible();
-  await page.screenshot({ path: info.outputPath('session-navigation-mobile.png') });
+  await page.screenshot({ path: info.outputPath('session-navigation-desktop-1024.png') });
   const audit = await new AxeBuilder({ page }).include('#conversation-sidebar').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
   expect(audit.violations.filter(item => item.impact === 'critical' || item.impact === 'serious')).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.keyboard.press('Escape');
-  await expect(open).toBeFocused();
-  await open.click();
   await directory.getByRole('link', { name: '华北平原地下水位变化' }).click();
-  await expect(directory).toBeHidden();
-  await expect(page.getByRole('textbox', { name: '消息输入框' })).toBeVisible();
-  await expect(page).toHaveURL(/#\/sessions\/session-1$/);
+  await expect(directory).toBeVisible();
+});
+
+test('a published inversion weight starts a pinned sampling draft without submitting a turn', async ({ page }) => {
+  const profile = JSON.parse(readFileSync(new URL('../../products/groundwater/ui/product-ui-porous.v1.json', import.meta.url), 'utf8'));
+  const capabilities = capabilitiesForProfile(profile);
+  const task = taskFixture({ modelId: 'groundwater.porous-inversion-training', status: 'SUCCEEDED', stage: null, outputCount: 1 });
+  const weights = dataRef({ outputName: 'porous-inversion-weights', format: 'binary', mediaType: 'application/octet-stream' });
+  const sampling = dataRef({ versionId: 'sampling-config', objectId: 'sampling-config-object', outputName: '采样配置' });
+  const scope = identityStorageScope(profile.productId, capabilities.projectId, capabilities.currentUser.subject);
+  await page.addInitScript(({ key, attachments }) => sessionStorage.setItem(key, JSON.stringify(attachments)), {
+    key: scopedStorageKey(scope, 'draft-attachments', 'session-1'),
+    attachments: [{ ...sampling, familyId: sampling.datasetId, name: '采样配置.json' }],
+  });
+  const posts: unknown[] = [];
+  await page.route('**/product-ui.json', route => route.fulfill({ json: profile }));
+  await page.route('**/api/v12/**', route => {
+    const { pathname } = new URL(route.request().url());
+    if (pathname.endsWith('/capabilities')) return route.fulfill({ json: capabilities });
+    if (pathname.endsWith('/sessions')) return route.fulfill({ json: { items: [], nextCursor: null } });
+    if (pathname.endsWith('/messages') && route.request().method() === 'POST') {
+      const body = route.request().postDataJSON();
+      posts.push(body);
+      return route.fulfill({ status: 202, json: messageReceiptFixture({ request: body, requestId: body.requestId }) });
+    }
+    if (pathname.endsWith('/messages')) return route.fulfill({ json: historyFixture({
+      items: [{ messageId: 1, goalRevision: 1, role: 'user', content: '检查反演训练成果' }], turns: [{ executionTasks: [task] }],
+    }) });
+    if (pathname.endsWith('/results')) return route.fulfill({ json: sessionResultsFixture([{
+      workflowRunId: task.workflowRunId, goalRevision: 1, agentRunId: task.agentRunId, toolCallId: task.toolCallId,
+      modelId: task.modelId, status: 'COMPLETE', remoteOutputs: [weights],
+    }]) });
+    if (pathname.endsWith(`/data/versions/${weights.versionId}`)) return route.fulfill({ json: dataDetail({ objects: [{
+      objectId: weights.objectId, checksum: weights.checksum, size: weights.sizeBytes,
+      format: weights.format, mediaType: weights.mediaType, role: 'raw',
+    }] }) });
+    if (pathname.endsWith('/events') || pathname.endsWith('/preview')) return route.fulfill({ contentType: 'text/event-stream', body: ': connected\n\n' });
+    throw new Error(`Unexpected continuation request: ${pathname}`);
+  });
+  await page.goto('/#/sessions/session-1');
+  await page.getByRole('button', { name: '使用这份权重准备采样' }).click();
+  const preparation = page.getByRole('region', { name: '选中的工作流' });
+  await expect(preparation.getByText('孔隙型反演采样', { exact: true })).toBeVisible();
+  await preparation.getByText('资料已绑定 1/2').click();
+  await expect(preparation.getByRole('combobox', { name: '反演训练权重', exact: true })).toBeDisabled();
+  expect(posts).toHaveLength(0);
+  await preparation.getByRole('combobox', { name: '采样配置 JSON', exact: true }).selectOption({ label: '采样配置.json' });
+  await page.getByRole('button', { name: '发送消息', exact: true }).click();
+  await expect.poll(() => posts.length).toBe(1);
+  expect(posts[0]).toMatchObject({ requestedMode: 'DIALOGUE', inputReferences: [sampling, weights], workflowSelection: {
+    modelId: 'groundwater.porous-inversion-sampling', inputBindings: { inversionWeightsVersionId: 1, inversionSamplingVersionId: 0 },
+    continuation: { runId: task.workflowRunId, outputName: 'porous-inversion-weights' },
+  } });
 });

@@ -18,9 +18,12 @@ from moperators.operators.advanced_timeseries_common import (
     value_summary,
     write_rows,
 )
+from moperators.operators.analysis_common import input_null_values, input_timezone
 
 
 def run(inputs: dict[str, Any], parameters: dict[str, Any], output_dir: Path) -> dict[str, Any]:
+    source = one(inputs)
+    timezone_ = input_timezone(source)
     lag = int(parameters["lagPeriods"])
     if lag < 1 or lag > 120:
         raise ValueError("LAG_RANGE_INVALID")
@@ -28,15 +31,15 @@ def run(inputs: dict[str, Any], parameters: dict[str, Any], output_dir: Path) ->
     time_field = parameters["timeField"]
     value_field = parameters["valueField"]
     frequency = parameters["frequency"]
-    table = read_table(one(inputs))
+    table = read_table(source, time_field, value_field)
     groups = column(table, group_field).to_pylist()
-    periods = [bucket(value, frequency) for value in timestamps(table, time_field)]
-    values = numbers(table, value_field)
+    periods = [bucket(value, frequency) for value in timestamps(table, time_field, timezone_)]
+    values = numbers(table, value_field, input_null_values(source))
     ensure_unique(zip(groups, periods, strict=True), "DUPLICATE_PERIOD")
     grouped: dict[Any, dict[Any, float]] = defaultdict(dict)
     for group, period, value in zip(groups, periods, values, strict=True):
         if value is None:
-            raise AssertionError("strict numeric parsing cannot return null")
+            continue
         grouped[group][period] = value
 
     def rows() -> Any:
@@ -72,10 +75,10 @@ def run(inputs: dict[str, Any], parameters: dict[str, Any], output_dir: Path) ->
     schema = pa.schema(
         [
             pa.field(group_field, table.schema.field(group_field).type),
-            pa.field(time_field, pa.timestamp("us")),
+            pa.field(time_field, pa.timestamp("us", tz=timezone_.key if timezone_ else None)),
             pa.field(value_field, pa.float64()),
             pa.field("lag_periods", pa.int32(), nullable=False),
-            pa.field("lag_time", pa.timestamp("us")),
+            pa.field("lag_time", pa.timestamp("us", tz=timezone_.key if timezone_ else None)),
             pa.field("lag_value", pa.float64()),
             pa.field("absolute_change", pa.float64()),
             pa.field("percent_change", pa.float64()),
@@ -85,6 +88,10 @@ def run(inputs: dict[str, Any], parameters: dict[str, Any], output_dir: Path) ->
     return {
         "changes": write_rows(rows(), output_dir / "lag-changes.parquet", schema),
         "summary": value_summary(
-            {"groupCount": len(grouped), "rowCount": len(periods), "lagPeriods": lag}
+            {
+                "groupCount": len(grouped),
+                "rowCount": sum(value is not None for value in values),
+                "lagPeriods": lag,
+            }
         ),
     }

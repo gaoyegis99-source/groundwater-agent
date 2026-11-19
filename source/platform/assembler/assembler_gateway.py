@@ -90,6 +90,10 @@ def _nginx_config(
         " proxy_set_header Authorization $http_authorization;"
         " proxy_set_header X-CSRF-Token $http_x_csrf_token;"
     )
+    static_compression = (
+        " gzip on; gzip_vary on; gzip_comp_level 4;"
+        " gzip_types application/javascript text/javascript text/css;"
+    )
     locations = []
     for route in sorted(routes, key=lambda item: len(item.prefix), reverse=True):
         resource_options = (
@@ -111,15 +115,17 @@ def _nginx_config(
             "        location = /data { return 308 /data/; }",
             f"        location ^~ /data/v3/ {{ proxy_pass $upstream_data;{forwarded_headers} client_max_body_size {PROJECT_UPLOAD_BYTES}; proxy_request_buffering off; proxy_read_timeout 1h; }}",
             "        location ^~ /data/internal { return 404; }",
-            "        location ^~ /data/ { try_files $uri $uri/ /data/index.html; }",
+            f"        location ^~ /data/assets/ {{ expires -1;{static_compression} try_files $uri =404; }}",
+            "        location ^~ /data/ { expires -1; try_files $uri $uri/ /data/index.html; }",
             "        location = /knowledge { return 308 /knowledge/; }",
             f"        location ^~ /knowledge/v3/ {{ proxy_pass $upstream_knowledge;{forwarded_headers} client_max_body_size 16777216; }}",
             "        location ^~ /knowledge/internal { return 404; }",
-            "        location ^~ /knowledge/ { try_files $uri $uri/ /knowledge/index.html; }",
+            f"        location ^~ /knowledge/assets/ {{ expires -1;{static_compression} try_files $uri =404; }}",
+            "        location ^~ /knowledge/ { expires -1; try_files $uri $uri/ /knowledge/index.html; }",
             '        location = /product-ui.json { auth_request off; add_header Cache-Control "no-store" always; add_header Content-Security-Policy "default-src \'none\'; frame-ancestors \'none\'; base-uri \'none\'" always; add_header X-Content-Type-Options nosniff always; add_header Referrer-Policy no-referrer always; add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always; try_files /product-ui.json =404; }',
             '        location = /product-icon.svg { auth_request off; add_header Cache-Control "no-store" always; add_header Content-Security-Policy "default-src \'none\'; frame-ancestors \'none\'; base-uri \'none\'" always; add_header X-Content-Type-Options nosniff always; add_header Referrer-Policy no-referrer always; add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always; try_files /product-icon.svg =404; }',
             "        location = / { auth_request off; expires -1; try_files /index.html =404; }",
-            "        location /assets/ { auth_request off; try_files $uri =404; }",
+            f"        location /assets/ {{ auth_request off; expires $frontend_asset_expires;{static_compression} try_files $uri =404; }}",
             "        location / { auth_request off; return 404; }",
             "        location /api/v12/ {"
             " proxy_pass $upstream_kernel; proxy_read_timeout 1h;"
@@ -138,6 +144,10 @@ def _nginx_config(
         "    resolver_timeout 2s;\n"
         "    proxy_connect_timeout 2s;\n"
         "    default_type application/octet-stream;\n"
+        "    map $uri $frontend_asset_expires {\n"
+        "        default -1;\n"
+        '        "~^/assets/[A-Za-z0-9_.-]+-[A-Za-z0-9_-]{8}\\.(js|css|woff2?|svg|png)$" 1y;\n'
+        "    }\n"
         "    log_format platform '$request_id $status $request_method $uri request_time=$request_time upstream_time=$upstream_response_time subject=$verified_subject bytes_in=$request_length bytes_out=$bytes_sent';\n"
         "    access_log /dev/stdout platform;\n"
         "    error_log /dev/stderr warn;\n"

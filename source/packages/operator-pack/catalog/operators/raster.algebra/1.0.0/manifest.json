@@ -45,14 +45,14 @@
         "image/tiff"
       ],
       "name": "rasters",
-      "required": true
+      "required": true,
+      "minItems": 1
     }
   ],
   "memoryLimitBytes": 8589934592,
   "outputs": [
     {
       "formats": [
-        "cog",
         "geotiff"
       ],
       "kind": "artifact",
@@ -98,7 +98,12 @@
   "runtime": "native",
   "tags": [
     "raster",
-    "algebra"
+    "algebra",
+    "capability:algebra",
+    "栅格代数",
+    "栅格计算",
+    "波段运算",
+    "对多张栅格按公式计算"
   ],
   "timeoutSeconds": 3600,
   "title": "Raster algebra",

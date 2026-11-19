@@ -62,8 +62,24 @@
       "kind": "value",
       "name": "summary",
       "schema": {
-        "type": "object"
-      }
+        "type": "object",
+        "properties": {
+          "characterCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "chunkCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "characterCount",
+          "chunkCount"
+        ],
+        "additionalProperties": false
+      },
+      "maxBytes": 1048576
     }
   ],
   "parametersSchema": {
@@ -95,7 +111,12 @@
   "runtime": "native",
   "tags": [
     "document",
-    "chunk"
+    "chunk",
+    "capability:chunk",
+    "文档分块",
+    "文本切片",
+    "分段",
+    "把提取的文档块按字数切片"
   ],
   "timeoutSeconds": 600,
   "title": "Chunk document blocks",

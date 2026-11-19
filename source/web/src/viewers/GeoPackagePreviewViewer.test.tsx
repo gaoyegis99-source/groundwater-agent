@@ -43,6 +43,7 @@ it('falls back to the attribute table when a GeoPackage CRS cannot be converted'
   render(<GeoPackagePreviewViewer resource={resource} object={resource.objects[0]} url="/points.gpkg" />);
   expect(await screen.findByText('W01')).toBeVisible();
   expect(screen.getByText('坐标参考系无法转换到 WGS84，仅显示属性表。')).toBeVisible();
-  expect(screen.getByRole('button', { name: '地图' })).toBeDisabled();
+  expect(screen.getByRole('tab', { name: '地图' })).toHaveAttribute('aria-disabled', 'true');
+  expect(screen.getByRole('tab', { name: '属性表' })).toHaveAttribute('aria-selected', 'true');
   expect(screen.getByLabelText('GeoPackage 图层')).toHaveValue('wells');
 });

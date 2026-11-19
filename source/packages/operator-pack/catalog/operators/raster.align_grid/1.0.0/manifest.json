@@ -102,9 +102,114 @@
     "grid alignment",
     "reference grid",
     "网格对齐",
-    "对齐"
+    "对齐",
+    "capability:align_grid",
+    "栅格对齐",
+    "对齐像元",
+    "把栅格对齐到参考网格"
   ],
   "timeoutSeconds": 3600,
   "title": "Align raster to reference grid",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "composition": {
+    "portSemantics": {
+      "raster": {
+        "requiredFacts": [
+          "crs",
+          "grid",
+          "rasterBands"
+        ]
+      },
+      "reference": {
+        "requiredFacts": [
+          "crs",
+          "grid"
+        ]
+      }
+    },
+    "outputSemantics": {
+      "raster": {
+        "inherit": [
+          {
+            "inputPort": "reference",
+            "facts": [
+              "crs",
+              "grid"
+            ]
+          },
+          {
+            "inputPort": "raster",
+            "facts": [
+              "valueKind"
+            ]
+          }
+        ],
+        "fixed": {
+          "rasterBands": [
+            {
+              "dtype": "float64",
+              "nodata": "nan",
+              "maskFlags": [
+                "nodata"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "constraints": [
+      {
+        "id": "same-crs",
+        "condition": {
+          "predicate": "sameCrs",
+          "arguments": [
+            {
+              "port": "raster",
+              "property": "crs"
+            },
+            {
+              "port": "reference",
+              "property": "crs"
+            }
+          ]
+        },
+        "severity": "error",
+        "checkStage": "compile"
+      },
+      {
+        "id": "selected-band",
+        "condition": {
+          "predicate": "rasterBandExists",
+          "arguments": [
+            {
+              "port": "raster",
+              "property": "rasterBands"
+            },
+            {
+              "parameter": "band"
+            }
+          ]
+        },
+        "severity": "error",
+        "checkStage": "compile"
+      },
+      {
+        "id": "input-nodata",
+        "condition": {
+          "predicate": "rasterMaskSupported",
+          "arguments": [
+            {
+              "port": "raster",
+              "property": "rasterBands"
+            },
+            {
+              "parameter": "band"
+            }
+          ]
+        },
+        "severity": "error",
+        "checkStage": "compile"
+      }
+    ]
+  }
 }

@@ -13,7 +13,7 @@ from pydantic import ValidationError as PydanticValidationError
 
 from ...errors import AgentRunError
 from ..governance import governance
-from ..mode import AgentModeCapabilities
+from ..mode import AgentModeCapabilities, allows_operator_proposal
 from ..models import SubmittedReplyV6, reply_validation_diagnostics
 from ..persistence import execution_reply_facts
 from ..reply_schema import reply_schema
@@ -84,6 +84,9 @@ class ReplySubmission:
         self.operator_catalog = operator_catalog
         self.operator_catalog_digest = operator_catalog_digest
         self.collection_operators = collection_operators
+        self.drafting = (request_context or {}).get("mode") == "WORKFLOW_DRAFT" or (
+            bool(collection_operators) and allows_operator_proposal(request_context)
+        )
 
     async def submit_reply(
         self, context, arguments_json: str,
@@ -115,8 +118,7 @@ class ReplySubmission:
                 _normalize_provider_reply_json(
                     arguments_json,
                     self.provider,
-                    drafting=(self.request_context or {}).get("mode")
-                    == "WORKFLOW_DRAFT",
+                    drafting=self.drafting,
                     execution_result=execution_result,
                 )
             )
@@ -134,6 +136,8 @@ class ReplySubmission:
                 reply.model_dump(), ensure_ascii=False, allow_nan=False,
                 separators=(",", ":"),
             ).encode("utf-8")
+            if reply.workflow_draft is not None and not self.drafting:
+                raise ValueError("AGENT_WORKFLOW_DRAFT_INVALID")
             validate_terminal_reply_context(reply, self.request_context)
             _validate_reply_evidence(reply, control)
             # Preserve the renderer's established terminal errors for an
@@ -196,6 +200,16 @@ class ReplySubmission:
                     "Call submit_reply once more. Shorten conclusion.text to one sentence of at "
                     "most 160 characters. Preserve the structured draft and any missing inputs. "
                     "Keep the steps and output names in the draft.",
+                    error,
+                )
+            if reason == "REPLY_TECHNICAL_IDENTIFIER_VISIBLE" and self.drafting:
+                return self._retry_or_raise(
+                    context, diagnostics,
+                    "Call submit_reply once more. Use human-readable titles in the reply and "
+                    "in the draft title, summary, limitations, unresolved items and parameter "
+                    "explanations. Remove versioned operator IDs, UUIDs, checksums and URLs "
+                    "from those fields. Keep the graph, exact bindings, parameter values and "
+                    "references unchanged.",
                     error,
                 )
             return self._retry_or_raise(
@@ -542,9 +556,9 @@ class ReplySubmission:
         ) from error
 
     def tool(self, capabilities: AgentModeCapabilities) -> FunctionTool:
-        mode, provider = capabilities.mode, self.provider
+        provider = self.provider
         reply_description = cleandoc(self.submit_reply.__doc__)
-        if mode == "WORKFLOW_DRAFT":
+        if capabilities.mode == "WORKFLOW_DRAFT":
             reply_description += (
                 " Before submitting a workflow draft, check every required graph "
                 "input: bind each compatible inspected source, leave every explicitly "
@@ -562,6 +576,11 @@ class ReplySubmission:
                 "interaction_options; the saved draft carries its own gaps. Keep "
                 "workflow_draft.summary to one sentence within 120 characters."
             )
+        if self.drafting and capabilities.mode == "DIALOGUE":
+            reply_description += (
+                " For an operator proposal, call validate_workflow with the exact draft first. "
+                "Submit the validated draft to create the user confirmation."
+            )
         if capabilities.clarification_only:
             reply_description = (
                 "Ask exactly one concise natural-language clarification question. "
@@ -575,7 +594,7 @@ class ReplySubmission:
                 _clarification_reply_schema()
                 if capabilities.clarification_only
                 else reply_schema(
-                    drafting=mode == "WORKFLOW_DRAFT",
+                    drafting=self.drafting,
                     collections=any(
                         port.get("cardinality", {}).get("maxItems", 1) > 1
                         for manifest in (self.collection_operators or {}).values()

@@ -7,6 +7,7 @@ from platform_protocol_contracts import CamelModel, ProblemDetailsV11
 from pydantic import (
     BeforeValidator,
     Field,
+    JsonValue,
     field_validator,
     model_validator,
     StrictInt,
@@ -50,6 +51,25 @@ class SessionUpdate(CamelModel):
         return self
 
 
+class MessageWorkflowContinuation(CamelModel):
+    run_id: _Utf8String = Field(alias="runId", min_length=1)
+    output_name: _Utf8String = Field(alias="outputName", min_length=1)
+
+
+class MessageWorkflowSelection(CamelModel):
+    model_id: _Utf8String = Field(alias="modelId", min_length=1)
+    model_version: _Utf8String = Field(alias="modelVersion", min_length=1)
+    model_checksum: _Utf8String = Field(alias="modelChecksum", pattern=r"^sha256:[0-9a-f]{64}$")
+    workflow_id: _Utf8String = Field(alias="workflowId", min_length=1)
+    workflow_version: _Utf8String = Field(alias="workflowVersion", min_length=1)
+    workflow_checksum: _Utf8String = Field(alias="workflowChecksum", pattern=r"^sha256:[0-9a-f]{64}$")
+    input_bindings: dict[str, Annotated[StrictInt, Field(ge=0)]] = Field(
+        default_factory=dict, alias="inputBindings", max_length=100,
+    )
+    parameters: dict[str, JsonValue] = Field(default_factory=dict, max_length=200)
+    continuation: MessageWorkflowContinuation | None = None
+
+
 class MessageCreate(CamelModel):
     request_id: _Utf8String = Field(alias="requestId", min_length=1)
     message: _Utf8String = Field(min_length=1)
@@ -64,8 +84,15 @@ class MessageCreate(CamelModel):
         default_factory=list, alias="inputReferences", max_length=20
     )
 
+    workflow_selection: MessageWorkflowSelection | None = Field(default=None, alias="workflowSelection")
+
     @model_validator(mode="after")
     def validate_correction(self):
+        if self.workflow_selection is not None and (
+            self.requested_mode != "DIALOGUE" or self.corrects_request_id is not None
+            or any(index >= len(self.input_references) for index in self.workflow_selection.input_bindings.values())
+        ):
+            raise ValueError("workflowSelection requires DIALOGUE and valid input references")
         if self.corrects_request_id is not None and self.requested_mode == "AUTO":
             raise ValueError(
                 "correctsRequestId requires an explicit mode"
@@ -169,13 +196,58 @@ class CurrentUser(CamelModel):
     roles: list[str]
 
 
+class OperatorModelUse(CamelModel):
+    model_id: str
+    version: str
+
+
+class OperatorWorkflowUse(CamelModel):
+    workflow_id: str
+    version: str
+    models: list[OperatorModelUse]
+
+
+class OperatorValidationEvidence(CamelModel):
+    status: Literal["PASSED", "STALE", "NOT_RECORDED"]
+    coverage: Literal["BROWSER_SINGLE_NODE", "WORKER_SINGLE_OPERATOR", "REMOTE_PRESET_NODE"] | None
+    checked_on: str | None
+    report_checksum: str | None
+    implementation_revision: str | None
+
+
+class OperatorReviewReference(CamelModel):
+    path: str
+    checksum: str
+
+
+class OperatorScientificReview(CamelModel):
+    benchmark: OperatorReviewReference
+    domain_review: OperatorReviewReference
+
+
+class OperatorCapability(CamelModel):
+    operator_id: str
+    version: str
+    title: str
+    domain: str
+    tags: list[str]
+    runtime: Literal["native", "qgis", "remote_http"]
+    confirmation_supported: bool
+    workflow_uses: list[OperatorWorkflowUse]
+    validation: OperatorValidationEvidence
+    scientific_status: Literal["REQUIRES_CASE_AND_REVIEW", "REVIEW_EVIDENCE_ATTACHED"]
+    scientific_review: OperatorScientificReview | None
+
+
 class CapabilitiesResponse(CamelModel):
     product_id: str
     project_id: str
+    authentication_required: bool = True
     services: list[str] = Field(default_factory=list)
     orchestration_owner: Literal["AGENT"]
     observation_tools: list[ObservationToolCapability]
     models: list[ModelCapability]
+    operators: list[OperatorCapability] = Field(default_factory=list)
     current_user: CurrentUser
 
 
@@ -189,6 +261,20 @@ class SessionSummary(CamelModel):
     pending_agent_run_id: str | None
     workflow_draft_id: str | None
     archived: bool = False
+
+
+class TaskHistoryItem(CamelModel):
+    session_id: str
+    goal_revision: int
+    title: str | None
+    model_id: str | None
+    updated_at: str
+    status: str
+
+
+class TaskHistoryPage(CamelModel):
+    items: list[TaskHistoryItem]
+    next_cursor: int | None
 
 
 class SessionMetadataResponse(CamelModel):

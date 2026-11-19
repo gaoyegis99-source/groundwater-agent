@@ -70,8 +70,24 @@
       "kind": "value",
       "name": "summary",
       "schema": {
-        "type": "object"
-      }
+        "type": "object",
+        "properties": {
+          "groupCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "rowCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "groupCount",
+          "rowCount"
+        ],
+        "additionalProperties": false
+      },
+      "maxBytes": 1048576
     }
   ],
   "parametersSchema": {
@@ -121,7 +137,11 @@
   "runtime": "native",
   "tags": [
     "timeseries",
-    "autocorrelation"
+    "autocorrelation",
+    "capability:autocorrelation",
+    "自相关",
+    "序列自相关",
+    "计算水位序列不同滞后期的自相关"
   ],
   "timeoutSeconds": 1800,
   "title": "Calculate time-series autocorrelation",

@@ -1136,6 +1136,10 @@ class DataSemanticUpdateResponse(BaseModel):
     version_id: str = Field(..., alias='versionId', title='Versionid')
 
 
+class ValueKind(RootModel[str]):
+    root: str = Field(..., pattern='^[a-z][a-z0-9_.-]{0,127}$', title='Valuekind')
+
+
 class Direction(Enum):
     asc = 'asc'
     desc = 'desc'
@@ -1332,6 +1336,10 @@ class KernelIdentityResponse(BaseModel):
     subject: str = Field(..., title='Subject')
 
 
+class KernelJsonValue(RootModel[Any]):
+    root: Any
+
+
 class KernelLoginRequest(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -1482,6 +1490,45 @@ class KernelMessageReceiptResponse(BaseModel):
     )
 
 
+class KernelMessageWorkflowContinuation(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    output_name: str = Field(..., alias='outputName', min_length=1, title='Outputname')
+    run_id: str = Field(..., alias='runId', min_length=1, title='Runid')
+
+
+class KernelMessageWorkflowSelection(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    continuation: KernelMessageWorkflowContinuation | None = None
+    input_bindings: dict[str, int] | None = Field(
+        None, alias='inputBindings', title='Inputbindings'
+    )
+    model_checksum: str = Field(
+        ...,
+        alias='modelChecksum',
+        pattern='^sha256:[0-9a-f]{64}$',
+        title='Modelchecksum',
+    )
+    model_id: str = Field(..., alias='modelId', min_length=1, title='Modelid')
+    model_version: str = Field(
+        ..., alias='modelVersion', min_length=1, title='Modelversion'
+    )
+    parameters: dict[str, KernelJsonValue] | None = Field(None, title='Parameters')
+    workflow_checksum: str = Field(
+        ...,
+        alias='workflowChecksum',
+        pattern='^sha256:[0-9a-f]{64}$',
+        title='Workflowchecksum',
+    )
+    workflow_id: str = Field(..., alias='workflowId', min_length=1, title='Workflowid')
+    workflow_version: str = Field(
+        ..., alias='workflowVersion', min_length=1, title='Workflowversion'
+    )
+
+
 class KernelModelCapability(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -1523,6 +1570,77 @@ class KernelObservationToolCapability(BaseModel):
     output_schema: dict[str, Any] = Field(
         ..., alias='outputSchema', title='Outputschema'
     )
+
+
+class Runtime(Enum):
+    native = 'native'
+    qgis = 'qgis'
+    remote_http = 'remote_http'
+
+
+class ScientificStatus(Enum):
+    requires_case_and_review = 'REQUIRES_CASE_AND_REVIEW'
+    review_evidence_attached = 'REVIEW_EVIDENCE_ATTACHED'
+
+
+class KernelOperatorModelUse(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    model_id: str = Field(..., alias='modelId', title='Modelid')
+    version: str = Field(..., title='Version')
+
+
+class KernelOperatorReviewReference(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    checksum: str = Field(..., title='Checksum')
+    path: str = Field(..., title='Path')
+
+
+class KernelOperatorScientificReview(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    benchmark: KernelOperatorReviewReference
+    domain_review: KernelOperatorReviewReference = Field(..., alias='domainReview')
+
+
+class Coverage(Enum):
+    browser_single_node = 'BROWSER_SINGLE_NODE'
+    worker_single_operator = 'WORKER_SINGLE_OPERATOR'
+    remote_preset_node = 'REMOTE_PRESET_NODE'
+
+
+class Status5(Enum):
+    passed = 'PASSED'
+    stale = 'STALE'
+    not_recorded = 'NOT_RECORDED'
+
+
+class KernelOperatorValidationEvidence(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    checked_on: str | None = Field(..., alias='checkedOn', title='Checkedon')
+    coverage: Coverage | None = Field(..., title='Coverage')
+    implementation_revision: str | None = Field(
+        ..., alias='implementationRevision', title='Implementationrevision'
+    )
+    report_checksum: str | None = Field(
+        ..., alias='reportChecksum', title='Reportchecksum'
+    )
+    status: Status5 = Field(..., title='Status')
+
+
+class KernelOperatorWorkflowUse(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    models: list[KernelOperatorModelUse] = Field(..., title='Models')
+    version: str = Field(..., title='Version')
+    workflow_id: str = Field(..., alias='workflowId', title='Workflowid')
 
 
 class KernelPreparationResponse(BaseModel):
@@ -1704,6 +1822,26 @@ class KernelStopResponse(BaseModel):
     status: str = Field(..., title='Status')
 
 
+class KernelTaskHistoryItem(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    goal_revision: int = Field(..., alias='goalRevision', title='Goalrevision')
+    model_id: str | None = Field(..., alias='modelId', title='Modelid')
+    session_id: str = Field(..., alias='sessionId', title='Sessionid')
+    status: str = Field(..., title='Status')
+    title: str | None = Field(..., title='Title')
+    updated_at: str = Field(..., alias='updatedAt', title='Updatedat')
+
+
+class KernelTaskHistoryPage(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    items: list[KernelTaskHistoryItem] = Field(..., title='Items')
+    next_cursor: int | None = Field(..., alias='nextCursor', title='Nextcursor')
+
+
 class KernelTaskResponse(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -1837,13 +1975,7 @@ class ErrorCode(RootModel[str]):
     root: str = Field(..., pattern='^[A-Z][A-Z0-9_]{0,95}$', title='Errorcode')
 
 
-class Runtime(Enum):
-    native = 'native'
-    qgis = 'qgis'
-    remote_http = 'remote_http'
-
-
-class Status5(Enum):
+class Status6(Enum):
     waiting = 'WAITING'
     ready = 'READY'
     leased = 'LEASED'
@@ -1873,7 +2005,7 @@ class KernelWorkflowNodeDiagnostic(BaseModel):
     )
     runtime: Runtime = Field(..., title='Runtime')
     started_at: AwareDatetime | None = Field(..., alias='startedAt', title='Startedat')
-    status: Status5 = Field(..., title='Status')
+    status: Status6 = Field(..., title='Status')
 
 
 class KernelWorkflowNodeDiagnosticsResponse(BaseModel):
@@ -2110,7 +2242,7 @@ class KnowledgeNextDocumentSummary(BaseModel):
     valid_through: date | None = Field(None, alias='validThrough', title='Validthrough')
 
 
-class Status6(Enum):
+class Status7(Enum):
     ok = 'OK'
     no_match = 'NO_MATCH'
     partial = 'PARTIAL'
@@ -2136,7 +2268,7 @@ class Scope(Enum):
     data_bound = 'DATA_BOUND'
 
 
-class Status7(Enum):
+class Status8(Enum):
     ok = 'OK'
     stale = 'STALE'
     withdrawn = 'WITHDRAWN'
@@ -2294,7 +2426,7 @@ class KnowledgeNextLifecycleBatchDiff(BaseModel):
     version_id: str = Field(..., alias='versionId', title='Versionid')
 
 
-class Status8(Enum):
+class Status9(Enum):
     active = 'ACTIVE'
     withdrawn = 'WITHDRAWN'
 
@@ -2316,7 +2448,7 @@ class KnowledgeNextLifecycleBatchItem(BaseModel):
     )
     reason: str = Field(..., max_length=1000, min_length=1, title='Reason')
     review_after: date = Field(..., alias='reviewAfter', title='Reviewafter')
-    status: Status8 = Field(..., title='Status')
+    status: Status9 = Field(..., title='Status')
     valid_through: date | None = Field(None, alias='validThrough', title='Validthrough')
     version_id: str = Field(
         ...,
@@ -2343,7 +2475,7 @@ class KnowledgeNextLifecycleBatchPreflightRequest(BaseModel):
     )
     reason: str = Field(..., max_length=1000, min_length=1, title='Reason')
     review_after: date = Field(..., alias='reviewAfter', title='Reviewafter')
-    status: Status8 = Field(..., title='Status')
+    status: Status9 = Field(..., title='Status')
     valid_through: date | None = Field(None, alias='validThrough', title='Validthrough')
 
 
@@ -2388,7 +2520,7 @@ class KnowledgeNextLifecycleUpdateRequest(BaseModel):
     )
     reason: str = Field(..., max_length=1000, min_length=1, title='Reason')
     review_after: date = Field(..., alias='reviewAfter', title='Reviewafter')
-    status: Status8 = Field(..., title='Status')
+    status: Status9 = Field(..., title='Status')
     valid_through: date | None = Field(None, alias='validThrough', title='Validthrough')
 
 
@@ -2941,6 +3073,7 @@ class DataSemantics(BaseModel):
     spatial_extent: DataSpatialExtent | None = Field(None, alias='spatialExtent')
     time_range: str | None = Field(None, alias='timeRange', title='Timerange')
     timezone: str | None = Field(None, title='Timezone')
+    value_kind: ValueKind | None = Field(None, alias='valueKind', title='Valuekind')
     vertical_datum: str | None = Field(
         None, alias='verticalDatum', title='Verticaldatum'
     )
@@ -2971,23 +3104,6 @@ class DataVersionResponse(BaseModel):
     tags: list[str] = Field(..., title='Tags')
     title: str = Field(..., title='Title')
     version_id: str = Field(..., alias='versionId', title='Versionid')
-
-
-class KernelCapabilitiesResponse(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    current_user: KernelCurrentUser = Field(..., alias='currentUser')
-    models: list[KernelModelCapability] = Field(..., title='Models')
-    observation_tools: list[KernelObservationToolCapability] = Field(
-        ..., alias='observationTools', title='Observationtools'
-    )
-    orchestration_owner: Literal['AGENT'] = Field(
-        ..., alias='orchestrationOwner', title='Orchestrationowner'
-    )
-    product_id: str = Field(..., alias='productId', title='Productid')
-    project_id: str = Field(..., alias='projectId', title='Projectid')
-    services: list[str] | None = Field(None, title='Services')
 
 
 class KernelConfirmationRevisionAction(BaseModel):
@@ -3041,6 +3157,34 @@ class KernelMessageCreate(BaseModel):
     request_id: str = Field(..., alias='requestId', min_length=1, title='Requestid')
     requested_mode: RequestedMode = Field(
         ..., alias='requestedMode', title='Requestedmode'
+    )
+    workflow_selection: KernelMessageWorkflowSelection | None = Field(
+        None, alias='workflowSelection'
+    )
+
+
+class KernelOperatorCapability(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    confirmation_supported: bool = Field(
+        ..., alias='confirmationSupported', title='Confirmationsupported'
+    )
+    domain: str = Field(..., title='Domain')
+    operator_id: str = Field(..., alias='operatorId', title='Operatorid')
+    runtime: Runtime = Field(..., title='Runtime')
+    scientific_review: KernelOperatorScientificReview | None = Field(
+        ..., alias='scientificReview'
+    )
+    scientific_status: ScientificStatus = Field(
+        ..., alias='scientificStatus', title='Scientificstatus'
+    )
+    tags: list[str] = Field(..., title='Tags')
+    title: str = Field(..., title='Title')
+    validation: KernelOperatorValidationEvidence
+    version: str = Field(..., title='Version')
+    workflow_uses: list[KernelOperatorWorkflowUse] = Field(
+        ..., alias='workflowUses', title='Workflowuses'
     )
 
 
@@ -3196,7 +3340,7 @@ class KnowledgeNextEvidenceItem(BaseModel):
     review_due: bool | None = Field(None, alias='reviewDue', title='Reviewdue')
     scope: Scope | None = Field(None, title='Scope')
     sources: list[KnowledgeNextSource] | None = Field(None, title='Sources')
-    status: Status7 = Field(..., title='Status')
+    status: Status8 = Field(..., title='Status')
     unit_id: str = Field(..., alias='unitId', title='Unitid')
     version_id: str = Field(..., alias='versionId', title='Versionid')
 
@@ -3340,6 +3484,27 @@ class DataSemanticUpdate(BaseModel):
     semantics: DataSemantics
 
 
+class KernelCapabilitiesResponse(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    authentication_required: bool = Field(
+        True, alias='authenticationRequired', title='Authenticationrequired'
+    )
+    current_user: KernelCurrentUser = Field(..., alias='currentUser')
+    models: list[KernelModelCapability] = Field(..., title='Models')
+    observation_tools: list[KernelObservationToolCapability] = Field(
+        ..., alias='observationTools', title='Observationtools'
+    )
+    operators: list[KernelOperatorCapability] | None = Field(None, title='Operators')
+    orchestration_owner: Literal['AGENT'] = Field(
+        ..., alias='orchestrationOwner', title='Orchestrationowner'
+    )
+    product_id: str = Field(..., alias='productId', title='Productid')
+    project_id: str = Field(..., alias='projectId', title='Projectid')
+    services: list[str] | None = Field(None, title='Services')
+
+
 class KnowledgeNextEvidenceBundleV1(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -3356,7 +3521,7 @@ class KnowledgeNextEvidenceBundleV1(BaseModel):
     schema_version: Literal['evidence-bundle.v1'] = Field(
         'evidence-bundle.v1', alias='schemaVersion', title='Schemaversion'
     )
-    status: Status6 = Field(..., title='Status')
+    status: Status7 = Field(..., title='Status')
     timings_ms: dict[str, float] = Field(..., alias='timingsMs', title='Timingsms')
 
 

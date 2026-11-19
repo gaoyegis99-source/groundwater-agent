@@ -50,6 +50,22 @@ it('all eight examples only populate the single composer without posting', async
   expect(calls.mock.calls).toHaveLength(2);
 });
 
+it('opens the workspace directly under the fixed administrator in single-user mode', async () => {
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    if (url.endsWith('/capabilities')) return json(capabilitiesFixture({
+      authenticationRequired: false,
+      currentUser: { subject: 'admin', displayName: '管理员', roles: ['admin'] },
+    }));
+    if (url.endsWith('/sessions')) return json({ items: [], nextCursor: null });
+    throw new Error(`unexpected endpoint ${url}`);
+  }));
+  render(<App />);
+  expect(await screen.findByText('管理员')).toBeVisible();
+  expect(screen.getByRole('button', { name: '新建对话' })).toBeEnabled();
+  expect(screen.queryByRole('button', { name: '退出' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: '登录工作区' })).not.toBeInTheDocument();
+});
+
 it('shows the authenticated research identity and disables writes for a viewer', async () => {
   vi.stubGlobal('fetch', vi.fn(async (url: string) => {
     if (url.endsWith('/capabilities')) return json(capabilitiesFixture({
@@ -66,6 +82,7 @@ it('shows the authenticated research identity and disables writes for a viewer',
   }));
   render(<App />);
   expect(await screen.findByText('项目审计员')).toBeVisible();
+  expect(screen.getByRole('button', { name: '退出' })).toBeVisible();
   expect(screen.getByText('项目环境')).toBeVisible();
   expect(screen.getByRole('button', { name: '新建对话' })).toBeDisabled();
   expect(screen.getByRole('button', { name: '发送消息' })).toBeDisabled();
@@ -147,7 +164,7 @@ it('fails closed for an HTML-only API response and reconnects', async () => {
   expect(fetch.mock.calls.filter(([url]) => url.endsWith('/sessions'))).toHaveLength(1);
 });
 
-it('collapses each sidebar in place and keeps the resource links on the left', async () => {
+it('keeps the resource links on the left and opens the home workbench from the header', async () => {
   vi.stubGlobal('fetch', vi.fn(async (url: string) => {
     if (url.endsWith('/capabilities')) return json(capabilitiesFixture());
     if (url.endsWith('/sessions')) return json({ items: [], nextCursor: null });
@@ -156,18 +173,23 @@ it('collapses each sidebar in place and keeps the resource links on the left', a
   render(<App />);
   await screen.findByTitle('项目：demo');
   const left = screen.getByRole('complementary', { name: '会话侧栏' });
-  const right = screen.getByRole('complementary', { name: '任务工作台' });
   expect(screen.getByRole('button', { name: '数据库' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: '知识库' })).toBeInTheDocument();
-  expect(screen.getByRole('heading', { name: '任务' })).toBeInTheDocument();
+  expect(screen.queryByRole('complementary', { name: '任务工作台' })).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: '折叠会话侧栏' }));
   expect(left).toHaveClass('is-collapsed');
   fireEvent.click(screen.getByRole('button', { name: '展开会话侧栏' }));
   expect(left).not.toHaveClass('is-collapsed');
-  fireEvent.click(screen.getByRole('button', { name: '打开任务工作台' }));
+  const opener = screen.getByRole('button', { name: '打开任务工作台' });
+  expect(opener).toHaveAttribute('aria-expanded', 'false');
+  fireEvent.click(opener);
+  const right = await screen.findByRole('complementary', { name: '任务工作台' });
   expect(right).not.toHaveClass('is-collapsed');
+  expect(opener).toHaveAttribute('aria-expanded', 'true');
   fireEvent.click(screen.getByRole('button', { name: '折叠任务工作台' }));
   expect(right).toHaveClass('is-collapsed');
+  expect(right).toHaveAttribute('hidden');
+  await waitFor(() => expect(opener).toHaveFocus());
   expect(screen.queryByRole('button', { name: '关闭工作区面板' })).not.toBeInTheDocument();
 });
 
@@ -228,7 +250,7 @@ it.each(['current', 'other dataset', 'superseded', 'revised preparation'])('veri
   }));
   render(<App />);
   fireEvent.click(await screen.findByRole('button', { name: '使用当前版本' }));
-  if (status === 'current') expect(await screen.findByText(/测试数据 · current-version/)).toBeVisible();
+  if (status === 'current') expect(await screen.findByRole('button', { name: /测试数据.*版本 current-version/ })).toBeVisible();
   else if (status === 'revised preparation') {
     await waitFor(() => expect(releaseVersion).toBeDefined());
     snapshot = { ...history, eventCursor: 1, preparation: { ...history.preparation!, revision: 2 } };
@@ -391,7 +413,8 @@ it('keeps a deep-linked older verification session visible and marks its confirm
   expect(screen.getByTestId('recovered-active-session')).toHaveClass('active');
   expect(screen.getByText('最近的业务会话')).toBeVisible();
   expect(screen.queryByText('暂无对话')).not.toBeInTheDocument();
-  expect(screen.getByTestId('confirmation-card')).toHaveTextContent('验证会话 · 不代表业务执行');
+  fireEvent.click(screen.getByText('历史确认'));
+  expect(await screen.findByTestId('confirmation-card')).toHaveTextContent('验证会话 · 不代表业务执行');
 });
 
 it('blocks ordinary messages while a control proposal awaits confirmation', async () => {

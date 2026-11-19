@@ -46,7 +46,9 @@
         "model",
         "document",
         "image",
-        "record"
+        "record",
+        "pointCloud",
+        "byFormat"
       ]
     },
     "formatPair": {
@@ -80,16 +82,7 @@
               "const": "artifact"
             },
             "logicalType": {
-              "enum": [
-                "table",
-                "vector",
-                "raster",
-                "tensor",
-                "model",
-                "document",
-                "image",
-                "record"
-              ]
+              "$ref": "composition-types.v1.schema.json#/$defs/logicalType"
             },
             "cardinality": {
               "type": "object",
@@ -203,6 +196,35 @@
                 "additionalProperties": false
               },
               "minItems": 1
+            },
+            "inputFormatCases": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "inputPort": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "inputFormats": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "formatPair": {
+                    "$ref": "#/$defs/formatPair"
+                  }
+                },
+                "required": [
+                  "inputPort",
+                  "inputFormats",
+                  "formatPair"
+                ]
+              }
             }
           },
           "required": [
@@ -254,6 +276,10 @@
             },
             "schema": {
               "type": "object"
+            },
+            "maxBytes": {
+              "type": "integer",
+              "minimum": 1
             }
           },
           "required": [

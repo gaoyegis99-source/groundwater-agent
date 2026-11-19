@@ -38,8 +38,7 @@
         "flatgeobuf",
         "geojson",
         "geopackage",
-        "geoparquet",
-        "parquet"
+        "geoparquet"
       ],
       "mediaTypes": [
         "application/geopackage+sqlite3",
@@ -56,8 +55,7 @@
         "flatgeobuf",
         "geojson",
         "geopackage",
-        "geoparquet",
-        "parquet"
+        "geoparquet"
       ],
       "mediaTypes": [
         "application/geopackage+sqlite3",
@@ -117,7 +115,11 @@
   "runtime": "qgis",
   "tags": [
     "vector",
-    "nearest-join"
+    "nearest-join",
+    "capability:nearest_join",
+    "最近邻连接",
+    "最近站点",
+    "给每口井匹配最近的站点"
   ],
   "timeoutSeconds": 3600,
   "title": "Join vector attributes by nearest feature",

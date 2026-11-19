@@ -10,7 +10,7 @@ from uuid import uuid4
 from jsonschema import Draft202012Validator, ValidationError
 from platform_protocol_contracts import parse_traceparent, trace_context_for_id
 from platform_workflow_compiler import WorkflowValidationError
-from platform_workflow_compiler.composition.execution import ArtifactComposition, execution_arguments, raster_input_facts
+from platform_workflow_compiler.composition.execution import ArtifactComposition, execution_arguments, observed_input_facts
 from platform_workflow_compiler.graph import input_members
 
 from ..contracts import JobRequestV6, JobStatusV6, canonical_json
@@ -249,10 +249,11 @@ class AdmissionControl(ControlComponent):
                     frozen = request.composition["inputs"][input_name]
                     if metadata.get("semantic_checksum") != frozen["dataRef"]["semanticChecksum"]:
                         raise ExecutionServiceError("COMPOSITION_SEMANTIC_REVISION_MISMATCH")
-                    if frozen["port"]["logicalType"] == "raster" and frozen["facts"] != raster_input_facts(
-                        metadata.get("raster_descriptor"), frozen["dataRef"],
+                    if frozen["facts"] != observed_input_facts(
+                        metadata.get("descriptor"), metadata.get("semantics"), frozen["dataRef"],
                     ):
-                        raise ExecutionServiceError("RASTER_INPUT_FACTS_MISMATCH")
+                        raise ExecutionServiceError("RASTER_INPUT_FACTS_MISMATCH" if frozen["port"]["logicalType"] == "raster"
+                                                    else "COMPOSITION_INPUT_FACTS_MISMATCH")
                 if {
                     "mediaType": metadata["media_type"], "format": metadata["format"]
                 } not in contract["formatPairs"]:

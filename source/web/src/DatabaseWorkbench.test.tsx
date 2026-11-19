@@ -74,7 +74,6 @@ it('searches and paginates the database catalog and attaches the selected immuta
   await screen.findByText('为避免执行不受信任代码，系统不会反序列化模型权重。', undefined, { timeout: 5_000 });
   fireEvent.click(screen.getByRole('button', { name: '附加精确版本' }));
   expect(attach).toHaveBeenCalledWith(expect.objectContaining({ versionId: 'version-1', semanticId: 'semantics-1', objectId: 'weight-1', checksum: `sha256:${'a'.repeat(64)}` }));
-  fireEvent.click(screen.getByRole('button', { name: '目录' }));
   fireEvent.click(screen.getByRole('button', { name: '加载更多' }));
   expect(await screen.findByRole('button', { name: /第二页/ })).toBeVisible();
   const nextPage = calls.mock.calls.map(([url]) => String(url)).find(url => url.includes('cursor=dataset-1'));

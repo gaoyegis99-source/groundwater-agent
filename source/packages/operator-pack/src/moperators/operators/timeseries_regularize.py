@@ -20,9 +20,12 @@ from moperators.operators.advanced_timeseries_common import (
     value_summary,
     write_rows,
 )
+from moperators.operators.analysis_common import input_null_values, input_timezone
 
 
 def run(inputs: dict[str, Any], parameters: dict[str, Any], output_dir: Path) -> dict[str, Any]:
+    source = one(inputs)
+    timezone_ = input_timezone(source)
     method = parameters["interpolationMethod"]
     maximum_gap = int(parameters["maxGapPeriods"])
     maximum_rows = int(parameters["maxOutputRows"])
@@ -36,14 +39,14 @@ def run(inputs: dict[str, Any], parameters: dict[str, Any], output_dir: Path) ->
     value_field = parameters["valueField"]
     frequency = parameters["frequency"]
     periods = period_range(
-        timestamp(parameters["expectedStart"]),
-        timestamp(parameters["expectedEnd"]),
+        timestamp(parameters["expectedStart"], timezone_),
+        timestamp(parameters["expectedEnd"], timezone_),
         frequency,
     )
-    table = read_table(one(inputs))
+    table = read_table(source, time_field, value_field)
     groups = column(table, group_field).to_pylist()
-    moments = timestamps(table, time_field)
-    values = numbers(table, value_field, allow_null=True)
+    moments = timestamps(table, time_field, timezone_)
+    values = numbers(table, value_field, input_null_values(source))
     period_keys = [bucket(moment, frequency) for moment in moments]
     ensure_unique(zip(groups, period_keys, strict=True), "DUPLICATE_PERIOD")
 
@@ -146,12 +149,17 @@ def run(inputs: dict[str, Any], parameters: dict[str, Any], output_dir: Path) ->
     schema = pa.schema(
         [
             pa.field(group_field, group_type),
-            pa.field(time_field, pa.timestamp("us")),
+            pa.field(time_field, pa.timestamp("us", tz=timezone_.key if timezone_ else None)),
             pa.field(value_field, pa.float64()),
             pa.field("is_imputed", pa.bool_(), nullable=False),
             pa.field("interpolation_method", pa.string()),
-            pa.field("previous_observed_time", pa.timestamp("us")),
-            pa.field("next_observed_time", pa.timestamp("us")),
+            pa.field(
+                "previous_observed_time",
+                pa.timestamp("us", tz=timezone_.key if timezone_ else None),
+            ),
+            pa.field(
+                "next_observed_time", pa.timestamp("us", tz=timezone_.key if timezone_ else None)
+            ),
             pa.field("status", pa.string(), nullable=False),
         ]
     )

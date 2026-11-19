@@ -6,7 +6,8 @@ import { ErrorNotice } from './ErrorNotice';
 import { Icon } from './Icon';
 import type { ResourceDetail, ResourceItem, ResourceReference } from './types';
 import { resourceItemFromDetail } from './resource-item';
-import { workbenchFocusTargets } from './workbench-focus';
+import { containTabFocus, useWorkbenchModal } from './workbench-focus';
+import { EmptyState, Loading } from './ui/Feedback';
 import './workbench-polish.css';
 
 export { resourceItemFromDetail } from './resource-item';
@@ -15,7 +16,6 @@ const ArtifactViewer = lazy(() => import('./ArtifactViewer').then(module => ({ d
 
 type Dataset = { datasetId: string; title: string; currentVersion: string; tags?: string[]; formats?: string[]; semantics?: { description?: string } };
 type VersionItem = { versionId: string; semanticId: string; createdAt: string };
-type Pane = 'catalog' | 'detail' | 'preview';
 const FORMATS = ['', 'csv', 'parquet', 'xlsx', 'json', 'geojson', 'geopackage', 'geotiff', 'cog', 'png', 'pytorch-state-dict', 'zip'];
 
 function VersionDiff({ left, right }: { left: ResourceDetail; right: ResourceDetail }) {
@@ -47,13 +47,15 @@ function VersionDiff({ left, right }: { left: ResourceDetail; right: ResourceDet
   </dl>;
 }
 
-export function DatabaseWorkbench({ project, initialId, reference, compare = false, allowedFormats = [], onClose, onAttach }: {
-  project: string; initialId?: string; reference?: ResourceReference; compare?: boolean; allowedFormats?: string[];
-  onClose: () => void; onAttach: (item: ResourceItem) => void;
+export function DatabaseWorkbench({ project, initialId, reference, compare = false, allowedFormats, inputRole, onClose, onAttach }: {
+  project: string; initialId?: string; reference?: ResourceReference; compare?: boolean; allowedFormats?: string[]; inputRole?: string;
+  onClose: () => void; onAttach?: (item: ResourceItem) => void;
 }) {
   const dialog = useRef<HTMLElement>(null);
-  const search = useRef<HTMLInputElement>(null);
-  const [query, setQuery] = useState(''); const [tag, setTag] = useState(''); const [format, setFormat] = useState(allowedFormats.length === 1 ? allowedFormats[0] : '');
+  const detail = useRef<HTMLElement>(null);
+  const preview = useRef<HTMLElement>(null);
+  const [query, setQuery] = useState(''); const [tag, setTag] = useState(''); const [format, setFormat] = useState(allowedFormats?.length === 1 ? allowedFormats[0] : '');
+  const formatsKey = (allowedFormats ?? []).map(value => value.toLowerCase()).join(',');
   const [datasets, setDatasets] = useState<Dataset[]>([]); const [cursor, setCursor] = useState<string | null>(null); const [catalogLoading, setCatalogLoading] = useState(true);
   const [target, setTarget] = useState(initialId ?? ''); const [loadedVersion, setVersion] = useState<ResourceDetail | null>(null); const [versions, setVersions] = useState<VersionItem[]>([]); const [objectId, setObjectId] = useState('');
   const [historyCursor, setHistoryCursor] = useState<string | null>(null);
@@ -65,7 +67,7 @@ export function DatabaseWorkbench({ project, initialId, reference, compare = fal
   const [compareTarget, setCompareTarget] = useState<VersionItem | null>(null); const [loadedComparison, setComparison] = useState<ResourceDetail | null>(null);
   const comparison = loadedComparison && compareTarget && loadedComparison.versionId === compareTarget.versionId
     && loadedComparison.semanticId === compareTarget.semanticId && loadedComparison.datasetId === version?.datasetId ? loadedComparison : null;
-  const [pane, setPane] = useState<Pane>(initialId ? 'detail' : 'catalog');
+  const [previewRequested, setPreviewRequested] = useState(false);
   const [catalogError, setCatalogError] = useState<ApiError | null>(null);
   const [versionError, setVersionError] = useState<ApiError | null>(null);
   const [historyError, setHistoryError] = useState<ApiError | null>(null);
@@ -77,8 +79,8 @@ export function DatabaseWorkbench({ project, initialId, reference, compare = fal
   const [historyRetry, setHistoryRetry] = useState(0), [compareRetry, setCompareRetry] = useState(0);
   const catalogRequest = useRef<AbortController | null>(null);
 
-  useEffect(() => { (initialId ? dialog.current : search.current)?.focus(); }, [initialId]);
-  useEffect(() => { setTarget(initialId ?? ''); setTargetFormat(''); setCompareTarget(null); setPane(initialId ? 'detail' : 'catalog'); }, [initialId, project]);
+  useWorkbenchModal(dialog, true, initialId ? undefined : 'input[type="search"]');
+  useEffect(() => { setTarget(initialId ?? ''); setTargetFormat(''); setCompareTarget(null); setPreviewRequested(false); }, [initialId, project]);
   useEffect(() => {
     const controller = new AbortController();
     catalogRequest.current = controller;
@@ -101,13 +103,15 @@ export function DatabaseWorkbench({ project, initialId, reference, compare = fal
     void readDataVersion(target, controller.signal, reference).then(value => {
       if (controller.signal.aborted) return;
       const frozenObjectId = reference?.versionId === target ? reference.objectId : undefined;
-      const preferred = value.objects.find(item => targetFormat && item.format.toLowerCase() === targetFormat)
-        ?? value.objects.find(item => item.role === 'raw') ?? value.objects[0];
+      const formats = formatsKey ? formatsKey.split(',') : [];
+      const candidates = value.objects.filter(item => !formats.length || formats.includes(item.format.toLowerCase()));
+      const preferred = candidates.find(item => targetFormat && item.format.toLowerCase() === targetFormat)
+        ?? candidates.find(item => item.role === 'raw') ?? candidates[0] ?? value.objects[0];
       setVersion(value); setVersionScope(project); setObjectId(frozenObjectId ?? preferred?.objectId ?? '');
-      setVersionLoading(false); setPane(current => current === 'catalog' ? 'detail' : current);
+      setVersionLoading(false);
     }).catch(caught => { if (controller.signal.aborted) return; setVersionError(caught as ApiError); setVersionLoading(false); });
     return () => controller.abort();
-  }, [target, targetFormat, project, versionRetry, reference]);
+  }, [target, targetFormat, project, versionRetry, reference, formatsKey]);
   useEffect(() => {
     setVersions([]); setHistoryCursor(null); setHistoryError(null);
     if (!version) { setHistoryLoading(false); return; }
@@ -155,14 +159,9 @@ export function DatabaseWorkbench({ project, initialId, reference, compare = fal
   }
 
   function keyDown(event: React.KeyboardEvent) {
-    if (event.key === 'Escape') { onClose(); return; }
-    if (event.key !== 'Tab' || !dialog.current) return;
-    const items = workbenchFocusTargets(dialog.current);
-    if (!items.length) return;
-    const first = items[0], last = items.at(-1)!;
-    const outsideOrder = !items.includes(document.activeElement as HTMLElement);
-    if (event.shiftKey && (document.activeElement === first || outsideOrder)) { event.preventDefault(); last.focus(); }
-    else if (!event.shiftKey && (document.activeElement === last || outsideOrder)) { event.preventDefault(); first.focus(); }
+    if (event.defaultPrevented) return;
+    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); onClose(); return; }
+    containTabFocus(event, event.currentTarget as HTMLElement);
   }
   async function more() {
     const controller = catalogRequest.current;
@@ -173,26 +172,35 @@ export function DatabaseWorkbench({ project, initialId, reference, compare = fal
     catch (caught) { if (!controller.signal.aborted) setCatalogError(caught as ApiError); }
     finally { if (!controller.signal.aborted) setCatalogLoading(false); }
   }
-  function selectVersion(id: string, preferredFormat = '') { setTargetFormat(preferredFormat); setTarget(id); setCompareTarget(null); setPane('detail'); }
+  function selectVersion(id: string, preferredFormat = '') { setTargetFormat(preferredFormat); setTarget(id); setCompareTarget(null); setPreviewRequested(false); }
   const object = version?.objects.find(item => item.objectId === objectId) ?? version?.objects[0];
+  const permitted = !formatsKey || (!!object && formatsKey.split(',').includes(object.format.toLowerCase()));
   const selectableVersions = version && !versions.some(item => item.versionId === version.versionId) ? [{ versionId: version.versionId, semanticId: version.semanticId, createdAt: version.createdAt ?? '' }, ...versions] : versions;
-  return <aside ref={dialog} tabIndex={-1} className="database-workbench" role="dialog" aria-modal="true" aria-label="数据库" data-testid="database-workbench" onKeyDown={keyDown}>
-    <header className="database-heading"><div><span className="drawer-eyebrow">项目数据与版本</span><h2>数据库</h2><p>检索数据集、核对不可变版本，并按格式查看数据内容。</p></div><button className="icon-button" aria-label="关闭数据库" onClick={onClose}><Icon name="close" /></button></header>
-    <nav className="database-mobile-nav" aria-label="数据库工作区"><button aria-current={pane === 'catalog' ? 'page' : undefined} className={pane === 'catalog' ? 'active' : ''} onClick={() => setPane('catalog')}>目录</button><button aria-current={pane === 'detail' ? 'page' : undefined} className={pane === 'detail' ? 'active' : ''} disabled={!target} onClick={() => setPane('detail')}>详情</button><button aria-current={pane === 'preview' ? 'page' : undefined} className={pane === 'preview' ? 'active' : ''} disabled={!version || !object} onClick={() => setPane('preview')}>预览</button></nav>
+  const versionHistory = version && <>
+    <div className="version-control"><label>不可变版本<select value={version.versionId} onChange={event => selectVersion(event.target.value)}>{selectableVersions.map(item => <option key={item.versionId} value={item.versionId}>{item.versionId}</option>)}</select></label>
+      {version.createdAt && <time dateTime={version.createdAt}>{new Date(version.createdAt).toLocaleString('zh-CN')}</time>}</div>
+    {historyLoading && <Loading>正在读取版本列表…</Loading>}
+    {historyError ? <div className="workbench-read-error"><ErrorNotice error={historyError} title="版本列表读取失败" /><button onClick={() => historyCursor ? moreVersions() : setHistoryRetry(value => value + 1)}>重新读取版本列表</button></div>
+      : historyCursor && <button type="button" disabled={historyLoading} onClick={moreVersions}>加载更多版本</button>}
+  </>;
+  return <section ref={dialog} tabIndex={-1} className="database-workbench" role="dialog" aria-modal="true" aria-label="数据库" data-testid="database-workbench" onKeyDown={keyDown}>
+    <header className="database-heading"><div><h2>数据库</h2>
+      {inputRole && <p>为 <strong>{inputRole}</strong> 选择数据{formatsKey ? ` · ${formatsKey.toUpperCase().split(',').join('、')}` : ''}</p>}
+    </div><button className="icon-button" aria-label="关闭数据库" onClick={onClose}><Icon name="close" /></button></header>
     <div className="database-grid">
-      <section className="database-pane database-catalog" data-mobile-active={pane === 'catalog'} aria-label="数据目录">
-        <div className="database-pane-heading"><div><strong>数据目录</strong><span>{datasets.length} 个已加载数据集</span></div></div>
-        <div className="database-filters"><label>搜索<input ref={search} value={query} onChange={event => setQuery(event.target.value)} placeholder="标题、说明或标识" /></label><div><label>标签<input value={tag} onChange={event => setTag(event.target.value)} placeholder="精确标签" /></label><label>格式<select aria-label="格式筛选" value={format} onChange={event => setFormat(event.target.value)}>{FORMATS.filter(item => !item || !allowedFormats.length || allowedFormats.includes(item)).map(item => <option key={item || 'all'} value={item}>{item ? item.toUpperCase() : '全部格式'}</option>)}</select></label></div></div>
+      <section className="database-pane database-catalog" aria-label="数据目录">
+        <div className="database-pane-heading"><div><h3>数据目录</h3><span>{datasets.length.toLocaleString()} 个已加载数据集</span></div></div>
+        <div className="database-filters"><label>搜索<input type="search" name="dataset-query" autoComplete="off" value={query} onChange={event => setQuery(event.target.value)} placeholder="标题、说明或标识…" /></label><div><label>标签<input name="dataset-tag" autoComplete="off" value={tag} onChange={event => setTag(event.target.value)} placeholder="精确标签…" /></label><label>格式<select aria-label="格式筛选" value={format} onChange={event => setFormat(event.target.value)}>{FORMATS.filter(item => !item || !formatsKey || formatsKey.split(',').includes(item)).map(item => <option key={item || 'all'} value={item}>{item ? item.toUpperCase() : '全部格式'}</option>)}</select></label></div></div>
         {catalogError && <div className="workbench-read-error"><ErrorNotice error={catalogError} title="数据目录读取失败" /><button onClick={() => cursor ? void more() : setCatalogRetry(value => value + 1)}>重新读取目录</button></div>}
-        <div className="database-list" aria-busy={catalogLoading}>{datasets.map(item => <button key={item.datasetId} aria-pressed={version?.datasetId === item.datasetId || target === item.currentVersion} className={version?.datasetId === item.datasetId || target === item.currentVersion ? 'database-item selected' : 'database-item'} onClick={() => selectVersion(item.currentVersion, format)}><span><strong title={item.title}>{item.title}</strong><small title={item.datasetId}>{item.datasetId}</small><p>{item.semantics?.description || '暂无数据说明'}</p><span className="tag-list">{item.formats?.map(value => <i key={value}>{value.toUpperCase()}</i>)}</span></span><Icon name="arrow-up-right" /></button>)}{!datasets.length && !catalogLoading && !catalogError && <p className="empty-inline">没有符合条件的数据集。试试减少筛选条件。</p>}</div>
-        {catalogLoading && <div className="workbench-loading"><p className="muted" role="status">正在读取数据目录…</p>{!datasets.length && <div className="workbench-skeleton" aria-hidden="true"><span /><span /><span /></div>}</div>}<button className="secondary database-more" disabled={!cursor || catalogLoading} onClick={() => void more()}>{catalogLoading ? '正在读取…' : cursor ? '加载更多' : catalogError ? '目录尚未完整读取' : '已显示全部'}</button>
+        <div className="database-list" aria-busy={catalogLoading}>{datasets.map(item => <button key={item.datasetId} aria-pressed={version?.datasetId === item.datasetId || target === item.currentVersion} className={version?.datasetId === item.datasetId || target === item.currentVersion ? 'database-item selected' : 'database-item'} onClick={() => selectVersion(item.currentVersion, format)}><span><strong title={item.title}>{item.title}</strong><small title={item.datasetId}>{item.datasetId}</small><p>{item.semantics?.description || '暂无数据说明'}</p><span className="tag-list">{item.formats?.map(value => <i key={value}>{value.toUpperCase()}</i>)}</span></span><Icon name="arrow-up-right" /></button>)}{!datasets.length && !catalogLoading && !catalogError && <EmptyState title="没有符合条件的数据集。" description="调整搜索或减少筛选条件后重试。" />}</div>
+        {catalogLoading && <div className="workbench-loading"><Loading>正在读取数据目录…</Loading>{!datasets.length && <div className="workbench-skeleton" aria-hidden="true"><span /><span /><span /></div>}</div>}<button className="secondary database-more" disabled={!cursor || catalogLoading} onClick={() => void more()}>{catalogLoading ? '正在读取…' : cursor ? '加载更多' : catalogError ? '目录尚未完整读取' : '已显示全部'}</button>
       </section>
-      <section className="database-pane database-detail" data-mobile-active={pane === 'detail'} aria-label="数据详情">
-        {versionLoading ? <div className="workbench-loading"><p role="status">正在读取所选版本…</p><div className="workbench-skeleton" aria-hidden="true"><span /><span /><span /></div></div> : versionError ? <div className="workbench-read-error"><ErrorNotice error={versionError} title="所选版本读取失败" /><button onClick={() => setVersionRetry(value => value + 1)}>重新读取所选版本</button></div> : !version || !object ? <div className="database-empty"><Icon name="file" /><h3>{version ? '没有数据对象' : '选择数据集'}</h3><p>{version ? '该版本没有可读取的数据对象，请选择其他版本。' : '从左侧目录选择数据后，这里会显示版本、语义、字段质量和血缘。'}</p></div> : <><div className="database-pane-heading"><div><span className="type-badge">{version.versionId === version.currentVersion ? '当前版本' : '不可变版本'}</span><h3>{version.title}</h3></div><button className="text-button" onClick={() => setPane('preview')}>查看内容<Icon name="arrow-up-right" /></button></div><p className="database-description">{version.semantics.description || '暂无数据说明'}</p>
-          <div className="version-control"><label>不可变版本<select value={version.versionId} onChange={event => selectVersion(event.target.value)}>{selectableVersions.map(item => <option key={item.versionId} value={item.versionId}>{item.versionId}</option>)}</select></label><small>{version.createdAt ? new Date(version.createdAt).toLocaleString() : ''}</small></div>
-          {historyLoading && <p className="muted" role="status">正在读取版本列表…</p>}
-          {historyError ? <div className="workbench-read-error"><ErrorNotice error={historyError} title="版本列表读取失败" /><button onClick={() => historyCursor ? moreVersions() : setHistoryRetry(value => value + 1)}>重新读取版本列表</button></div>
-            : historyCursor && <button type="button" disabled={historyLoading} onClick={moreVersions}>加载更多版本</button>}
+      <section className="database-pane database-detail" ref={detail} tabIndex={-1} aria-label="数据详情">
+        {versionLoading ? <div className="workbench-loading"><Loading>正在读取所选版本…</Loading><div className="workbench-skeleton" aria-hidden="true"><span /><span /><span /></div></div> : versionError ? <div className="workbench-read-error"><ErrorNotice error={versionError} title="所选版本读取失败" /><button onClick={() => setVersionRetry(value => value + 1)}>重新读取所选版本</button></div> : !version || !object ? <>
+          <div className="database-empty"><Icon name="file" /><h3>{version ? version.title : '选择数据集'}</h3><p>{version ? '该版本没有可读取的数据对象，请选择其他版本。' : '从数据目录选择数据集后可查看版本和资料说明。'}</p></div>
+          {versionHistory}
+        </> : <><div className="database-pane-heading"><div><h3>{version.title}</h3><span className="type-badge">{version.versionId === version.currentVersion ? '当前版本' : '不可变版本'}</span></div><button className="text-button" onClick={() => { setPreviewRequested(true); preview.current?.focus(); }}>查看内容<Icon name="arrow-up-right" /></button></div><p className="database-description">{version.semantics.description || '暂无数据说明'}</p>
+          {versionHistory}
           {compare && <section className="version-comparison"><h4>版本比较</h4><label>另一版本<select aria-label="比较版本" value={compareTarget?.versionId ?? ''} onChange={event => setCompareTarget(versions.find(item => item.versionId === event.target.value) ?? null)}><option value="">选择版本</option>{versions.filter(item => item.versionId !== version.versionId).map(item => <option key={item.versionId} value={item.versionId}>{item.versionId}</option>)}</select></label>{compareError && <div className="workbench-read-error"><ErrorNotice error={compareError} title="比较版本读取失败" /><button onClick={() => setCompareRetry(value => value + 1)}>重新读取比较版本</button></div>}{compareLoading ? <p className="muted" role="status">正在读取比较版本…</p> : comparison ? <VersionDiff left={version} right={comparison} /> : !historyLoading && !historyError && versions.length <= 1 ? <p className="muted">当前数据集没有另一版本。</p> : <p className="muted">选择另一不可变版本后比较身份、字段和语义。</p>}</section>}
           {version.objects.length > 1 && <label className="database-object-select">数据对象<select value={object.objectId} onChange={event => setObjectId(event.target.value)}>{version.objects.map(item => <option key={item.objectId} value={item.objectId}>{item.role} · {item.format} · {sizeLabel(item.size)}</option>)}</select></label>}
           <div className="database-summary"><div><span>行数</span><strong>{version.descriptor.rowCount ?? '未统计'}</strong></div><div><span>字段</span><strong>{version.descriptor.fields?.length ?? 0}</strong></div><div><span>格式</span><strong>{object.format.toUpperCase()}</strong></div><div><span>大小</span><strong>{sizeLabel(object.size)}</strong></div></div>
@@ -201,11 +209,19 @@ export function DatabaseWorkbench({ project, initialId, reference, compare = fal
           <DataFieldQuality descriptor={version.descriptor} semantics={version.semantics} />
           {version.inputVersions.length > 0 && <section className="lineage-section"><h4>血缘输入</h4><div className="citation-list">{version.inputVersions.map(id => <button className="citation" key={id} onClick={() => selectVersion(id)}>{id}<Icon name="arrow-up-right" /></button>)}</div></section>}
           <details className="database-identity"><summary>不可变身份与技术详情</summary><dl className="argument-list"><div><dt>数据集</dt><dd>{version.datasetId}</dd></div><div><dt>数据版本</dt><dd>{version.versionId}</dd></div><div><dt>语义版本</dt><dd>{version.semanticId}</dd></div><div><dt>数据对象</dt><dd>{object.objectId}</dd></div><div><dt>校验和</dt><dd>{object.checksum}</dd></div><div><dt>媒体类型</dt><dd>{object.mediaType}</dd></div></dl></details>
-          <div className="actions database-actions"><button className="primary" onClick={() => onAttach(resourceItemFromDetail(version, object))}>附加精确版本</button><a className="button secondary" href={contentUrl(project, version.versionId, object.objectId)} download><Icon name="download" />下载对象</a></div></>}
+          {onAttach && !permitted && <p className="muted" role="status">所选对象为 {object.format.toUpperCase()}。请选择 {formatsKey.toUpperCase().split(',').join('、')} 格式的对象。</p>}
+          <div className="actions database-actions">{onAttach && <button className="primary" disabled={!permitted}
+            onClick={() => onAttach(resourceItemFromDetail(version, object))}>{inputRole ? `绑定到${inputRole}` : '附加精确版本'}</button>}
+            <a className="button secondary" href={contentUrl(project, version.versionId, object.objectId)} download><Icon name="download" />下载对象</a>
+          </div></>}
       </section>
-      <section className="database-pane database-preview" data-mobile-active={pane === 'preview'} aria-label="数据预览">
-        {!version || !object ? <div className="database-empty"><Icon name="map" /><h3>数据预览</h3><p>{versionLoading ? '所选版本读取完成后显示预览。' : versionError ? '请先重新读取所选版本。' : '支持表格、图表、地图、栅格、图像和结构化内容。'}</p>{versionError && <button onClick={() => setPane('detail')}>返回版本详情</button>}</div> : compare && pane !== 'preview' ? <div className="database-empty"><Icon name="file" /><h3>版本比较</h3><p>正在核对版本身份、字段与语义。需要时可打开所选版本的数据内容。</p><button onClick={() => setPane('preview')}>打开数据预览</button></div> : <><div className="database-pane-heading"><div><strong>{version.title}</strong><span title={version.versionId}>{object.format.toUpperCase()} · {sizeLabel(object.size)} · 版本 {version.versionId.slice(0, 12)}</span></div></div><Suspense fallback={<p className="muted" role="status">正在加载数据查看器…</p>}><ArtifactViewer key={`${version.versionId}:${object.objectId}`} resource={version} objectId={object.objectId} showIdentity={false} project={project} onResource={id => selectVersion(id)} /></Suspense></>}
+      <section className="database-pane database-preview" ref={preview} tabIndex={-1} aria-label="数据预览">
+        {!version || !object ? <div className="database-empty"><Icon name="map" /><h3>数据预览</h3><p>{versionLoading ? '所选版本读取完成后显示预览。' : versionError ? '请先重新读取所选版本。' : '支持表格、图表、地图、栅格、图像和结构化内容。'}</p>{versionError && <button onClick={() => detail.current?.focus()}>返回版本详情</button>}</div> : compare && !previewRequested ? <div className="database-empty"><Icon name="file" /><h3>版本比较</h3><p>正在核对版本身份、字段与语义。需要时可打开所选版本的数据内容。</p><button onClick={() => { setPreviewRequested(true); preview.current?.focus(); }}>打开数据预览</button></div> : <><div className="database-pane-heading"><div><strong>{version.title}</strong><span title={version.versionId}>{object.format.toUpperCase()} · {sizeLabel(object.size)} · 版本 {version.versionId.slice(0, 12)}</span></div></div>
+          <Suspense fallback={<Loading>正在加载数据查看器…</Loading>}>
+            <ArtifactViewer key={`${version.versionId}:${version.semanticId}:${object.objectId}`} resource={version} objectId={object.objectId} showIdentity={false} contextHeading="h3" project={project} onResource={id => selectVersion(id)} />
+          </Suspense>
+        </>}
       </section>
     </div>
-  </aside>;
+  </section>;
 }

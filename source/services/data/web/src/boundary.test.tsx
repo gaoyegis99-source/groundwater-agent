@@ -61,16 +61,16 @@ describe("Data UI trust boundary", () => {
     const file = {
       name: "fixture.csv",
       size: 1,
-      stream: () => ({
-        async *[Symbol.asyncIterator]() {
-          yield new Uint8Array([1]);
-          controller.abort();
+      stream: () => new ReadableStream<Uint8Array>({
+        start(stream) {
+          stream.enqueue(new Uint8Array([1]));
+          stream.close();
         },
       }),
     } as unknown as File;
 
     try {
-      await expect(uploadFile("publication", "output", file, controller.signal, vi.fn()))
+      await expect(uploadFile("publication", "output", file, controller.signal, () => controller.abort()))
         .rejects.toMatchObject({ name: "AbortError" });
       expect(xhr).not.toHaveBeenCalled();
     } finally {

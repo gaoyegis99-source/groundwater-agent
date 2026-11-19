@@ -26,7 +26,11 @@ test('production GeoJSON renders 150,000 features with the full color range', as
     }],
   });
   const pageErrors: string[] = [];
+  const scripts: string[] = [];
   page.on('pageerror', error => pageErrors.push(error.message));
+  page.on('request', request => {
+    if (request.resourceType() === 'script') scripts.push(new URL(request.url()).pathname);
+  });
   await page.route('**/product-ui.json', route => route.fulfill({ json: groundwaterUi }));
   await page.route('**/product-icon.svg', route => route.fulfill({
     contentType: 'image/svg+xml',
@@ -61,6 +65,14 @@ test('production GeoJSON renders 150,000 features with the full color range', as
     datasetClickToLegendAndCanvasMs: Math.round(performance.now() - started),
   };
   expect(pageErrors).toEqual([]);
+  expect(scripts.some(path => /\/GeoViewer-/.test(path))).toBe(true);
+  expect(scripts.some(path => /\/(?:RasterViewer|SpatialViewers|lerc|zstd|jpeg|deflate)-/i.test(path))).toBe(false);
+  const map = database.getByRole('region', { name: 'GeoJSON 地图' });
+  await map.locator('canvas').first().click();
+  const attributes = database.getByRole('region', { name: '要素属性' });
+  await expect(attributes.getByRole('rowheader', { name: 'reading' })).toBeVisible();
+  await database.getByRole('button', { name: '查看要素属性' }).press('Enter');
+  await expect(attributes.getByRole('rowheader', { name: 'reading' })).toBeVisible();
   await testInfo.attach('geojson-performance', { body: JSON.stringify(metrics), contentType: 'application/json' });
   console.log('GEOJSON_PERF', JSON.stringify(metrics));
 });
@@ -136,14 +148,26 @@ test('production GeoTIFF maps render and probe the centre pixel in results and t
   const resultMap = page.getByTestId('workspace-panel');
   const probeMap = async (panel: typeof resultMap) => {
     const probe = panel.getByLabel('栅格探针');
-    await expect(probe).toHaveText('单击地图探查物理值');
+    await expect(probe).toHaveText(/单击地图探查物理值|可探查视图中心的像元值/);
     const viewport = panel.locator('.artifact-map .ol-viewport');
     await expect(viewport).toBeVisible();
-    await viewport.click();
+    await panel.getByRole('button', { name: '探查视图中心' }).press('Enter');
     await expect(probe).toHaveText(/像元 \[2, 2\].*物理值 96/);
   };
   await probeMap(resultMap);
   await page.screenshot({ path: testInfo.outputPath('result-raster-probe.png') });
+  for (const viewport of [
+    { width: 1440, height: 900 }, { width: 1280, height: 800 }, { width: 1024, height: 768 },
+  ]) {
+    await page.setViewportSize(viewport);
+    const map = resultMap.getByRole('region', { name: '栅格地图' });
+    await expect(map).toBeVisible();
+    const bounds = await map.boundingBox();
+    expect(bounds!.x).toBeGreaterThanOrEqual(0);
+    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(viewport.width);
+    await expect(resultMap.getByRole('button', { name: '探查视图中心' })).toBeEnabled();
+  }
+  await page.setViewportSize({ width: 1440, height: 900 });
 
   let releaseResults!: () => void;
   resultsDelay = new Promise(resolve => { releaseResults = resolve; });
@@ -151,6 +175,7 @@ test('production GeoTIFF maps render and probe the centre pixel in results and t
     const pendingResults = page.waitForRequest(request => new URL(request.url()).pathname.endsWith('/results'));
     await page.reload();
     await pendingResults;
+    await resultMap.getByText('查看精确版本与来源', { exact: true }).click();
     await expect(resultMap.getByText(output.semanticId, { exact: true })).toBeVisible();
     await expect(resultMap.getByText(version.semanticId, { exact: true })).toHaveCount(0);
     await probeMap(resultMap);
@@ -175,25 +200,47 @@ test('production GeoTIFF maps render and probe the centre pixel in results and t
   await expect(database.getByText(/发布时语义.*选中时的语义/)).toBeVisible();
   await expect(database.getByText(/选择之后写入的语义/)).toHaveCount(0);
   await page.screenshot({ path: testInfo.outputPath('result-version-comparison.png') });
+
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.addInitScript(() => {
+    const getContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (type: string, ...args: unknown[]) {
+      return /webgl|webkit-3d/.test(type) ? null : Reflect.apply(getContext, this, [type, ...args]);
+    } as typeof getContext;
+  });
+  await page.reload();
+  await expect(resultMap.getByText(/当前浏览器无法使用 WebGL/)).toBeVisible();
+  await expect(resultMap.getByLabel('栅格色带')).toBeDisabled();
+  await probeMap(resultMap);
+  expect(errors).toEqual([]);
 });
 
-test('production chunks load the database and all chart types without loading charts for tables', async ({ page }, testInfo) => {
+test('production database preserves exact int64 values and loads charts only on demand', async ({ page, browserName }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const errors: string[] = [];
   const scripts: string[] = [];
   const querySubmissions: (string | null)[] = [];
+  const queryLimits: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', message => {
-    if (message.type() === 'error' && !message.text().includes('net::ERR_CONNECTION_RESET')) errors.push(message.text());
+    const expectedChartError = message.location().url.includes('/queries/query-1?') && message.text().includes('403');
+    // In WebKit, Playwright screenshots inject a stylesheet to sync animations.
+    const screenshotStyleError = browserName === 'webkit' &&
+      message.text() === "Refused to apply a stylesheet because its hash, its nonce, or 'unsafe-inline' does not appear in the style-src directive of the Content Security Policy.";
+    if (message.type() === 'error' && !message.text().includes('net::ERR_CONNECTION_RESET') && !expectedChartError && !screenshotStyleError) errors.push(message.text());
   });
   page.on('request', request => { if (request.resourceType() === 'script') scripts.push(request.url()); });
   const fields = [
-    { fieldId: 'f0', name: 'month', type: 'int64' },
+    { fieldId: 'f0', name: '观测时间', type: 'timestamp[us]' },
     { fieldId: 'f1', name: 'level', type: 'double' },
     { fieldId: 'f2', name: 'station', type: 'string' },
+    { fieldId: 'f3', name: '监测编号', type: 'int64' },
+    { fieldId: 'f4', name: '无符号编号', type: 'uint64' },
   ];
   const version = dataDetail({
     title: '模拟监测表', descriptor: { policy: 'FILE_QUERYABLE', rowCount: 3, fields },
+    semantics: { timeRange: '2025-01-01 至 2025-12-31', fields: { f1: { unit: 'm', source: '监测日报' } } },
     objects: [{ objectId: 'object-1', size: 64, checksum: `sha256:${'a'.repeat(64)}`, role: 'raw', format: 'csv', mediaType: 'text/csv' }],
   });
   await page.route('**/product-ui.json', route => route.fulfill({ json: groundwaterUi }));
@@ -202,6 +249,7 @@ test('production chunks load the database and all chart types without loading ch
     body: readFileSync(new URL('../../products/groundwater/ui/product-icon.svg', import.meta.url), 'utf8'),
   }));
   // Every API request is handled locally: no running candidate or Provider is used.
+  let chartReadFailure = false;
   await page.route('**/api/v12/**', async route => {
     const url = new URL(route.request().url());
     let body: unknown;
@@ -221,12 +269,29 @@ test('production chunks load the database and all chart types without loading ch
       if (querySubmissions.length === 1) return route.abort('connectionreset');
       body = { queryId: 'query-1', operationId: 'query-1' };
     }
-    else if (url.pathname.endsWith('/data/queries/query-1')) body = {
-      queryId: 'query-1', state: 'SUCCEEDED', error: null, resultAvailable: true,
-      expiresAt: '2026-10-13T01:00:00Z',
-      receipt: { queryId: 'query-1', inputs: [], plan: {}, planDigest: `sha256:${'c'.repeat(64)}`, coverage: { sourceRows: 3, matchedRows: 3, calculation: 'all_matching_rows' }, returnedRows: 3, resultChecksum: `sha256:${'b'.repeat(64)}`, truncated: false, engine: { name: 'test' } },
-      result: { fields, rows: [[1, 4, 'A'], [2, 7, 'A'], [3, 5, 'B']], nextOffset: null, truncated: false, coverage: { sourceRows: 3 }, engine: { name: 'test' } },
-    };
+    else if (url.pathname.endsWith('/data/queries/query-1')) {
+      queryLimits.push(url.searchParams.get('limit') ?? '');
+      if (chartReadFailure && url.searchParams.get('limit') === '1000') {
+        chartReadFailure = false;
+        return route.fulfill({ status: 403, json: { code: 'DATA_ACCESS_DENIED' } });
+      }
+      const response = {
+        queryId: 'query-1', state: 'SUCCEEDED', error: null, resultAvailable: true,
+        expiresAt: '2026-10-13T01:00:00Z',
+        receipt: { queryId: 'query-1', inputs: [], plan: {}, planDigest: `sha256:${'c'.repeat(64)}`, coverage: { sourceRows: 3, matchedRows: 3, calculation: 'all_matching_rows' }, returnedRows: 3, resultChecksum: `sha256:${'b'.repeat(64)}`, truncated: false, engine: { name: 'test' } },
+        result: { fields, rows: [], nextOffset: null, truncated: false, coverage: { sourceRows: 3 }, engine: { name: 'test' } },
+      };
+      // Match the service's bare JSON numbers without rounding them in the fixture.
+      const rows = `[
+        ["2025-02-01 08:00:00",0,"A",9007199254740993,18446744073709551615],
+        ["2025-03-01 08:00:00",7,"A",9223372036854775807,9223372036854775808],
+        ["2025-04-01 08:00:00",null,"B",-9223372036854775808,9007199254740991]
+      ]`;
+      return route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify(response).replace('"rows":[]', `"rows":${rows}`),
+      });
+    }
     else if (url.pathname.endsWith('/data/queries/query-1/cancel')) body = { queryId: 'query-1', state: 'SUCCEEDED' };
     else throw new Error(`Unexpected build-test API request: ${url.pathname}`);
     await route.fulfill({ json: body });
@@ -235,13 +300,60 @@ test('production chunks load the database and all chart types without loading ch
   await page.getByRole('button', { name: '数据库', exact: true }).click();
   await page.getByRole('button', { name: /模拟监测表/ }).click();
   await expect(page.locator('.table-workspace .table-scroll')).toContainText('7');
+  const table = page.getByRole('region', { name: '查询结果表' });
+  await expect(table.getByRole('columnheader', { name: /level（m）/ })).toBeVisible();
+  await expect(table.getByRole('columnheader', { name: /level（m）/ })).toHaveCSS('position', 'sticky');
+  await expect(table.locator('caption')).toHaveText('第 1–3 行。缺测表示空值，0 表示实际零值。');
+  await expect(table.getByRole('cell', { name: '0', exact: true })).toBeVisible();
+  await expect(table.getByRole('cell', { name: '缺测', exact: true })).toBeVisible();
+  await expect(table.locator('tbody tr td:nth-child(4)')).toHaveText([
+    '9007199254740993', '9223372036854775807', '-9223372036854775808',
+  ]);
+  const unsignedValues = table.locator('tbody tr td:nth-child(5)');
+  await expect(unsignedValues).toHaveText([
+    '18446744073709551615', '9223372036854775808', '9007199254740991',
+  ]);
+  await expect(unsignedValues.first()).toHaveCSS('text-align', 'end');
+  await expect(unsignedValues.first()).toHaveCSS('white-space', 'nowrap');
   expect(querySubmissions).toHaveLength(2);
   expect(querySubmissions[1]).toBe(querySubmissions[0]);
   await page.screenshot({ path: testInfo.outputPath('database-desktop.png'), fullPage: true });
   expect(scripts.some(url => /(?:ChartView|chart-renderer)-/.test(url))).toBe(false);
+  const filterControls = page.getByText('字段、筛选与排序', { exact: true });
+  await filterControls.click();
+  await page.getByRole('button', { name: '添加筛选', exact: true }).click();
+  await page.getByLabel('筛选字段 1').selectOption('f3');
+  const filterInput = page.getByLabel('筛选值 1');
+  await filterInput.fill('9007199254740993');
+  await expect(filterInput).toHaveValue('9007199254740993');
+  await expect.poll(() => querySubmissions.length).toBe(3);
+  expect(JSON.parse(querySubmissions[2]!).filters).toEqual([{ field: 'f3', op: 'eq', value: '9007199254740993' }]);
+  await expect(table).toBeVisible();
   await page.getByRole('button', { name: '图表', exact: true }).click();
   await page.getByLabel('纵轴字段').selectOption('f1');
   await page.getByLabel('分组字段').selectOption('f2');
+  const chart = page.getByRole('img', { name: '数据图表' });
+  await expect(chart).toHaveAccessibleDescription(/样本时间范围.*2025-02-01 08:00:00.*2025-04-01 08:00:00/);
+  const beforeEdit = querySubmissions.length;
+  const beforeLimits = queryLimits.length;
+  await filterInput.fill('9223372036854775807');
+  await expect.poll(() => querySubmissions.length).toBe(beforeEdit + 1);
+  expect(JSON.parse(querySubmissions.at(-1)!).filters).toEqual([{ field: 'f3', op: 'eq', value: '9223372036854775807' }]);
+  await expect(page.locator('.artifact-chart canvas').first()).toBeVisible();
+  expect(queryLimits.slice(beforeLimits)).toEqual(['1000']);
+  await filterControls.click();
+  await page.getByRole('button', { name: '表格', exact: true }).click();
+  await expect(table).toBeVisible();
+  expect(querySubmissions).toHaveLength(beforeEdit + 2);
+  await page.getByRole('button', { name: '图表', exact: true }).click();
+  await expect(page.locator('.artifact-chart canvas').first()).toBeVisible();
+  expect(querySubmissions).toHaveLength(beforeEdit + 2);
+  await expect(page.getByRole('region', { name: '预览来源与范围' })).toContainText('2025-01-01 至 2025-12-31');
+  await page.getByText('查看图表样本（3 行）').click();
+  const sample = page.getByRole('region', { name: '图表样本' });
+  await expect(sample.getByRole('cell', { name: '0', exact: true })).toBeVisible();
+  await expect(sample.getByRole('cell', { name: '缺测', exact: true })).toBeVisible();
+  await page.getByText('查看图表样本（3 行）').click();
   for (const kind of ['line', 'bar', 'scatter']) {
     await page.getByLabel('图表类型').selectOption(kind);
     const canvas = page.locator('.artifact-chart canvas').first();
@@ -251,6 +363,12 @@ test('production chunks load the database and all chart types without loading ch
       return bytes.some((value, index) => index % 4 === 3 && value > 0);
     })).toBe(true);
   }
+  chartReadFailure = true;
+  await page.getByLabel('分组字段').selectOption('');
+  await expect(page.getByText('图表读取失败')).toBeVisible();
+  await page.getByRole('button', { name: '重新读取图表' }).click();
+  await expect(chart).toBeVisible();
+  await expect(page.getByLabel('分组字段')).toHaveValue('');
   expect(scripts.some(url => /ChartView-/.test(url))).toBe(true);
   expect(scripts.some(url => /chart-renderer-/.test(url))).toBe(true);
   await page.setViewportSize({ width: 1280, height: 800 });
@@ -261,6 +379,36 @@ test('production chunks load the database and all chart types without loading ch
   await expect(page.locator('.artifact-chart canvas').first()).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath('database-compact-desktop.png'), fullPage: true });
+  for (const viewport of [{ width: 1024, height: 768 }]) {
+    await page.setViewportSize(viewport);
+    const visibleChart = page.locator('.artifact-chart canvas').first();
+    await expect(visibleChart).toBeVisible();
+    await expect.poll(() => visibleChart.evaluate(node => {
+      const host = node.closest<HTMLElement>('.artifact-chart');
+      return !!host && host.clientWidth > 0 && Math.abs(node.getBoundingClientRect().width - host.clientWidth) <= 1;
+    })).toBe(true);
+    await visibleChart.scrollIntoViewIfNeeded();
+    await expect(visibleChart).toBeInViewport();
+    const preview = page.getByRole('region', { name: '数据预览', exact: true });
+    await expect.poll(() => preview.evaluate(node => {
+      const bounds = node.getBoundingClientRect();
+      const elements = node.querySelectorAll('.scientific-chart-controls select, .scientific-figure .artifact-chart');
+      return elements.length === 5 && Array.from(elements).every(element => {
+        const rect = element.getBoundingClientRect();
+        return rect.left >= bounds.left - 1 && rect.right <= bounds.right + 1;
+      });
+    })).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath(`database-chart-${viewport.width}.png`), fullPage: true });
+  }
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('database-workbench')).toHaveCount(0);
+  const duringDetails = querySubmissions.length;
+  await page.getByRole('button', { name: '数据库', exact: true }).click();
+  await page.getByRole('button', { name: /模拟监测表/ }).click();
+  await expect(page.getByRole('region', { name: '数据详情', exact: true }).getByRole('heading', { name: '模拟监测表' })).toBeVisible();
+  await expect(table).toBeVisible();
+  expect(querySubmissions).toHaveLength(duringDetails + 1);
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('database-workbench')).toHaveCount(0);
   await page.setViewportSize({ width: 1440, height: 900 });

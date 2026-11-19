@@ -46,6 +46,7 @@ def build_instructions(
     models: tuple[ExecutableModelDefinition, ...],
     execution_context_json: str,
     execution_allowed: bool = False,
+    operator_proposal: bool = False,
 ) -> str:
     retrieval_instruction = _execution_retrieval_instruction(
         execution_context_json
@@ -54,9 +55,40 @@ def build_instructions(
         "This Turn has EXECUTION_PROPOSAL permission. You may record a plan and propose "
         "installed model calls, but Kernel confirmation is still mandatory before execution."
         if execution_allowed
-        else "This Turn is READ_ONLY. You may inspect Data and Knowledge evidence and call "
+        else "This Turn is READ_ONLY. You may inspect Data and Knowledge evidence, read the "
+        "operator catalog through list_operators and get_operator when available, and call "
         "update_task or submit_reply, but you must not record a plan, call an executable model, use an operation "
         "tool, or propose confirmation. A later generic execution rule cannot grant those powers."
+    )
+    composition = """
+When the user requests a standalone operation or no preset covers the task, use list_operators with
+the operation's name or intent. Read each exact version with get_operator, choosing entries
+with confirmation_supported=true. Inspect every bound Data version. For one operation
+use one node; for multiple operations connect named upstream output ports to the matching
+downstream inputs. Build the structured workflow_draft as defined by submit_reply.
+Publish only requested outputs. Use only user-supplied values or declared defaults.
+For this path call validate_workflow and then submit_reply with workflow_draft. The Kernel
+creates the execution plan from the draft. Do not call record_plan or a preset model tool
+for an operator graph, and never name an operator as a tool in record_plan.
+For a self-contained operator request, submit the validated draft without calling update_task.
+Use the schema as advertised. Each graph input describes one external file. For a port that
+accepts multiple files, declare a separate graph input and binding for each file and bind the
+port with {"collection":[{"workflowInput":"first"},{"workflowInput":"second"}]}.
+Use camelCase for fields inside graph, such as nodeId and operatorVersion. Outside graph, use
+the exact draft field names, including data_bindings, parameter_values and parameter_sources.
+Respect explicit input role assignments such as `输入角色 target = 《资料标题》`.
+Bind the exact inspected version to the specified node port. Ask for the exact version when the
+title refers to multiple versions. Report a role mismatch before offering confirmation.
+When the user selected an existing rules file, inspect and bind that exact file to the rules
+port. Use validate_workflow to check bindings and parameters. On this path, reserve
+prepare_task_inputs for creating a rules file when the user supplied complete rule values
+and needs a new file. Inspect the returned RULES_READY version and bind that file. Ask only
+for genuinely missing inputs or choices. Keep workflow_draft=null when using the preset path.
+""" if operator_proposal else ""
+    operator_boundary = (
+        "Use the operator catalog below for requests that need a composed graph."
+        if operator_proposal
+        else "Individual operators are not callable in this turn."
     )
     return f"""Answer directly for fast decisions: one or two conclusion sentences with material limits;
 then zero to three distinct supporting details. Keep the conclusion within 160 characters. No unasked capability, basis or search boilerplate.
@@ -81,7 +113,7 @@ Current product capabilities, taken from its static assembly:
 {describe_capabilities(observations, models, include_descriptions=True)}
 This complete static list defines this product's models and Workflows, not the platform's
 operator inventory. Answer capability questions directly; never search Resource data to infer
-model availability. Individual operators are not callable here; invent neither names nor counts.
+model availability. {operator_boundary} Invent neither names nor counts.
 ExecutionContext covers this Session only. Use each action's saved status and outputs in follow-ups;
 a rejected action cannot undo a later completed one.
 
@@ -102,8 +134,9 @@ Use business capability names in visible prose, never model IDs or package ident
 {_PROGRESS_INTENT_INSTRUCTIONS}
 In discover_datasets search by the literal dataset name first. Omit unset filters, use
 `quantity_kinds` for known physical quantities, and copy the next cursor to `after`.
-Use the installed model's argument names. Before preparing, inspect exact Data and fully read
-applicable Knowledge. Bind each dictionary using the Data identities including physical field_id.
+For a preset model call, use the installed model's argument names. Before preparing that call,
+inspect exact Data and fully read applicable Knowledge. Bind each dictionary using the Data
+identities including physical field_id.
 Read all relevant retrieved refs together with read_evidence, then cite them in structured fields.
 When one Data search returns the complete named input set,
 do not rephrase and repeat that search. Inspect the returned current versions, then call
@@ -114,9 +147,10 @@ version. Continue only when
 it returns READY; then record the plan and call the matching executable model tool with the same
 arguments. A repeated result set closes discovery and leaves proposal tools available.
 Propose execution only when explicitly requested.
-For an explicit execution request, do not finish with a conversational blocker unless
+For a preset execution request, do not finish with a conversational blocker unless
 prepare_task_inputs actually returned BLOCKED in this Turn. If it returns READY, continue through
 record_plan to the confirmable executable call; do not replace that path with prose.
+{composition}
 For an ordinary completed reply, use interaction_options=[] unless the current request asks for
 choices or a concrete unresolved decision is needed. Do not suggest adjacent topics merely because
 they are related. When options are needed, include one to three; each must contain a short
@@ -131,7 +165,7 @@ only in citations and WorkflowRun IDs only in referenced_workflow_runs. Preserve
 such as well names, sample IDs and field names. A normal completed answer has a non-null conclusion;
 use conclusion=null only for pure Kernel-rendered execution status or clarification-only mode.
 
-Before each executable batch, call record_plan for a NEW AgentPlanV2 revision with one step per
+Before each preset-model batch, call record_plan for a NEW AgentPlanV2 revision with one step per
 model call in exactly the proposed order, including repeated calls of the same tool.
 A plan revision may authorize only one batch. Observation and submit_reply steps may
 appear for explanation but do not replace executable steps. Keep future dependent

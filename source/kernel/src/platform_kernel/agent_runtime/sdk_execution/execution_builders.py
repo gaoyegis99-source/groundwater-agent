@@ -45,13 +45,21 @@ def _build_agent(
 ) -> Agent[dict[str, Any]]:
     try:
         capabilities = resolve_mode_capabilities(
-            request_context, dependencies.settings.models
+            request_context, dependencies.settings.models,
+            composition_available=dependencies.settings.workflow_composition is not None,
+            catalog_available=bool(dependencies.settings.operator_uses),
         )
     except ModeResolutionError as error:
         raise SDKExecutionError(str(error), upstream=False, usage=_ZERO_USAGE) from error
     mode = capabilities.mode
     models = capabilities.models
     observations = dependencies.settings.observation_tools
+    composition_settings = (
+        dependencies.settings
+        if capabilities.allow_operator_catalog and dependencies.settings.workflow_composition is not None
+        and (mode == "WORKFLOW_DRAFT" or capabilities.allow_model_tools)
+        else None
+    )
     mode_instructions = "\nsubmit_reply must include workflow_draft=null."
     if capabilities.clarification_only:
         observations = ()
@@ -63,6 +71,11 @@ include_execution_status=false and workflow_draft=null. Supply exactly one conci
 natural-language question in unresolved_items, with no citation, ending in ? or ？,
 plus 2–3 mutually exclusive natural-language interaction_options.
 """
+    elif composition_settings is not None:
+        mode_instructions = (
+            "\nCall validate_workflow with the structured draft before submitting it. "
+            "Correct the reported graph, binding or parameter issue before submitting."
+        )
     elif mode == "WORKFLOW_DRAFT":
         mode_instructions = ""
     execution_context_json = (
@@ -86,6 +99,16 @@ plus 2–3 mutually exclusive natural-language interaction_options.
             models,
             execution_context_json,
             execution_allowed=capabilities.allow_model_tools,
+            operator_proposal=composition_settings is not None,
+        )
+    selection = request_context.get("workflow_selection") if request_context else None
+    if selection is not None:
+        mode_instructions += (
+            "\nThis turn selects one installed preset. Prepare only its model tool. "
+            "Preserve the bound parameter values and exact input identities below. "
+            "Find or ask for missing inputs before proposing and do not fabricate a value.\n"
+            + json.dumps({"tool": models[0].tool_name, "inputs": selection["inputs"],
+                          "parameters": selection["parameters"]}, ensure_ascii=False)
         )
     task = None if request_context is None else request_context.get("task_context")
     if task is not None:
@@ -112,7 +135,19 @@ plus 2–3 mutually exclusive natural-language interaction_options.
             + json.dumps(input_references, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
         )
     if not capabilities.clarification_only and mode != "WORKFLOW_DRAFT":
-        mode_instructions += "\nFor an explicit deliverable, use update_task to preserve user goals, requirements, steps and evidence across Turns. Casual questions need no task. Keep the original goal; unrelated goals need another session. Stop at missing inputs, budget, error or confirmation. Bind real evidence; use USER_REVIEW for business adequacy.\n"
+        mode_instructions += (
+            "\nFor an explicit deliverable, use update_task to preserve user goals, "
+            "requirements, steps and evidence across Turns. Casual questions need no task. "
+            "Keep the original goal; unrelated goals need another session. Stop at missing "
+            "inputs, budget, error or confirmation. Bind real evidence; use USER_REVIEW "
+            "for business adequacy.\n"
+        )
+        if composition_settings is not None and selection is None:
+            mode_instructions += (
+                "For an operator execution proposal, the Kernel tracks the work "
+                "through the draft, confirmation and run. Call update_task only "
+                "if the user also asks to manage Task metadata.\n"
+            )
     model_settings = dependencies.model_settings
     if capabilities.clarification_only:
         model_settings = replace(
@@ -133,6 +168,8 @@ plus 2–3 mutually exclusive natural-language interaction_options.
             dependencies.observation_client,
             request_context=request_context,
             operator_catalog=dependencies.settings.operator_catalog,
+            composition_settings=composition_settings,
+            catalog_settings=dependencies.settings,
             composition_operators=(
                 None if dependencies.settings.workflow_composition is None
                 else dependencies.settings.workflow_composition.manifests
@@ -220,7 +257,10 @@ def _build_run_context(
 
 def _capabilities(dependencies: SDKExecutionDependencies, request_context: dict | None):
     try:
-        return resolve_mode_capabilities(request_context, dependencies.settings.models)
+        return resolve_mode_capabilities(
+            request_context, dependencies.settings.models,
+            composition_available=dependencies.settings.workflow_composition is not None,
+        )
     except ModeResolutionError as error:
         raise SDKExecutionError(str(error), upstream=False, usage=_ZERO_USAGE) from error
 

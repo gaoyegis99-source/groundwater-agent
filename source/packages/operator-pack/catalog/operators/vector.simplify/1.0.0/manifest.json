@@ -36,8 +36,7 @@
         "flatgeobuf",
         "geojson",
         "geopackage",
-        "geoparquet",
-        "parquet"
+        "geoparquet"
       ],
       "mediaTypes": [
         "application/geopackage+sqlite3",
@@ -82,7 +81,11 @@
   "runtime": "qgis",
   "tags": [
     "vector",
-    "simplify"
+    "simplify",
+    "capability:simplify",
+    "简化几何",
+    "简化折线",
+    "按米制容差简化线面几何"
   ],
   "timeoutSeconds": 3600,
   "title": "Simplify vector geometries",

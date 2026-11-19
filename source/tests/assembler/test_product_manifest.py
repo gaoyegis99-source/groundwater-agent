@@ -221,12 +221,21 @@ def test_groundwater_compiles_v12_research_outputs() -> None:
     authoring = kernel["workflowAuthoring"]
     assert authoring["operatorCatalogDigest"] == executor["operatorCatalogDigest"]
     assert len(authoring["operators"]) == 113
-    assert {
-        "raster.align_grid@1.0.0", "raster.cell_statistics@1.0.0", "raster.reclassify@1.0.0",
-        "raster.reproject@1.1.0", "table.deduplicate@1.0.0", "table.filter@1.0.0",
-        "table.profile@1.0.0", "table.project@1.0.0", "table.sort@1.0.0", "table.validate@1.0.0",
-    } == {
+    selected = {
         f"{item['id']}@{item['version']}" for item in authoring["composition"]["operators"]
+    }
+    all_operators = {
+        f"{item['id']}@{item['version']}" for item in authoring["operators"]
+    }
+    preset_operators = {
+        f"{node['operatorId']}@{node['operatorVersion']}"
+        for model in executor["models"]
+        for node in model["workflow"]["nodes"]
+    }
+    outside_presets = all_operators - preset_operators
+    assert len(outside_presets) == 59
+    assert selected == outside_presets | {
+        "table.filter@1.0.0", "crs.reproject@1.0.0", "data.convert@1.0.0",
     }
     assert authoring["composition"] == executor["workflowComposition"]
     assert all("implementationRevision" in item for item in authoring["operators"])
@@ -466,7 +475,10 @@ def test_groundwater_compiles_v12_research_outputs() -> None:
     assert "set $upstream_kernel http://kernel-service:8000;" in nginx
     assert "root /usr/share/nginx/html;" in nginx
     assert "location = / { auth_request off; expires -1; try_files /index.html =404; }" in nginx
-    assert "location /assets/ { auth_request off; try_files $uri =404; }" in nginx
+    assert "location /assets/ { auth_request off; expires $frontend_asset_expires; gzip on;" in nginx
+    for surface in ("data", "knowledge"):
+        assert f"location ^~ /{surface}/assets/ {{ expires -1; gzip on;" in nginx
+        assert f"location ^~ /{surface}/ {{ expires -1; try_files $uri $uri/ /{surface}/index.html; }}" in nginx
     assert "location / { auth_request off; return 404; }" in nginx
     assert compose["services"]["gateway"]["build"] == {
         "context": str(ROOT),

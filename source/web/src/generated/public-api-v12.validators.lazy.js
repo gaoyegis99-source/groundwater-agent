@@ -126,6 +126,7 @@ const responseLoaders = {
   "kernel_public_readiness": () => import('./public-api-v12.validators/response_kernel_public_readiness.js').then(module => module.response_kernel_public_readiness),
   "kernel_list_sessions": () => import('./public-api-v12.validators/response_kernel_list_sessions.js').then(module => module.response_kernel_list_sessions),
   "kernel_create_session": () => import('./public-api-v12.validators/response_kernel_create_session.js').then(module => module.response_kernel_create_session),
+  "kernel_list_task_history": () => import('./public-api-v12.validators/response_kernel_list_task_history.js').then(module => module.response_kernel_list_task_history),
   "kernel_get_session": () => import('./public-api-v12.validators/response_kernel_get_session.js').then(module => module.response_kernel_get_session),
   "kernel_update_session": () => import('./public-api-v12.validators/response_kernel_update_session.js').then(module => module.response_kernel_update_session),
   "kernel_confirm": () => import('./public-api-v12.validators/response_kernel_confirm.js').then(module => module.response_kernel_confirm),

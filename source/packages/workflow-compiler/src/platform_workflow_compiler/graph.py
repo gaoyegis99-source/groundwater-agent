@@ -206,6 +206,10 @@ class _WorkflowCompilation:
                 if binding["workflowParameter"] in self.parameter_values
             }
         )
+        if bound_parameters is not None:
+            for name, schema in operator["parametersSchema"].get("properties", {}).items():
+                if name not in node["parameters"] and "default" in schema:
+                    bound_parameters[name] = schema["default"]
         for output in operator["outputs"]:
             if output["kind"] == "artifact":
                 pairs = _conditional_output_pairs(

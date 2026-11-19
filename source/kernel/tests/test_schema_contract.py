@@ -22,12 +22,12 @@ from platform_kernel.agent_runtime.persistence.provider_requests import (
 )
 
 
-KERNEL_V34_SCHEMA_DIGEST = (
-    "037ac6df53d0968713823e5c5519bd03905e448f5ee3dadef866a5d277838867"
+KERNEL_V36_SCHEMA_DIGEST = (
+    "db480e8d1df5b1c7b5b72bb62db24d6fdb4c79f7cfc50de659085f5ca943b4df"
 )
 
 
-def test_kernel_v34_sqlite_schema_is_frozen(tmp_path) -> None:
+def test_kernel_v36_sqlite_schema_is_frozen(tmp_path) -> None:
     database = tmp_path / "kernel.sqlite3"
     initialize_database(database)
 
@@ -45,15 +45,47 @@ def test_kernel_v34_sqlite_schema_is_frozen(tmp_path) -> None:
     encoded = json.dumps(
         rows, ensure_ascii=False, separators=(",", ":")
     ).encode("utf-8")
-    assert hashlib.sha256(encoded).hexdigest() == KERNEL_V34_SCHEMA_DIGEST
-    assert schema_version == 34
+    assert hashlib.sha256(encoded).hexdigest() == KERNEL_V36_SCHEMA_DIGEST
+    assert schema_version == 36
     # Kernel versions its store with schema_version; changing the unused SQLite
     # pragma would still be a storage-contract change.
     assert user_version == 0
     assert foreign_key_errors == []
 
 
+def test_explicit_migration_adds_workflow_selections_to_v34(tmp_path) -> None:
+    database = tmp_path / "kernel.sqlite3"
+    initialize_database(database)
+    with sqlite3.connect(database) as connection:
+        _drop_v36_output_steps(connection)
+        connection.execute("DROP TABLE message_workflow_selections")
+        connection.execute("UPDATE schema_version SET version=34")
+    with pytest.raises(ValueError, match="SCHEMA_VERSION_UNSUPPORTED"):
+        initialize_database(database)
+    migrate_database(database)
+    initialize_database(database)
+    assert len(list(tmp_path.glob("kernel.sqlite3.v34-preupgrade-*.sqlite3"))) == 1
+
+
+def _drop_v36_output_steps(connection: sqlite3.Connection) -> None:
+    connection.execute("DROP TABLE workflow_output_sources")
+    connection.execute("DROP TABLE published_output_steps")
+
+
+def test_migrate_existing_v35_to_output_steps(tmp_path) -> None:
+    database = tmp_path / "kernel.sqlite3"
+    initialize_database(database)
+    with sqlite3.connect(database) as connection:
+        _drop_v36_output_steps(connection)
+        connection.execute("UPDATE schema_version SET version=35")
+    migrate_database(database)
+    initialize_database(database)
+    assert len(list(tmp_path.glob("kernel.sqlite3.v35-preupgrade-*.sqlite3"))) == 1
+
+
 def _drop_v34_identity_schema(connection: sqlite3.Connection) -> None:
+    _drop_v36_output_steps(connection)
+    connection.execute("DROP TABLE message_workflow_selections")
     connection.execute("DROP TABLE research_api_tokens")
     connection.execute("DROP TABLE research_sessions")
     connection.execute("DROP TABLE research_project_memberships")
@@ -83,7 +115,7 @@ def test_explicit_migrate_database_upgrades_exact_v33_identity_layout(tmp_path) 
     migrate_database(database)
 
     with sqlite3.connect(database) as connection:
-        assert connection.execute("SELECT version FROM schema_version").fetchone()[0] == 34
+        assert connection.execute("SELECT version FROM schema_version").fetchone()[0] == 36
         assert connection.execute(
             "SELECT name FROM sqlite_master WHERE name='research_users'"
         ).fetchone() == ("research_users",)
@@ -108,7 +140,7 @@ def test_explicit_migrate_database_upgrades_only_exact_v32_layout(tmp_path) -> N
     migrate_database(database)
 
     with sqlite3.connect(database) as connection:
-        assert connection.execute("SELECT version FROM schema_version").fetchone()[0] == 34
+        assert connection.execute("SELECT version FROM schema_version").fetchone()[0] == 36
         assert connection.execute(
             "SELECT name FROM sqlite_master WHERE name='workflow_service_bindings'"
         ).fetchone() == ("workflow_service_bindings",)
@@ -250,7 +282,7 @@ def test_explicit_migrate_database_upgrades_only_the_exact_v29_contract(tmp_path
     migrate_database(database)
 
     with sqlite3.connect(database) as connection:
-        assert connection.execute("SELECT version FROM schema_version").fetchone()[0] == 34
+        assert connection.execute("SELECT version FROM schema_version").fetchone()[0] == 36
         row = connection.execute(
             "SELECT status,claim_owner,claim_generation,claim_until FROM run_controls"
         ).fetchone()
@@ -332,7 +364,7 @@ def test_explicit_migrate_database_upgrades_exact_v30_without_rewriting_actor_hi
     migrate_database(database)
 
     with sqlite3.connect(database) as connection:
-        assert connection.execute("SELECT version FROM schema_version").fetchone()[0] == 34
+        assert connection.execute("SELECT version FROM schema_version").fetchone()[0] == 36
         assert connection.execute(
             "SELECT owner_subject FROM sessions WHERE session_id='session'"
         ).fetchone()[0] == "historical-subject"
@@ -374,7 +406,7 @@ def test_v31_provider_attempt_upgrades_then_recovers_as_unknown(tmp_path) -> Non
         input_tokens=1, output_tokens=1, total_tokens=2, latency_ms=1,
     )
     with sqlite3.connect(database) as connection:
-        assert connection.execute("SELECT version FROM schema_version").fetchone()[0] == 34
+        assert connection.execute("SELECT version FROM schema_version").fetchone()[0] == 36
         assert connection.execute(
             "SELECT outcome,error_class,total_tokens FROM provider_requests"
         ).fetchone() == ("UNKNOWN", "PROCESS_INTERRUPTED", 0)

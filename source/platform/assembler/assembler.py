@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import os  # noqa: F401 - retained for the stable assembler test/patch surface
 from pathlib import Path
 from zipfile import ZIP_STORED, ZipFile, ZipInfo
@@ -14,7 +15,7 @@ from assembler_common import (
     _canonical, _checksum,
 )
 from assembler_domain import (
-    _compile_domain, _compile_services, _load_operator_catalog,
+    _catalog_root, _compile_domain, _compile_services, _load_operator_catalog,
 )
 from assembler_gateway import _compile_routes, _nginx_config
 from assembler_manifests import (
@@ -30,6 +31,7 @@ from assembler_publication import (
 )
 from assembler_runtime import _compose, _worker_runtime_config
 from executor_profile import ExecutorOperationalProfile
+from operator_metadata import load_operator_validation, operator_uses
 from assembler_ui import load_product_ui
 
 def compile_product(
@@ -51,6 +53,9 @@ def compile_product(
     services, selected_modules = _compile_services(product.service_names, modules)
     operators, catalog_digest = _load_operator_catalog(root)
     tools, workflows, models = _compile_domain(domain, services, selected_modules, operators)
+    validation = load_operator_validation(
+        product_manifest_path.parent, manifest["operatorValidation"],
+    ) if "operatorValidation" in manifest else {}
     model_checksums = {
         (model["modelId"], model["version"]): model["modelChecksum"] for model in models
     }
@@ -89,13 +94,23 @@ def compile_product(
         models,
         domain.execution_cases,
     )
+    ui_models = json.loads(product_ui)["models"]
+    continuation_policies = [
+        {"sourceModel": model_id, **{key: value for key, value in ui["continuation"].items() if key != "label"}}
+        for model_id, ui in ui_models.items()
+        if "continuation" in ui
+    ]
+    published_output_steps = [
+        {"sourceModel": model_id, **ui["publishedOutputStep"]}
+        for model_id, ui in ui_models.items() if "publishedOutputStep" in ui
+    ]
     worker_runtimes = {node["runtime"] for workflow in workflows for node in workflow["nodes"]}
     composition_operators = manifest.get("compositionOperators", [])
     if composition_operators:
         selected = {f"{key[0]}@{key[1]}": operator for key, operator in operators.items()}
         if not set(composition_operators) <= selected.keys() or "executor" not in services:
             raise ValueError("PRODUCT_COMPOSITION_OPERATORS_INVALID")
-        worker_runtimes.add("native")
+        worker_runtimes.update(selected[name]["runtime"] for name in composition_operators)
     # Assembly is the sole non-candidate entry point that maps legacy
     # EXECUTOR_* environment inputs into the immutable operational profile.
     # Everything below receives the profile, never independent capacity values.
@@ -124,10 +139,14 @@ def compile_product(
             for model in models
         ],
         "executionCases": list(domain.execution_cases),
+        **({"workflowContinuations": continuation_policies} if continuation_policies else {}),
+        **({"publishedOutputSteps": published_output_steps} if published_output_steps else {}),
         "workflowAuthoring": {
             "operatorCatalogDigest": catalog_digest,
             "operators": [operators[key] for key in sorted(operators)],
             "enabledOperators": enabled_operators,
+            "operatorUses": operator_uses(workflows, models),
+            **({"operatorValidation": validation} if validation else {}),
         },
         "manifestChecksum": manifest_checksum,
     }
@@ -144,13 +163,26 @@ def compile_product(
         "models": models,
     }
     if composition_operators:
+        composition_members = [selected[name] for name in sorted(composition_operators)]
+        rule_versions = {
+            port["rulesSchema"]
+            for operator in composition_members for port in operator["inputs"]
+            if "rulesSchema" in port
+        }
+        if any(not re.fullmatch(r"[a-z][a-z0-9-]+\.v[1-9][0-9]*", version) for version in rule_versions):
+            raise ValueError("COMPOSITION_RULE_SCHEMAS_INVALID")
+        rule_schemas = {
+            version: json.loads((_catalog_root(root) / "schemas" / f"{version}.schema.json").read_text())
+            for version in sorted(rule_versions)
+        }
         composition = {
-            "operators": [selected[name] for name in sorted(composition_operators)],
+            "operators": composition_members,
+            "ruleSchemas": rule_schemas,
             "catalogDigest": catalog_digest,
             "resourceLimits": {
                 "maxNodes": 12, "maxParallelNodes": 1,
-                "maxNodeMemoryBytes": executor_config["workerRuntimes"]["native"]["memoryBytes"],
-                "maxNodeTimeoutSeconds": 3600,
+                "maxNodeMemoryBytes": max(executor_config["workerRuntimes"][selected[name]["runtime"]]["memoryBytes"] for name in composition_operators),
+                "maxNodeTimeoutSeconds": max(selected[name]["timeoutSeconds"] for name in composition_operators),
             },
         }
         ArtifactComposition.from_config(composition)

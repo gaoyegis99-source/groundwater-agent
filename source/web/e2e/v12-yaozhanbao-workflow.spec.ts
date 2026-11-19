@@ -60,6 +60,9 @@ test('natural language runs the Yaozhanbao workflow and explains its outputs', a
   );
   expect(Object.keys(pending.confirmation.actions[0].inputReferences)).toHaveLength(19);
 
+  expect(pending.confirmation.publishedOutputSteps).toEqual([expect.objectContaining({
+    modelId: 'groundwater.render-map', output: 'map-points', outputs: ['map-image', 'map-summary'],
+  })]);
   await page.getByTestId('confirm-execution').click();
   await expect.poll(async () => {
     const session = await readSession(page, id);
@@ -80,15 +83,19 @@ test('natural language runs the Yaozhanbao workflow and explains its outputs', a
   }).toBe('COMPLETE');
 
   const completed = await readSession(page, id);
-  expect(completed.workflowRunIds).toHaveLength(1);
-  await expect(page.getByTestId('result-card')).toContainText('已完成');
-  await expect(page.getByTestId('result-card')).toContainText('查看全部 25 个结果');
-  await expect(page.getByTestId('message-list')).toContainText('发布了 25 项可核验成果');
+  expect(completed.workflowRunIds).toHaveLength(2);
+  expect(completed.remoteOutputs).toHaveLength(27);
+  const turn = await readLatestTurn(page, id);
+  const map = turn.executionTasks.find((run: { modelId: string }) => run.modelId === 'groundwater.render-map');
+  const source = turn.executionTasks.find((run: { modelId: string }) => run.modelId === 'groundwater.transfer-learning-analysis');
+  expect(map.sourceWorkflowRunId).toBe(source.workflowRunId);
+  expect(map.status).toBe('SUCCEEDED');
+  await expect(page.locator(`[data-workflow-run-id="${map.workflowRunId}"] img.result-image`)).toBeVisible();
   await expect(page.getByTestId('message-list')).toContainText(
     '这是开发调试案例；模拟或历史标准化数据不代表当前真实业务状况',
   );
 
-  await page.getByRole('tab', { name: /成果/ }).click();
+  await page.getByRole('navigation', { name: '会话详情' }).getByRole('link', { name: '成果' }).click();
   await expect(page.getByRole('tabpanel')).toContainText('评价指标');
   await page.screenshot({
     path: info.outputPath('yaozhanbao-workflow-complete.png'),

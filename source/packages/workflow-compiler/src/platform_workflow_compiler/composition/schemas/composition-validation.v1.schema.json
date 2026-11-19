@@ -160,16 +160,7 @@
         "type": "object",
         "properties": {
           "logicalType": {
-            "enum": [
-              "table",
-              "vector",
-              "raster",
-              "tensor",
-              "model",
-              "document",
-              "image",
-              "record"
-            ]
+            "$ref": "composition-types.v1.schema.json#/$defs/logicalType"
           },
           "formatPairs": {
             "type": "array",

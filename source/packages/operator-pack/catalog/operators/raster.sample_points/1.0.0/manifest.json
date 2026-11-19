@@ -72,7 +72,6 @@
     {
       "formats": [
         "geopackage",
-        "geoparquet",
         "parquet"
       ],
       "kind": "artifact",
@@ -80,14 +79,58 @@
         "application/vnd.apache.parquet",
         "application/geopackage+sqlite3"
       ],
-      "name": "samples"
+      "name": "samples",
+      "parameterFormatCases": [
+        {
+          "parameter": "outputKind",
+          "values": [
+            "table"
+          ],
+          "format": "parquet",
+          "mediaType": "application/vnd.apache.parquet"
+        },
+        {
+          "parameter": "outputKind",
+          "values": [
+            "vector"
+          ],
+          "format": "geopackage",
+          "mediaType": "application/geopackage+sqlite3"
+        }
+      ]
     },
     {
       "kind": "value",
       "name": "summary",
       "schema": {
-        "type": "object"
-      }
+        "type": "object",
+        "properties": {
+          "noDataCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "outsideCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "pointCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "sampledCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "noDataCount",
+          "outsideCount",
+          "pointCount",
+          "sampledCount"
+        ],
+        "additionalProperties": false
+      },
+      "maxBytes": 1048576
     }
   ],
   "parametersSchema": {
@@ -131,7 +174,12 @@
   "runtime": "native",
   "tags": [
     "raster",
-    "sample_points"
+    "sample_points",
+    "capability:sample_points",
+    "点采样",
+    "井点采样",
+    "采样像元",
+    "给每个井点采样影像像元值"
   ],
   "timeoutSeconds": 3600,
   "title": "Sample raster at points",

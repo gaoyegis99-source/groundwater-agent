@@ -4,8 +4,29 @@ import type { components as PublicApiComponents, paths as PublicApiPaths } from 
 export type PublicApiPath = keyof PublicApiPaths;
 export type ConfirmationRevisionAction = PublicApiComponents['schemas']['kernel__ConfirmationRevisionAction'];
 
-export interface JsonSchemaProperty { type?: string; description?: string; default?: unknown; enum?: unknown[]; minimum?: number; maximum?: number }
-export interface Capabilities { productId: string; projectId: string; orchestrationOwner?: 'AGENT'; observationTools?: { name: string; description: string; inputSchema: Record<string, unknown>; outputSchema: Record<string, unknown> }[]; services?: string[]; currentUser: { subject: string; displayName: string; roles: string[] }; models: { modelId: string; modelVersion?: string; modelChecksum?: string; workflowId?: string; workflowVersion?: string; workflowChecksum?: string; description: string; tool: string; inputSchema?: { type: string; properties?: Record<string, JsonSchemaProperty>; required?: string[] }; dataInputParameters?: string[]; requiredInputs?: string[]; defaultParameters?: Record<string, unknown>; finalOutputs?: { name?: string }[] | string[]; applicabilityStatus?: string; deadlineSeconds?: number }[] }
+export interface JsonSchemaProperty {
+  type?: string | string[];
+  description?: string;
+  default?: unknown;
+  enum?: unknown[];
+  minimum?: number;
+  maximum?: number;
+  exclusiveMinimum?: number;
+  exclusiveMaximum?: number;
+}
+export interface OperatorCapability {
+  operatorId: string; version: string; title: string; domain: string; tags: string[];
+  runtime: 'native' | 'qgis' | 'remote_http'; confirmationSupported: boolean;
+  workflowUses: { workflowId: string; version: string; models: { modelId: string; version: string }[] }[];
+  validation: {
+    status: 'PASSED' | 'STALE' | 'NOT_RECORDED';
+    coverage: 'BROWSER_SINGLE_NODE' | 'WORKER_SINGLE_OPERATOR' | 'REMOTE_PRESET_NODE' | null;
+    checkedOn: string | null; reportChecksum: string | null; implementationRevision: string | null;
+  };
+  scientificStatus: 'REQUIRES_CASE_AND_REVIEW' | 'REVIEW_EVIDENCE_ATTACHED';
+  scientificReview: { benchmark: { path: string; checksum: string }; domainReview: { path: string; checksum: string } } | null;
+}
+export interface Capabilities { productId: string; projectId: string; authenticationRequired?: boolean; orchestrationOwner?: 'AGENT'; observationTools?: { name: string; description: string; inputSchema: Record<string, unknown>; outputSchema: Record<string, unknown> }[]; services?: string[]; currentUser: { subject: string; displayName: string; roles: string[] }; operators?: OperatorCapability[]; models: { modelId: string; modelVersion?: string; modelChecksum?: string; workflowId?: string; workflowVersion?: string; workflowChecksum?: string; description: string; tool: string; inputSchema?: { type: string; properties?: Record<string, JsonSchemaProperty>; required?: string[] }; dataInputParameters?: string[]; requiredInputs?: string[]; defaultParameters?: Record<string, unknown>; finalOutputs?: { name?: string }[] | string[]; applicabilityStatus?: string; deadlineSeconds?: number }[] }
 export interface SessionSummary {
   sessionId: string; title: string | null; createdAt: string | null; goalRevision: number;
   agentRunId: string | null; pendingAgentRunId: string | null;
@@ -14,14 +35,18 @@ export interface SessionSummary {
 }
 export interface Action {
   toolCallId: string; tool: string; modelId: string; modelVersion: string;
-  workflowId: string; workflowVersion: string; arguments: Record<string, unknown>;
+  workflowId: string; workflowVersion: string; workflowChecksum?: string; arguments: Record<string, unknown>;
   inputReferences?: Record<string, ResourceReference>;
 }
 export interface Confirmation {
+  publishedOutputSteps?: {
+    toolCallId: string; sourceToolCallId: string; modelId: string; output: string;
+    outputs: string[]; arguments: Record<string, unknown>; errorCode?: string;
+  }[];
   confirmationId: string; goalRevision: number; status: string; agentRunId: string;
   reason: string | null; actions: Action[]; decision: string | null; decisionState: string | null;
   revision?: number; kind?: 'INITIAL' | 'EDITED' | 'RECOVERY'; replacesConfirmationId?: string | null;
-  sourceWorkflowRunId?: string | null; requestId?: string | null; createdAt?: string | null;
+  sourceWorkflowRunId?: string | null; requestId?: string | null; createdAt?: string | null; decisionRequestedAt?: string | null;
 }
 export interface Session {
   sessionId: string; projectId: string; goalRevision: number; agentRunId: string | null;
@@ -203,7 +228,7 @@ export interface ExecutionTask {
   createdAt: string; startedAt: string | null; finishedAt: string | null; durationMs: number | null;
   errorCode: string | null; communicationError: string | null; outputCount: number;
   blockedByWorkflowRunId: string | null;
-  attempt?: number; retryOfWorkflowRunId?: string | null; isLatestAttempt?: boolean;
+  attempt?: number; retryOfWorkflowRunId?: string | null; isLatestAttempt?: boolean; sourceWorkflowRunId?: string;
 }
 export interface KnowledgeReference { versionId: string; unitId: string; checksum: string }
 export type KnowledgeEvidence = PublicApiComponents['schemas']['knowledge_next__EvidenceItem'];
@@ -236,7 +261,7 @@ export interface WorkflowDraftPayload {
   missingInputs: { kind: 'DATA' | 'PARAMETER'; name: string; requiredBy: { nodeId: string; port: string }[] }[];
   knowledgeRefs: KnowledgeReference[]; unresolvedItems: string[]; limitations: string[];
   executionAllowed: boolean;
-  compositionCheck?: { status: 'VALIDATED' | 'INCOMPLETE' | 'INVALID'; code?: string; path?: string };
+  compositionCheck?: { status: 'VALIDATED' | 'INCOMPLETE' | 'INVALID'; code?: string; path?: string; definitionDigest?: string };
 }
 export interface WorkflowValidationDiagnostics {
   kind: 'WORKFLOW_VALIDATION'; code: string; path: string;
@@ -305,7 +330,7 @@ export interface ResourceDetail {
   descriptor: { rowCount?: number | null; profile?: DatasetProfile;
     fields?: { fieldId: string; name: string; type: string; nullCount?: number; profile?: FieldProfileFacts }[];
     policy?: string; provenance?: Record<string, string> };
-  semantics: { description?: string; fields?: Record<string, { meaning?: string | null; unit?: string | null }>; grain?: string | null; timeRange?: string | null; timezone?: string | null; crs?: string | null; verticalDatum?: string | null; limitations?: string[] };
+  semantics: Partial<PublicApiComponents['schemas']['data__Semantics']>;
   objects: { objectId: string; size: number; checksum: string; role: 'raw' | 'query'; format: string; mediaType: string; sourceChecksum?: string }[];
 }
 export interface KnowledgeDocument {

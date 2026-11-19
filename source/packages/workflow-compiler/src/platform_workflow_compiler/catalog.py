@@ -25,6 +25,8 @@ INPUT = object_schema({
     "required": {"type": "boolean"},
     "mediaTypes": {**TEXT_LIST, "minItems": 1}, "formats": {**TEXT_LIST, "minItems": 1},
     "maxItems": {"type": "integer", "minimum": 1},
+    "minItems": {"type": "integer", "minimum": 1}, "logicalType": TEXT,
+    "rulesSchema": {"type": "string", "pattern": r"^[a-z][a-z0-9-]+\.v[1-9][0-9]*$"},
 }, ["name", "cardinality", "required", "mediaTypes", "formats"])
 FORMAT_CASE = object_schema({
     "inputPort": NAME, "inputFormats": {**TEXT_LIST, "minItems": 1},
@@ -43,7 +45,8 @@ OUTPUT = {"oneOf": [
             "type": "array", "minItems": 1, "items": PARAMETER_FORMAT_CASE,
         },
     }, ["name", "kind", "mediaTypes", "formats"]),
-    object_schema({"name": NAME, "kind": {"const": "value"}, "schema": {"type": "object"}}),
+    object_schema({"name": NAME, "kind": {"const": "value"}, "schema": {"type": "object"},
+                   "maxBytes": {"type": "integer", "minimum": 1}}, ["name", "kind", "schema"]),
 ]}
 REMOTE_BINDING = object_schema({
     "serviceId": TEXT,
@@ -61,7 +64,7 @@ OPERATOR_SCHEMA = object_schema({
     "outputs": {"type": "array", "items": OUTPUT, "minItems": 1},
     "errorCodes": TEXT_LIST,
     "examples": {"type": "array", "items": {"type": "object"}, "minItems": 1},
-    "implementationRevision": DIGEST,
+    "implementationRevision": DIGEST, "composition": {"type": "object"},
 }, [
     "id", "version", "title", "description", "domain", "tags", "runtime",
     "timeoutSeconds", "memoryLimitBytes", "inputs", "parametersSchema",
@@ -138,36 +141,38 @@ def _summary(operator: dict, collections: bool = False) -> dict:
     }
 
 
-def _matches_query(operator: dict, operator_id: str, needle: str) -> bool:
-    """Match both concise queries and exact catalog phrases inside natural text."""
-    terms = [
-        operator_id,
-        operator["title"],
-        operator["description"],
-        *operator["tags"],
-    ]
-    folded = [" ".join(term.casefold().split()) for term in terms]
-    if any(needle in term for term in folded):
-        return True
-    aliases = [
-        term.removeprefix("capability:")
-        for term in folded
-        if len(term.removeprefix("capability:").replace(" ", "")) >= 4
-    ]
-    return any(alias in needle for alias in aliases)
+def _query_match(operator: dict, needle: str) -> tuple[int, str]:
+    identity = operator["id"]
+    if needle in (identity, f"{identity}@{operator['version']}"):
+        return 10000, identity
+    best = (1, "description") if needle in operator["description"].casefold() else (0, "")
+    terms = (operator["title"], *operator["tags"], *identity.split("."))
+    for term in terms:
+        alias = term.casefold().removeprefix("capability:").strip()
+        if alias == needle:
+            return 1000, term
+        score = 0
+        if alias and needle in alias:
+            score = 50 + len(needle)
+        if len(alias) >= (2 if not alias.isascii() else 4) and alias in needle:
+            score = max(score, 100 + len(alias))
+        if score > best[0]:
+            best = score, term
+    return best
 
 
 def list_operators(
     catalog: dict[tuple[str, str], dict], *, after: str | None = None,
     limit: int = 20, query: str | None = None, domain: str | None = None,
     capability: str | None = None,
+    input_format: str | None = None, output_role: str | None = None,
     collection_operators: dict | None = None,
 ) -> dict:
     if type(limit) is not int or not 1 <= limit <= 50:
         raise WorkflowValidationError("OPERATOR_PAGE_LIMIT_INVALID")
     for field, value in (
         ("after", after), ("query", query), ("domain", domain),
-        ("capability", capability),
+        ("capability", capability), ("input_format", input_format), ("output_role", output_role),
     ):
         if value is not None:
             require_json(value)
@@ -182,25 +187,50 @@ def list_operators(
     capability_tag = (
         f"capability:{capability.casefold()}" if capability is not None else None
     )
-    selected = [
-        catalog[key] for key in ordered
-        if (after is None or key > identities[after])
-        and (domain is None or catalog[key]["domain"] == domain)
-        and (
-            capability_tag is None
-            or capability_tag in {tag.casefold() for tag in catalog[key]["tags"]}
-        )
-        and (
-            needle is None
-            or _matches_query(catalog[key], key[0], needle)
-        )
-    ]
-    page = selected[:limit]
+    matches = []
+    reasons = {}
+    for key in ordered:
+        operator = catalog[key]
+        if domain is not None and operator["domain"] != domain:
+            continue
+        if capability_tag and capability_tag not in {tag.casefold() for tag in operator["tags"]}:
+            continue
+        if input_format is not None and not any(input_format in port["formats"] for port in operator["inputs"]):
+            continue
+        if output_role is not None:
+            roles = {port["name"] for port in operator["outputs"]}
+            roles.update(
+                output.get("fixed", {}).get("valueKind")
+                for output in operator.get("composition", {}).get("outputSemantics", {}).values()
+            )
+            if output_role not in roles:
+                continue
+        score, term = _query_match(operator, needle) if needle else (1, "")
+        if score:
+            matches.append((-score, key))
+            reasons[key] = {
+                name: value for name, value in (
+                    ("query_term", term), ("capability", capability), ("domain", domain),
+                    ("input_format", input_format), ("output_role", output_role),
+                ) if value
+            }
+    matches.sort()
+    keys = [key for _, key in matches]
+    if after is not None:
+        key = identities[after]
+        if key not in keys:
+            raise WorkflowValidationError("OPERATOR_CURSOR_INVALID")
+        keys = keys[keys.index(key) + 1:]
+    page = keys[:limit]
     return {
-        "items": [_summary(item, (item["id"], item["version"]) in (collection_operators or {})) for item in page],
-        "next_cursor": (
-            f"{page[-1]['id']}@{page[-1]['version']}" if len(selected) > limit else None
-        ),
+        "items": [
+            {
+                **_summary(catalog[key], key in (collection_operators or {})),
+                "matched_by": reasons[key],
+            }
+            for key in page
+        ],
+        "next_cursor": f"{page[-1][0]}@{page[-1][1]}" if len(keys) > limit else None,
     }
 
 

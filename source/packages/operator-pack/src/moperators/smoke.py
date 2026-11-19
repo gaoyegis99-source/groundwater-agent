@@ -271,6 +271,12 @@ def validate_operator_outputs(
                 raise SmokeRunRefusal("OPERATOR_OUTPUT_ARTIFACT_INVALID")
         elif "value" not in actual:
             raise SmokeRunRefusal("OPERATOR_OUTPUT_VALUE_MISSING")
+        elif contract.max_bytes is not None:
+            value = actual["value"]
+            if not Draft202012Validator(contract.schema_).is_valid(value):
+                raise SmokeRunRefusal("OPERATOR_OUTPUT_VALUE_INVALID")
+            if len(_canonical_json(value)) > contract.max_bytes:
+                raise SmokeRunRefusal("OPERATOR_OUTPUT_VALUE_TOO_LARGE")
     return outputs
 
 

@@ -526,6 +526,12 @@ KERNEL_CREATE_SESSION = Operation(
     media_type='application/json', side_effecting=True,
 )
 
+KERNEL_LIST_TASK_HISTORY = Operation(
+    operation_id='kernel_list_task_history', method='GET', path='/sessions/task-history',
+    response_model=models.KernelTaskHistoryPage, success_statuses=frozenset([200]),
+    media_type='application/json', side_effecting=False,
+)
+
 KERNEL_GET_SESSION = Operation(
     operation_id='kernel_get_session', method='GET', path='/sessions/{sessionId}',
     response_model=models.KernelSessionDetailResponse, success_statuses=frozenset([200]),
@@ -746,6 +752,7 @@ OPERATIONS = {
     KERNEL_PUBLIC_READINESS.operation_id: KERNEL_PUBLIC_READINESS,
     KERNEL_LIST_SESSIONS.operation_id: KERNEL_LIST_SESSIONS,
     KERNEL_CREATE_SESSION.operation_id: KERNEL_CREATE_SESSION,
+    KERNEL_LIST_TASK_HISTORY.operation_id: KERNEL_LIST_TASK_HISTORY,
     KERNEL_GET_SESSION.operation_id: KERNEL_GET_SESSION,
     KERNEL_UPDATE_SESSION.operation_id: KERNEL_UPDATE_SESSION,
     KERNEL_CONFIRM.operation_id: KERNEL_CONFIRM,

@@ -4,6 +4,8 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+from jsonschema import Draft202012Validator, ValidationError
+
 from .contracts import canonical_json
 from .errors import ExecutionServiceError
 
@@ -138,8 +140,14 @@ class TaskOutcome:
         if not isinstance(values, dict) or set(values) != value_ports:
             raise ExecutionServiceError("NODE_OUTPUT_INVALID")
         try:
+            for port in output_contracts:
+                if port["kind"] == "value" and "maxBytes" in port:
+                    value = values[port["name"]]
+                    Draft202012Validator(port["schema"]).validate(value)
+                    if len(canonical_json(value)) > port["maxBytes"]:
+                        raise ExecutionServiceError("NODE_OUTPUT_VALUE_TOO_LARGE")
             values_json = canonical_json(values).decode("utf-8")
-        except (TypeError, ValueError) as cause:
+        except (TypeError, ValueError, ValidationError) as cause:
             raise ExecutionServiceError("NODE_OUTPUT_INVALID") from cause
         return cls(
             status="SUCCEEDED",

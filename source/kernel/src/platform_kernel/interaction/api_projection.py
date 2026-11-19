@@ -40,6 +40,8 @@ def confirmation_response(confirmation: Confirmation | None) -> dict | None:
         "source_workflow_run_id": confirmation.source_workflow_run_id,
         "request_id": confirmation.request_id,
         "created_at": confirmation.created_at,
+        "decision_requested_at": confirmation.decision_requested_at,
+        "published_output_steps": list(confirmation.published_output_steps),
         "actions": [{
             "tool_call_id": action.tool_call_id,
             "tool": action.tool,

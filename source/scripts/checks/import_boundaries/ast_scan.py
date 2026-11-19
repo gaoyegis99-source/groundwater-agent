@@ -137,9 +137,12 @@ def declared_schema_tables(path: Path) -> set[str]:
 
 
 READ_ONLY_TABLES = {
+    "platform_kernel.interaction.task_history": frozenset({"agent_runs", "workflow_runs", "task_preparations"}),
     "platform_kernel.agent_runtime.persistence.run_lifecycle": frozenset(
         {"run_controls"}
     ),
+    "platform_kernel.agent_runtime.persistence.context": frozenset({"message_workflow_selections", "workflow_output_sources"}),
+    "platform_kernel.agent_runtime.persistence.run_queries": frozenset({"message_workflow_selections"}),
     "platform_kernel.tasks.persistence": frozenset(
         {
             "sessions",
@@ -168,6 +171,7 @@ READ_ONLY_TABLES = {
             "session_events",
         }
     ),
+    "platform_kernel.interaction.continuations": frozenset({"workflow_runs"}),
     "platform_kernel.interaction.control_persistence": frozenset(
         {"agent_runs", "workflow_runs"}
     ),
@@ -182,8 +186,9 @@ READ_ONLY_TABLES = {
     ),
     # Public ownership guards are a read projection spanning the three lifecycle
     # owners. They never change Agent or Workflow state.
+    "platform_kernel.workflow_execution.persistence.output_steps": frozenset({"published_output_steps"}),
     "platform_kernel.interaction.access": frozenset(
-        {"agent_actions", "agent_runs", "workflow_runs"}
+        {"agent_actions", "agent_runs", "workflow_runs", "workflow_output_sources"}
     ),
 }
 

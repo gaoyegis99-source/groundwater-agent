@@ -10,7 +10,7 @@ function fixture() {
     query: '', showArchived: true, cursor: 17, loading: false, error: null, notice: '',
     updatingId: null, canCreate: true, canWrite: true,
     onCreate: vi.fn(), onQuery: vi.fn(), onArchiveFilter: vi.fn(), onRead: vi.fn(),
-    onOpen: vi.fn(), onRename: vi.fn(), onArchive: vi.fn(),
+    onRename: vi.fn(), onArchive: vi.fn(),
   };
 }
 
@@ -21,7 +21,8 @@ it('uses directory metadata for the selected row, archived label and recovery ac
   const row = directory.getByRole('link', { name: '监测井水位变化' });
   expect(row).toHaveAttribute('aria-current', 'page');
   expect(row).toHaveAttribute('href', '#/sessions/session-1');
-  expect(within(row).getByText('已归档')).toBeVisible();
+  expect(directory.getByText('已归档')).toBeVisible();
+  expect(row).toHaveAccessibleDescription(/已归档/);
   expect(directory.queryByText(/2026|任务|执行中/)).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: '取消归档' }));
   expect(props.onArchive).toHaveBeenCalledWith('session-1', false);

@@ -42,8 +42,7 @@
         "flatgeobuf",
         "geojson",
         "geopackage",
-        "geoparquet",
-        "parquet"
+        "geoparquet"
       ],
       "mediaTypes": [
         "application/geopackage+sqlite3",
@@ -100,9 +99,23 @@
   "tags": [
     "hydrology",
     "pour-point",
-    "accumulation"
+    "accumulation",
+    "capability:snap_pour_points",
+    "吸附出口",
+    "出水口吸附",
+    "吸附汇水点",
+    "在指定距离内吸附流域出口点"
   ],
   "timeoutSeconds": 3600,
   "title": "Snap pour points",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "composition": {
+    "portSemantics": {
+      "accumulation": {
+        "requires": {
+          "valueKind": "contributing-cells"
+        }
+      }
+    }
+  }
 }

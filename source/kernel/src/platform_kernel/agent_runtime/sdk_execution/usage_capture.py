@@ -112,6 +112,9 @@ class _RunUsageCapture(
             or "governance" not in self.context.context
         ):
             return False
+        if self.model_activity is None and self.purpose != "COMPACTION":
+            # The response is already settled and the SDK may have invoked tools.
+            return False
         self._finish_provider_request(
             "FAILED",
             "PROTOCOL_OR_SCHEMA_INVALID",
@@ -281,6 +284,7 @@ class _RunUsageCapture(
                 repair_tool = planned_tool or (
                     "prepare_task_inputs"
                     if any(tool.name == "prepare_task_inputs" for tool in enabled_tools)
+                    and not any(tool.name == "validate_workflow" for tool in enabled_tools)
                     else None
                 )
                 if repair_tool is not None:
@@ -362,7 +366,7 @@ class _RunUsageCapture(
                                 tool_choice="submit_reply",
                                 parallel_tool_calls=False,
                             )
-                        elif "prepare_task_inputs" in enabled:
+                        elif "prepare_task_inputs" in enabled and "validate_workflow" not in enabled:
                             # Execution proposals cannot establish a blocker
                             # through prose. Input preparation revalidates exact
                             # versions and returns READY or structured BLOCKED,

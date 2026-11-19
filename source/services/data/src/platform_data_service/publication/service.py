@@ -57,6 +57,11 @@ def _publication_kind(body, actor):
         return "MANAGED"
     output = body.outputs[0] if len(body.outputs) == 1 else None
     semantics = output.semantics if output else None
+    agent_rules = (
+        actor.get("client") == "agent" and output is not None and output.format == "json"
+        and output.policy == "FILE_ONLY"
+        and body.provenance == {"client": "platform-agent", "purpose": "operator_rules"}
+    )
     if (
         output is None
         or output.name != "file"
@@ -66,16 +71,17 @@ def _publication_kind(body, actor):
         or output.tags
         or output.conversion.model_dump() != {"types": {}, "null_values": []}
         or semantics is None
-        or semantics.source != "web_upload"
+        or semantics.source != ("agent_operator_rules" if agent_rules else "web_upload")
         or semantics.fields
         or semantics.grain is not None
         or semantics.time_range is not None
         or semantics.timezone is not None
         or semantics.crs is not None
         or semantics.vertical_datum is not None
+        or semantics.value_kind is not None
         or semantics.limitations
         or body.input_versions
-        or body.provenance != {"client": "platform-web-v12"}
+        or (not agent_rules and body.provenance != {"client": "platform-web-v12"})
     ):
         raise DataProblemError("ROLE_FORBIDDEN", 403)
     return "USER_UPLOAD"

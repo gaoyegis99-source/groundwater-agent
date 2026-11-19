@@ -1,0 +1,349 @@
+:root {
+  font-size: 100%;
+}
+
+body {
+  font-size: var(--gw-size-ui);
+}
+
+/* Keep the product profile contract while adopting the Groundwater palette in this shell. */
+:root[data-product="groundwater"] {
+  font-family: var(--gw-font-ui);
+  font-variant-numeric: var(--gw-numeric);
+  background: var(--gw-canvas);
+  --ink: var(--gw-text);
+  --muted: var(--gw-text-muted);
+  --accent: var(--gw-action);
+  --accent-hover: var(--gw-action-hover);
+  --accent-soft: var(--gw-selection);
+  --border: var(--gw-line);
+  --paper: var(--gw-surface);
+  --soft: var(--gw-surface-subtle);
+  --warning: var(--gw-warning-ink);
+  --warning-soft: var(--gw-warning-fill);
+  --error: var(--gw-error-ink);
+  --error-soft: var(--gw-error-fill);
+  --success: var(--gw-success-ink);
+  --success-soft: var(--gw-success-fill);
+  --space-1: var(--gw-space-1);
+  --space-2: var(--gw-space-2);
+  --space-3: var(--gw-space-3);
+  --space-4: var(--gw-space-4);
+  --space-6: var(--gw-space-6);
+  --radius-control: var(--gw-radius-control);
+  --radius-panel: var(--gw-radius-panel);
+}
+
+:root[data-product="groundwater"] .app-shell { background: var(--gw-canvas); }
+:root[data-product="groundwater"] :is(.welcome h1, .markdown-content h1) { font-family: var(--gw-font-title); }
+:root[data-product="groundwater"] :is(pre, code, .mono) { font-family: var(--gw-font-id); }
+
+.gw-page-title, :root[data-product="groundwater"] .welcome h1 {
+  font: var(--gw-weight-strong) var(--gw-size-title)/var(--gw-leading-title) var(--gw-font-title);
+  letter-spacing: normal;
+  overflow-wrap: anywhere;
+}
+
+.gw-section-title { font: var(--gw-weight-strong) var(--gw-size-section)/var(--gw-leading-section) var(--gw-font-ui); }
+.gw-subtitle { font: var(--gw-weight-strong) var(--gw-size-subtitle)/var(--gw-leading-subtitle) var(--gw-font-ui); }
+.gw-body { font: var(--gw-size-body)/var(--gw-leading-body) var(--gw-font-ui); }
+.gw-note { color: var(--gw-text-muted); font: var(--gw-size-note)/var(--gw-leading-note) var(--gw-font-ui); }
+.gw-axis-label { font: var(--gw-size-axis)/var(--gw-leading-axis) var(--gw-font-ui); }
+.gw-reading {
+  font: var(--gw-weight-strong) var(--gw-size-reading)/var(--gw-leading-reading) var(--gw-font-ui);
+  font-variant-numeric: var(--gw-numeric);
+}
+.gw-identifier { font-family: var(--gw-font-id); overflow-wrap: anywhere; }
+
+.gw-button,
+.gw-input,
+.gw-tabs,
+.gw-badge,
+.gw-loading,
+.gw-empty,
+.gw-error {
+  font-family: var(--gw-font-ui);
+  font-size: var(--gw-size-ui);
+  line-height: var(--gw-leading-ui);
+}
+
+button.gw-button {
+  --_control-height: var(--gw-control);
+  --_button-fill: var(--gw-surface);
+  --_button-hover: var(--gw-surface-subtle);
+  --_button-pressed: var(--gw-surface-inset);
+  --_button-ink: var(--gw-action);
+  --_button-border: var(--gw-control-border);
+  position: relative;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--gw-space-2);
+  min-inline-size: 0;
+  min-block-size: var(--_control-height);
+  max-inline-size: 100%;
+  padding: var(--gw-space-2) var(--gw-space-4);
+  border: var(--gw-border-width) solid var(--_button-border);
+  border-radius: var(--gw-radius-control);
+  background: var(--_button-fill);
+  color: var(--_button-ink);
+  font-weight: var(--gw-weight-strong);
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+button.gw-button[data-size="large"] { --_control-height: var(--gw-control-large); }
+button.gw-button[data-size="icon"] { inline-size: var(--gw-control); flex: 0 0 auto; padding: var(--gw-space-2); }
+button.gw-button[data-size="compact"] { --_control-height: var(--gw-control-compact); padding-block: var(--gw-space-1); }
+
+button.gw-button[data-variant="primary"] {
+  --_button-fill: var(--gw-action);
+  --_button-hover: var(--gw-action-hover);
+  --_button-pressed: var(--gw-action-pressed);
+  --_button-ink: var(--gw-text-on-action);
+  --_button-border: var(--gw-action);
+}
+
+button.gw-button[data-variant="danger"] {
+  --_button-fill: var(--gw-danger-action);
+  --_button-hover: var(--gw-danger-hover);
+  --_button-pressed: var(--gw-danger-pressed);
+  --_button-ink: var(--gw-text-on-action);
+  --_button-border: var(--gw-danger-action);
+}
+
+button.gw-button[data-variant="text"] {
+  --_button-fill: transparent;
+  --_button-border: transparent;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+button.gw-button[data-size="icon"] { text-decoration: none; }
+button.gw-button[data-hovered]:not(:disabled):not([aria-disabled="true"]) {
+  background: var(--_button-hover);
+  border-color: var(--_button-border);
+  color: var(--_button-ink);
+}
+button.gw-button[data-pressed]:not(:disabled):not([aria-disabled="true"]) { background: var(--_button-pressed); }
+button.gw-button:disabled {
+  background: var(--gw-disabled-fill);
+  border-color: var(--gw-line);
+  color: var(--gw-disabled-ink);
+}
+button.gw-button[data-pending] { cursor: progress; }
+
+.gw-field {
+  display: grid;
+  gap: var(--gw-space-1);
+  min-inline-size: 0;
+  color: var(--gw-text);
+}
+.gw-field > .gw-field-label {
+  margin: 0;
+  font: var(--gw-weight-strong) var(--gw-size-ui)/var(--gw-leading-ui) var(--gw-font-ui);
+}
+.gw-field-control { display: flex; align-items: center; gap: var(--gw-space-2); }
+.gw-field .gw-input {
+  inline-size: 100%;
+  min-inline-size: 0;
+  min-block-size: var(--gw-control);
+  margin: 0;
+  padding: var(--gw-space-2) var(--gw-space-3);
+  border: var(--gw-border-width) solid var(--gw-control-border);
+  border-radius: var(--gw-radius-control);
+  background: var(--gw-surface);
+  color: var(--gw-text);
+}
+.gw-field .gw-input::placeholder { color: var(--gw-text-muted); }
+.gw-field .gw-input:hover:not(:disabled, [readonly], [aria-invalid="true"]) { border-color: var(--gw-action); }
+.gw-field .gw-input[readonly] { background: var(--gw-surface-subtle); }
+.gw-field .gw-input:disabled { border-color: var(--gw-line); background: var(--gw-disabled-fill); color: var(--gw-disabled-ink); }
+.gw-field .gw-input[aria-invalid="true"] { border-color: var(--gw-error-ink); }
+.gw-field-unit, .gw-field-error, .gw-field-hint {
+  font: var(--gw-size-note)/var(--gw-leading-note) var(--gw-font-ui);
+  color: var(--gw-text-muted);
+  overflow-wrap: anywhere;
+}
+.gw-field-error { color: var(--gw-error-ink); }
+
+.gw-tabs { min-inline-size: 0; }
+.gw-tab-list {
+  display: flex;
+  gap: var(--gw-space-1);
+  flex-wrap: wrap;
+  border-block-end: var(--gw-border-width) solid var(--gw-line);
+}
+.gw-tab {
+  display: flex;
+  align-items: center;
+  min-block-size: var(--gw-control);
+  max-inline-size: 100%;
+  padding: var(--gw-space-2) var(--gw-space-4);
+  border-block-end: var(--gw-accent-width) solid transparent;
+  color: var(--gw-text-secondary);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.gw-tab[data-hovered] { background: var(--gw-surface-subtle); }
+.gw-tab[data-selected] {
+  border-block-end-color: var(--gw-action);
+  background: var(--gw-selection);
+  color: var(--gw-action);
+  font-weight: var(--gw-weight-strong);
+}
+.gw-tab[data-disabled] { color: var(--gw-disabled-ink); cursor: not-allowed; }
+.gw-tab-panel { min-inline-size: 0; padding-block-start: var(--gw-space-3); }
+.gw-tab-panel[data-inert] { display: none; }
+
+button.gw-button:focus-visible,
+.gw-field .gw-input:focus-visible,
+.gw-field .gw-input[aria-invalid="true"]:focus-visible,
+.gw-tab:focus-visible,
+.gw-tab-panel:focus-visible {
+  outline: var(--gw-focus-width) solid var(--gw-focus);
+  outline-offset: var(--gw-focus-offset);
+}
+
+.gw-overlay {
+  position: fixed;
+  z-index: 80;
+  inset: 0;
+  display: grid;
+  background: var(--gw-scrim);
+  font: var(--gw-size-ui)/var(--gw-leading-ui) var(--gw-font-ui);
+  color: var(--gw-text);
+}
+
+.gw-overlay-dialog.gw-overlay {
+  place-items: center;
+  padding: var(--gw-space-4);
+}
+.gw-overlay-drawer { justify-items: end; }
+.gw-overlay-surface {
+  display: flex;
+  min-block-size: 0;
+  max-block-size: 100%;
+  inline-size: min(100%, var(--gw-dialog));
+  border: var(--gw-border-width) solid var(--gw-line);
+  border-radius: var(--gw-radius-panel);
+  background: var(--gw-surface);
+  box-shadow: var(--gw-shadow-float);
+}
+.gw-overlay-drawer .gw-overlay-surface { inline-size: min(100%, var(--gw-drawer)); border-radius: 0; }
+.gw-overlay-surface .gw-overlay-dialog {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-block-size: 0;
+  min-inline-size: 0;
+  outline: none;
+}
+.gw-overlay-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gw-space-3);
+  flex: 0 0 auto;
+  padding: var(--gw-space-4) var(--gw-space-6);
+  border-block-end: var(--gw-border-width) solid var(--gw-line);
+}
+.gw-overlay-heading > h2 { margin: 0; overflow-wrap: anywhere; color: var(--gw-text); }
+.gw-overlay-content {
+  min-block-size: 0;
+  padding: var(--gw-space-6);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  overflow-wrap: anywhere;
+}
+.gw-overlay-actions { display: flex; justify-content: end; flex-wrap: wrap; gap: var(--gw-space-2); }
+.gw-form { display: grid; gap: var(--gw-space-4); }
+
+.gw-tooltip {
+  z-index: 81;
+  max-inline-size: min(var(--gw-tooltip), calc(100vw - var(--gw-space-8)));
+  padding: var(--gw-space-2) var(--gw-space-3);
+  border-radius: var(--gw-radius-control);
+  background: var(--gw-nav);
+  color: var(--gw-nav-text);
+  box-shadow: var(--gw-shadow-float);
+  font: var(--gw-size-note)/var(--gw-leading-note) var(--gw-font-ui);
+  overflow-wrap: anywhere;
+}
+button .gw-tooltip-mark {
+  display: grid;
+  place-items: center;
+  inline-size: var(--gw-size-icon);
+  block-size: var(--gw-size-icon);
+  border: var(--gw-border-width) solid currentColor;
+  border-radius: 50%;
+  color: inherit;
+  margin: 0;
+  line-height: 1;
+}
+
+.gw-badge {
+  --_badge-ink: var(--gw-neutral-ink);
+  --_badge-fill: var(--gw-neutral-fill);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gw-space-1);
+  min-block-size: var(--gw-badge-min);
+  max-inline-size: 100%;
+  padding: var(--gw-space-1) var(--gw-space-2);
+  border-radius: var(--gw-radius-control);
+  background: var(--_badge-fill);
+  color: var(--_badge-ink);
+  font-size: var(--gw-size-note);
+  font-weight: var(--gw-weight-medium);
+  line-height: var(--gw-leading-note);
+  overflow-wrap: anywhere;
+}
+.gw-badge[data-tone="success"] { --_badge-ink: var(--gw-success-ink); --_badge-fill: var(--gw-success-fill); }
+.gw-badge[data-tone="warning"] { --_badge-ink: var(--gw-warning-ink); --_badge-fill: var(--gw-warning-fill); }
+.gw-badge[data-tone="error"] { --_badge-ink: var(--gw-error-ink); --_badge-fill: var(--gw-error-fill); }
+.gw-badge[data-tone="running"] { --_badge-ink: var(--gw-running-ink); --_badge-fill: var(--gw-running-fill); }
+.gw-badge .app-icon { inline-size: var(--gw-space-4); block-size: var(--gw-space-4); }
+
+.gw-loading { display: flex; align-items: center; gap: var(--gw-space-2); color: var(--gw-text-secondary); }
+.gw-spinner {
+  display: inline-block;
+  flex: 0 0 auto;
+  inline-size: var(--gw-space-4);
+  block-size: var(--gw-space-4);
+  border: 2px solid currentColor;
+  border-inline-end-color: transparent;
+  border-radius: 50%;
+  animation: workspace-spin 0.85s linear 4;
+}
+.gw-button-spinner {
+  position: absolute;
+  inset-inline-start: var(--gw-space-1);
+  inline-size: var(--gw-space-2);
+  block-size: var(--gw-space-2);
+}
+@media (prefers-reduced-motion: reduce) {
+  .gw-spinner { animation: none; }
+}
+
+.gw-empty {
+  padding: var(--gw-space-4);
+  border: var(--gw-border-width) solid var(--gw-line);
+  border-radius: var(--gw-radius-panel);
+  background: var(--gw-surface-subtle);
+  color: var(--gw-text-secondary);
+  overflow-wrap: anywhere;
+}
+.gw-error {
+  padding: var(--gw-space-3) var(--gw-space-4);
+  border-inline-start: var(--gw-accent-width) solid var(--gw-error-ink);
+  border-radius: var(--gw-radius-control);
+  background: var(--gw-error-fill);
+  color: var(--gw-error-ink);
+  overflow-wrap: anywhere;
+}
+.gw-error-message { display: flex; align-items: flex-start; gap: var(--gw-space-2); }
+.gw-error-message > .app-icon { margin-block-start: 0.125em; }
+.gw-error-message p, .gw-empty p { margin: 0; }
+.gw-state-action { margin-block-start: var(--gw-space-3); }

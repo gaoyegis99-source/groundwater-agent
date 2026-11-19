@@ -1,12 +1,17 @@
 import { routingLabel } from './message-routing';
 import type { Turn } from './types';
+import { Icon } from './Icon';
 
-export function IntentOptions({ turn, actionable, busy, onChoose }: { turn: Turn; actionable: boolean; busy: boolean; onChoose: (message: string) => void }) {
+export function IntentOptions({ turn, current, actionable, busy, onChoose }: { turn: Turn; current: boolean; actionable: boolean; busy: boolean; onChoose: (message: string) => void }) {
   if (turn.status !== 'COMPLETE' || turn.interactionOptions.length === 0) return null;
-  return <section className="intent-options" aria-label="下一步选项">
-    {turn.clarificationRequired && <p>选择最接近你的目标，或直接补充说明。</p>}
-    <div>{turn.interactionOptions.map(option =>
-      <button key={option.message} disabled={busy || !actionable} onClick={() => onChoose(option.message)}><strong>{option.label}</strong><span>{option.description}</span></button>)}</div>
+  return <section className="intent-options" aria-label={current ? "下一步选项" : undefined}>
+    <h3>{turn.clarificationRequired ? '确认分析方向' : '下一步选项'}</h3>
+    {turn.clarificationRequired && actionable && <p>选择最接近你的目标，或直接补充说明。</p>}
+    <ul>{turn.interactionOptions.map(option => <li key={option.message}>
+      <button type="button" disabled={busy || !actionable} onClick={() => onChoose(option.message)}>
+        <strong>{option.label}</strong><span>{option.description}</span><Icon name="arrow-right" />
+      </button>
+    </li>)}</ul>
   </section>;
 }
 

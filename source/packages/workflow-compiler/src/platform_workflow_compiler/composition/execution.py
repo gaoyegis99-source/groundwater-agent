@@ -6,7 +6,9 @@ from dataclasses import dataclass
 from functools import cache
 from importlib.resources import files
 
-from ..formats import MEDIA_TYPE_FORMATS, _port_pairs
+from jsonschema import Draft202012Validator
+
+from ..formats import MEDIA_TYPE_FORMATS, _port_pairs, logical_type
 from ..graph import _compile_workflow, input_members
 from ..validation import WorkflowValidationError, checksum, pointer
 from . import definition_digest, validate_composition, validate_operator_manifest, validate_vocabulary, validator_identity
@@ -21,11 +23,6 @@ VOCABULARY = {
     "crs": {},
     "units": {},
 }
-TABLE_FORMATS = {"csv", "parquet", "arrow-ipc-file"}
-RASTER_FORMATS = {"geotiff", "cog"}
-REFERENCE_GRID_OPERATORS = {("raster.reproject", "1.1.0"), ("raster.align_grid", "1.0.0")}
-RASTER_OPERATORS = REFERENCE_GRID_OPERATORS | {("raster.cell_statistics", "1.0.0"), ("raster.reclassify", "1.0.0")}
-RULE_FORMATS = TABLE_FORMATS | {"json"}
 TOOL = "run_composed_workflow"
 VERSION = "0.1.0"
 
@@ -35,147 +32,60 @@ def _adapter_digest() -> str:
     return definition_digest({"source": files(__package__).joinpath("execution.py").read_text(encoding="utf-8")})
 
 
-def _logical_type(formats):
-    if formats <= RASTER_FORMATS:
-        return "raster"
-    if formats <= TABLE_FORMATS:
-        return "table"
-    if formats <= RULE_FORMATS:
-        return "record"
-    raise WorkflowValidationError("COMPOSITION_FORMAT_UNSUPPORTED")
-
-
-def _port(contract, logical_type, formats=None):
-    return {
-        "name": contract["name"],
-        "kind": "artifact",
-        "logicalType": logical_type,
+def _port(contract):
+    if contract.get("kind") == "value":
+        return {**contract, "logicalType": "record"}
+    port = {
+        "name": contract["name"], "kind": "artifact",
+        "logicalType": contract.get("logicalType") or logical_type(contract["formats"]),
         "formatPairs": [
             {"mediaType": media, "format": fmt} for media, fmt in sorted(_port_pairs(contract))
-            if formats is None or fmt in formats
         ],
     }
+    if contract.get("cardinality") == "many":
+        port["cardinality"] = {"minItems": contract.get("minItems", 1), "maxItems": contract["maxItems"]}
+    if cases := contract.get("parameterFormatCases"):
+        port["formatCases"] = [
+            {"parameter": case["parameter"], "values": case["values"],
+             "formatPair": {"format": case["format"], "mediaType": case["mediaType"]}} for case in cases
+        ]
+    if cases := contract.get("formatCases"):
+        port["inputFormatCases"] = [
+            {"inputPort": case["inputPort"], "inputFormats": case["inputFormats"],
+             "formatPair": {"format": case["format"], "mediaType": case["mediaType"]}} for case in cases
+        ]
+    return port
 
 
 def _manifest(operator):
-    identity = operator["id"], operator["version"]
-    raster = identity in RASTER_OPERATORS
-    inputs = []
-    for item in operator["inputs"]:
-        formats = set(item["formats"])
-        if not item["required"]:
-            raise WorkflowValidationError("COMPOSITION_OPERATOR_UNSUPPORTED")
-        if identity == ("raster.reclassify", "1.0.0") and item["name"] == "rules":
-            # GeoParquet is advertised by the legacy manifest but the operator
-            # only parses JSON, CSV, Parquet and Arrow IPC rules.
-            port = _port(item, "record", RULE_FORMATS)
-        else:
-            port = _port(item, _logical_type(formats))
-        if item["cardinality"] != "one":
-            if identity != ("raster.cell_statistics", "1.0.0") or item["name"] != "rasters":
-                raise WorkflowValidationError("COMPOSITION_OPERATOR_UNSUPPORTED")
-            port["cardinality"] = {"minItems": 2, "maxItems": item["maxItems"]}
-        inputs.append(port)
-    outputs = [
-        _port(item, "table") for item in operator["outputs"]
-        if item["kind"] == "artifact" and set(item["formats"]) <= TABLE_FORMATS
-    ]
-    if raster:
-        outputs = [
-            _port(item, "raster", {"geotiff"}) for item in operator["outputs"]
-            if item["kind"] == "artifact" and set(item["formats"]) <= RASTER_FORMATS
-        ]
-    if operator["runtime"] != "native" or not outputs:
-        raise WorkflowValidationError("COMPOSITION_OPERATOR_UNSUPPORTED")
     schema = operator["parametersSchema"]
-    result = {
-        key: operator[key] for key in (
-            "id", "version", "title", "description", "domain", "runtime",
-            "implementationRevision", "memoryLimitBytes", "timeoutSeconds",
-        )
-    }
+    remote = operator["runtime"] == "remote_http"
+    result = {key: operator[key] for key in (
+        "id", "version", "title", "description", "domain", "runtime", "tags",
+        "implementationRevision", "memoryLimitBytes", "timeoutSeconds", "remoteBinding",
+    ) if key in operator}
+    semantics = operator.get("composition", {})
+    if semantics.keys() - {"constraints", "portSemantics", "outputSemantics", "executionPolicy"}:
+        raise WorkflowValidationError("COMPOSITION_CONFIG_INVALID")
     result.update(
         schemaVersion="operator-manifest.v2",
-        inputs=inputs,
-        outputs=outputs,
+        inputs=[_port(item) for item in operator["inputs"]],
+        outputs=[_port(item) for item in operator["outputs"]],
         parametersSchema=schema,
-        classification={"reuseScope": "generic", "providerKind": "platform"},
+        classification={"reuseScope": "domain" if operator["domain"] == "groundwater" else "generic",
+                        "providerKind": "external" if remote else "platform"},
         parameterPolicies={
-            name: {"allowedSources": ["USER", "OPERATOR_DEFAULT"], "defaultPolicy": "declared"}
-            for name, prop in schema.get("properties", {}).items() if "default" in prop
+            name: {"allowedSources": ["USER", *(["OPERATOR_DEFAULT"] if "default" in prop else [])],
+                   "defaultPolicy": "declared" if "default" in prop else "none"}
+            for name, prop in schema.get("properties", {}).items()
         },
+        **semantics,
     )
-    if raster:
-        _set_raster_contract(result)
+    if "constraints" in semantics:
+        result["constraints"] = [{**check, "validatorRef": validator_identity()} for check in semantics["constraints"]]
     result["definitionDigest"] = definition_digest(result)
     validate_operator_manifest(result, VOCABULARY)
     return result
-
-
-def _set_raster_contract(manifest):
-    if (manifest["id"], manifest["version"]) in REFERENCE_GRID_OPERATORS:
-        _set_reference_grid_contract(manifest)
-        return
-    across_cells = manifest["id"] == "raster.cell_statistics"
-    port = "rasters" if across_cells else "raster"
-
-    def field(key):
-        return {"port": port, "property": key}
-
-    checks = [
-        ("selected-band", "rasterBandExists", [field("rasterBands"), {"parameter": "band"}]),
-        ("input-nodata", "rasterMaskSupported", [field("rasterBands"), {"parameter": "band"}]),
-    ]
-    semantics = {"inherit": [{"inputPort": port, "facts": ["crs", "grid"]}]}
-    if across_cells:
-        checks[:0] = [
-            ("same-crs", "sameCrs", [field("crs"), field("crs")]),
-            ("same-grid", "sameGrid", [field("grid"), field("grid"), {"value": 0}]),
-        ]
-        semantics["fixed"] = {"rasterBands": [{"dtype": "float32", "nodata": "nan", "maskFlags": ["nodata"]}]}
-    else:
-        checks.append(("output-nodata", "rasterNoDataFits", [{"parameter": "noData"}, {"parameter": "outputType"}]))
-        semantics["transform"] = [{"property": "nodata", "parameter": "noData", "rule": "parameterFact"}]
-    manifest.update(
-        portSemantics={port: {"requiredFacts": ["crs", "grid", "rasterBands"]}},
-        outputSemantics={"raster": semantics},
-        constraints=[
-            {"id": key, "condition": {"predicate": predicate, "arguments": arguments},
-             "severity": "error", "checkStage": "compile", "validatorRef": validator_identity()}
-            for key, predicate, arguments in checks
-        ],
-    )
-
-
-def _set_reference_grid_contract(manifest):
-    constraints = [
-        ("selected-band", "rasterBandExists"),
-        ("input-nodata", "rasterMaskSupported"),
-    ]
-    manifest["portSemantics"] = {
-        "raster": {"requiredFacts": ["crs", "grid", "rasterBands"]},
-        "reference": {"requiredFacts": ["crs", "grid"]},
-    }
-    manifest["outputSemantics"] = {"raster": {
-        "inherit": [{"inputPort": "reference", "facts": ["crs", "grid"]}],
-        "fixed": {"rasterBands": [{"dtype": "float64", "nodata": "nan", "maskFlags": ["nodata"]}]},
-    }}
-    manifest["constraints"] = [
-        {
-            "id": name, "condition": {"predicate": predicate, "arguments": [
-                {"port": "raster", "property": "rasterBands"}, {"parameter": "band"},
-            ]},
-            "severity": "error", "checkStage": "compile", "validatorRef": validator_identity(),
-        }
-        for name, predicate in constraints
-    ]
-    if manifest["id"] == "raster.align_grid":
-        manifest["constraints"].insert(0, {
-            "id": "same-crs", "condition": {"predicate": "sameCrs", "arguments": [
-                {"port": "raster", "property": "crs"}, {"port": "reference", "property": "crs"},
-            ]},
-            "severity": "error", "checkStage": "compile", "validatorRef": validator_identity(),
-        })
 
 
 def raster_input_facts(descriptor, reference):
@@ -192,6 +102,32 @@ def raster_input_facts(descriptor, reference):
     ]
 
 
+def observed_input_facts(descriptor, semantics, reference):
+    """Use immutable physical metadata and separately identified semantic declarations."""
+    descriptor = descriptor or {}
+    semantics = semantics or {}
+    facts = raster_input_facts(descriptor.get("raster"), reference)
+    subject = {"id": reference["versionId"], "version": "1.0.0", "digest": reference["checksum"]}
+    revision = {"id": reference["semanticId"], "version": "1.0.0", "digest": reference["semanticChecksum"]}
+    fields = {
+        field["name"]: {"dtype": field["type"], "nullable": field["nullable"]}
+        for field in descriptor.get("fields", [])
+        if isinstance(field, dict) and isinstance(field.get("name"), str)
+        and isinstance(field.get("type"), str) and type(field.get("nullable")) is bool
+    }
+    if fields:
+        facts.append({"subjectRef": subject, "sourceRef": subject, "verificationScope": "metadata",
+                      "property": "fields", "state": "known", "value": fields})
+    declared = {key: semantics[key] for key in ("valueKind", "grain", "timezone", "verticalDatum")
+                if semantics.get(key) is not None}
+    if semantics.get("crs") and not any(fact["property"] == "crs" for fact in facts):
+        declared["crs"] = semantics["crs"]
+    for key, value in sorted(declared.items()):
+        facts.append({"subjectRef": subject, "sourceRef": revision, "verificationScope": "declared",
+                      "property": key, "state": "known", "value": value})
+    return facts
+
+
 def _workflow_vocabulary(workflow):
     # CRS equality compares canonical identities observed in the exact TIFFs.
     # This profile does not declare a metric-CRS conversion or inference.
@@ -202,6 +138,12 @@ def _workflow_vocabulary(workflow):
     }}
 
 
+class CompositionValidationError(WorkflowValidationError):
+    def __init__(self, diagnostic: dict) -> None:
+        super().__init__(diagnostic["code"], diagnostic["path"])
+        self.diagnostic = diagnostic
+
+
 @dataclass(frozen=True)
 class ArtifactComposition:
     """Assembly-selected capabilities and limits shared by Kernel and Executor."""
@@ -210,15 +152,28 @@ class ArtifactComposition:
     manifests: dict[tuple[str, str], dict]
     environment: dict
     limits: dict
+    rule_schemas: dict[str, dict]
 
     @classmethod
     def from_config(cls, config: dict) -> ArtifactComposition:
-        if set(config) != {"operators", "resourceLimits", "catalogDigest"}:
+        if set(config) != {"operators", "resourceLimits", "catalogDigest", "ruleSchemas"}:
             raise WorkflowValidationError("COMPOSITION_CONFIG_INVALID")
         operators = {(row["id"], row["version"]): row for row in config["operators"]}
         if not operators or len(operators) != len(config["operators"]):
             raise WorkflowValidationError("COMPOSITION_CONFIG_INVALID")
         manifests = {key: _manifest(operator) for key, operator in operators.items()}
+        schemas = config["ruleSchemas"]
+        referenced = {
+            port["rulesSchema"]
+            for operator in operators.values() for port in operator["inputs"]
+            if "rulesSchema" in port
+        }
+        if not isinstance(schemas, dict) or set(schemas) != referenced:
+            raise WorkflowValidationError("COMPOSITION_RULE_SCHEMAS_INVALID")
+        for version, schema in schemas.items():
+            Draft202012Validator.check_schema(schema)
+            if schema.get("properties", {}).get("schemaVersion", {}).get("const") != version:
+                raise WorkflowValidationError("COMPOSITION_RULE_SCHEMAS_INVALID")
         environment = {
             "id": "artifact-composition-environment",
             "version": "1.0.0",
@@ -226,10 +181,10 @@ class ArtifactComposition:
                 "profile": config, "validator": validator_identity(), "adapter": _adapter_digest(),
             }),
         }
-        return cls(operators, manifests, environment, config["resourceLimits"])
+        return cls(operators, manifests, environment, config["resourceLimits"], schemas)
 
     def candidate(self, draft: dict, project_id: str, semantic_checksums: dict[str, str], user_ref: dict,
-                  raster_descriptors: dict[str, dict] | None = None) -> dict:
+                  data_descriptions: dict[str, dict] | None = None) -> dict:
         """Bind the author's graph to exact observed inputs and trusted definitions."""
         raw = draft["workflow"]
         references = {item["input_name"]: item["data_ref"] for item in draft["data_bindings"]}
@@ -244,9 +199,9 @@ class ArtifactComposition:
         inputs = {}
         for name, ref in sorted(references.items()):
             fmt = ref["format"]
-            logical_type = "record" if name in record_inputs else _logical_type({fmt})
+            kind = "record" if name in record_inputs else logical_type({fmt})
             port = {
-                "name": name, "kind": "artifact", "logicalType": logical_type,
+                "name": name, "kind": "artifact", "logicalType": kind,
                 "formatPairs": [{"format": fmt, "mediaType": ref["media_type"]}],
             }
             inputs[name] = {
@@ -260,10 +215,10 @@ class ArtifactComposition:
                     **({"outputName": ref["output_name"]} if ref.get("output_name") else {}),
                 },
             }
-            if logical_type == "raster":
-                inputs[name]["facts"] = raster_input_facts(
-                    (raster_descriptors or {}).get(ref["version_id"]), inputs[name]["dataRef"],
-                )
+            observed = (data_descriptions or {}).get(ref["version_id"], {})
+            inputs[name]["facts"] = observed_input_facts(
+                observed.get("descriptor"), observed.get("semantics"), inputs[name]["dataRef"],
+            )
         nodes = []
         defaults = {}
         for node in raw["nodes"]:
@@ -291,35 +246,31 @@ class ArtifactComposition:
                     "path": pointer(["parameters", name]), "reason": item["explanation"],
                 },
             }
-        used_names = set(parameters) | set(inputs)
-        for node in nodes:
-            identity = node["operator"]["id"], node["operator"]["version"]
-            if identity in RASTER_OPERATORS and "band" not in node["parameters"]:
-                name = f"{node['nodeId']}.band"
-                while name in used_names:
-                    name += ".default"
-                used_names.add(name)
-                reference = node["operator"]
-                parameters[name] = {
-                    "value": self.manifests[identity]["parametersSchema"]["properties"]["band"]["default"],
-                    "source": {"kind": "OPERATOR_DEFAULT",
-                               "ref": {"id": reference["id"], "version": reference["version"], "digest": reference["definitionDigest"]},
-                               "path": pointer(["parameters", name]), "reason": "Declared default band"},
-                }
-                node["parameters"] = {**node["parameters"], "band": {"workflowParameter": name}}
+        # Resolve concrete output formats using the same Worker graph compiler
+        # that verifies bindings again on admission.
+        narrowed = {
+            **raw, "inputs": [
+                {"name": name, "cardinality": "one", "formats": [ref["format"]], "mediaTypes": [ref["media_type"]]}
+                for name, ref in sorted(references.items())
+            ],
+        }
+        compiled = _compile_workflow(narrowed, self.operators, parameter_values=draft["parameter_values"],
+                                     collection_operators=self.manifests)
+        ports = {(node["nodeId"], port["name"]): port for node in compiled["nodes"] for port in node["outputContracts"]}
         outputs = {}
-        by_node = {node["nodeId"]: node["operator"] for node in nodes}
         for item in raw["outputs"]:
             ref = item["nodeOutput"]
-            operator = by_node[ref["nodeId"]]
-            manifest = self.manifests[operator["id"], operator["version"]]
-            output = next((port for port in manifest["outputs"] if port["name"] == ref["port"]), None)
-            if output is None or len(output["formatPairs"]) != 1:
-                raise WorkflowValidationError("COMPOSITION_OUTPUT_UNSUPPORTED")
-            fmt = output["formatPairs"][0]["format"]
+            output = ports[ref["nodeId"], ref["port"]]
+            if output["kind"] == "value":
+                fmt, kind = "json", "record"
+            else:
+                if len(output["formatPairs"]) != 1:
+                    raise WorkflowValidationError("COMPOSITION_OUTPUT_UNSUPPORTED")
+                fmt = output["formatPairs"][0]["format"]
+                kind = logical_type({fmt})
             outputs[item["name"]] = {
                 "nodeOutput": ref,
-                "goal": {"role": item["name"], "logicalType": output["logicalType"], "requires": {}},
+                "goal": {"role": item["name"], "logicalType": kind, "requires": {}},
                 "publication": {
                     "title": item["name"], "format": fmt,
                     "policy": "FILE_QUERYABLE" if fmt in {"csv", "parquet"} else "FILE_ONLY",
@@ -335,6 +286,11 @@ class ArtifactComposition:
         if any("collection" in binding for node in nodes for binding in node["inputs"].values()):
             workflow["requiredFeatures"].append("collection-inputs")
         workflow["registryRef"] = validate_vocabulary(_workflow_vocabulary(workflow))
+        report = validate_composition(workflow, self.manifests, _workflow_vocabulary(workflow), environment_ref=self.environment)
+        for name, output in report["outputs"].items():
+            workflow["outputs"][name]["goal"]["requires"] = {
+                key: value for key, value in output["facts"].items() if key in _PUBLIC_SEMANTICS
+            }
         workflow["definitionDigest"] = definition_digest(workflow)
         return workflow
 
@@ -347,7 +303,7 @@ class ArtifactComposition:
         if report["status"] != "VALIDATED":
             severity = "error" if report["status"] == "INVALID" else "missing"
             issue = next(item for item in report["diagnostics"] if item["severity"] == severity)
-            raise WorkflowValidationError(issue["code"], issue["path"])
+            raise CompositionValidationError(issue)
         if not workflow.get("definitionDigest") or any(check["state"] == "DEFERRED" for check in report["checks"]):
             raise WorkflowValidationError("COMPOSITION_EXECUTION_UNSUPPORTED")
         if workflow["version"] != VERSION or not workflow["workflowId"].startswith("draft."):
@@ -394,6 +350,12 @@ def execution_arguments(workflow: dict) -> tuple[dict, dict]:
     }, references
 
 
+_PUBLIC_SEMANTICS = {
+    "valueKind": "value_kind", "crs": "crs", "timezone": "timezone",
+    "verticalDatum": "vertical_datum", "grain": "grain",
+}
+
+
 def publication_declarations(workflow: dict) -> dict:
     return {
         name: {
@@ -401,7 +363,10 @@ def publication_declarations(workflow: dict) -> dict:
             "mediaType": next(
                 media for media, formats in MEDIA_TYPE_FORMATS.items() if item["publication"]["format"] in formats
             ),
-            "semantics": {},
+            "semantics": {
+                _PUBLIC_SEMANTICS[key]: value for key, value in item["goal"]["requires"].items()
+                if key in _PUBLIC_SEMANTICS
+            },
         }
         for name, item in sorted(workflow["outputs"].items())
     }

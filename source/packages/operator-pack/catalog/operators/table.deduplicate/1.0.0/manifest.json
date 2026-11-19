@@ -60,7 +60,9 @@
         "application/json"
       ],
       "name": "rules",
-      "required": true
+      "required": true,
+      "logicalType": "record",
+      "rulesSchema": "table-deduplicate-rules.v1"
     }
   ],
   "memoryLimitBytes": 8589934592,
@@ -89,8 +91,24 @@
       "kind": "value",
       "name": "summary",
       "schema": {
-        "type": "object"
-      }
+        "type": "object",
+        "properties": {
+          "duplicateRowCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "uniqueRowCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "duplicateRowCount",
+          "uniqueRowCount"
+        ],
+        "additionalProperties": false
+      },
+      "maxBytes": 1048576
     }
   ],
   "parametersSchema": {
@@ -113,7 +131,12 @@
   "runtime": "native",
   "tags": [
     "table",
-    "deduplicate"
+    "deduplicate",
+    "capability:deduplicate",
+    "去重",
+    "重复记录",
+    "重复行",
+    "按井号与日期找重复记录"
   ],
   "timeoutSeconds": 1200,
   "title": "Deduplicate table rows",

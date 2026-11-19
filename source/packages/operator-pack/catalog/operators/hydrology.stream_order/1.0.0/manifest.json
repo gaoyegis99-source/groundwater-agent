@@ -62,7 +62,6 @@
   "outputs": [
     {
       "formats": [
-        "cog",
         "geotiff"
       ],
       "kind": "artifact",
@@ -81,9 +80,44 @@
   "tags": [
     "hydrology",
     "stream",
-    "strahler"
+    "strahler",
+    "capability:stream_order",
+    "河流分级",
+    "河网分级",
+    "河流等级",
+    "计算河网的 Strahler 级别"
   ],
   "timeoutSeconds": 3600,
   "title": "Strahler stream order",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "composition": {
+    "portSemantics": {
+      "flowDirection": {
+        "requires": {
+          "valueKind": "d8-direction"
+        }
+      },
+      "streams": {
+        "requires": {
+          "valueKind": "stream-mask"
+        }
+      }
+    },
+    "outputSemantics": {
+      "streamOrder": {
+        "fixed": {
+          "valueKind": "strahler-order"
+        },
+        "inherit": [
+          {
+            "inputPort": "flowDirection",
+            "facts": [
+              "crs",
+              "grid"
+            ]
+          }
+        ]
+      }
+    }
+  }
 }

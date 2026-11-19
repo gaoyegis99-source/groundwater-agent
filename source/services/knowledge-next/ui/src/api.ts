@@ -16,25 +16,18 @@ import type {
   components as DataComponents,
   operations as DataOperations,
 } from "./generated/data-api-v3";
+import { loadDataValidators } from "./generated/data-api-v3.validators.loader.js";
 type Validators = {
   requestValidators: Readonly<Record<string, JsonValidator>>;
   responseValidators: Readonly<Record<string, JsonValidator>>;
 };
 let knowledgeValidatorsPromise: Promise<Validators> | undefined;
 let initialKnowledgeValidatorsPromise: Promise<Validators> | undefined;
-let dataValidatorsPromise: Promise<Validators> | undefined;
-let initialDataValidatorsPromise: Promise<Validators> | undefined;
 
 async function loadKnowledgeValidators(operationId: string): Promise<Validators> {
   const initial = await (initialKnowledgeValidatorsPromise ??= import("./generated/knowledge-api-v3.validators.initial.js"));
   if (Object.hasOwn(initial.responseValidators, operationId)) return initial;
   return knowledgeValidatorsPromise ??= import("./generated/knowledge-api-v3.validators.js");
-}
-
-async function loadDataValidators(operationId: string): Promise<Validators> {
-  const initial = await (initialDataValidatorsPromise ??= import("./generated/data-api-v3.validators.initial.js"));
-  if (Object.hasOwn(initial.responseValidators, operationId)) return initial;
-  return dataValidatorsPromise ??= import("./generated/data-api-v3.validators.js");
 }
 
 export { PlatformUiError };

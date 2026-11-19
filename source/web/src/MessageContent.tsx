@@ -1,99 +1,96 @@
-import { useMemo, useState } from 'react';
-import Markdown, { type Components } from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
+import { useEffect, useRef, useState } from 'react';
 import { Icon } from './Icon';
-import { contentUrl } from './api';
 import { shortVersion } from './format';
-import type { KnowledgeReference, ReplyPresentation, ReplySection, ReplySource, ResourceReference } from './types';
+import type { Message, ReplyPresentation } from './types';
 
-export function MessageContent({ content, onResource }: { content: string; onResource: (id: string) => void }) {
+function splitLegacyAttachments(content: string) {
   // Only the exact attachment envelope produced by withReferences is a UI attachment.
   const block = /(?:^|\n\n)附加数据：\n((?:- [^\n]+\n?)+)$/.exec(content);
-  const attachments = block?.[1].trimEnd().split('\n').map(line => /^- (.+)（(?:数据集|Dataset): ([a-zA-Z0-9-]+)；(?:版本|Version): ([a-zA-Z0-9-]+)；(?:语义|Semantics): ([a-zA-Z0-9-]+)；(?:校验和|checksum): (?:sha256:)?([a-f0-9]{64})）$/i.exec(line));
-  if (!block || !attachments?.every(Boolean)) return <p>{content}</p>;
+  const matches = block?.[1].trimEnd().split('\n').map(line => /^- (.+)（(?:数据集|Dataset): ([\w-]+)；(?:版本|Version): ([\w-]+)；(?:语义|Semantics): ([\w-]+)；(?:校验和|checksum): (?:sha256:)?([a-f0-9]{64})）$/i.exec(line));
+  if (!block || !matches?.every(match => match !== null)) return { body: content, attachments: [] };
+  return { body: content.slice(0, block.index), attachments: matches.map(match => ({ name: match[1], versionId: match[3] })) };
+}
+
+export function copyQuestionText({ content, inputReferences }: Pick<Message, 'content' | 'inputReferences'>) {
+  const { body, attachments } = splitLegacyAttachments(content);
+  const names = [
+    ...attachments.map(item => item.name),
+    ...(inputReferences ?? []).filter(ref => !attachments.some(item => item.versionId === ref.versionId))
+      .map(ref => ref.outputName || `${ref.format.toUpperCase()} 资料`),
+  ];
+  return names.length ? [body, `附加资料\n${names.map(name => `- ${name}`).join('\n')}`].filter(Boolean).join('\n\n') : body;
+}
+
+const diagnosticKeys = new Set([
+  'traceid', 'requestid', 'agentrunid', 'workflowrunid', 'modelid', 'modelversion', 'workflowid', 'workflowversion',
+  'datasetid', 'versionid', 'semanticid', 'objectid', 'checksum', 'errorcode', 'durationms', 'status',
+]);
+
+function isDiagnosticJson(body: string) {
+  let value: unknown;
+  try { value = JSON.parse(body); } catch { return false; }
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const keys = Object.keys(value).map(key => key.toLowerCase().replaceAll('_', ''));
+  return keys.some(key => key.endsWith('id') || key === 'checksum' || key === 'errorcode')
+    && keys.every(key => diagnosticKeys.has(key));
+}
+
+const internalHref = String.raw`(?:https?:\/\/[^\s/()<>]+)?\/api\/v12\/(?:data\/versions|knowledge|workflow-runs|agent-runs)\/[^\s()<>]+`;
+const internalMarkdownLink = new RegExp(String.raw`!?\[([^\]\n]*)\]\(<?(${internalHref})>?(?:[ \t]+"[^"\n]*")?\)`, 'g');
+const internalAutolink = new RegExp(`<${internalHref}>`, 'g');
+
+export function copyReplyText(reply: ReplyPresentation) {
+  return [reply.conclusion, reply.executionSummary, ...reply.details, ...reply.unresolvedItems]
+    .flatMap(section => section ? [section.markdown] : [])
+    .map(markdown => markdown
+      .replace(/^ {0,3}(`{3,}|~{3,})([^\r\n]*)\r?\n([\s\S]*?)^ {0,3}\1[ \t]*(?=\r?$)/gm, (block, _fence, info: string, body: string) => {
+        const language = info.trim().toLowerCase();
+        return /^(logs?|trace)$/.test(language) || (language === 'json' && isDiagnosticJson(body)) ? '' : block;
+      })
+      .replace(internalMarkdownLink, (_link, label: string, href: string) => label && !href.split(/[/?#]/).includes(label) ? label : '查看详情')
+      .replace(internalAutolink, '查看详情')
+      .replace(/[（(]knowledge_id: [\w-]+, chunk_index: \d+, checksum: (?:sha256:)?[a-f0-9]{64}[）)]/gi, '')
+      .trim())
+    .filter(Boolean).join('\n\n');
+}
+
+export function MessageContent({ content, onResource }: { content: string; onResource: (id: string) => void }) {
+  const { body, attachments } = splitLegacyAttachments(content);
+  if (!attachments.length) return <p>{body}</p>;
   return <>
-    {content.slice(0, block.index) && <p>{content.slice(0, block.index)}</p>}
-    <div className="message-attachments">{attachments.map(match => <div key={match![3]}>
-      <button className="attachment-reference" data-resource-id={match![3]} title={`数据版本 ${match![3]}`} onClick={() => onResource(match![3])} aria-label={`查看附件 ${match![1]} ${shortVersion(match![3])}`}>
-        <Icon name="file" />{match![1]} <small>{shortVersion(match![3])}</small>
+    {body && <p>{body}</p>}
+    <div className="message-attachments">{attachments.map(({ name, versionId }) => <div key={versionId}>
+      <button className="attachment-reference" data-resource-id={versionId} title={`数据版本 ${versionId}`} onClick={() => onResource(versionId)} aria-label={`查看附件 ${name} ${shortVersion(versionId)}`}>
+        <Icon name="file" />{name} <small>{shortVersion(versionId)}</small>
       </button>
     </div>)}</div>
   </>;
 }
 
-const noImages: readonly ResourceReference[] = [];
-
-export function CopyMessage({ text, label }: { text: string; label: string }) {
+export function CopyMessage({ text, label }: { text: () => string; label: string }) {
   const [feedback, setFeedback] = useState('');
+  const [manualCopy, setManualCopy] = useState<{ content: string }>();
+  const manualText = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    if (!manualCopy) return;
+    manualText.current?.focus();
+    manualText.current?.select();
+  }, [manualCopy]);
   return <div className="copy-message">
     <button type="button" className="text-button" onClick={async () => {
+      const content = text();
       try {
-        await navigator.clipboard.writeText(text);
+        await navigator.clipboard.writeText(content);
+        setManualCopy(undefined);
         setFeedback('已复制');
       } catch {
-        setFeedback('复制失败，请手动选择文本。');
+        setManualCopy({ content });
+        setFeedback('请复制下方已选中的文字。');
       }
     }}>{label}</button>
-    {feedback && <small role="status">{feedback}</small>}
-  </div>;
-}
-
-function ReplyMarkdown({ section, onResource, images }: {
-  section: ReplySection; onResource: (id: string) => void; images: readonly ResourceReference[];
-}) {
-  const components = useMemo<Components>(() => ({
-      a: ({ href, children }) => {
-        const data = /^\/api\/v12\/data\/versions\/([a-zA-Z0-9-]+)$/.exec(href ?? '');
-        if (data) return <button className="citation-link" onClick={() => onResource(data[1])}>{children}</button>;
-        return href && /^(https?:|mailto:)/.test(href) ? <a href={href} target="_blank" rel="noreferrer">{children}</a> : <span>{children}</span>;
-      },
-      img: ({ src, alt }) => images.some(ref => src === contentUrl('', ref.versionId, ref.objectId))
-        ? <img src={src} alt={alt || '本轮成果图片'} loading="lazy" />
-        : <span>{alt}</span>,
-      pre: ({ children }) => <details className="technical-details"><summary>查看代码或结构化内容</summary><pre>{children}</pre></details>,
-      table: ({ children }) => <div className="table-scroll" role="region" aria-label="分析表格，可横向滚动" tabIndex={0}><table>{children}</table></div>,
-  }), [onResource, images]);
-  return <div className="markdown-content"><Markdown skipHtml remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[[rehypeKatex, { trust: false, output: 'mathml', maxExpand: 200, maxSize: 16 }]]} components={components}>{section.markdown}</Markdown></div>;
-}
-
-export function AssistantContent({ reply, onKnowledge, onResource, images = noImages }: {
-  reply: ReplyPresentation; images?: readonly ResourceReference[]; onKnowledge: (reference: KnowledgeReference) => void; onResource: (id: string) => void;
-}) {
-  const executionDetails = reply.executionSummary ? reply.details : [];
-  const supportingDetails = reply.executionSummary ? [] : reply.details;
-  const hasSources = reply.sources.length > 0;
-  const hasMultipleSources = reply.sources.length > 1;
-  function openSource({ versionId, unitId, checksum }: ReplySource) {
-    onKnowledge({ versionId, unitId, checksum });
-  }
-  function renderSection(section: ReplySection) {
-    return <>
-      <ReplyMarkdown section={section} onResource={onResource} images={images} />
-      {hasMultipleSources && section.sourceIndexes.length > 0 && <div className="reply-section-sources">
-        {section.sourceIndexes.map(index => {
-          const source = reply.sources[index];
-          return source && <button type="button" className="citation-link" key={index}
-            aria-label={`查看依据 ${index + 1} · ${source.title}`} onClick={() => openSource(source)}>依据 {index + 1}</button>;
-        })}
-      </div>}
-    </>;
-  }
-  return <div className="reply-text">
-    {reply.conclusion && <div className="reply-conclusion">{renderSection(reply.conclusion)}</div>}
-    {reply.executionSummary && <section className="reply-execution" aria-label="执行摘要"><h3>执行摘要</h3>{renderSection(reply.executionSummary)}</section>}
-    {executionDetails.length > 0 && <section className="reply-result-explanation" aria-label="结果说明"><h3>结果说明</h3>{executionDetails.map((detail, index) => <div className="reply-detail" key={index}>{renderSection(detail)}</div>)}</section>}
-    {reply.unresolvedItems.length > 0 && <section className="reply-unresolved" aria-label="需要补充"><h3>需要补充</h3><ul>{reply.unresolvedItems.map((item, index) => <li key={index}>{renderSection(item)}</li>)}</ul></section>}
-    {(supportingDetails.length > 0 || hasSources) && <details className="reply-details"><summary>更多信息</summary>
-      {supportingDetails.map((detail, index) => <div className="reply-detail" key={index}>{renderSection(detail)}</div>)}
-      {hasSources && <section className="reply-sources" aria-label="回答依据"><h3>回答依据</h3><div className="citation-list">{reply.sources.map((source, index) => <span
-        className="citation-entry" key={JSON.stringify([source.versionId, source.unitId, source.checksum])}
-      ><button type="button" className="citation"
-          data-knowledge-version-id={source.versionId} data-knowledge-unit-id={source.unitId}
-          aria-label={hasMultipleSources ? `打开依据 ${index + 1} · ${source.title}` : `打开依据：${source.title}`}
-          onClick={() => openSource(source)}
-        ><Icon name="book" />{hasMultipleSources ? `${index + 1}. ${source.title}` : source.title}</button>{index < reply.sources.length - 1 && <span aria-hidden="true">；</span>}</span>)}</div></section>}
-    </details>}
+    {feedback && <small className="copy-feedback" role="status" data-copied={!manualCopy}>
+      {!manualCopy && <Icon name="check" />}{feedback}
+    </small>}
+    {manualCopy && <textarea ref={manualText} className="manual-copy" aria-label="待复制文本" readOnly value={manualCopy.content} />}
   </div>;
 }

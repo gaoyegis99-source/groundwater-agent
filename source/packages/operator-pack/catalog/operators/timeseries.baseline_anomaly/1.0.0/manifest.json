@@ -68,8 +68,29 @@
       "kind": "value",
       "name": "summary",
       "schema": {
-        "type": "object"
-      }
+        "type": "object",
+        "properties": {
+          "groupCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "rowCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "notEvaluable": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "groupCount",
+          "rowCount",
+          "notEvaluable"
+        ],
+        "additionalProperties": false
+      },
+      "maxBytes": 1048576
     }
   ],
   "parametersSchema": {
@@ -108,7 +129,12 @@
   "runtime": "native",
   "tags": [
     "timeseries",
-    "baseline_anomaly"
+    "baseline_anomaly",
+    "capability:baseline_anomaly",
+    "基准异常",
+    "基线异常",
+    "基准期偏差",
+    "相对基准期计算水位异常"
   ],
   "timeoutSeconds": 1800,
   "title": "Calculate baseline anomalies",

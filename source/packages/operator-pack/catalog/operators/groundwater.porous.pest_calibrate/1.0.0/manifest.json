@@ -8,7 +8,13 @@
     "groundwater",
     "third-party",
     "remote-http",
-    "pest.calibrate"
+    "pest.calibrate",
+    "capability:pest_calibrate",
+    "参数校准",
+    "模型率定",
+    "校准参数",
+    "PEST",
+    "校准含水层模型参数并查看残差"
   ],
   "runtime": "remote_http",
   "remoteBinding": {
@@ -53,14 +59,16 @@
       "kind": "value",
       "schema": {
         "type": "object"
-      }
+      },
+      "maxBytes": 1048576
     },
     {
       "name": "residual_diagnostics",
       "kind": "value",
       "schema": {
         "type": "object"
-      }
+      },
+      "maxBytes": 1048576
     },
     {
       "name": "calibration_package",
@@ -111,5 +119,13 @@
       },
       "parameters": {}
     }
-  ]
+  ],
+  "composition": {
+    "executionPolicy": {
+      "sideEffect": "remoteJob",
+      "retry": "coordinate",
+      "determinism": "nondeterministic",
+      "cacheable": false
+    }
+  }
 }

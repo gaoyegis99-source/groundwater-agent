@@ -47,6 +47,8 @@ from .application.agent_projection import AgentProjectionAdapter
 from .interaction.control_persistence import ControlRequests
 from .interaction.access import agent_owner_subject
 from .interaction.owner import InteractionOwner
+from .operator_metadata import operator_metadata
+from platform_protocol_contracts import to_wire
 from .runtime import KernelRuntime
 from .readiness import PlatformReadiness, ReadinessReport
 from .settings import KernelSettings
@@ -91,6 +93,18 @@ class PlatformApplication:
                 "projectId": self.settings.project_id,
                 "services": sorted(self.settings.services_by_name),
                 "orchestrationOwner": "AGENT",
+                "operators": to_wire([
+                    {
+                        "operator_id": operator["id"],
+                        **{name: operator[name] for name in ("version", "title", "domain", "tags", "runtime")},
+                        "confirmation_supported": (
+                            self.settings.workflow_composition is not None
+                            and key in self.settings.workflow_composition.manifests
+                        ),
+                        **operator_metadata(operator, self.settings),
+                    }
+                    for key, operator in sorted(self.settings.operator_catalog.items())
+                ]),
                 "observationTools": [
                     {
                         "name": item.name,
@@ -160,7 +174,7 @@ class PlatformApplication:
             trace_id_resolver=partial(trace_id_for_run, self.database),
             composition=self.settings.workflow_composition,
         )
-        self.agent_projection = AgentProjectionAdapter()
+        self.agent_projection = AgentProjectionAdapter(self.settings.models, self.settings.published_output_steps)
         self.agent_runtime = AgentRuntimeOwner(
             self.database,
             self.settings,
@@ -215,6 +229,7 @@ class PlatformApplication:
             self.settings.services_by_name["data"],
             models=self.settings.models,
             memory_reader=load_memory,
+            output_steps=self.settings.published_output_steps,
             local_identity_subject=self.settings.local_identity_subject,
             max_pending_agent_turns=(
                 self.settings.agent_concurrency + self.settings.agent_queue_capacity

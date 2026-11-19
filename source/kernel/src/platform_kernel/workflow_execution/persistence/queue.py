@@ -136,6 +136,12 @@ def enqueue_batch(
                ) VALUES (?, ?, NULL, ?, ?, NULL, NULL)""",
             (run_id, "REQUESTED" if index == 0 else "BLOCKED", deadline, now),
         )
+        if retry_of is not None:
+            connection.execute(
+                """INSERT INTO workflow_output_sources
+                   SELECT ?, source_workflow_run_id FROM workflow_output_sources WHERE workflow_run_id=?""",
+                (run_id, retry_of),
+            )
         created.append(get_run_connection(connection, project_id, run_id))
         append_event(
             connection,
@@ -200,6 +206,9 @@ def recovery_source(
         ).fetchone()
         if latest["run_id"] != workflow_run_id:
             return None
+        dependent = connection.execute(
+            "SELECT 1 FROM workflow_output_sources WHERE workflow_run_id=?", (workflow_run_id,),
+        ).fetchone() is not None
         rows = connection.execute(
             """SELECT current.tool_call_id FROM workflow_runs current
                WHERE current.agent_run_id=? AND current.confirmation_id=?
@@ -207,21 +216,35 @@ def recovery_source(
                  AND current.attempt=(SELECT MAX(other.attempt) FROM workflow_runs other
                      WHERE other.agent_run_id=current.agent_run_id
                        AND other.tool_call_id=current.tool_call_id)
-                 AND (current.run_id=? OR current.status='FAILED')
+                 AND (current.run_id=? OR (NOT ? AND current.status='FAILED'
+                     AND NOT EXISTS (SELECT 1 FROM workflow_output_sources d WHERE d.workflow_run_id=current.run_id)))
                ORDER BY current.position""",
             (source["agent_run_id"], source["confirmation_id"],
-             source["position"], workflow_run_id),
+             source["position"], workflow_run_id, dependent),
         ).fetchall()
         return {
             "run_id": source["run_id"], "agent_run_id": source["agent_run_id"],
             "confirmation_id": source["confirmation_id"],
             "tool_call_ids": tuple(row["tool_call_id"] for row in rows),
+            **({"dependent_action": {key: source[key] for key in (
+                "tool_call_id", "model_id", "model_version", "model_checksum",
+                "workflow_id", "workflow_version", "workflow_checksum",
+                "arguments_json", "input_references_json",
+            )}} if dependent else {}),
         }
 
 
 def get_run(database: Path, project_id: str, run_id: str) -> WorkflowRun:
     with connect_database(database) as connection:
         return get_run_connection(connection, project_id, run_id)
+
+
+def has_pending_run(database: Path, agent_run_id: str) -> bool:
+    with connect_database(database) as connection:
+        return connection.execute(
+            "SELECT 1 FROM workflow_runs WHERE agent_run_id=? AND status IN ('QUEUED','RUNNING') LIMIT 1",
+            (agent_run_id,),
+        ).fetchone() is not None
 
 
 def runs_for_agent(database: Path, agent_run_id: str) -> tuple[WorkflowRun, ...]:

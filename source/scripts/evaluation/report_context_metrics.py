@@ -10,7 +10,7 @@ from pathlib import Path
 import sqlite3
 
 
-SCHEMA_VERSION = 34
+SUPPORTED_SCHEMA_VERSIONS = {34, 35, 36}
 
 
 def build_report(database: Path) -> dict[str, object]:
@@ -18,7 +18,7 @@ def build_report(database: Path) -> dict[str, object]:
     with sqlite3.connect(uri, uri=True) as connection:
         connection.row_factory = sqlite3.Row
         rows = connection.execute("SELECT version FROM schema_version").fetchall()
-        if len(rows) != 1 or rows[0]["version"] != SCHEMA_VERSION:
+        if len(rows) != 1 or rows[0]["version"] not in SUPPORTED_SCHEMA_VERSIONS:
             raise ValueError("KERNEL_SCHEMA_VERSION_UNSUPPORTED")
         views = connection.execute(
             """SELECT policy_version,purpose,status,estimated_input_tokens,
@@ -73,7 +73,7 @@ def build_report(database: Path) -> dict[str, object]:
 
     return {
         "schemaVersion": "context-metrics.v1",
-        "database_schema_version": SCHEMA_VERSION,
+        "database_schema_version": rows[0]["version"],
         "view_count": len(views),
         "groups": sorted(
             groups.values(), key=lambda item: (item["policy_version"], item["purpose"])

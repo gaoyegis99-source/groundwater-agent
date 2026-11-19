@@ -44,7 +44,6 @@
   "outputs": [
     {
       "formats": [
-        "cog",
         "geotiff"
       ],
       "kind": "artifact",
@@ -88,9 +87,22 @@
   "runtime": "native",
   "tags": [
     "raster",
-    "slope"
+    "slope",
+    "capability:slope",
+    "坡度",
+    "坡度百分比",
+    "从 DEM 计算坡度"
   ],
   "timeoutSeconds": 3600,
   "title": "Calculate terrain slope",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "composition": {
+    "outputSemantics": {
+      "raster": {
+        "fixed": {
+          "valueKind": "slope"
+        }
+      }
+    }
+  }
 }

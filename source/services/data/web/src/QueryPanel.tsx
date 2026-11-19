@@ -1,12 +1,16 @@
+import { tableColumnLayout } from "@platform/ui-boundary";
 import { ListBox, ListBoxItem, type Selection } from "react-aria-components";
 import { errorText, pretty } from "./api";
-import type { RunAction } from "./api";
-import type { AggregateDraft, FilterDraft, SortDraft, useQuery } from "./use-query";
+import type { DataCapabilities, RunAction, Schema, Version } from "./api";
+import { useQuery, type AggregateDraft, type FilterDraft, type SortDraft } from "./use-query";
 
 type Props = {
-  controller: ReturnType<typeof useQuery>;
+  selected: Version | null;
+  versions: Schema["VersionSummary"][];
+  scope: string;
+  recoveryKey: string;
+  capabilities: DataCapabilities;
   run: RunAction;
-  allowed: boolean;
   onChooseDataset: () => void;
 };
 
@@ -23,15 +27,18 @@ function operatorsFor(type: string): Array<FilterDraft["op"]> {
   return ["eq", "ne", "contains", "is_null"];
 }
 
-export function QueryPanel({ controller, run, allowed, onChooseDataset }: Props) {
+export function QueryPanel({ selected, versions, scope, recoveryKey, capabilities, run, onChooseDataset }: Props) {
+  const controller = useQuery(selected, versions, scope, recoveryKey, capabilities.limits.querySeconds ?? 60);
+  const allowed = capabilities.permissions.queryCreate;
   const {
-    selected, versions, queryId, result, error, offset, setOffset, pageSize, setPageSize,
+    queryId, result, error, offset, setOffset, pageSize, setPageSize,
     selectedFields, setSelectedFields, filters, setFilters, aggregates, setAggregates,
     groupBy, setGroupBy, sorts, setSorts, metricName, setMetricName, metricVersions,
     setMetricVersions, requestSnapshot, activeHistoryEntry, historyEntries, openHistory, clearHistory,
     submitQuery, compareMetrics, cancel, deadlineStopped, checkNow,
   } = controller;
   const fields = selected?.descriptor.fields ?? [];
+  const layouts = result?.result?.fields.map(field => tableColumnLayout(field.type)) ?? [];
   const resultFields = activeHistoryEntry?.versionId === selected?.versionId ? fields : [];
   const fieldName = (fieldId: string) => resultFields.find(item => item.fieldId === fieldId)?.name ?? fieldId;
   const onVersionSelection = (selection: Selection) => {
@@ -117,7 +124,7 @@ export function QueryPanel({ controller, run, allowed, onChooseDataset }: Props)
           {requestSnapshot && <details className="request-snapshot"><summary>本次查询请求</summary><pre>{pretty(requestSnapshot)}</pre></details>}
           {["RUNNING", "QUEUED"].includes(result.state) && <button onClick={() => void run(cancel)}>取消查询</button>}
           {Boolean(result.error) && <p className="inline-error">{String((result.error as { code?: unknown }).code ?? "QUERY_FAILED")}</p>}
-          {result.result && <><div className="table-scroll" role="region" tabIndex={0} aria-label="查询结果表格"><table><thead><tr>{result.result.fields.map((item, index) => { const fieldId = item.fieldId ?? item.id ?? ""; return <th key={index}>{fieldId ? fieldName(fieldId) : `字段 ${index + 1}`}</th>; })}</tr></thead><tbody>{result.result.rows.map((row, rowIndex) => <tr key={offset + rowIndex}>{row.map((cell, cellIndex) => <td key={cellIndex}>{cell === null ? "∅" : String(cell)}</td>)}</tr>)}</tbody></table></div>{result.result.truncated && <p>返回结果已截断；计算覆盖范围见查询回执。</p>}<div className="pagination"><button className="secondary" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - pageSize))}>上一页</button><span>第 {Math.floor(offset / pageSize) + 1} 页</span><button className="secondary" disabled={result.result.nextOffset === null} onClick={() => setOffset(result.result!.nextOffset!)}>下一页</button></div><a href={`/data/v3/queries/${encodeURIComponent(queryId)}/content`}>下载查询结果</a></>}
+          {result.result && <><div className="table-scroll" role="region" tabIndex={0} aria-label="查询结果表格"><table><thead><tr>{result.result.fields.map((item, index) => { const fieldId = item.fieldId ?? item.id ?? ""; return <th key={index} scope="col" data-column={layouts[index]}>{fieldId ? fieldName(fieldId) : `字段 ${index + 1}`}</th>; })}</tr></thead><tbody>{result.result.rows.map((row, rowIndex) => <tr key={offset + rowIndex}>{row.map((cell, cellIndex) => <td key={cellIndex} data-column={layouts[cellIndex]}>{cell === null ? "∅" : String(cell)}</td>)}</tr>)}</tbody></table></div>{result.result.truncated && <p>返回结果已截断；计算覆盖范围见查询回执。</p>}<div className="pagination"><button className="secondary" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - pageSize))}>上一页</button><span>第 {Math.floor(offset / pageSize) + 1} 页</span><button className="secondary" disabled={result.result.nextOffset === null} onClick={() => setOffset(result.result!.nextOffset!)}>下一页</button></div><a href={`/data/v3/queries/${encodeURIComponent(queryId)}/content`}>下载查询结果</a></>}
           {result.state === "SUCCEEDED" && !result.resultAvailable && <p>结果已过期，可保留回执或重新查询。</p>}
           <details><summary>查询回执与计算范围</summary><pre>{pretty(result.receipt)}</pre></details>
         </div>

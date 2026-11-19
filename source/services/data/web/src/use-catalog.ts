@@ -155,9 +155,9 @@ export function useCatalog(_run: RunAction, active = true, governanceEnabled = t
     }
     await discovery.refetch();
   };
-  const inspect = async (id: string) => {
+  const inspect = async (id: string, mode: "push" | "replace" = "push") => {
     setHistoricalSemanticId("");
-    setSelectedVersionId(id);
+    setSelectedVersionId(id, mode);
   };
   const saveSemantics = async (semantics: SemanticDraft) => {
     await semanticMutation.mutateAsync(semantics);

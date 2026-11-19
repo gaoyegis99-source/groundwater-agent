@@ -80,7 +80,9 @@
         "application/json"
       ],
       "name": "rules",
-      "required": true
+      "required": true,
+      "logicalType": "record",
+      "rulesSchema": "table-join-rules.v1"
     }
   ],
   "memoryLimitBytes": 8589934592,
@@ -99,8 +101,19 @@
       "kind": "value",
       "name": "summary",
       "schema": {
-        "type": "object"
-      }
+        "type": "object",
+        "properties": {
+          "rowCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "rowCount"
+        ],
+        "additionalProperties": false
+      },
+      "maxBytes": 1048576
     }
   ],
   "parametersSchema": {
@@ -140,7 +153,14 @@
   "runtime": "native",
   "tags": [
     "table",
-    "join"
+    "join",
+    "capability:join",
+    "连接两张表",
+    "左连接",
+    "关联表",
+    "按井号连接",
+    "表连接",
+    "按井号把监测表左连接到井档案"
   ],
   "timeoutSeconds": 1800,
   "title": "Join tables",

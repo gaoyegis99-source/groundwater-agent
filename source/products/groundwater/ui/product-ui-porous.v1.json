@@ -123,6 +123,21 @@
       "parameterOverrides": {},
       "confirmationSummary": [
         {
+          "label": "监测字段",
+          "parameters": [
+            "groupField",
+            "timeField",
+            "valueField"
+          ]
+        },
+        {
+          "label": "聚合设置",
+          "parameters": [
+            "frequency",
+            "aggregation"
+          ]
+        },
+        {
           "label": "分析时段",
           "parameters": [
             "expectedStart",
@@ -130,16 +145,60 @@
           ]
         },
         {
-          "label": "可选分析",
+          "label": "基准期",
           "parameters": [
-            "seasonalTrendEnabled",
-            "seasonFrequency",
-            "thresholdEventsEnabled",
-            "eventComparison",
-            "eventThreshold"
+            "baselineStart",
+            "baselineEnd"
+          ]
+        },
+        {
+          "label": "对比期",
+          "parameters": [
+            "comparisonStart",
+            "comparisonEnd"
           ]
         }
-      ]
+      ],
+      "resultOverview": {
+        "description": "逐井趋势及基准期与对比期的变化。",
+        "sections": [
+          {
+            "label": "主要成果",
+            "outputs": [
+              "mann-kendall-trends",
+              "aggregated-series",
+              "period-changes",
+              "mann-kendall-summary"
+            ]
+          },
+          {
+            "label": "诊断与其他成果",
+            "outputs": [
+              "aggregate-summary",
+              "completeness-profiles",
+              "completeness-summary",
+              "linear-trends",
+              "linear-summary",
+              "outlier-observations",
+              "outlier-summary",
+              "period-change-summary",
+              "change-points",
+              "change-point-summary",
+              "seasonal-trends",
+              "seasonal-trend-summary",
+              "gap-runs",
+              "gap-run-summary",
+              "threshold-classification",
+              "threshold-events",
+              "threshold-event-summary"
+            ]
+          }
+        ],
+        "insight": {
+          "kind": "trend",
+          "output": "mann-kendall-summary"
+        }
+      }
     },
     "groundwater.flow-field": {
       "displayName": "地下水流场",
@@ -169,7 +228,40 @@
             "targetTime"
           ]
         }
-      ]
+      ],
+      "resultOverview": {
+        "description": "以选定时点的井点计算水头并推导流向及流速。",
+        "insight": {
+          "kind": "darcy",
+          "output": "summary"
+        },
+        "visuals": [
+          "head-raster",
+          "flow-direction",
+          "seepage-velocity"
+        ],
+        "sections": [
+          {
+            "label": "主要成果",
+            "outputs": [
+              "head-raster",
+              "flow-direction",
+              "seepage-velocity",
+              "summary"
+            ]
+          },
+          {
+            "label": "数据和诊断",
+            "outputs": [
+              "snapshot",
+              "snapshot-diagnostics",
+              "gradient",
+              "darcy-flux"
+            ]
+          }
+        ]
+      },
+      "publishedOutputStep": {"output": "head-raster", "targetModel": "groundwater.render-map", "targetInput": "sourceVersionId", "arguments": {"title": "Hydraulic head", "valueField": "", "unit": "m"}}
     },
     "groundwater.kriging": {
       "displayName": "克里金插值",
@@ -250,7 +342,37 @@
             "pixelSize"
           ]
         }
-      ]
+      ],
+      "resultOverview": {
+        "description": "查看空间预测与模型方差，结合留一验证判断误差。",
+        "insight": {
+          "kind": "kriging",
+          "output": "kriging-summary",
+          "schemaVersion": "kriging-summary.v1"
+        },
+        "visuals": [
+          "kriging-prediction",
+          "kriging-variance"
+        ],
+        "sections": [
+          {
+            "label": "主要成果",
+            "outputs": [
+              "kriging-prediction",
+              "kriging-variance",
+              "kriging-summary"
+            ]
+          },
+          {
+            "label": "插值诊断",
+            "outputs": [
+              "kriging-loo",
+              "variogram-diagnostics"
+            ]
+          }
+        ]
+      },
+      "publishedOutputStep": {"output": "kriging-prediction", "targetModel": "groundwater.render-map", "targetInput": "sourceVersionId", "arguments": {"title": "Kriging prediction", "valueField": "", "unit": ""}}
     },
     "groundwater.rule-classification": {
       "displayName": "规则分类",
@@ -282,7 +404,26 @@
         }
       },
       "parameterOverrides": {},
-      "confirmationSummary": []
+      "confirmationSummary": [],
+      "resultOverview": {
+        "description": "按本次输入的规则给出分级结果与指标分类。",
+        "sections": [
+          {
+            "label": "主要成果",
+            "outputs": [
+              "classified-table",
+              "classification-summary"
+            ]
+          },
+          {
+            "label": "诊断与其他成果",
+            "outputs": [
+              "indicator-classifications",
+              "classification-rule-summary"
+            ]
+          }
+        ]
+      }
     },
     "groundwater.drastic": {
       "displayName": "DRASTIC 相对脆弱性评价",
@@ -354,7 +495,31 @@
         }
       },
       "parameterOverrides": {},
-      "confirmationSummary": []
+      "confirmationSummary": [],
+      "resultOverview": {
+        "description": "按输入配置对有效网格计算相对脆弱性等级。",
+        "insight": {
+          "kind": "drastic",
+          "output": "drastic-summary",
+          "schemaVersion": "groundwater-drastic-summary.v1",
+          "categoricalVisual": "drastic-classification"
+        },
+        "visuals": [
+          "drastic-classification",
+          "drastic-index"
+        ],
+        "sections": [
+          {
+            "label": "主要成果",
+            "outputs": [
+              "drastic-classification",
+              "drastic-index",
+              "drastic-summary"
+            ]
+          }
+        ]
+      },
+      "publishedOutputStep": {"output": "drastic-index", "targetModel": "groundwater.render-map", "targetInput": "sourceVersionId", "arguments": {"title": "DRASTIC index", "valueField": "", "unit": ""}}
     },
     "groundwater.transfer-learning-analysis": {
       "displayName": "迁移学习回测",
@@ -511,7 +676,27 @@
             "map-month.targetTime"
           ]
         }
-      ]
+      ],
+      "resultOverview": {
+        "description": "用已观测的历史数据做单步留出回测，检验模型在留出时段的预测误差。",
+        "regressionMetrics": "metrics",
+        "sections": [
+          {
+            "label": "主要成果",
+            "outputs": ["metrics", "predictions", "per-well-metrics", "map-points"]
+          },
+          {
+            "label": "训练与数据检查",
+            "outputs": ["target-split", "pretrain-loss", "finetune-loss", "source-scaler", "target-scaler", "pretrained-model-spec", "finetuned-model-spec", "pretrained-weights", "finetuned-weights"]
+          },
+          {
+            "label": "制图资料与检查",
+            "outputs": ["prediction-points", "map-month-diagnostics", "imagery-coverage", "extent", "boundary", "imagery", "counties", "townships", "rivers", "groundwater_systems", "railways", "basin_boundary"]
+          }
+        ]
+      },
+      "publishedOutputStep": {"output": "map-points", "targetModel": "groundwater.render-map", "targetInput": "sourceVersionId", "arguments": {"title": "Prediction points", "valueField": "predicted", "unit": ""}},
+      "inputCaseTag": "case:yaozhanbao-transfer-case"
     },
     "groundwater.summary": {
       "displayName": "数据概览",
@@ -555,7 +740,20 @@
             "axis"
           ]
         }
-      ]
+      ],
+      "resultOverview": {
+        "description": "查看资料的描述统计和质量明细。",
+        "insight": {"kind": "statistics", "output": "summary-details", "schemaVersion": "statistics-describe-details.v1"},
+        "sections": [
+          {
+            "label": "主要成果",
+            "outputs": [
+              "summary",
+              "summary-details"
+            ]
+          }
+        ]
+      }
     },
     "groundwater.monitoring-coverage": {
       "displayName": "监测井覆盖",
@@ -571,7 +769,20 @@
         }
       },
       "parameterOverrides": {},
-      "confirmationSummary": []
+      "confirmationSummary": [],
+      "resultOverview": {
+        "description": "展示井点凸包及几何覆盖摘要。",
+        "sections": [
+          {
+            "label": "主要成果",
+            "outputs": [
+              "coverage",
+              "coverage-summary"
+            ]
+          }
+        ]
+      },
+      "publishedOutputStep": {"output": "coverage", "targetModel": "groundwater.render-map", "targetInput": "sourceVersionId", "arguments": {"title": "Monitoring well coverage", "valueField": "", "unit": ""}}
     },
     "groundwater.render-map": {
       "displayName": "静态地图",
@@ -637,7 +848,23 @@
             "height"
           ]
         }
-      ]
+      ],
+      "resultOverview": {
+        "description": "在源坐标系中绘制单个空间图层。",
+        "sections": [
+          {
+            "label": "主要成果",
+            "outputs": [
+              "map-image",
+              "map-summary"
+            ]
+          }
+        ],
+        "insight": {
+          "kind": "map",
+          "output": "map-summary"
+        }
+      }
     },
     "groundwater.source-sustainability": {
       "displayName": "水源地综合评价",
@@ -653,7 +880,25 @@
         }
       },
       "parameterOverrides": {},
-      "confirmationSummary": []
+      "confirmationSummary": [],
+      "resultOverview": {
+        "description": "查看水源地评价的指标结果和交付文件。",
+        "sections": [
+          {
+            "label": "主要成果",
+            "outputs": [
+              "sustainability-result",
+              "sustainability-result-file"
+            ]
+          },
+          {
+            "label": "诊断与其他成果",
+            "outputs": [
+              "sustainability-run-receipt"
+            ]
+          }
+        ]
+      }
     },
     "groundwater.porous-simulation": {
       "displayName": "孔隙型地下水流与溶质运移",
@@ -669,7 +914,34 @@
         }
       },
       "parameterOverrides": {},
-      "confirmationSummary": []
+      "confirmationSummary": [],
+      "resultOverview": {
+        "description": "查看流与运移仿真图、计算摘要和分析结果。",
+        "sections": [
+          {
+            "label": "主要成果",
+            "outputs": [
+              "porous-figure",
+              "porous-calculation-summary",
+              "porous-analysis"
+            ]
+          },
+          {
+            "label": "诊断与其他成果",
+            "outputs": [
+              "porous-model-package",
+              "porous-model-validation",
+              "porous-effective-parameters",
+              "porous-result-package",
+              "porous-vtk-package",
+              "porous-compile-receipt",
+              "porous-simulation-receipt",
+              "porous-analysis-receipt",
+              "porous-render-receipt"
+            ]
+          }
+        ]
+      }
     },
     "groundwater.porous-calibration": {
       "displayName": "孔隙型 PEST 水头率定",
@@ -692,7 +964,35 @@
         }
       },
       "parameterOverrides": {},
-      "confirmationSummary": []
+      "confirmationSummary": [],
+      "resultOverview": {
+        "description": "核对率定后模拟水头与观测值、残差及参数倍率。",
+        "insight": {
+          "kind": "calibration",
+          "output": "porous-calibration-residuals"
+        },
+        "sections": [
+          {
+            "label": "主要成果",
+            "outputs": [
+              "porous-calibration-residuals",
+              "porous-calibrated-parameters",
+              "porous-calibrated-summary"
+            ]
+          },
+          {
+            "label": "重算资料与凭据",
+            "outputs": [
+              "porous-calibrated-model",
+              "porous-calibrated-result",
+              "porous-calibration-package",
+              "porous-pest-compile-receipt",
+              "porous-pest-receipt",
+              "porous-pest-simulation-receipt"
+            ]
+          }
+        ]
+      }
     },
     "groundwater.porous-scenario-comparison": {
       "displayName": "孔隙型情景对比",
@@ -708,7 +1008,26 @@
         }
       },
       "parameterOverrides": {},
-      "confirmationSummary": []
+      "confirmationSummary": [],
+      "resultOverview": {
+        "description": "查看不同情景之间的计算结果及差异。",
+        "sections": [
+          {
+            "label": "主要成果",
+            "outputs": [
+              "porous-scenario-summary",
+              "porous-scenario-table"
+            ]
+          },
+          {
+            "label": "诊断与其他成果",
+            "outputs": [
+              "porous-scenario-results",
+              "porous-scenario-comparison-receipt"
+            ]
+          }
+        ]
+      }
     },
     "groundwater.porous-map": {
       "displayName": "孔隙型栅格地图准备",
@@ -724,7 +1043,26 @@
         }
       },
       "parameterOverrides": {},
-      "confirmationSummary": []
+      "confirmationSummary": [],
+      "resultOverview": {
+        "description": "查看栅格及源坐标系、范围和波段。",
+        "sections": [
+          {
+            "label": "主要成果",
+            "outputs": [
+              "porous-map-raster",
+              "porous-map-crs"
+            ]
+          },
+          {
+            "label": "诊断与其他成果",
+            "outputs": [
+              "porous-map-receipt"
+            ]
+          }
+        ]
+      },
+      "publishedOutputStep": {"output": "porous-map-raster", "targetModel": "groundwater.render-map", "targetInput": "sourceVersionId", "arguments": {"title": "Groundwater model raster", "valueField": "", "unit": ""}}
     },
     "groundwater.porous-inversion-training": {
       "displayName": "孔隙型反演训练",
@@ -740,7 +1078,32 @@
         }
       },
       "parameterOverrides": {},
-      "confirmationSummary": []
+      "confirmationSummary": [],
+      "continuation": {
+        "output": "porous-inversion-weights",
+        "targetModel": "groundwater.porous-inversion-sampling",
+        "targetInput": "inversionWeightsVersionId",
+        "label": "使用这份权重准备采样"
+      },
+      "resultOverview": {
+        "description": "查看训练与验证指标及发布的反演权重。",
+        "sections": [
+          {
+            "label": "主要成果",
+            "outputs": [
+              "porous-training-metrics",
+              "porous-training-report",
+              "porous-inversion-weights"
+            ]
+          },
+          {
+            "label": "诊断与其他成果",
+            "outputs": [
+              "porous-inversion-training-receipt"
+            ]
+          }
+        ]
+      }
     },
     "groundwater.porous-inversion-sampling": {
       "displayName": "孔隙型反演采样",
@@ -763,7 +1126,26 @@
         }
       },
       "parameterOverrides": {},
-      "confirmationSummary": []
+      "confirmationSummary": [],
+      "resultOverview": {
+        "description": "查看后验样本、采样指标及报告。",
+        "sections": [
+          {
+            "label": "主要成果",
+            "outputs": [
+              "porous-sampling-metrics",
+              "porous-sampling-report",
+              "porous-posterior-samples"
+            ]
+          },
+          {
+            "label": "诊断与其他成果",
+            "outputs": [
+              "porous-inversion-sampling-receipt"
+            ]
+          }
+        ]
+      }
     },
     "groundwater.porous-agricultural-inversion": {
       "displayName": "孔隙型农业抽水反演",
@@ -779,7 +1161,26 @@
         }
       },
       "parameterOverrides": {},
-      "confirmationSummary": []
+      "confirmationSummary": [],
+      "resultOverview": {
+        "description": "查看农业抽水反演指标、报告及计算数组。",
+        "sections": [
+          {
+            "label": "主要成果",
+            "outputs": [
+              "porous-agricultural-metrics",
+              "porous-agricultural-report",
+              "porous-agricultural-arrays"
+            ]
+          },
+          {
+            "label": "诊断与其他成果",
+            "outputs": [
+              "porous-agricultural-inversion-receipt"
+            ]
+          }
+        ]
+      }
     },
     "groundwater.sustainability-input-preparation": {
       "displayName": "水源地评价输入准备",
@@ -809,7 +1210,26 @@
         }
       },
       "parameterOverrides": {},
-      "confirmationSummary": []
+      "confirmationSummary": [],
+      "continuation": {
+        "output": "assessment-input-candidate",
+        "targetModel": "groundwater.source-sustainability",
+        "targetInput": "assessmentVersionId",
+        "label": "复核并发起综合评价",
+        "reviewReport": "assessment-input-sources"
+      },
+      "resultOverview": {
+        "description": "核对评价候选输入和每项指标的来源。",
+        "sections": [
+          {
+            "label": "主要成果",
+            "outputs": [
+              "assessment-input-sources",
+              "assessment-input-candidate"
+            ]
+          }
+        ]
+      }
     }
   },
   "parameterNames": {
@@ -1388,6 +1808,10 @@
       "label": "管理与供需证据 JSON",
       "group": "模型输入"
     }
+  },
+  "quantityKindLabels": {
+    "hydraulic_head": "水头高程",
+    "depth_to_water": "地下水埋深"
   },
   "parameterStages": {
     "extract": {

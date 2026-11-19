@@ -350,7 +350,12 @@ def test_draft_freezes_new_graph_and_evidence_without_execution(kernel_settings)
             )
         ]
     )
-    app, client, model = _app(kernel_settings, [directory, *_steps()])
+    draft = _draft()
+    draft["graph"]["parameters"] = ["profile_axis"]
+    draft["graph"]["nodes"][1]["parameters"]["axis"]["workflowParameter"] = "profile_axis"
+    draft["parameter_values"] = {"profile_axis": "columns"}
+    draft["parameter_sources"][0]["name"] = "profile_axis"
+    app, client, model = _app(kernel_settings, [directory, *_steps(draft)])
     sid, path, created = _create(client)
     assert created["status"] == "GENERATING" and created["payload"] is None
     assert client.get(path + "/export").status_code == 409
@@ -365,6 +370,7 @@ def test_draft_freezes_new_graph_and_evidence_without_execution(kernel_settings)
     assert payload["schemaVersion"] == "workflow-draft.v1"
     assert payload["workflow"]["workflowId"] == f"draft.{created['draftId']}"
     assert payload["workflow"]["version"] == "0.1.0"
+    assert payload["parameterValues"] == {"profile_axis": "columns"}
     expected = to_wire(_draft())
     assert payload["dataBindings"] == expected["dataBindings"]
     assert payload["knowledgeRefs"] == expected["knowledgeRefs"]
@@ -412,6 +418,7 @@ def test_draft_freezes_new_graph_and_evidence_without_execution(kernel_settings)
     assert catalog_tool.strict_json_schema
     assert set(catalog_tool.params_json_schema["required"]) == {
         "progress_intent", "capability", "query", "domain", "after", "limit",
+        "input_format", "output_role",
     }
     assert Draft202012Validator(schema).is_valid(
         json.loads(_reply(_draft()).output[0].arguments)
@@ -454,7 +461,7 @@ def test_draft_freezes_new_graph_and_evidence_without_execution(kernel_settings)
     )
     with connect_database(app.database) as connection:
         assert (
-            connection.execute("SELECT version FROM schema_version").fetchone()[0] == 34
+            connection.execute("SELECT version FROM schema_version").fetchone()[0] == 36
         )
         assert (
             "PRIVATE BODY"

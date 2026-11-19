@@ -5,18 +5,20 @@ from typing import Any
 
 import numpy as np
 
-from moperators.operators.analysis_common import timestamp
+from moperators.operators.analysis_common import input_timezone, timestamp
 from moperators.operators.extension_common import grouped_values, one, summary, write_rows
 
 
 def run(inputs: dict[str, Any], parameters: dict[str, Any], output_dir: Path) -> dict[str, Any]:
-    start = timestamp(parameters["baselineStart"])
-    end = timestamp(parameters["baselineEnd"])
+    source = one(inputs, "observations")
+    timezone_ = input_timezone(source)
+    start = timestamp(parameters["baselineStart"], timezone_)
+    end = timestamp(parameters["baselineEnd"], timezone_)
     if start > end:
         raise ValueError("TIME_RANGE_INVALID")
     group_field = parameters["groupField"]
     grouped = grouped_values(
-        one(inputs, "observations"),
+        source,
         group_field=group_field,
         time_field=parameters["timeField"],
         value_field=parameters["valueField"],

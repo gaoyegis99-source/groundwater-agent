@@ -78,7 +78,12 @@
   "runtime": "native",
   "tags": [
     "raster",
-    "polygonize"
+    "polygonize",
+    "capability:polygonize",
+    "栅格转面",
+    "分类转面",
+    "矢量化",
+    "把栅格类别转为面图层"
   ],
   "timeoutSeconds": 3600,
   "title": "Polygonize raster regions",

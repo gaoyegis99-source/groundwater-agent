@@ -58,10 +58,19 @@
     "remoteBinding": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["serviceId", "operationType"],
+      "required": [
+        "serviceId",
+        "operationType"
+      ],
       "properties": {
-        "serviceId": {"type": "string", "pattern": "^[a-z][a-z0-9.-]*$"},
-        "operationType": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]*$"}
+        "serviceId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9.-]*$"
+        },
+        "operationType": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        }
       }
     },
     "timeoutSeconds": {
@@ -194,6 +203,10 @@
                 }
               }
             }
+          },
+          "maxBytes": {
+            "type": "integer",
+            "minimum": 1
           }
         },
         "allOf": [
@@ -226,6 +239,24 @@
       "minItems": 1,
       "items": {
         "type": "object"
+      }
+    },
+    "composition": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "portSemantics": {
+          "type": "object"
+        },
+        "outputSemantics": {
+          "type": "object"
+        },
+        "constraints": {
+          "type": "array"
+        },
+        "executionPolicy": {
+          "type": "object"
+        }
       }
     }
   }

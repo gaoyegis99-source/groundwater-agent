@@ -82,7 +82,7 @@ class DataClient:
             "checksum": reference.checksum,
             "execution_metadata": execution_metadata,
             "semantic_checksum": sha256_bytes(canonical_json(value["semantics"])),
-            "raster_descriptor": value["descriptor"].get("raster"),
+            "descriptor": value["descriptor"], "semantics": value["semantics"],
         }, StreamingBody(stream)
 
     def begin_publication(
@@ -375,6 +375,7 @@ def _semantics_to_wire(value: dict) -> dict:
         "timezone": "timezone",
         "crs": "crs",
         "vertical_datum": "verticalDatum",
+        "value_kind": "valueKind",
         "limitations": "limitations",
         "source": "source",
     }

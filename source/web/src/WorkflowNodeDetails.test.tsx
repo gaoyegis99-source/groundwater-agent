@@ -87,8 +87,8 @@ it.each(['unavailable', 'different run', 'different nodes', 'duplicate nodes'])(
     fireEvent.click(screen.getByText('节点详情'));
     await waitFor(() => expect(read).toHaveBeenCalledTimes(2));
     await act(async () => {});
-    expect(screen.getByText('read · 节点已完成')).toBeVisible();
-    expect(screen.getByText('analyze · 节点失败')).toBeVisible();
+    expect(screen.getByText('read').closest('dt')).toHaveTextContent('节点已完成');
+    expect(screen.getByText('analyze').closest('dt')).toHaveTextContent('节点失败');
     expect(screen.getByText('WORKER_LOST')).toBeVisible();
     expect(screen.queryByRole('region', { name: '工作流节点依赖图' })).toBeNull();
   } finally {

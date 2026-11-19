@@ -43,14 +43,14 @@
         "image/tiff"
       ],
       "name": "rasters",
-      "required": true
+      "required": true,
+      "minItems": 1
     }
   ],
   "memoryLimitBytes": 8589934592,
   "outputs": [
     {
       "formats": [
-        "cog",
         "geotiff"
       ],
       "kind": "artifact",
@@ -75,7 +75,12 @@
   "runtime": "native",
   "tags": [
     "raster",
-    "mosaic"
+    "mosaic",
+    "capability:mosaic",
+    "镶嵌",
+    "拼接栅格",
+    "栅格拼接",
+    "把相邻栅格拼接成一幅图"
   ],
   "timeoutSeconds": 3600,
   "title": "Mosaic aligned rasters",

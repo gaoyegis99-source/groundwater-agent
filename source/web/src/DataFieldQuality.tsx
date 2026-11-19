@@ -7,18 +7,21 @@ export function DataFieldQuality({ descriptor, semantics }: Pick<ResourceDetail,
   return <section>
     <h4>字段与质量</h4>
     {profile && <>
-      <p>全量统计 · {rowCount} 行</p>
+      <p>{rowCount == null ? '已提供字段统计' : `全量统计 · ${rowCount} 行`}</p>
       <p className="muted">样例为每字段最先出现的 {profile.sampleLimitPerField} 个非空值，不代表值分布。</p>
     </>}
     <div className="table-scroll" tabIndex={0} role="region" aria-label="字段与质量">
       <table>
-        <thead><tr><th scope="col">字段</th><th scope="col">类型</th><th scope="col">单位</th><th scope="col">空值</th>{profile && <th scope="col">字段画像</th>}</tr></thead>
+        <thead><tr><th scope="col">字段</th><th scope="col">类型</th><th scope="col">单位</th><th scope="col" data-column="number">空值</th>{profile && <th scope="col">字段画像</th>}</tr></thead>
         <tbody>{fields.map(field => {
           const semantic = semantics.fields?.[field.fieldId];
           const facts = field.profile;
           return <tr key={field.fieldId}>
-            <th scope="row"><strong>{field.name}</strong>{semantic?.meaning && <small>{semantic.meaning}</small>}<details><summary>字段标识</summary><code>{field.fieldId}</code></details></th>
-            <td>{field.type}</td><td>{semantic?.unit ?? '未声明'}</td><td>{field.nullCount ?? '未统计'}</td>
+            <th scope="row"><strong>{field.name}</strong>{semantic?.meaning && <small>{semantic.meaning}</small>}
+              {semantic?.source && <small>来源 · {semantic.source}</small>}
+              <details><summary>字段标识</summary><code>{field.fieldId}</code></details>
+            </th>
+            <td>{field.type}</td><td>{semantic?.unit ?? '未声明'}</td><td data-column="number">{field.nullCount ?? '未统计'}</td>
             {profile && <td>{facts && <>
               <div>非空值 {facts.nonNullCount}</div>
               {facts.nonFiniteCount ? <div>非有限数 {facts.nonFiniteCount}</div> : null}
@@ -33,7 +36,7 @@ export function DataFieldQuality({ descriptor, semantics }: Pick<ResourceDetail,
               {facts.sampleValues.length > 0 && <details><summary>查看样例</summary><ul>
                 {facts.sampleValues.map((sample, index) => <li key={index}><code>{formatFieldProfileValue(sample, field.type, facts.exactIntegers?.sampleValues?.[index])}</code></li>)}
               </ul></details>}
-            </>}</td>}
+            </>}{!facts && '未统计'}</td>}
           </tr>;
         })}</tbody>
       </table>

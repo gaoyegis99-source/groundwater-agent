@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { newRequestId } from "@platform/ui-boundary";
-import { useUrlParam } from "@platform/operator-ui";
+import { FilePicker, useUrlParam } from "@platform/operator-ui";
 import { BindingPicker } from "./BindingPicker";
 import {
   errorText,
@@ -233,7 +233,7 @@ export function ImportPanel({
               <label className="file-dropzone">
                 <strong>选择知识包 JSON</strong>
                 <span>文件通过预检后，由你确认提交。</span>
-                <input aria-label="知识包文件" type="file" accept=".json,application/json" disabled={submitting} onChange={event => void chooseFile(event.target.files?.[0])} />
+                <FilePicker action="选择 JSON 文件" aria-label="选择 JSON 文件（知识包文件）" accept=".json,application/json" disabled={submitting} onChange={event => void chooseFile(event.target.files?.[0])} />
               </label>
               <details className="guidance-card">
                 <summary>知识包要求</summary>
@@ -245,7 +245,7 @@ export function ImportPanel({
             <div className="package-preview">
               <div className="preview-heading">
                 <div><span className="status-chip">本地校验通过</span><h3>待导入内容</h3></div>
-                <label className="replace-file">更换文件<input aria-label="更换知识包文件" type="file" accept=".json,application/json" disabled={submitting} onChange={event => void chooseFile(event.target.files?.[0])} /></label>
+                <FilePicker action="更换文件" aria-label="更换文件（知识包文件）" accept=".json,application/json" disabled={submitting} onChange={event => void chooseFile(event.target.files?.[0])} />
               </div>
               <dl className="summary-grid">
                 <div><dt>项目</dt><dd>{knowledgePackage.projectId}</dd></div>

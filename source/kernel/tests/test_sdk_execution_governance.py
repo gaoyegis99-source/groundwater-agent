@@ -1536,11 +1536,16 @@ def test_empty_provider_response_gets_one_protocol_repair(kernel_settings):
     ]
 
 
-def test_early_sdk_model_behavior_error_gets_one_protocol_repair(
-    kernel_settings,
-):
+@pytest.mark.parametrize("invalid_arguments", [False, True])
+def test_model_behavior_error_gets_one_protocol_repair(kernel_settings, invalid_arguments):
+    malformed = _final().model_copy(update={"arguments": "{"})
+    first = (
+        ModelStep(output=[malformed])
+        if invalid_arguments
+        else ModelStep(error=ModelBehaviorError("malformed provider tool output"))
+    )
     model = ScriptedModel([
-        ModelStep(error=ModelBehaviorError("malformed provider tool output")),
+        first,
         ModelStep(output=[_final()]),
     ])
     application = _application(kernel_settings, model)

@@ -44,8 +44,7 @@
         "flatgeobuf",
         "geojson",
         "geopackage",
-        "geoparquet",
-        "parquet"
+        "geoparquet"
       ],
       "mediaTypes": [
         "application/geopackage+sqlite3",
@@ -61,7 +60,6 @@
   "outputs": [
     {
       "formats": [
-        "cog",
         "geotiff"
       ],
       "kind": "artifact",
@@ -162,7 +160,11 @@
   "runtime": "native",
   "tags": [
     "raster",
-    "rasterize"
+    "rasterize",
+    "capability:rasterize",
+    "栅格化",
+    "矢量转栅格",
+    "按字段把矢量图层栅格化"
   ],
   "timeoutSeconds": 3600,
   "title": "Rasterize vector features",

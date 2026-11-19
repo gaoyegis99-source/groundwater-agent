@@ -57,7 +57,9 @@
         "application/json"
       ],
       "name": "rules",
-      "required": true
+      "required": true,
+      "logicalType": "record",
+      "rulesSchema": "table-filter-rules.v1"
     }
   ],
   "memoryLimitBytes": 8589934592,
@@ -86,8 +88,24 @@
       "kind": "value",
       "name": "summary",
       "schema": {
-        "type": "object"
-      }
+        "type": "object",
+        "properties": {
+          "matchedRowCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "rejectedRowCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "matchedRowCount",
+          "rejectedRowCount"
+        ],
+        "additionalProperties": false
+      },
+      "maxBytes": 1048576
     }
   ],
   "parametersSchema": {
@@ -98,7 +116,12 @@
   "runtime": "native",
   "tags": [
     "table",
-    "filter"
+    "filter",
+    "capability:filter",
+    "筛选表格",
+    "过滤行",
+    "按条件筛选",
+    "按条件筛选表格"
   ],
   "timeoutSeconds": 1200,
   "title": "Filter table rows",

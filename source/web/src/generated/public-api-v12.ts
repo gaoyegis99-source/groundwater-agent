@@ -1323,6 +1323,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v12/sessions/task-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Task History */
+        get: operations["kernel_list_task_history"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v12/sessions/{sessionId}": {
         parameters: {
             query?: never;
@@ -3151,6 +3168,8 @@ export interface components {
             timeRange?: string | null;
             /** Timezone */
             timezone?: string | null;
+            /** Valuekind */
+            valueKind?: string | null;
             /** Verticaldatum */
             verticalDatum?: string | null;
         };
@@ -3393,11 +3412,18 @@ export interface components {
         };
         /** CapabilitiesResponse */
         kernel__CapabilitiesResponse: {
+            /**
+             * Authenticationrequired
+             * @default true
+             */
+            authenticationRequired: boolean;
             currentUser: components["schemas"]["kernel__CurrentUser"];
             /** Models */
             models: components["schemas"]["kernel__ModelCapability"][];
             /** Observationtools */
             observationTools: components["schemas"]["kernel__ObservationToolCapability"][];
+            /** Operators */
+            operators?: components["schemas"]["kernel__OperatorCapability"][];
             /**
              * Orchestrationowner
              * @constant
@@ -3473,6 +3499,7 @@ export interface components {
             /** Subject */
             subject: string;
         };
+        kernel__JsonValue: unknown;
         /** LoginRequest */
         kernel__LoginRequest: {
             /** Password */
@@ -3531,6 +3558,7 @@ export interface components {
              * @enum {string}
              */
             requestedMode: "AUTO" | "DIALOGUE" | "WORKFLOW_DRAFT";
+            workflowSelection?: components["schemas"]["kernel__MessageWorkflowSelection"] | null;
         };
         /** MessageHistoryResponse */
         kernel__MessageHistoryResponse: {
@@ -3657,6 +3685,37 @@ export interface components {
             /** Workflowdraftid */
             workflowDraftId: string | null;
         };
+        /** MessageWorkflowContinuation */
+        kernel__MessageWorkflowContinuation: {
+            /** Outputname */
+            outputName: string;
+            /** Runid */
+            runId: string;
+        };
+        /** MessageWorkflowSelection */
+        kernel__MessageWorkflowSelection: {
+            continuation?: components["schemas"]["kernel__MessageWorkflowContinuation"] | null;
+            /** Inputbindings */
+            inputBindings?: {
+                [key: string]: number;
+            };
+            /** Modelchecksum */
+            modelChecksum: string;
+            /** Modelid */
+            modelId: string;
+            /** Modelversion */
+            modelVersion: string;
+            /** Parameters */
+            parameters?: {
+                [key: string]: components["schemas"]["kernel__JsonValue"];
+            };
+            /** Workflowchecksum */
+            workflowChecksum: string;
+            /** Workflowid */
+            workflowId: string;
+            /** Workflowversion */
+            workflowVersion: string;
+        };
         /** ModelCapability */
         kernel__ModelCapability: {
             /** Applicabilitystatus */
@@ -3708,6 +3767,79 @@ export interface components {
             outputSchema: {
                 [key: string]: unknown;
             };
+        };
+        /** OperatorCapability */
+        kernel__OperatorCapability: {
+            /** Confirmationsupported */
+            confirmationSupported: boolean;
+            /** Domain */
+            domain: string;
+            /** Operatorid */
+            operatorId: string;
+            /**
+             * Runtime
+             * @enum {string}
+             */
+            runtime: "native" | "qgis" | "remote_http";
+            scientificReview: components["schemas"]["kernel__OperatorScientificReview"] | null;
+            /**
+             * Scientificstatus
+             * @enum {string}
+             */
+            scientificStatus: "REQUIRES_CASE_AND_REVIEW" | "REVIEW_EVIDENCE_ATTACHED";
+            /** Tags */
+            tags: string[];
+            /** Title */
+            title: string;
+            validation: components["schemas"]["kernel__OperatorValidationEvidence"];
+            /** Version */
+            version: string;
+            /** Workflowuses */
+            workflowUses: components["schemas"]["kernel__OperatorWorkflowUse"][];
+        };
+        /** OperatorModelUse */
+        kernel__OperatorModelUse: {
+            /** Modelid */
+            modelId: string;
+            /** Version */
+            version: string;
+        };
+        /** OperatorReviewReference */
+        kernel__OperatorReviewReference: {
+            /** Checksum */
+            checksum: string;
+            /** Path */
+            path: string;
+        };
+        /** OperatorScientificReview */
+        kernel__OperatorScientificReview: {
+            benchmark: components["schemas"]["kernel__OperatorReviewReference"];
+            domainReview: components["schemas"]["kernel__OperatorReviewReference"];
+        };
+        /** OperatorValidationEvidence */
+        kernel__OperatorValidationEvidence: {
+            /** Checkedon */
+            checkedOn: string | null;
+            /** Coverage */
+            coverage: ("BROWSER_SINGLE_NODE" | "WORKER_SINGLE_OPERATOR" | "REMOTE_PRESET_NODE") | null;
+            /** Implementationrevision */
+            implementationRevision: string | null;
+            /** Reportchecksum */
+            reportChecksum: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "PASSED" | "STALE" | "NOT_RECORDED";
+        };
+        /** OperatorWorkflowUse */
+        kernel__OperatorWorkflowUse: {
+            /** Models */
+            models: components["schemas"]["kernel__OperatorModelUse"][];
+            /** Version */
+            version: string;
+            /** Workflowid */
+            workflowId: string;
         };
         /** PreparationResponse */
         kernel__PreparationResponse: {
@@ -3944,6 +4076,28 @@ export interface components {
             sessionId: string;
             /** Status */
             status: string;
+        };
+        /** TaskHistoryItem */
+        kernel__TaskHistoryItem: {
+            /** Goalrevision */
+            goalRevision: number;
+            /** Modelid */
+            modelId: string | null;
+            /** Sessionid */
+            sessionId: string;
+            /** Status */
+            status: string;
+            /** Title */
+            title: string | null;
+            /** Updatedat */
+            updatedAt: string;
+        };
+        /** TaskHistoryPage */
+        kernel__TaskHistoryPage: {
+            /** Items */
+            items: components["schemas"]["kernel__TaskHistoryItem"][];
+            /** Nextcursor */
+            nextCursor: number | null;
         };
         /** TaskResponse */
         kernel__TaskResponse: {
@@ -13547,6 +13701,92 @@ export interface operations {
             };
         };
     };
+    kernel_list_task_history: {
+        parameters: {
+            query?: {
+                cursor?: number | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["kernel__TaskHistoryPage"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["kernel__ProblemDetailsV11"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["kernel__ProblemDetailsV11"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["kernel__ProblemDetailsV11"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["kernel__ProblemDetailsV11"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["kernel__ProblemDetailsV11"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["kernel__ProblemDetailsV11"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["kernel__ProblemDetailsV11"];
+                };
+            };
+        };
+    };
     kernel_get_session: {
         parameters: {
             query?: never;
@@ -14178,6 +14418,7 @@ export interface operations {
             query?: {
                 cursor?: number | null;
                 limit?: number;
+                goalRevision?: number | null;
             };
             header?: never;
             path: {
@@ -14617,6 +14858,7 @@ export interface operations {
         parameters: {
             query?: {
                 cursor?: number;
+                goalRevision?: number | null;
             };
             header?: never;
             path: {

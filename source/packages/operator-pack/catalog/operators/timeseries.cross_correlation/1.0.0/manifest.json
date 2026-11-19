@@ -92,8 +92,24 @@
       "kind": "value",
       "name": "summary",
       "schema": {
-        "type": "object"
-      }
+        "type": "object",
+        "properties": {
+          "groupCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "rowCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "groupCount",
+          "rowCount"
+        ],
+        "additionalProperties": false
+      },
+      "maxBytes": 1048576
     }
   ],
   "parametersSchema": {
@@ -165,7 +181,12 @@
   "runtime": "native",
   "tags": [
     "timeseries",
-    "cross_correlation"
+    "cross_correlation",
+    "capability:cross_correlation",
+    "互相关",
+    "交叉相关",
+    "滞后相关",
+    "计算两条监测序列的滞后互相关"
   ],
   "timeoutSeconds": 1800,
   "title": "Calculate time-series cross-correlation",

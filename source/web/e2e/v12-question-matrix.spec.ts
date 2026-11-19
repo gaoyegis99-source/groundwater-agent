@@ -12,8 +12,6 @@ async function newChat(page: Page) {
   const created = page.waitForResponse(response =>
     new URL(response.url()).pathname === '/api/v12/sessions'
       && response.request().method() === 'POST');
-  const mobileNavigation = page.getByRole('button', { name: '打开会话导航' });
-  if (await mobileNavigation.isVisible()) await mobileNavigation.click();
   await page.getByRole('button', { name: '新建对话', exact: true }).click();
   const response = await created;
   expect(response.status()).toBe(200);
@@ -78,7 +76,7 @@ test('逐题 02：模糊请求给出一个问题和三个互斥选项', async ({
 });
 
 test('水位高程和埋深澄清作为普通消息保存，且不会批准运行', async ({ page }, info) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize({ width: 1024, height: 768 });
   const id = await newChat(page);
   await ask(page, id, '监测表只有“水位（米）”一列，帮我分析这列水位。');
   const history = async (): Promise<History> => messages(page, id);
@@ -92,7 +90,7 @@ test('水位高程和埋深澄清作为普通消息保存，且不会批准运�
   const depth = options.getByRole('button', { name: /井口埋深/ });
   await expect(depth).toBeEnabled();
   await depth.scrollIntoViewIfNeeded();
-  await page.screenshot({ path: info.outputPath('water-level-clarification-mobile.png') });
+  await page.screenshot({ path: info.outputPath('water-level-clarification-desktop-1024.png') });
   const selected = clarification.interactionOptions.find(option => option.label === '井口埋深')!;
   const requested = page.waitForResponse(response => response.request().method() === 'POST'
     && new URL(response.url()).pathname === `/api/v12/sessions/${id}/messages`);
@@ -150,10 +148,10 @@ test('水位方法草稿保留依据和旧草稿，且没有执行授权', async
   await expect(graph).toHaveAttribute('open', '');
   await expect(graphView).toBeVisible();
   await card.screenshot({ path: info.outputPath('method-draft-desktop.png') });
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize({ width: 1024, height: 768 });
   await expect(graphView).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await graph.screenshot({ path: info.outputPath('method-draft-graph-mobile.png') });
+  await graph.screenshot({ path: info.outputPath('method-draft-graph-desktop-1024.png') });
   await graphToggle.click();
   await expect(graphView).toHaveCount(0);
   await page.setViewportSize({ width: 1440, height: 1000 });

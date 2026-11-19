@@ -6,6 +6,7 @@ import json
 import re
 
 
+from ..mode import allows_operator_proposal
 from ..models import (
     AgentPlanStepV2,
     InteractionOptionV1,
@@ -327,7 +328,11 @@ def validate_terminal_reply_context(
     if clarification_only:
         validate_clarification_reply(reply)
         return
-    if mode != "WORKFLOW_DRAFT" and reply.workflow_draft is not None:
+    if (
+        reply.workflow_draft is not None
+        and mode != "WORKFLOW_DRAFT"
+        and not allows_operator_proposal(context)
+    ):
         raise ValueError("AGENT_WORKFLOW_DRAFT_INVALID")
     if mode == "WORKFLOW_DRAFT" and (
         reply.workflow_draft is None and not reply.unresolved_items
@@ -335,12 +340,10 @@ def validate_terminal_reply_context(
         raise ValueError("AGENT_WORKFLOW_DRAFT_INVALID")
     if (
         policy == "EXECUTION_PROPOSAL"
+        and reply.workflow_draft is None
         and not reply.include_execution_status
         and not reply.unresolved_items
     ):
-        # A successful proposal terminates through an executable-model
-        # interruption, never through submit_reply.  A final reply at this point
-        # is valid only when it identifies concrete blockers.
         raise ValueError("EXECUTION_PROPOSAL_NOT_CREATED")
     if not reply.unresolved_items and reply.interaction_options:
         raise ValueError("INTERACTION_OPTIONS_WITHOUT_UNRESOLVED_ITEM")

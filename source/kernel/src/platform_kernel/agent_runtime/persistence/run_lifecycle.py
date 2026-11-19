@@ -7,6 +7,7 @@ import sqlite3
 
 from ...application.ports import AgentProjectionPort
 from ...database import append_event, connect_database, duration_ms, utc_now
+from ...interaction.message_request_common import materialize_workflow_draft
 from ..memory import MemoryUpdate
 from ..models import AgentFinalV5, AgentRun
 from ..result_processing import PreparedAction
@@ -98,12 +99,17 @@ def save_waiting_result(
             refresh_task(connection, run.session_id)
             return
         save_memory_connection(connection, run.session_id, memory_update)
+        composition_plan_revision = None
         if workflow_draft is not None:
             publish_workflow_draft(connection, run.agent_run_id, workflow_draft)
+            composition_plan_revision = connection.execute(
+                "SELECT COALESCE(MAX(revision), 0) + 1 FROM agent_plans WHERE agent_run_id=?",
+                (run.agent_run_id,),
+            ).fetchone()[0]
             connection.execute(
                 "INSERT INTO agent_plans VALUES (?, ?, ?, ?, ?)",
                 (
-                    run.agent_run_id, 1, workflow_draft["title"],
+                    run.agent_run_id, composition_plan_revision, workflow_draft["title"],
                     json.dumps([
                         {"step_id": item["node_id"], "tool": item["operator_id"], "purpose": item["title"]}
                         for item in workflow_draft["operators"]
@@ -133,7 +139,7 @@ def save_waiting_result(
                     action.workflow_id,
                     action.workflow_version,
                     action.workflow_checksum,
-                    action.plan_revision,
+                    composition_plan_revision if composition_plan_revision is not None else action.plan_revision,
                     action.arguments_json,
                     action.input_references_json,
                     action.schema_checksum,
@@ -465,8 +471,30 @@ def supersede_waiting_run(
 
 def publish_workflow_draft(connection, agent_run_id: str, payload: dict) -> None:
     row = connection.execute(
-        "SELECT * FROM workflow_drafts WHERE agent_run_id=?", (agent_run_id,),
+        "SELECT draft_id, session_id FROM workflow_drafts WHERE agent_run_id=?",
+        (agent_run_id,),
     ).fetchone()
+    if row is None:
+        request = connection.execute(
+            """SELECT m.session_id, m.request_id, m.message, m.goal_revision
+                 FROM message_requests m JOIN agent_requests a USING (agent_run_id)
+                WHERE m.agent_run_id=? AND a.mode='DIALOGUE'
+                  AND a.dialogue_policy='EXECUTION_PROPOSAL'
+                  AND a.workflow_draft_id IS NULL""",
+            (agent_run_id,),
+        ).fetchone()
+        if request is None:
+            raise ValueError("WORKFLOW_DRAFT_PUBLICATION_INVALID")
+        materialize_workflow_draft(
+            connection, **dict(request), agent_run_id=agent_run_id,
+            workflow_draft_id=agent_run_id, created_at=utc_now(),
+        )
+        for table in ("message_requests", "agent_requests"):
+            connection.execute(
+                f"UPDATE {table} SET workflow_draft_id=? WHERE agent_run_id=?",
+                (agent_run_id, agent_run_id),
+            )
+        row = {"draft_id": agent_run_id, "session_id": request["session_id"]}
     changed = connection.execute(
         "UPDATE workflow_drafts SET payload_json=? WHERE agent_run_id=? AND payload_json IS NULL",
         (json.dumps(payload, ensure_ascii=False, separators=(",", ":"), allow_nan=False), agent_run_id),

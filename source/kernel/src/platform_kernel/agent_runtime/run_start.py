@@ -59,7 +59,7 @@ async def start_run(
             started_at=utc_now(),
         )
 
-    if dialogue_policy == "EXECUTION_PROPOSAL":
+    if dialogue_policy == "EXECUTION_PROPOSAL" and not request_context.get("workflow_selection"):
         resolved_case = await resolve_execution_case(
             deps.settings,
             deps.sdk_execution.observation_client,

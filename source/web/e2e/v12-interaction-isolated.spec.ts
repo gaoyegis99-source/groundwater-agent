@@ -264,11 +264,11 @@ for (const scenario of [
     await expect(cards).toHaveCount(1);
     await expect(cards).toHaveAttribute('data-workflow-run-id', result.workflowRunId);
     await expect(cards).toHaveAttribute('data-status', 'SUCCEEDED');
-    await expect(cards.getByRole('link', { name: '下载', exact: true })).toHaveCount(2);
+    await expect(cards.getByRole('link', { name: /^下载/ })).toHaveCount(2);
     for (const output of result.outputs) {
       const webPath = info.outputPath(`web-${output.outputName}.json`);
       const tliPath = info.outputPath(`tli-${output.outputName}.json`);
-      const link = cards.locator(`[data-resource-id="${output.versionId}"]`).getByRole('link', { name: '下载', exact: true });
+      const link = cards.locator(`[data-resource-id="${output.versionId}"]`).getByRole('link', { name: /^下载/ });
       await expect(link).toHaveAttribute('href', `/api/v12/data/versions/${output.versionId}/objects/${output.objectId}/content`);
       await expect(link).toHaveAttribute('download', `${output.outputName}.json`);
       const downloading = page.waitForEvent('download');
@@ -300,10 +300,10 @@ for (const scenario of [
       await expect(panel.getByText(result.workflowRunId, { exact: true })).toBeVisible();
       await page.setViewportSize({ width: 1440, height: 900 });
       await page.screenshot({ path: info.outputPath('result-review-desktop.png') });
-      await page.setViewportSize({ width: 390, height: 844 });
+      await page.setViewportSize({ width: 1024, height: 768 });
       await expect(panel.getByRole('button', { name: '带成果打开新会话' })).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-      await page.screenshot({ path: info.outputPath('result-review-mobile.png') });
+      await page.screenshot({ path: info.outputPath('result-review-desktop-1024.png') });
       const created = page.waitForResponse(response => new URL(response.url()).pathname === '/api/v12/sessions'
         && response.request().method() === 'POST');
       await panel.getByRole('button', { name: '带成果打开新会话' }).click();
@@ -321,7 +321,7 @@ for (const scenario of [
       expect(next).toMatchObject({ goalRevision: 0, task: null, agentRunId: null,
         confirmation: null, workflowRunIds: [], remoteOutputs: [] });
       expect(await clients.get<{ items: unknown[] }>(`/api/v12/sessions/${nextId}/messages`)).toMatchObject({ items: [] });
-      await page.screenshot({ path: info.outputPath('continued-result-mobile.png') });
+      await page.screenshot({ path: info.outputPath('continued-result-desktop-1024.png') });
     }
     writeFileSync(info.outputPath('interaction-verification.json'), JSON.stringify({
       status: 'PASS', ...result, projectId, versionId, browserDownloads: 2, tliDownloads: 2, sdkDownloads: 2,

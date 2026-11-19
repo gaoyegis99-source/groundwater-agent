@@ -32,8 +32,7 @@
         "flatgeobuf",
         "geojson",
         "geopackage",
-        "geoparquet",
-        "parquet"
+        "geoparquet"
       ],
       "mediaTypes": [
         "application/geopackage+sqlite3",
@@ -71,7 +70,11 @@
   "runtime": "qgis",
   "tags": [
     "vector",
-    "multipart-to-singleparts"
+    "multipart-to-singleparts",
+    "capability:multipart_to_singleparts",
+    "多部件拆分",
+    "多部件转单部件",
+    "把多部件要素拆成单部件"
   ],
   "timeoutSeconds": 3600,
   "title": "Convert multipart features to single parts",

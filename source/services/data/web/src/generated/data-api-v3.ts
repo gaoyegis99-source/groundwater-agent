@@ -2309,6 +2309,8 @@ export interface components {
             timeRange?: string | null;
             /** Timezone */
             timezone?: string | null;
+            /** Valuekind */
+            valueKind?: string | null;
             /** Verticaldatum */
             verticalDatum?: string | null;
         };

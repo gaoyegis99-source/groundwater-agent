@@ -114,7 +114,8 @@
           "bands"
         ],
         "type": "object"
-      }
+      },
+      "maxBytes": 1048576
     }
   ],
   "parametersSchema": {
@@ -130,7 +131,11 @@
   "runtime": "native",
   "tags": [
     "raster",
-    "statistics"
+    "statistics",
+    "capability:statistics",
+    "栅格统计",
+    "波段统计",
+    "查看栅格每个波段的统计量"
   ],
   "timeoutSeconds": 3600,
   "title": "Calculate raster statistics",

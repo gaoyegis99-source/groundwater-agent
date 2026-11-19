@@ -1,5 +1,11 @@
 export { formatFieldProfileValue, validDatasetProfile, validFieldProfile, type DatasetProfile, type FieldProfileFacts } from './data-field-profile';
 
+export function tableColumnLayout(type: unknown): 'number' | 'time' | undefined {
+  if (typeof type !== 'string') return undefined;
+  if (/^(?:u?int(?:8|16|32|64|128)?|u?(?:tinyint|smallint|integer|bigint|hugeint)|float(?:16|32|64)?|double|real|decimal(?:128|256)?|numeric|number)\b/i.test(type)) return 'number';
+  if (/^(?:date(?:32|64)?|datetime|timestamp(?:tz)?|time(?:32|64)?)\b/i.test(type)) return 'time';
+}
+
 export type ProblemIssue = {
   pointer: string;
   code?: string;
@@ -218,6 +224,7 @@ export async function readProblem(response: Response): Promise<PlatformUiError> 
 export async function readValidatedJson<T>(
   response: Response,
   validator: JsonValidator | undefined,
+  parse?: (text: string) => unknown,
 ): Promise<T> {
   if (!response.ok) throw await readProblem(response);
   if (!response.headers.get("content-type")?.includes("json")) {
@@ -225,7 +232,7 @@ export async function readValidatedJson<T>(
   }
   let value: unknown;
   try {
-    value = await response.json();
+    value = parse ? parse(await response.text()) : await response.json();
   } catch {
     throw new PlatformUiError(response.status, "API_RESPONSE_INVALID", response.headers.get("X-Request-ID"));
   }

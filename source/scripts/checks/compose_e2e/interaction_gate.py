@@ -57,11 +57,14 @@ def run_interaction_gate(
     compose_project: str, project_id: str,
 ) -> None:
     from webui_seed import seed_browser_data
+    from tests.e2e.groundwater.model_lifecycle import run_published_output_step_case
 
     report = (report_root / compose_project).resolve()
     report.mkdir(parents=True)
     print(f"Interaction evidence: {report}", flush=True)
     seed_browser_data(base_url)
+    map_evidence = run_published_output_step_case(base_url)
+    (report / "published-output-step.json").write_text(json.dumps(map_evidence, indent=2) + "\n", encoding="utf-8")
     with httpx.Client(
         base_url=base_url, headers=public_api_headers(), trust_env=False, timeout=15,
     ) as client:

@@ -233,7 +233,7 @@ def _safe_components(payload: object) -> dict[str, str] | None:
         return None
     components = payload["components"]
     if not components or any(
-        not isinstance(name, str) or status not in {"UP", "DOWN"}
+        not isinstance(name, str) or status not in {"UP", "DOWN", "UNAVAILABLE"}
         for name, status in components.items()
     ):
         return None

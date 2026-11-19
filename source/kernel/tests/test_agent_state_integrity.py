@@ -100,8 +100,8 @@ def test_waiting_confirmation_projects_current_session_in_same_transaction(
     before = _snapshot(application.database)
     original = state_projection.ensure_confirmation
 
-    def fail_projection(connection, saved):
-        original(connection, saved)
+    def fail_projection(connection, saved, **options):
+        original(connection, saved, **options)
         raise RuntimeError("confirmation storage failed")
 
     monkeypatch.setattr(state_projection, "ensure_confirmation", fail_projection)

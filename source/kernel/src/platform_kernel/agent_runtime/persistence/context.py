@@ -94,9 +94,11 @@ def load_initial_context_sources(
         ).fetchone()
         request_row = connection.execute(
             """SELECT a.*,COALESCE(m.clarification_required,0) clarification_required,
-                      COALESCE(m.input_references_json,'[]') input_references_json
-               FROM agent_requests a LEFT JOIN message_requests m
-                 ON m.agent_run_id=a.agent_run_id WHERE a.agent_run_id=?""",
+                      COALESCE(m.input_references_json,'[]') input_references_json,
+                      w.selection_json workflow_selection_json
+               FROM agent_requests a LEFT JOIN message_requests m ON m.agent_run_id=a.agent_run_id
+               LEFT JOIN message_workflow_selections w ON w.agent_run_id=a.agent_run_id
+               WHERE a.agent_run_id=?""",
             (agent_run_id,),
         ).fetchone()
         durable_request = connection.execute(
@@ -153,6 +155,7 @@ def load_initial_context_sources(
         request_context["clarification_only"] = bool(
             request_context.pop("clarification_required")
         )
+        request_context["workflow_selection"] = json.loads(request_context.pop("workflow_selection_json") or "null")
         request_context["input_references"] = json.loads(
             request_context.pop("input_references_json")
         )
@@ -269,6 +272,20 @@ def list_session_results(
             if last_revision > after_revision
             else ()
         )
+        dependent_rows = connection.execute(
+            """SELECT ar.goal_revision, ar.agent_run_id, wr.tool_call_id,
+                      ar.status AS agent_status, wr.position,
+                      'APPROVED' AS decision_status, wr.model_id,
+                      wr.run_id AS workflow_run_id, wr.status AS workflow_status,
+                      wr.outputs_json, wr.attempt
+               FROM agent_runs ar JOIN workflow_runs wr ON wr.agent_run_id=ar.agent_run_id
+               JOIN workflow_output_sources d ON d.workflow_run_id=wr.run_id
+               WHERE ar.session_id=? AND ar.project_id=? AND ar.goal_revision>? AND ar.goal_revision<=?
+                 AND wr.attempt=(SELECT MAX(w2.attempt) FROM workflow_runs w2
+                                 WHERE w2.agent_run_id=wr.agent_run_id AND w2.tool_call_id=wr.tool_call_id)""",
+            (session_id, project_id, after_revision, last_revision),
+        ).fetchall()
+        rows = sorted([*rows, *dependent_rows], key=lambda row: (row["goal_revision"], row["position"], row["tool_call_id"]))
         items = [
             {
                 "goal_revision": row["goal_revision"],

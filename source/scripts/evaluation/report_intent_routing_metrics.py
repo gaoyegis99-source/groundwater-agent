@@ -13,7 +13,7 @@ import sqlite3
 # The report is intentionally read-only.  Databases must have passed the
 # verified Kernel v29 -> v30 -> v31 -> v32 -> v33 -> v34 upgrades before reporting
 # rather than letting analytics accept an obsolete or unfrozen layout.
-SCHEMA_VERSION = 34
+SUPPORTED_SCHEMA_VERSIONS = {34, 35, 36}
 DECISIONS = (
     "DIALOGUE",
     "WORKFLOW_DRAFT",
@@ -70,7 +70,7 @@ def build_report(database: Path) -> dict[str, object]:
         version_rows = connection.execute(
             "SELECT version FROM schema_version"
         ).fetchall()
-        if len(version_rows) != 1 or version_rows[0]["version"] != SCHEMA_VERSION:
+        if len(version_rows) != 1 or version_rows[0]["version"] not in SUPPORTED_SCHEMA_VERSIONS:
             raise ValueError("KERNEL_SCHEMA_VERSION_UNSUPPORTED")
         auto_rows = connection.execute(
             """SELECT mr.agent_run_id,mr.intent_decision,mr.routing_status,mr.routing_source,
@@ -155,7 +155,7 @@ def build_report(database: Path) -> dict[str, object]:
         "generated_at": datetime.now(timezone.utc)
         .isoformat(timespec="seconds")
         .replace("+00:00", "Z"),
-        "database_schema_version": SCHEMA_VERSION,
+        "database_schema_version": version_rows[0]["version"],
         "scope": {"requested_mode": "AUTO"},
         "counts": {
             "auto_requests": len(auto_rows),

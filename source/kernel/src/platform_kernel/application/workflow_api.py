@@ -14,4 +14,10 @@ def session_execution_tasks(
     return project(connection, session_id, project_id, agent_run_ids)
 
 
-__all__ = ["dispatch_confirmation_current", "frozen_composition", "session_execution_tasks"]
+def related_output_runs(connection: sqlite3.Connection, session_id: str, project_id: str, agent_run_id: str):
+    from ..workflow_execution.projection import related_output_runs as project
+
+    return project(connection, session_id, project_id, agent_run_id)
+
+
+__all__ = ["dispatch_confirmation_current", "frozen_composition", "session_execution_tasks", "related_output_runs"]

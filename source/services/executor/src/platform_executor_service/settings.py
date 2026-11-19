@@ -86,7 +86,16 @@ def load_executor_config(path: Path) -> dict:
         if "workflowComposition" in value:
             composition = value["workflowComposition"]
             ArtifactComposition.from_config(composition)
-            if "native" not in runtimes or composition["catalogDigest"] != value["operatorCatalogDigest"]:
+            for operator in composition["operators"]:
+                runtime = runtimes.get(operator["runtime"])
+                if runtime is None or operator["memoryLimitBytes"] > runtime["memoryBytes"]:
+                    raise ValueError("EXECUTOR_COMPOSITION_RUNTIME_INVALID")
+                if operator["runtime"] == "remote_http":
+                    binding = operator["remoteBinding"]
+                    service = remote_services.get(binding["serviceId"])
+                    if service is None or binding["operationType"] not in service["allowedOperations"]:
+                        raise ValueError("EXECUTOR_COMPOSITION_REMOTE_BINDING_INVALID")
+            if composition["catalogDigest"] != value["operatorCatalogDigest"]:
                 raise ValueError("EXECUTOR_CONFIG_INVALID")
     except (ValueError, SchemaError) as cause:
         raise ValueError("EXECUTOR_CONFIG_INVALID") from cause

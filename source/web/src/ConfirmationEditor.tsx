@@ -1,25 +1,41 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { ApiError, callApi } from './api';
-import { decodeResourceDetail } from './api-contract';
+import { ApiError, callApi, readDataVersion } from './api';
 import { argumentGroup, argumentLabel, modelName, parameterPresentation } from './card-presentation';
 import { DataFieldQuality } from './DataFieldQuality';
 import { ErrorNotice } from './ErrorNotice';
 import type { Capabilities, Confirmation, ConfirmationRevisionAction, JsonSchemaProperty, ResourceDetail, ResourceReference } from './types';
 
-type SelectableResource = { name: string; reference: ResourceReference; detail: ResourceDetail };
+type CatalogResource = { name: string; datasetId: string; versionId: string };
 
-function selectableResource(version: ResourceDetail): SelectableResource | null {
+function numericParameter(schema: JsonSchemaProperty) {
+  const types = Array.isArray(schema.type) ? schema.type : [schema.type];
+  const kind = types.find(type => type === 'number' || type === 'integer');
+  return kind && types.every(type => type === kind || type === 'null')
+    ? { kind, nullable: types.includes('null') } : null;
+}
+
+function numericError(schema: JsonSchemaProperty, value: unknown, required: boolean): string | null {
+  const numeric = numericParameter(schema);
+  if (!numeric) return null;
+  if (value === undefined) return required ? '请输入必填数值。' : null;
+  if (value === null && numeric.nullable) return null;
+  if (typeof value !== 'number' || !Number.isFinite(value)) return '请输入有限数值。';
+  if (numeric.kind === 'integer' && !Number.isInteger(value)) return '请输入整数。';
+  if (schema.minimum !== undefined && value < schema.minimum) return `数值不能小于 ${schema.minimum}。`;
+  if (schema.maximum !== undefined && value > schema.maximum) return `数值不能大于 ${schema.maximum}。`;
+  if (schema.exclusiveMinimum !== undefined && value <= schema.exclusiveMinimum) return `数值必须大于 ${schema.exclusiveMinimum}。`;
+  if (schema.exclusiveMaximum !== undefined && value >= schema.exclusiveMaximum) return `数值必须小于 ${schema.exclusiveMaximum}。`;
+  return null;
+}
+
+function selectableReference(version: ResourceDetail): ResourceReference | null {
   const raw = version.objects.filter(item => item.role === 'raw');
   if (raw.length !== 1) return null;
   const [object] = raw;
   return {
-    name: version.title,
-    detail: version,
-    reference: {
-      kind: 'data_version', service: 'data-primary', datasetId: version.datasetId,
-      versionId: version.versionId, semanticId: version.semanticId, objectId: object.objectId,
-      checksum: object.checksum, mediaType: object.mediaType, format: object.format, sizeBytes: object.size,
-    },
+    kind: 'data_version', service: 'data-primary', datasetId: version.datasetId,
+    versionId: version.versionId, semanticId: version.semanticId, objectId: object.objectId,
+    checksum: object.checksum, mediaType: object.mediaType, format: object.format, sizeBytes: object.size,
   };
 }
 
@@ -28,18 +44,16 @@ type CatalogRequest = { query: string; cursors: string[] };
 type ResourceLoadState = {
   request: CatalogRequest;
   status: 'loading' | 'ready' | 'error';
-  resources: SelectableResource[];
+  resources: CatalogResource[];
   nextCursor: string | null;
   error: ApiError | string | null;
-  failedVersions: number;
   missingCurrentVersions: number;
-  missingRawVersions: number;
 };
 
 function loadingResources(request: CatalogRequest): ResourceLoadState {
   return {
     request, status: 'loading', resources: [], nextCursor: null, error: null,
-    failedVersions: 0, missingCurrentVersions: 0, missingRawVersions: 0,
+    missingCurrentVersions: 0,
   };
 }
 
@@ -69,7 +83,7 @@ function ConfirmationEditorForm({ confirmation, capabilities, busy, focusField, 
   ) > 0);
   const [resourceRetry, setResourceRetry] = useState(0);
   const [catalogRequest, setCatalogRequest] = useState<CatalogRequest>({ query: '', cursors: [''] });
-  const [jsonErrors, setJsonErrors] = useState<Record<string, string>>({});
+  const [draftErrors, setDraftErrors] = useState<Record<string, string>>({});
   const [resourceLoad, setResourceLoad] = useState<ResourceLoadState>(() => (
     requiresResources ? loadingResources(catalogRequest) : { ...loadingResources(catalogRequest), status: 'ready' }
   ));
@@ -94,52 +108,18 @@ function ConfirmationEditorForm({ confirmation, capabilities, busy, focusField, 
           'data_list_datasets', `/data/datasets?${params}`, undefined, controller.signal,
         );
         if (controller.signal.aborted) return;
-        const selectedVersions = page.items.flatMap(item => item.currentVersion
-          ? [{ datasetId: item.datasetId, versionId: item.currentVersion }]
+        const resources = page.items.flatMap(item => item.currentVersion
+          ? [{ datasetId: item.datasetId, versionId: item.currentVersion, name: item.title }]
           : []);
-        const missingCurrentVersions = page.items.length - selectedVersions.length;
-        const versions = await Promise.allSettled(selectedVersions.map(async ({ datasetId, versionId }) => {
-          const version = await callApi(
-            'data_get_version', `/data/versions/${encodeURIComponent(versionId)}`,
-            undefined, controller.signal, decodeResourceDetail,
-          );
-          if (version.versionId !== versionId || version.datasetId !== datasetId) {
-            throw new ApiError(200, 'API_RESPONSE_INVALID');
-          }
-          return version;
-        }));
-        if (controller.signal.aborted) return;
-        const resources: SelectableResource[] = [];
-        let failedVersions = 0;
-        let missingRawVersions = 0;
-        let firstFailure: unknown = null;
-        versions.forEach(version => {
-          if (version.status === 'rejected') {
-            failedVersions += 1;
-            firstFailure ??= version.reason;
-            return;
-          }
-          const resource = selectableResource(version.value);
-          if (resource) resources.push(resource);
-          else missingRawVersions += 1;
-        });
-        if (failedVersions > 0 && resources.length === 0 && missingRawVersions === 0) {
-          setResourceLoad({
-            request: catalogRequest, status: 'error', resources: [],
-            nextCursor: page.nextCursor, error: resourceError(firstFailure),
-            failedVersions, missingCurrentVersions, missingRawVersions,
-          });
-          return;
-        }
         setResourceLoad({
           request: catalogRequest, status: 'ready', resources, nextCursor: page.nextCursor, error: null,
-          failedVersions, missingCurrentVersions, missingRawVersions,
+          missingCurrentVersions: page.items.length - resources.length,
         });
       } catch (caught) {
         if (controller.signal.aborted || caught instanceof DOMException && caught.name === 'AbortError') return;
         setResourceLoad({
           request: catalogRequest, status: 'error', resources: [], nextCursor: null, error: resourceError(caught),
-          failedVersions: 0, missingCurrentVersions: 0, missingRawVersions: 0,
+          missingCurrentVersions: 0,
         });
       }
     })();
@@ -158,9 +138,8 @@ function ConfirmationEditorForm({ confirmation, capabilities, busy, focusField, 
     requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-parameter-field="${CSS.escape(focusField)}"] input,[data-parameter-field="${CSS.escape(focusField)}"] select,[data-parameter-field="${CSS.escape(focusField)}"] textarea`)?.focus());
   }, [capabilities.models, confirmation, focusField, suggestedValue]);
   const changes = useMemo(() => confirmation.actions.flatMap((action, actionIndex) => Object.keys(values[actionIndex]).filter(name => JSON.stringify(values[actionIndex][name]) !== JSON.stringify(action.arguments[name])).map(name => ({ actionIndex, name, before: action.arguments[name], after: values[actionIndex][name] }))), [confirmation, values]);
-  const hasJsonErrors = Object.keys(jsonErrors).length > 0;
-  const updateJsonError = useCallback((field: string, error: string | null) => {
-    setJsonErrors(previous => {
+  const updateDraftError = useCallback((field: string, error: string | null) => {
+    setDraftErrors(previous => {
       if (error) return previous[field] === error ? previous : { ...previous, [field]: error };
       if (!Object.hasOwn(previous, field)) return previous;
       const next = { ...previous };
@@ -168,10 +147,21 @@ function ConfirmationEditorForm({ confirmation, capabilities, busy, focusField, 
       return next;
     });
   }, []);
+  const numericErrors = new Map<string, string>();
+  confirmation.actions.forEach((action, index) => {
+    const model = capabilities.models.find(item => item.modelId === action.modelId);
+    for (const [name, schema] of Object.entries(model?.inputSchema?.properties ?? {})) {
+      if (model?.dataInputParameters?.includes(name)) continue;
+      const error = numericError(schema, values[index][name], model?.inputSchema?.required?.includes(name) ?? false);
+      if (error) numericErrors.set(`${action.toolCallId}:${name}`, error);
+    }
+  });
   const hasUnresolvedSelection = changes.some(({ actionIndex, name }) => (
     capabilities.models.find(model => model.modelId === confirmation.actions[actionIndex].modelId)
       ?.dataInputParameters?.includes(name) && !Object.hasOwn(expectedReferences[actionIndex], name)
   ));
+  const canSave = !busy && !stale && changes.length > 0 && !Object.keys(draftErrors).length
+    && !numericErrors.size && !hasUnresolvedSelection;
   function update(actionIndex: number, name: string, value: unknown, reference?: ResourceReference | null) {
     setValues(previous => previous.map((action, index) => index === actionIndex ? { ...action, [name]: value } : action));
     if (reference === undefined) return;
@@ -184,6 +174,7 @@ function ConfirmationEditorForm({ confirmation, capabilities, busy, focusField, 
     }));
   }
   function saveRevision() {
+    if (!canSave) return;
     onSave(confirmation.actions.map((action, index) => ({
       toolCallId: action.toolCallId,
       arguments: values[index],
@@ -225,14 +216,15 @@ function ConfirmationEditorForm({ confirmation, capabilities, busy, focusField, 
             key={name} fieldKey={`${action.toolCallId}:${name}`} name={name} modelId={action.modelId}
             schema={schema} value={values[actionIndex][name]} originalValue={action.arguments[name]}
             required={required.has(name)} resource={model?.dataInputParameters?.includes(name) ?? false}
-            resources={currentResourceLoad.resources} frozenReference={expectedReferences[actionIndex][name] ?? action.inputReferences?.[name]} resourceDisabled={currentResourceLoad.status !== 'ready'}
-            onJsonError={updateJsonError} onChange={(value, reference) => update(actionIndex, name, value, reference)}
+            resources={currentResourceLoad.resources} frozenReference={action.inputReferences?.[name]} resourceDisabled={currentResourceLoad.status !== 'ready'}
+            fieldError={draftErrors[`${action.toolCallId}:${name}`] ?? numericErrors.get(`${action.toolCallId}:${name}`)}
+            onDraftError={updateDraftError} onChange={(value, reference) => update(actionIndex, name, value, reference)}
           />)}</div>
         </details>)}
       </article>;
     })}
     <section className="diff-preview"><h4>字段变化 · {changes.length}</h4>{changes.length ? <dl>{changes.map(change => <div key={`${change.actionIndex}:${change.name}`}><dt>{argumentLabel(change.name, confirmation.actions[change.actionIndex].modelId)}</dt><dd><del>{String(change.before ?? '∅')}</del><ins>{String(change.after ?? '∅')}</ins></dd></div>)}</dl> : <p className="muted">尚未修改参数。</p>}</section>
-    <div className="actions"><button className="primary" disabled={busy || stale || changes.length === 0 || hasJsonErrors || hasUnresolvedSelection} onClick={saveRevision}>保存为新修订</button><button onClick={onClose}>取消</button></div>
+    <div className="actions"><button className="primary" disabled={!canSave} onClick={saveRevision}>保存为新修订</button><button onClick={onClose}>取消</button></div>
   </section>;
 }
 
@@ -243,10 +235,8 @@ function ResourceLoadStatus({ state, onRetry }: { state: ResourceLoadState; onRe
     <button type="button" onClick={onRetry}>重新加载数据版本</button>
   </div>;
   return <>
-    {state.failedVersions > 0 && <div className="resource-load-state error-banner" role="alert"><span>{state.failedVersions} 个数据版本详情加载失败；已显示其余可用版本。</span><button type="button" onClick={onRetry}>重新加载数据版本</button></div>}
     {state.missingCurrentVersions > 0 && <p className="resource-load-state limitations" role="status">{state.missingCurrentVersions} 个数据集没有当前版本，不能作为本次输入。</p>}
-    {state.missingRawVersions > 0 && <p className="resource-load-state limitations" role="status">{state.missingRawVersions} 个数据版本没有原始对象，不能作为本次输入。</p>}
-    {state.resources.length === 0 && state.failedVersions === 0 && state.missingCurrentVersions === 0 && state.missingRawVersions === 0 && <p className="resource-load-state muted" role="status">{state.request.query ? '没有匹配的数据版本。' : '当前项目没有可选的数据版本。'}</p>}
+    {state.resources.length === 0 && state.missingCurrentVersions === 0 && <p className="resource-load-state muted" role="status">{state.request.query ? '没有匹配的数据版本。' : '当前项目没有可选的数据版本。'}</p>}
   </>;
 }
 
@@ -256,45 +246,122 @@ function resourceVersionId(value: unknown): string {
   return '';
 }
 
-function SchemaField({ fieldKey, name, modelId, schema, value, originalValue, required, resource, resources, frozenReference, resourceDisabled, onJsonError, onChange }: { fieldKey: string; name: string; modelId: string; schema: JsonSchemaProperty; value: unknown; originalValue: unknown; required: boolean; resource: boolean; resources: SelectableResource[]; frozenReference?: ResourceReference; resourceDisabled: boolean; onJsonError: (field: string, error: string | null) => void; onChange: (value: unknown, reference?: ResourceReference | null) => void }) {
-  const presentation = parameterPresentation(name, modelId);
-  const label = <span>{presentation.label}{presentation.unit ? `（${presentation.unit}）` : ''}{required && <b className="required"> *</b>}{schema.default !== undefined && <small> 默认 {String(schema.default)}</small>}</span>;
-  if (resource) {
-    const selected = resourceVersionId(value);
-    const original = resourceVersionId(originalValue);
-    const selectedResource = resources.find(item => item.reference.versionId === selected);
-    const matchesFrozen = selectedResource && (!frozenReference || (
-      selectedResource.reference.semanticId === frozenReference.semanticId &&
-      selectedResource.reference.objectId === frozenReference.objectId &&
-      selectedResource.reference.checksum === frozenReference.checksum
-    ));
-    return <div data-parameter-field={name}><label>{label}
-      <select disabled={resourceDisabled} value={selected} onChange={event => {
-        const versionId = event.target.value;
-        const reference = resources.find(item => item.reference.versionId === versionId)?.reference;
-        onChange(versionId === original ? originalValue : versionId, versionId === original ? null : reference ?? null);
-      }}>
+type ResourceLookup = {
+  versionId: string;
+  datasetId?: string;
+};
+
+type ResourceRead = ResourceLookup & (
+  { status: 'loading' | 'ineligible' }
+  | { status: 'error'; error: ApiError | string }
+  | { status: 'ready'; detail: ResourceDetail }
+);
+
+function ResourceSchemaField({ name, label, value, originalValue, resources, frozenReference, disabled, onChange }: {
+  name: string;
+  label: React.ReactNode;
+  value: unknown;
+  originalValue: unknown;
+  resources: CatalogResource[];
+  frozenReference?: ResourceReference;
+  disabled: boolean;
+  onChange: (value: unknown, ref?: ResourceReference | null) => void;
+}) {
+  const selected = resourceVersionId(value);
+  const original = resourceVersionId(originalValue);
+  const [read, setRead] = useState<ResourceRead | null>(null);
+  const request = useRef<AbortController | null>(null);
+  const currentRead = read?.versionId === selected ? read : null;
+  useEffect(() => () => request.current?.abort(), []);
+
+  async function verify({ versionId, datasetId }: ResourceLookup) {
+    request.current?.abort();
+    const controller = new AbortController();
+    request.current = controller;
+    setRead({ status: 'loading', versionId, datasetId });
+    try {
+      const expected = versionId === original ? frozenReference : undefined;
+      const detail = await readDataVersion(versionId, controller.signal, expected);
+      if (controller.signal.aborted) return;
+      if (datasetId && detail.datasetId !== datasetId) throw new ApiError(409, 'DATA_VERSION_IDENTITY_MISMATCH');
+      if (versionId !== original) {
+        const reference = selectableReference(detail);
+        if (!reference) {
+          setRead({ status: 'ineligible', versionId, datasetId });
+          return;
+        }
+        onChange(versionId, reference);
+      }
+      setRead({ status: 'ready', versionId, datasetId, detail });
+    } catch (error) {
+      if (!controller.signal.aborted) setRead({ status: 'error', error: resourceError(error), versionId, datasetId });
+    }
+  }
+
+  function select(versionId: string) {
+    request.current?.abort();
+    setRead(null);
+    onChange(versionId === original ? originalValue : versionId, null);
+    const option = resources.find(item => item.versionId === versionId);
+    if (option && versionId !== original) void verify(option);
+  }
+
+  const detail = currentRead?.status === 'ready' ? currentRead.detail : null;
+  return <div data-parameter-field={name}>
+    <label>{label}
+      <select disabled={disabled} value={selected} onChange={event => select(event.currentTarget.value)}>
         <option value="">选择数据版本</option>
-        {original && !resources.some(item => item.reference.versionId === original) && <option value={original}>当前冻结版本 · {original}</option>}
-        {selected && selected !== original && !selectedResource && <option value={selected}>已选择版本 · {selected}</option>}
-        {resources.map(({ name, reference }) => <option key={reference.versionId} value={reference.versionId}>{name} · {reference.versionId}</option>)}
+        {selected && !resources.some(item => item.versionId === selected) && <option value={selected}>
+          {selected === original ? '当前冻结版本' : '已选择版本'} · {selected}
+        </option>}
+        {original && selected !== original && !resources.some(item => item.versionId === original) && <option value={original}>当前冻结版本 · {original}</option>}
+        {resources.map(({ name, versionId }) => <option key={versionId} value={versionId}>{name} · {versionId}</option>)}
       </select>
     </label>
-      {selectedResource && matchesFrozen && <div className="selected-data-facts">
-        <strong>{selectedResource.name}</strong>
-        <p>时间范围 · {selectedResource.detail.semantics.timeRange ?? '未提供'}</p>
-        {selectedResource.detail.semantics.crs && <p>坐标参考系 · {selectedResource.detail.semantics.crs}</p>}
-        <details><summary>字段单位、缺测与样例</summary>
-          <DataFieldQuality descriptor={selectedResource.detail.descriptor} semantics={selectedResource.detail.semantics} />
-        </details>
-      </div>}
-      {selectedResource && !matchesFrozen && <p role="status">当前资料与已冻结版本不一致，请重新核对。</p>}
-    </div>;
-  }
-  if (schema.enum) return <label data-parameter-field={name}>{label}<select value={String(value ?? '')} onChange={event => onChange(event.target.value)}>{schema.enum.map(item => <option key={String(item)} value={String(item)}>{presentation.values?.[String(item)] ?? String(item)}</option>)}</select></label>;
-  if (schema.type === 'number' || schema.type === 'integer') return <label data-parameter-field={name}>{label}<input type="number" min={schema.minimum} max={schema.maximum} step={schema.type === 'integer' ? 1 : 'any'} value={typeof value === 'number' ? value : ''} onChange={event => onChange(event.target.value === '' ? undefined : Number(event.target.value))} /><small>原值：{String(originalValue ?? '∅')}</small></label>;
+    {selected && selected === original && !currentRead && <button type="button" className="text-button"
+      onClick={() => void verify({ versionId: selected })}>查看当前冻结版本详情</button>}
+    {currentRead?.status === 'loading' && <p className="muted" role="status">正在核验所选数据版本…</p>}
+    {currentRead?.status === 'ineligible' && <p className="limitations" role="alert">该版本没有唯一的原始对象，不能作为本次输入。请选择其他数据版本。</p>}
+    {currentRead?.status === 'error' && <div className="workbench-read-error">
+      <ErrorNotice error={currentRead.error} title="所选数据版本核验失败" />
+      <button type="button" onClick={() => void verify(currentRead)}>重新核验所选版本</button>
+    </div>}
+    {detail && <div className="selected-data-facts">
+      <strong>{detail.title}</strong>
+      <p>时间范围 · {detail.semantics.timeRange ?? '未提供'}</p>
+      {detail.semantics.crs && <p>坐标参考系 · {detail.semantics.crs}</p>}
+      <details><summary>字段单位、缺测与样例</summary>
+        <DataFieldQuality descriptor={detail.descriptor} semantics={detail.semantics} />
+      </details>
+    </div>}
+  </div>;
+}
+
+function SchemaField({ fieldKey, name, modelId, schema, value, originalValue, required, resource, resources, frozenReference, resourceDisabled, fieldError, onDraftError, onChange }: { fieldKey: string; name: string; modelId: string; schema: JsonSchemaProperty; value: unknown; originalValue: unknown; required: boolean; resource: boolean; resources: CatalogResource[]; frozenReference?: ResourceReference; resourceDisabled: boolean; fieldError?: string; onDraftError: (field: string, error: string | null) => void; onChange: (value: unknown, reference?: ResourceReference | null) => void }) {
+  const errorId = useId();
+  const presentation = parameterPresentation(name, modelId);
+  const label = <span>{presentation.label}{presentation.unit ? `（${presentation.unit}）` : ''}{required && <b className="required"> *</b>}{schema.default !== undefined && <small> 默认 {String(schema.default)}</small>}</span>;
+  if (resource) return <ResourceSchemaField name={name} label={label} value={value} originalValue={originalValue}
+    resources={resources} frozenReference={frozenReference} disabled={resourceDisabled} onChange={onChange} />;
+  const numeric = numericParameter(schema);
+  if (schema.enum) return <label data-parameter-field={name}>{label}<select value={String(value ?? '')} onChange={event => {
+    const selected = event.target.value;
+    onChange(schema.enum?.find(item => String(item) === selected));
+  }}>{schema.enum.map(item => <option key={String(item)} value={String(item)}>{presentation.values?.[String(item)] ?? String(item)}</option>)}</select></label>;
+  if (numeric) return <label data-parameter-field={name}>{label}
+    <input type="number" min={schema.minimum} max={schema.maximum} step={numeric.kind === 'integer' ? 1 : 'any'}
+      required={required && !numeric.nullable} aria-invalid={Boolean(fieldError)} aria-describedby={fieldError ? errorId : undefined}
+      value={typeof value === 'number' && Number.isFinite(value) ? value : ''}
+      onChange={event => {
+        const { value, valueAsNumber, validity } = event.currentTarget;
+        onDraftError(fieldKey, validity.badInput ? '请输入有效数值。' : null);
+        onChange(value === '' ? numeric.nullable ? null : undefined : valueAsNumber);
+      }} />
+    <small>原值：{String(originalValue ?? '∅')}</small>
+    {fieldError && <small className="field-error" id={errorId} role="alert">{fieldError}</small>}
+  </label>;
   if (schema.type === 'boolean') return <label data-parameter-field={name}>{label}<select value={String(value)} onChange={event => onChange(event.target.value === 'true')}><option value="true">是</option><option value="false">否</option></select></label>;
-  if (schema.type === 'object' || schema.type === 'array') return <JsonSchemaField fieldKey={fieldKey} name={name} type={schema.type} value={value} label={label} onJsonError={onJsonError} onChange={onChange} />;
+  if (schema.type === 'object' || schema.type === 'array') return <JsonSchemaField fieldKey={fieldKey} name={name} type={schema.type} value={value} label={label} onJsonError={onDraftError} onChange={onChange} />;
   return <label data-parameter-field={name}>{label}<input value={typeof value === 'string' ? value : ''} onChange={event => onChange(event.target.value)} placeholder={schema.description} /></label>;
 }
 

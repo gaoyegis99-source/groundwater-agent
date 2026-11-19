@@ -210,10 +210,10 @@ describe('actual activity and task presentation', () => {
     expect(screen.getByText('正在同步结果文件…')).toBeVisible();
     const outputs = [dataRef({ versionId: 'output-1' })];
     view.rerender(<ResultCard task={task} result={{ ...result, remoteOutputs: outputs }} project="demo" onResource={vi.fn()} />);
-    expect(screen.queryByRole('link', { name: '下载' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /^下载/ })).not.toBeInTheDocument();
     view.rerender(<ResultCard task={task} result={{ ...result, status: 'COMPLETE', remoteOutputs: outputs }} project="demo" onResource={vi.fn()} />);
-    expect(screen.getByRole('link', { name: '下载' })).toHaveAttribute('href', '/api/v12/data/versions/output-1/objects/object-1/content');
-    expect(screen.getByRole('link', { name: '下载' })).toHaveAttribute('download');
+    expect(screen.getByRole('link', { name: /^下载/ })).toHaveAttribute('href', '/api/v12/data/versions/output-1/objects/object-1/content');
+    expect(screen.getByRole('link', { name: /^下载/ })).toHaveAttribute('download');
   });
 });
 

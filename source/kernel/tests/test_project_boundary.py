@@ -100,7 +100,7 @@ def test_fresh_schema_has_research_identity_state(tmp_path) -> None:
         workflow_columns = {
             row[1] for row in connection.execute("PRAGMA table_info(workflow_runs)")
         }
-    assert version == 34
+    assert version == 36
     assert "provider_requests" in tables
     assert "input_references_json" in confirmation_action_columns
     assert "input_references_json" in workflow_columns

@@ -25,8 +25,10 @@ from ..settings import (
 )
 from .evidence import _data_reference
 from .governance import governance
+from ..workflow_selection import require_selected_arguments
 from .observation_client import ObservationClient
 from .provider_arguments import normalize_model_arguments, omit_unset_field_arguments
+from .rule_preparation import RULE_REQUEST_SCHEMA, prepare_operator_rules
 
 
 class _MissingDataInputError(ValueError):
@@ -44,6 +46,8 @@ def build_preparation_tool(
     observation_client: ObservationClient,
     provider: str = "deepseek",
     explicit_model_tool_request: object = None,
+    workflow_selection: dict | None = None,
+    composition=None,
 ) -> FunctionTool:
     """Create the tool that validates and persists one model proposal."""
     inspect_definition = next(
@@ -57,6 +61,18 @@ def build_preparation_tool(
         arguments_json: str,
     ) -> dict[str, object]:
         request: object = {}
+        if composition is not None:
+            try:
+                supplied = json.loads(arguments_json)
+            except json.JSONDecodeError:
+                supplied = None
+            if isinstance(supplied, dict) and "operator_id" in supplied:
+                if inspect_definition is None or inspect_definition.service not in services_by_name:
+                    return {"status": "RULES_BLOCKED", "code": "PREPARATION_INSPECTOR_UNAVAILABLE"}
+                return await prepare_operator_rules(
+                    context, supplied, composition, observation_client,
+                    inspect_definition, services_by_name[inspect_definition.service],
+                )
         try:
             request = _parse_request(arguments_json, models_by_tool)
             model = models_by_tool[request["target_tool"]]
@@ -73,6 +89,7 @@ def build_preparation_tool(
             request = {**request, "arguments": supplied}
             selection_policy = request["selection_policy"]
             arguments = {**model.default_parameters, **supplied}
+            require_selected_arguments(workflow_selection, arguments)
             validate(arguments, model.input_schema)
             if inspect_definition is None:
                 raise ValueError("PREPARATION_INSPECTOR_UNAVAILABLE")
@@ -93,6 +110,7 @@ def build_preparation_tool(
                 inspect_service=inspect_service,
                 observation_client=observation_client,
             )
+            require_selected_arguments(workflow_selection, arguments, references)
             snapshot = _ready_snapshot(
                 context=context,
                 model=model,
@@ -151,35 +169,48 @@ def build_preparation_tool(
         )
         return _public_result(prepared)
 
+    model_schema = {
+        "type": "object",
+        "properties": {
+            "target_tool": {"type": "string", "enum": sorted(models_by_tool)},
+            "arguments": {"type": "object", "additionalProperties": True},
+            "selection_policy": {
+                "type": "string",
+                "enum": ["PINNED", "CURRENT_REQUIRED"],
+                "description": (
+                    "Use CURRENT_REQUIRED only when the request requires the "
+                    "dataset head; PINNED preserves an explicitly selected version."
+                ),
+            },
+        },
+        "required": ["target_tool", "arguments"],
+        "additionalProperties": False,
+    }
+    description = (
+        "Validate one installed executable model proposal against its full input "
+        "schema and re-read every exact Data version. Call after discovery and "
+        "before record_plan. READY means contractually ready for confirmation; "
+        "UNKNOWN field checks still require domain judgment."
+    )
+    schema = model_schema
+    if composition is not None:
+        description += (
+            " For an operator's missing rules file, read its contract and inspect the source "
+            "Data first. Provide operator_id, operator_version, rules_port, the rules object "
+            "and data_inputs mapping each required source port to its inspected version_id. "
+            "Use only explicitly specified rules. RULES_READY returns a saved Data version "
+            "for inspection and binding to the workflow's rules input."
+        )
+        schema = {"anyOf": [model_schema, RULE_REQUEST_SCHEMA]}
     return FunctionTool(
         name="prepare_task_inputs",
-        description=(
-            "Validate one installed executable model proposal against its full input "
-            "schema and re-read every exact Data version. Call after discovery and "
-            "before record_plan. READY means contractually ready for confirmation; "
-            "UNKNOWN field checks still require domain judgment."
-        ),
-        params_json_schema={
-            "type": "object",
-            "properties": {
-                "target_tool": {"type": "string", "enum": sorted(models_by_tool)},
-                "arguments": {"type": "object", "additionalProperties": True},
-                "selection_policy": {
-                    "type": "string",
-                    "enum": ["PINNED", "CURRENT_REQUIRED"],
-                    "description": (
-                        "Use CURRENT_REQUIRED only when the request requires the "
-                        "dataset head; PINNED preserves an explicitly selected version."
-                    ),
-                },
-            },
-            "required": ["target_tool", "arguments"],
-            "additionalProperties": False,
-        },
+        description=description,
+        params_json_schema=schema,
         on_invoke_tool=prepare_task_inputs,
         strict_json_schema=False,
         _use_default_failure_error_function=False,
     )
+
 
 
 def _explicit_request_arguments(

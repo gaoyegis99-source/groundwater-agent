@@ -1,0 +1,160 @@
+/* Groundwater Agent · 独立设计系统 v1.0 · light
+   单位 rem 随用户根字号缩放。断点用 em，媒体查询与下方断点 Token 同步。
+   本文件只声明变量。禁止在业务组件中覆盖 --gw-ref-*。 */
+:root {
+  --gw-ref-aquifer: var(--workspace-data);
+  --gw-ref-ochre: #925529;
+
+  --gw-canvas: var(--workspace-canvas);
+  --gw-surface: var(--workspace-surface);
+  --gw-surface-subtle: var(--workspace-surface-soft);
+  --gw-surface-inset: var(--workspace-inset);
+  --gw-text: var(--workspace-ink);
+  --gw-text-secondary: var(--workspace-secondary);
+  --gw-text-muted: var(--workspace-muted);
+  --gw-text-on-action: var(--workspace-on-accent);
+  --gw-action: var(--workspace-accent);
+  --gw-action-hover: var(--workspace-accent-hover);
+  --gw-action-pressed: var(--workspace-accent-active);
+  --gw-link: var(--gw-action);
+  --gw-selection: var(--workspace-accent-soft);
+  --gw-line: var(--workspace-line);
+  --gw-control-border: var(--workspace-control-border);
+  --gw-focus: var(--workspace-focus);
+  --gw-focus-inner: var(--gw-surface);
+  --gw-focus-inverse: #A4DDFF;
+  --gw-nav: #203850;
+  --gw-nav-hover: #2B465F;
+  --gw-nav-selected: #344F68;
+  --gw-nav-text: #FAFCFF;
+  --gw-nav-muted: #C4D3E0;
+  --gw-nav-indicator: #91D6C9;
+  --gw-scrim: var(--workspace-scrim);
+
+  --gw-success-ink: var(--workspace-success);
+  --gw-success-fill: var(--workspace-success-soft);
+  --gw-warning-ink: var(--workspace-warning);
+  --gw-warning-fill: var(--workspace-warning-soft);
+  --gw-error-ink: var(--workspace-error);
+  --gw-error-fill: var(--workspace-error-soft);
+  --gw-running-ink: var(--workspace-running);
+  --gw-running-fill: var(--workspace-running-soft);
+  --gw-neutral-ink: var(--workspace-neutral);
+  --gw-neutral-fill: var(--workspace-neutral-soft);
+  --gw-danger-action: var(--gw-error-ink);
+  --gw-danger-hover: var(--workspace-error-hover);
+  --gw-danger-pressed: var(--workspace-error-active);
+  --gw-disabled-ink: var(--workspace-disabled-ink);
+  --gw-disabled-fill: var(--workspace-disabled-fill);
+
+  --gw-series-1: var(--gw-ref-aquifer);
+  --gw-series-2: var(--gw-ref-ochre);
+  --gw-series-3: #65558C;
+  --gw-series-4: #375F88;
+  --gw-chart-grid: var(--gw-line);
+  --gw-chart-text: var(--gw-text-secondary);
+  --gw-chart-missing: var(--gw-text-muted);
+  --gw-seq-1: #E6F1F0;
+  --gw-seq-2: #B2D5CE;
+  --gw-seq-3: #77B5A9;
+  --gw-seq-4: #3D897E;
+  --gw-seq-5: #15554F;
+  --gw-div-neg-2: #514E8C;
+  --gw-div-neg-1: #ADA8CD;
+  --gw-div-mid: #F1F1EB;
+  --gw-div-pos-1: #D9B591;
+  --gw-div-pos-2: #874B24;
+
+  --gw-font-ui: var(--workspace-font-ui);
+  --gw-font-title: var(--workspace-font-title);
+  --gw-font-id: var(--workspace-font-id);
+  --gw-numeric: var(--workspace-numeric);
+  --gw-weight-normal: var(--workspace-weight-normal);
+  --gw-weight-medium: var(--workspace-weight-medium);
+  --gw-weight-strong: var(--workspace-weight-strong);
+  --gw-size-title: var(--workspace-type-display);
+  --gw-leading-title: var(--workspace-leading-heading);
+  --gw-size-section: var(--workspace-type-section);
+  --gw-leading-section: var(--workspace-leading-heading);
+  --gw-size-subtitle: var(--workspace-type-subtitle);
+  --gw-leading-subtitle: var(--workspace-leading-heading);
+  --gw-size-body: var(--workspace-type-body);
+  --gw-leading-body: var(--workspace-leading-body);
+  --gw-size-ui: var(--workspace-type-control);
+  --gw-leading-ui: var(--workspace-leading-control);
+  --gw-size-note: var(--workspace-type-note);
+  --gw-leading-note: var(--workspace-leading-note);
+  --gw-size-axis: var(--workspace-type-detail);
+  --gw-leading-axis: var(--workspace-leading-control);
+  --gw-size-reading: 1.75rem;
+  --gw-leading-reading: 1.25;
+
+  --gw-space-1: 0.25rem;
+  --gw-space-2: 0.5rem;
+  --gw-space-3: 0.75rem;
+  --gw-space-4: 1rem;
+  --gw-space-5: 1.25rem;
+  --gw-space-6: 1.5rem;
+  --gw-space-8: 2rem;
+  --gw-space-10: 2.5rem;
+  --gw-space-12: 3rem;
+  --gw-space-16: 4rem;
+  --gw-rail: 13rem;
+  --gw-rail-narrow: 9.5rem;
+  --gw-inspector: 19rem;
+  --gw-shell-max: 108rem;
+  --gw-prose: 38em;
+  --gw-content-width: var(--workspace-page-width);
+  --gw-content-gutter: var(--workspace-page-gutter);
+  --gw-content-edge: max(var(--gw-content-gutter), calc((100% - var(--gw-content-width)) / 2 + var(--gw-content-gutter)));
+  --gw-gutter: var(--gw-space-4);
+  --gw-section-gap: var(--gw-space-8);
+  --gw-bp-tablet: 48em;
+  --gw-bp-nav: 64em;
+  --gw-bp-inspector: 80em;
+  --gw-bp-wide: 90em;
+
+  --gw-border-width: var(--workspace-border-width);
+  --gw-accent-width: 3px;
+  --gw-radius-small: 0.125rem;
+  --gw-radius-control: var(--workspace-radius-control);
+  --gw-radius-panel: var(--workspace-radius-panel);
+  --gw-size-icon: var(--workspace-icon);
+  --gw-stroke-icon: 1.6;
+  --gw-control-compact: var(--workspace-control-compact);
+  --gw-control: var(--workspace-control);
+  --gw-control-large: 3rem;
+  --gw-row: 2.75rem;
+  --gw-row-compact: 2.25rem;
+  --gw-badge-min: 1.5rem;
+  --gw-dialog: 35rem;
+  --gw-drawer: 27rem;
+  --gw-tooltip: 17.5rem;
+  --gw-focus-width: var(--workspace-focus-width);
+  --gw-focus-offset: var(--workspace-focus-offset);
+  --gw-shadow-float: var(--workspace-shadow-overlay);
+  --gw-motion-fast: var(--workspace-motion-fast);
+  --gw-motion-panel: var(--workspace-motion-panel);
+  --gw-motion-exit: var(--workspace-motion-exit);
+  --gw-ease: var(--workspace-ease);
+  --gw-layer-sticky: 2;
+  --gw-layer-tooltip: 4;
+}
+@supports (width: 1ic) {
+  :root { --gw-prose: 38ic; }
+}
+@media (min-width: 48em) {
+  :root {
+    --gw-gutter: var(--gw-space-6);
+    --gw-section-gap: var(--gw-space-10);
+  }
+}
+@media (min-width: 80em) {
+  :root { --gw-gutter: var(--gw-space-8); }
+}
+@media (min-width: 90em) {
+  :root { --gw-gutter: var(--gw-space-10); }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root { --gw-motion-fast: 0ms; --gw-motion-panel: 0ms; --gw-motion-exit: 0ms; }
+}

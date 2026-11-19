@@ -1,6 +1,8 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
-import { GeoViewer, RasterViewer } from './SpatialViewers';
+import { GeoViewer } from './GeoViewer';
+import { RasterViewer } from './RasterViewer';
+import { dataDetail } from '../test-fixtures';
 
 const ol = vi.hoisted(() => ({
   maps: [] as any[],
@@ -39,7 +41,7 @@ vi.mock('geotiff', () => ({ fromUrl: rawRaster.fromUrl }));
 vi.mock('ol/Map', () => ({
   default: class MockMap {
     handlers = new globalThis.Map<string, (event: any) => void>();
-    view = { fit: vi.fn() };
+    view = { fit: vi.fn(), getCenter: () => [115, 195] };
     setTarget = vi.fn();
     dispose = vi.fn();
     forEachFeatureAtPixel = vi.fn(() => null);
@@ -76,13 +78,13 @@ vi.mock('ol/source/Vector', () => ({
     emitReady(features: any[]) {
       this.features = features;
       this.state = 'ready';
-      for (const handler of this.onceListeners.get('change') ?? []) handler();
-      this.onceListeners.delete('change');
+      for (const handler of this.onceListeners.get('featuresloadend') ?? []) handler();
+      this.onceListeners.delete('featuresloadend');
       for (const handler of this.listeners.get('change') ?? []) handler();
     }
   },
 }));
-vi.mock('ol/layer/Vector', () => ({
+vi.mock('ol/layer/VectorImage', () => ({
   default: class MockVectorLayer {
     source: any;
     style: any;
@@ -99,6 +101,7 @@ vi.mock('ol/style', () => {
   return { Style: MockStyle, Fill: MockFill, Stroke: MockStroke, Circle: MockCircleStyle };
 });
 vi.mock('ol/Observable', () => ({ default: class MockObservable {}, unByKey: ol.unByKey }));
+vi.mock('ol/webgl', () => ({ getContext: () => ({ getExtension: () => null }) }));
 vi.mock('ol/proj', () => ({ toLonLat: (coordinate: number[]) => coordinate }));
 vi.mock('ol/layer/WebGLTile', () => ({
   default: class MockWebGLTileLayer {
@@ -112,7 +115,8 @@ vi.mock('ol/source/GeoTIFF', () => ({
   default: class MockGeoTIFF {
     dispose = vi.fn();
     constructor(public options: any) { ol.rasterSources.push(this); }
-    getView() { return {}; }
+    getView() { return Promise.resolve({}); }
+    getProjection() { return { getCode: () => 'EPSG:3857', getUnits: () => 'm' }; }
   },
 }));
 
@@ -136,16 +140,17 @@ beforeEach(() => {
 });
 
 it('colors 150,000 GeoJSON features and preserves finite extrema', async () => {
-  render(<GeoViewer url="/data/large.geojson" />);
+  render(<GeoViewer url="/data/large.geojson" resource={dataDetail()} />);
   const features = Array.from({ length: 150_000 }, (_, index) => feature({ reading: index - 10 }));
   features.push(feature({ reading: Infinity }), feature({ reading: null }));
   act(() => ol.sources[0].emitReady(features));
   expect(await screen.findByText('-10 – 149989')).toBeVisible();
+  expect(screen.getByText(/2 个要素缺测/)).toBeVisible();
   expect(ol.maps).toHaveLength(1);
 });
 
 it('changes numeric styling and legend without rebuilding or reloading the GeoJSON map', async () => {
-  render(<GeoViewer url="/data/first.geojson" />);
+  render(<GeoViewer url="/data/first.geojson" resource={dataDetail()} />);
   expect(ol.maps).toHaveLength(1);
   expect(ol.sources).toHaveLength(1);
   expect(ol.sources[0].options.url).toBe('/data/first.geojson');
@@ -175,12 +180,13 @@ it('changes numeric styling and legend without rebuilding or reloading the GeoJS
 });
 
 it('disposes map listeners, layer, and source only when the URL changes or the viewer unmounts', () => {
-  const view = render(<GeoViewer url="/data/first.geojson" />);
+  const resource = dataDetail();
+  const view = render(<GeoViewer url="/data/first.geojson" resource={resource} />);
   const firstMap = ol.maps[0];
   const firstSource = ol.sources[0];
   const firstLayer = ol.layers[0];
 
-  view.rerender(<GeoViewer url="/data/second.geojson" />);
+  view.rerender(<GeoViewer url="/data/second.geojson" resource={resource} />);
   expect(ol.maps).toHaveLength(2);
   expect(ol.sources).toHaveLength(2);
   expect(firstMap.setTarget).toHaveBeenCalledWith(undefined);
@@ -198,6 +204,19 @@ it('disposes map listeners, layer, and source only when the URL changes or the v
   expect(secondSource.dispose).toHaveBeenCalledOnce();
 });
 
+it('aborts the pending GeoJSON fetch when the viewer closes', async () => {
+  const fetch = vi.spyOn(globalThis, 'fetch').mockImplementationOnce((_url, init) =>
+    new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => reject(init.signal?.reason), { once: true });
+    }),
+  );
+  const view = render(<GeoViewer url="/data/pending.geojson" resource={dataDetail()} />);
+  const pending = ol.sources[0].options.loader([0, 0, 10, 10], 1, undefined);
+  expect(fetch).toHaveBeenCalledWith('/data/pending.geojson', { signal: expect.any(AbortSignal) });
+  view.unmount();
+  await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+});
+
 it('probes raw GeoTIFF band values and keeps palette and opacity presentation-only', async () => {
   const view = render(<RasterViewer url="/data/fixture.tif" />);
 
@@ -207,6 +226,7 @@ it('probes raw GeoTIFF band values and keeps palette and opacity presentation-on
     expect.any(AbortSignal),
   ));
   await waitFor(() => expect(screen.getByText('单击地图探查物理值')).toBeVisible());
+  expect(screen.getByText(/EPSG:3857.*X、Y 单位 m/)).toBeVisible();
   expect(ol.rasterSources[0].options).toMatchObject({
     sources: [{ url: '/data/fixture.tif' }],
     normalize: true,
@@ -222,6 +242,8 @@ it('probes raw GeoTIFF band values and keeps palette and opacity presentation-on
     window: [1, 0, 2, 1],
     samples: [0],
   }));
+  fireEvent.click(screen.getByRole('button', { name: '探查视图中心' }));
+  await screen.findByText(/物理值 11 m/);
 
   const originalProbe = screen.getByText(/物理值 11 m/).textContent;
   fireEvent.change(screen.getByRole('combobox', { name: '栅格色带' }), { target: { value: 'viridis' } });

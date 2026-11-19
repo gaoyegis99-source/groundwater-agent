@@ -71,8 +71,24 @@
       "kind": "value",
       "name": "summary",
       "schema": {
-        "type": "object"
-      }
+        "type": "object",
+        "properties": {
+          "groupCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "rowCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "groupCount",
+          "rowCount"
+        ],
+        "additionalProperties": false
+      },
+      "maxBytes": 1048576
     }
   ],
   "parametersSchema": {
@@ -125,7 +141,11 @@
   "runtime": "native",
   "tags": [
     "timeseries",
-    "empirical_percentile"
+    "empirical_percentile",
+    "capability:empirical_percentile",
+    "经验百分位",
+    "历史分位",
+    "求水位相对历史基准的经验百分位"
   ],
   "timeoutSeconds": 1800,
   "title": "Calculate empirical historical percentile",

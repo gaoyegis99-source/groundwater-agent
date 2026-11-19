@@ -18,14 +18,17 @@ from moperators.operators.advanced_timeseries_common import (
     value_summary,
     write_rows,
 )
+from moperators.operators.analysis_common import input_null_values, input_timezone
 
 
 def run(inputs: dict[str, Any], parameters: dict[str, Any], output_dir: Path) -> dict[str, Any]:
+    source = one(inputs)
+    timezone_ = input_timezone(source)
     reference_season = parameters["referenceSeason"]
     if reference_season not in {"overall", "month", "quarter"}:
         raise ValueError("FREQUENCY_UNSUPPORTED")
-    start = timestamp(parameters["baselineStart"])
-    end = timestamp(parameters["baselineEnd"])
+    start = timestamp(parameters["baselineStart"], timezone_)
+    end = timestamp(parameters["baselineEnd"], timezone_)
     minimum = int(parameters["minBaselineObservations"])
     if start > end:
         raise ValueError("TIME_RANGE_INVALID")
@@ -34,16 +37,16 @@ def run(inputs: dict[str, Any], parameters: dict[str, Any], output_dir: Path) ->
     group_field = parameters["groupField"]
     time_field = parameters["timeField"]
     value_field = parameters["valueField"]
-    table = read_table(one(inputs))
+    table = read_table(source, time_field, value_field)
     groups = column(table, group_field).to_pylist()
-    moments = timestamps(table, time_field)
-    values = numbers(table, value_field)
+    moments = timestamps(table, time_field, timezone_)
+    values = numbers(table, value_field, input_null_values(source))
     ensure_unique(zip(groups, moments, strict=True), "DUPLICATE_TIMESTAMP")
     baseline: dict[tuple[Any, int], list[float]] = defaultdict(list)
     source_rows: list[tuple[Any, Any, float]] = []
     for group, moment, value in zip(groups, moments, values, strict=True):
         if value is None:
-            raise AssertionError("strict numeric parsing cannot return null")
+            continue
         source_rows.append((group, moment, value))
         if start <= moment <= end:
             baseline[(group, _season(moment, reference_season))].append(value)
@@ -72,7 +75,7 @@ def run(inputs: dict[str, Any], parameters: dict[str, Any], output_dir: Path) ->
     schema = pa.schema(
         [
             pa.field(group_field, table.schema.field(group_field).type),
-            pa.field(time_field, pa.timestamp("us")),
+            pa.field(time_field, pa.timestamp("us", tz=timezone_.key if timezone_ else None)),
             pa.field(value_field, pa.float64()),
             pa.field("season", pa.int8(), nullable=False),
             pa.field("baseline_count", pa.int64(), nullable=False),
@@ -81,10 +84,10 @@ def run(inputs: dict[str, Any], parameters: dict[str, Any], output_dir: Path) ->
         ]
     )
     return {
-        "percentiles": write_rows(
-            rows(), output_dir / "empirical-percentiles.parquet", schema
+        "percentiles": write_rows(rows(), output_dir / "empirical-percentiles.parquet", schema),
+        "summary": value_summary(
+            {"groupCount": len(set(groups)), "rowCount": sum(value is not None for value in values)}
         ),
-        "summary": value_summary({"groupCount": len(set(groups)), "rowCount": len(moments)}),
     }
 
 

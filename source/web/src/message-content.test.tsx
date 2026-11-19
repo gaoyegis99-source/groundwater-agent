@@ -1,8 +1,10 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
-import { AssistantContent, MessageContent } from './MessageContent';
+import { AssistantContent } from './AssistantContent';
+import { copyQuestionText, copyReplyText, MessageContent } from './MessageContent';
 import { ErrorNotice } from './ErrorNotice';
 import { ApiError, errorMessage } from './api';
+import { dataRef } from './test-fixtures';
 import type { ReplyPresentation } from './types';
 
 const checksum = 'a'.repeat(64);
@@ -142,6 +144,31 @@ it('summarizes saved attachment versions while preserving complete inspection an
   expect(open).toHaveBeenCalledExactlyOnceWith(versionId);
 });
 
+it('copies legacy and structured attachments by name and preserves the user message', () => {
+  const question = '分析井号 GWTEST-0A5D92EF 的 level，日期为 2025-01-01。';
+  const old = { versionId: 'old-attachment', outputName: '井表.csv' };
+  const current = dataRef({ outputName: '聚合序列' });
+  const content = `${question}\n\n附加数据：\n- 井表.csv（数据集: dataset-1；版本: ${old.versionId}；语义: semantics-1；校验和: ${checksum}）`;
+  expect(copyQuestionText({ content, inputReferences: [dataRef(old), current] })).toBe(`${question}\n\n附加资料\n- 井表.csv\n- 聚合序列`);
+  expect(copyQuestionText({ content: question })).toBe(question);
+});
+
+it('copies business text and public links without application IDs and diagnostic blocks', () => {
+  const markdown = [
+    `比较 **GWTEST-0A5D92EF** 的 level。（knowledge_id: document-1, chunk_index: 0, checksum: ${checksum}）`,
+    '[聚合序列](/api/v12/data/versions/frozen-version/objects/exact-object/content) 与 [公开规范](https://example.org/guide)。',
+    '```json\n{"trace_id":"trace-1","versionId":"frozen-version"}\n```',
+    '```log\ninternal request details\n```',
+    '```json\n{"field":"level","frequency":"month","aggregation":"mean"}\n```',
+  ].join('\n\n');
+  expect(copyReplyText(reply({ conclusion: { markdown, sourceIndexes: [] } }))).toContain('比较 **GWTEST-0A5D92EF** 的 level。');
+  const copied = copyReplyText(reply({ conclusion: { markdown, sourceIndexes: [] } }));
+  expect(copied).toContain('聚合序列 与 [公开规范](https://example.org/guide)。');
+  expect(copied).toContain('{"field":"level","frequency":"month","aggregation":"mean"}');
+  expect(copied).not.toMatch(/knowledge_id|frozen-version|exact-object|trace-1|internal request details/);
+  expect(copied).not.toContain(checksum);
+});
+
 it('explains failures without exposing diagnostic codes until requested', () => {
   render(<ErrorNotice error={new ApiError(503, 'AGENT_PROVIDER_UNAVAILABLE')} />);
   expect(screen.getByText(/智能助手服务暂时不可用/)).toBeVisible();
@@ -178,13 +205,20 @@ it('distinguishes unavailable provider usage from a measured zero', () => {
   expect(screen.queryByText(/词元：0/)).not.toBeInTheDocument();
 });
 
-it('renders inline and display LaTeX as MathML with trusted commands disabled', () => {
+it('renders inline and display LaTeX as MathML with trusted commands disabled', async () => {
   const markdown = '水头为 $h=z+\\psi$。\n\n$$\nq=-K\\frac{dh}{dx}\n$$\n\n$\\href{javascript:alert(1)}{unsafe}$';
   const { container } = render(<AssistantContent reply={reply({ conclusion: { markdown, sourceIndexes: [] }, sources: [] })}
     onKnowledge={vi.fn()} onResource={vi.fn()} />);
-  expect(container.querySelectorAll('math').length).toBeGreaterThanOrEqual(2);
+  await waitFor(() => expect(container.querySelectorAll('math').length).toBeGreaterThanOrEqual(2));
   expect(container.querySelector('mfrac')).not.toBeNull();
   expect(container.querySelector('a[href^="javascript:"]')).toBeNull();
+});
+
+it('loads MathML for fenced math without dollar delimiters', async () => {
+  const markdown = '~~~m&#97;th\nq = -K\\frac{dh}{dx}\n~~~';
+  const { container } = render(<AssistantContent reply={reply({ conclusion: { markdown, sourceIndexes: [] } })}
+    onKnowledge={vi.fn()} onResource={vi.fn()} />);
+  await waitFor(() => expect(container.querySelector('mfrac')).not.toBeNull());
 });
 
 it('loads only an image with a verified exact result reference', async () => {

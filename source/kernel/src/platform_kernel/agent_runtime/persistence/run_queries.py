@@ -175,14 +175,16 @@ def _project_current(
 def load_request_context(database: Path, agent_run_id: str) -> dict:
     with connect_database(database) as connection:
         row = connection.execute(
-            """SELECT a.*, d.message AS draft_message,
+            """SELECT a.*, COALESCE(d.message, m.message) AS draft_message,
                       COALESCE(m.clarification_required, 0)
                       AS clarification_required,
-                      COALESCE(m.input_references_json, '[]') AS input_references_json
+                      COALESCE(m.input_references_json, '[]') AS input_references_json,
+                      w.selection_json AS workflow_selection_json
                  FROM agent_requests AS a
                  LEFT JOIN message_requests AS m
                    ON m.agent_run_id = a.agent_run_id
                  LEFT JOIN workflow_drafts AS d ON d.agent_run_id = a.agent_run_id
+                 LEFT JOIN message_workflow_selections AS w ON w.agent_run_id = a.agent_run_id
                 WHERE a.agent_run_id = ?""",
             (agent_run_id,),
         ).fetchone()
@@ -198,6 +200,7 @@ def load_request_context(database: Path, agent_run_id: str) -> dict:
         context["clarification_only"] = bool(
             context.pop("clarification_required")
         )
+        context["workflow_selection"] = json.loads(context.pop("workflow_selection_json") or "null")
         context["input_references"] = json.loads(
             context.pop("input_references_json")
         )

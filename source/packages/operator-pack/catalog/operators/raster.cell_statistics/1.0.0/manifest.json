@@ -47,14 +47,14 @@
         "image/tiff"
       ],
       "name": "rasters",
-      "required": true
+      "required": true,
+      "minItems": 2
     }
   ],
   "memoryLimitBytes": 8589934592,
   "outputs": [
     {
       "formats": [
-        "cog",
         "geotiff"
       ],
       "kind": "artifact",
@@ -67,8 +67,29 @@
       "kind": "value",
       "name": "summary",
       "schema": {
-        "type": "object"
-      }
+        "type": "object",
+        "properties": {
+          "inputCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "noDataCellCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "validCellCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "inputCount",
+          "noDataCellCount",
+          "validCellCount"
+        ],
+        "additionalProperties": false
+      },
+      "maxBytes": 1048576
     }
   ],
   "parametersSchema": {
@@ -105,9 +126,124 @@
   "runtime": "native",
   "tags": [
     "raster",
-    "cell_statistics"
+    "cell_statistics",
+    "capability:cell_statistics",
+    "逐像元统计",
+    "像元统计",
+    "多栅格统计",
+    "逐像元统计多幅栅格"
   ],
   "timeoutSeconds": 3600,
   "title": "Calculate cell statistics",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "composition": {
+    "portSemantics": {
+      "rasters": {
+        "requiredFacts": [
+          "crs",
+          "grid",
+          "rasterBands"
+        ]
+      }
+    },
+    "outputSemantics": {
+      "raster": {
+        "inherit": [
+          {
+            "inputPort": "rasters",
+            "facts": [
+              "crs",
+              "grid"
+            ]
+          }
+        ],
+        "fixed": {
+          "rasterBands": [
+            {
+              "dtype": "float32",
+              "nodata": "nan",
+              "maskFlags": [
+                "nodata"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "constraints": [
+      {
+        "id": "same-crs",
+        "condition": {
+          "predicate": "sameCrs",
+          "arguments": [
+            {
+              "port": "rasters",
+              "property": "crs"
+            },
+            {
+              "port": "rasters",
+              "property": "crs"
+            }
+          ]
+        },
+        "severity": "error",
+        "checkStage": "compile"
+      },
+      {
+        "id": "same-grid",
+        "condition": {
+          "predicate": "sameGrid",
+          "arguments": [
+            {
+              "port": "rasters",
+              "property": "grid"
+            },
+            {
+              "port": "rasters",
+              "property": "grid"
+            },
+            {
+              "value": 0
+            }
+          ]
+        },
+        "severity": "error",
+        "checkStage": "compile"
+      },
+      {
+        "id": "selected-band",
+        "condition": {
+          "predicate": "rasterBandExists",
+          "arguments": [
+            {
+              "port": "rasters",
+              "property": "rasterBands"
+            },
+            {
+              "parameter": "band"
+            }
+          ]
+        },
+        "severity": "error",
+        "checkStage": "compile"
+      },
+      {
+        "id": "input-nodata",
+        "condition": {
+          "predicate": "rasterMaskSupported",
+          "arguments": [
+            {
+              "port": "rasters",
+              "property": "rasterBands"
+            },
+            {
+              "parameter": "band"
+            }
+          ]
+        },
+        "severity": "error",
+        "checkStage": "compile"
+      }
+    ]
+  }
 }

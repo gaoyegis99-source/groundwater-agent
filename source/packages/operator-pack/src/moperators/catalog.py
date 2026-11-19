@@ -60,6 +60,9 @@ class InputPort(OperatorContractModel):
     media_types: list[str] = Field(alias="mediaTypes")
     formats: list[str] = Field(default_factory=list)
     max_items: int | None = Field(default=None, alias="maxItems")
+    min_items: int | None = Field(default=None, alias="minItems")
+    logical_type: str | None = Field(default=None, alias="logicalType")
+    rules_schema: str | None = Field(default=None, alias="rulesSchema")
 
 
 class FormatCase(OperatorContractModel):
@@ -85,6 +88,7 @@ class OutputPort(OperatorContractModel):
     formats: list[str] = Field(default_factory=list)
     media_types: list[str] = Field(default_factory=list, alias="mediaTypes")
     schema_: dict[str, Any] | None = Field(default=None, alias="schema")
+    max_bytes: int | None = Field(default=None, alias="maxBytes", gt=0)
     format_cases: list[FormatCase] | None = Field(default=None, alias="formatCases")
     parameter_format_cases: list[ParameterFormatCase] | None = Field(
         default=None, alias="parameterFormatCases"
@@ -111,6 +115,7 @@ class OperatorDefinition(OperatorContractModel):
     error_codes: list[str] = Field(alias="errorCodes")
     examples: list[dict[str, Any]] = Field(default_factory=list)
     implementation_revision: str = Field(default="", alias="implementationRevision")
+    composition: dict[str, Any] = Field(default_factory=dict)
 
     def model_post_init(self, __context: Any) -> None:
         if (self.runtime == "remote_http") != (self.remote_binding is not None):

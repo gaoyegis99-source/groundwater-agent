@@ -71,6 +71,22 @@ it('preserves the exact version when version history fails and offers an indepen
   expect(screen.queryByText('版本列表读取失败')).not.toBeInTheDocument();
 });
 
+it('lets the user escape an empty immutable version by selecting another version', async () => {
+  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.includes('/data/versions/version-1')) return json(dataDetail({ objects: [] }));
+    if (url.includes('/data/versions/version-2')) return json(dataDetail({ versionId: 'version-2', title: '有数据的版本' }));
+    if (url.includes('/versions?')) return json(versionList);
+    return json(catalog);
+  }));
+  render(<DatabaseWorkbench project="project" initialId="version-1" onClose={vi.fn()} onAttach={vi.fn()} />);
+  expect(await screen.findByText('该版本没有可读取的数据对象，请选择其他版本。')).toBeVisible();
+  expect(screen.queryByRole('button', { name: '附加精确版本' })).not.toBeInTheDocument();
+  await screen.findByRole('option', { name: 'version-2' });
+  fireEvent.change(screen.getByLabelText('不可变版本'), { target: { value: 'version-2' } });
+  expect(await screen.findByText('预览：有数据的版本')).toBeVisible();
+});
+
 it('does not append a stale catalog page after the filters change', async () => {
   const page = deferred<Response>();
   vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
@@ -87,7 +103,7 @@ it('does not append a stale catalog page after the filters change', async () => 
   expect(screen.queryByRole('button', { name: /资料 1/ })).not.toBeInTheDocument();
 });
 
-it('keeps database keyboard focus out of panes hidden by the responsive layout', async () => {
+it('keeps the desktop database panes visible and traps keyboard focus in the dialog', async () => {
   vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input);
     if (url.includes('/data/versions/')) return json(dataDetail());
@@ -96,16 +112,18 @@ it('keeps database keyboard focus out of panes hidden by the responsive layout',
   }));
   render(<DatabaseWorkbench project="project" initialId="version-1" onClose={vi.fn()} onAttach={vi.fn()} />);
   await screen.findByRole('button', { name: '附加精确版本' });
-  screen.getByRole('region', { name: '数据目录' }).style.display = 'none';
-  screen.getByRole('region', { name: '数据详情' }).style.display = 'none';
+  for (const name of ['数据目录', '数据详情', '数据预览']) {
+    expect(screen.getByRole('region', { name })).toBeVisible();
+  }
+  const dialog = screen.getByRole('dialog', { name: '数据库' });
   const close = screen.getByRole('button', { name: '关闭数据库' });
   close.focus();
   fireEvent.keyDown(close, { key: 'Tab', shiftKey: true });
-  expect(screen.getByRole('button', { name: '预览' })).toHaveFocus();
-  const dialog = screen.getByRole('dialog', { name: '数据库' });
-  dialog.focus();
-  fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true });
-  expect(screen.getByRole('button', { name: '预览' })).toHaveFocus();
+  const last = document.activeElement!;
+  expect(dialog).toContainElement(last as HTMLElement);
+  expect(close).not.toHaveFocus();
+  fireEvent.keyDown(last, { key: 'Tab' });
+  expect(close).toHaveFocus();
 });
 
 it('makes the task tabs a single keyboard stop with arrow, Home and End navigation', () => {
@@ -123,28 +141,27 @@ it('makes the task tabs a single keyboard stop with arrow, Home and End navigati
   expect(screen.getByRole('tab', { name: '成果' })).toHaveAttribute('aria-selected', 'true');
 });
 
-it('opens the task panel as a keyboard-dismissable overlay at tablet widths', () => {
-  vi.stubGlobal('matchMedia', vi.fn((query: string) => ({ matches: query === '(max-width: 1050px)', addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+it('returns the fullscreen task panel to the desktop dock when Escape is pressed', () => {
   const close = vi.fn();
-  render(<WorkspacePanel history={historyFixture()} results={[]} activeId="tablet" collapsed={false} onToggle={close} onJump={vi.fn()} />);
+  render(<WorkspacePanel history={historyFixture()} results={[]} activeId="desktop" collapsed={false} onToggle={close} onJump={vi.fn()} />);
+  fireEvent.click(screen.getByRole('button', { name: '全屏任务工作台' }));
   const dialog = screen.getByRole('dialog', { name: '任务工作台' });
   expect(dialog).toHaveAttribute('aria-modal', 'true');
-  expect(dialog).toHaveClass('is-overlay');
+  expect(dialog).toHaveClass('is-fullscreen');
   expect(screen.getByRole('button', { name: '折叠任务工作台' })).toHaveFocus();
   fireEvent.keyDown(dialog, { key: 'Escape' });
-  expect(close).toHaveBeenCalledOnce();
+  expect(screen.getByRole('complementary', { name: '任务工作台' })).toBeVisible();
+  expect(close).not.toHaveBeenCalled();
 });
 
-it('dismisses the compact workspace when following a conversation or database action', () => {
-  vi.stubGlobal('matchMedia', vi.fn((query: string) => ({ matches: query === '(max-width: 1050px)', addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+it('keeps the workbench docked while following a conversation or database action', async () => {
   const close = vi.fn(), jump = vi.fn(), openDatabase = vi.fn();
-  render(<WorkspacePanel history={historyFixture()} results={[]} activeId="tablet-actions" collapsed={false} onToggle={close} onJump={jump} onOpenDatabase={openDatabase} />);
+  render(<WorkspacePanel history={historyFixture()} results={[]} activeId="desktop-actions" collapsed={false} onToggle={close} onJump={jump} onOpenDatabase={openDatabase} />);
   fireEvent.click(screen.getByRole('button', { name: '查看本轮回答' }));
-  expect(close).toHaveBeenCalledOnce();
-  expect(jump).toHaveBeenCalledExactlyOnceWith(1);
+  await waitFor(() => expect(jump).toHaveBeenCalledExactlyOnceWith(1));
   fireEvent.click(screen.getByRole('tab', { name: '数据' }));
   fireEvent.click(screen.getByRole('button', { name: '打开数据库选择数据' }));
-  expect(close).toHaveBeenCalledTimes(2);
+  expect(close).not.toHaveBeenCalled();
   expect(openDatabase).toHaveBeenCalledOnce();
 });
 

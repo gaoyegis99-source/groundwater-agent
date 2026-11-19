@@ -22,10 +22,13 @@ class PendingAgentStartExecutor:
         database: Path,
         agent_runtime: AgentRuntimePort,
         memory_reader: MemoryReader,
+        *, models=(), output_steps=(),
     ) -> None:
         self.database = database
         self.agent_runtime = agent_runtime
         self.memory_reader = memory_reader
+        self.models = models
+        self.output_steps = output_steps
 
     async def resume(
         self, session_id: str, *, propagate_error: bool = True
@@ -64,7 +67,7 @@ class PendingAgentStartExecutor:
         self.project(run)
 
     def project(self, run: AgentRunView) -> None:
-        current = apply_agent_run(self.database, run)
+        current = apply_agent_run(self.database, run, models=self.models, output_steps=self.output_steps)
         if not current and run.status == "WAITING_CONFIRMATION":
             self.agent_runtime.supersede(run.agent_run_id)
 

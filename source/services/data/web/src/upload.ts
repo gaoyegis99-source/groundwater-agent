@@ -1,4 +1,3 @@
-import { sha256 } from "@noble/hashes/sha2.js";
 import {
   decodeProblem,
   newRequestId,
@@ -8,31 +7,16 @@ import {
   type JsonValidator,
 } from "@platform/ui-boundary";
 import { dataDiagnostics, loadDataValidators } from "./api";
+import { fileSha256 } from "./file-hash";
 
 export type UploadPhase = "hash" | "upload";
-
-async function hashOnMainThread(
-  file: File,
-  signal: AbortSignal,
-  onProgress: (completed: number, total: number) => void,
-): Promise<string> {
-  const hash = sha256.create();
-  let completed = 0;
-  for await (const chunk of file.stream() as unknown as AsyncIterable<Uint8Array>) {
-    if (signal.aborted) throw new DOMException("Aborted", "AbortError");
-    hash.update(chunk);
-    completed += chunk.byteLength;
-    onProgress(completed, file.size);
-  }
-  return Array.from(hash.digest()).map(value => value.toString(16).padStart(2, "0")).join("");
-}
 
 async function hashFile(
   file: File,
   signal: AbortSignal,
   onProgress: (completed: number, total: number) => void,
 ): Promise<string> {
-  if (typeof Worker === "undefined") return hashOnMainThread(file, signal, onProgress);
+  if (typeof Worker === "undefined") return fileSha256(file, onProgress, signal);
   return new Promise<string>((resolve, reject) => {
     const worker = new Worker(new URL("./hash.worker.ts", import.meta.url), { type: "module" });
     let settled = false;

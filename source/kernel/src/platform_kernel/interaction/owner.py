@@ -16,6 +16,7 @@ from .confirmation import (
     recover_requested,
 )
 from .models import SessionView
+from .task_history import list_task_history
 from .history import list_sessions, message_history, session_view
 from .intent_route_queue import (
     IntentRoutingMetrics,
@@ -57,6 +58,7 @@ class InteractionOwner:
         resource_service: object | None = None,
         *,
         models: tuple[object, ...] = (),
+        output_steps: tuple[dict, ...] = (),
         memory_reader: Callable[[Path, str], MemoryView | None],
         local_identity_subject: str = DEFAULT_LOCAL_ACTOR_SUBJECT,
         max_pending_agent_turns: int = 108,
@@ -72,7 +74,7 @@ class InteractionOwner:
         self.max_pending_agent_turns = max_pending_agent_turns
         self._decision_executor = DecisionExecutor(database, agent_runtime)
         self._start_executor = PendingAgentStartExecutor(
-            database, agent_runtime, memory_reader
+            database, agent_runtime, memory_reader, models=models, output_steps=output_steps
         )
         self._confirmation_executor = ConfirmationExecutor(
             database, project_id, self._decision_executor, self
@@ -113,9 +115,12 @@ class InteractionOwner:
             archived=archived,
         )
 
-    def messages(self, session_id: str, before: int | None, limit: int) -> dict:
+    def task_history(self, subject: str, cursor: int | None, limit: int) -> dict:
+        return list_task_history(self.database, self.project_id, subject, cursor, limit)
+
+    def messages(self, session_id: str, before: int | None, limit: int, *, revision: int | None = None) -> dict:
         return message_history(
-            self.database, self.project_id, session_id, before, limit
+            self.database, self.project_id, session_id, before, limit, requested_revision=revision
         )
 
     def message(
@@ -126,6 +131,8 @@ class InteractionOwner:
         requested_mode: str,
         *,
         input_references: list[dict[str, object]] | None = None,
+        workflow_selection: dict | None = None,
+        installed_models: tuple = (),
         corrects_request_id: str | None = None,
         corrects_agent_run_id: str | None = None,
         owner_subject: str | None = None,
@@ -138,6 +145,8 @@ class InteractionOwner:
             message,
             requested_mode,
             input_references=input_references,
+            workflow_selection=workflow_selection,
+            installed_models=installed_models,
             corrects_request_id=corrects_request_id,
             corrects_agent_run_id=corrects_agent_run_id,
             owner_subject=self._actor(owner_subject),
@@ -388,12 +397,13 @@ class InteractionOwner:
         self.get(session_id)
         return events_after(self.database, session_id, event_id)
 
-    def results(self, session_id: str, after_revision: int) -> dict[str, object]:
+    def results(self, session_id: str, after_revision: int, *, revision: int | None = None) -> dict[str, object]:
         session = get_session(self.database, session_id)
         if session.project_id != self.project_id:
             raise ResourceNotFoundError("SESSION_NOT_FOUND")
         return self.agent_runtime.session_results(
-            session_id, session.project_id, session.goal_revision, after_revision
+            session_id, session.project_id, min(session.goal_revision, revision) if revision is not None else session.goal_revision,
+            revision - 1 if revision is not None else after_revision
         )
 
     def project(self, run: AgentRunView) -> None:

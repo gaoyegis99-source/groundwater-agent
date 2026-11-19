@@ -16,7 +16,6 @@ beforeEach(() => {
     addEventListener() {}
     close() {}
   });
-  vi.stubGlobal('matchMedia', vi.fn((query: string) => ({ matches: query === '(max-width: 1050px)', addEventListener: vi.fn(), removeEventListener: vi.fn() })));
 });
 
 function mockPreparation(confirmation?: Confirmation, failure?: 'network after commit' | '502 after commit' | '502 before commit') {
@@ -61,24 +60,23 @@ function mockPreparation(confirmation?: Confirmation, failure?: 'network after c
   return revisions;
 }
 
-it('preserves the draft and returns focus to the composer when compact parameter entry needs a new message', async () => {
+it('preserves the draft and focuses the composer when a parameter needs a new message', async () => {
   mockPreparation();
   render(<App />);
   await screen.findByTestId('recovered-active-session');
   const composer = screen.getByRole('textbox', { name: '消息输入框' });
   fireEvent.change(composer, { target: { value: '保留原来的分析条件' } });
-  const open = await screen.findByRole('button', { name: '打开任务工作台' });
-  open.focus(); fireEvent.click(open);
-  const panel = await screen.findByRole('heading', { name: '任务', exact: true }).then(heading => heading.closest('aside')!);
+  const panel = await screen.findByRole('complementary', { name: '任务工作台' });
   fireEvent.click(within(panel).getByRole('tab', { name: '任务' }));
   fireEvent.click(within(panel).getByRole('button', { name: '补充参数' }));
   expect(composer).toHaveValue('保留原来的分析条件\n补充参数 axis：');
+  expect(panel).toBeVisible();
   await waitFor(() => expect(composer).toBeVisible());
   await act(async () => { await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))); });
   expect(composer).toHaveFocus();
 });
 
-it('keeps pending confirmation parameter editing inside the compact workspace', async () => {
+it('opens parameter editing from the docked workbench and preserves the conversation draft', async () => {
   mockPreparation({
     confirmationId: 'pending-1', goalRevision: 1, status: 'PENDING', agentRunId: 'agent-1',
     reason: '', decision: null, decisionState: null,
@@ -89,13 +87,12 @@ it('keeps pending confirmation parameter editing inside the compact workspace', 
   await screen.findByTestId('recovered-active-session');
   const composer = screen.getByRole('textbox', { name: '消息输入框' });
   fireEvent.change(composer, { target: { value: '原有草稿' } });
-  fireEvent.click(await screen.findByRole('button', { name: '打开任务工作台' }));
-  const panel = await screen.findByRole('heading', { name: '任务', exact: true }).then(heading => heading.closest('aside')!);
+  const panel = await screen.findByRole('complementary', { name: '任务工作台' });
   fireEvent.click(within(panel).getByRole('tab', { name: '任务' }));
   fireEvent.click(within(panel).getByRole('button', { name: '补充参数' }));
-  expect(await within(panel).findByTestId('confirmation-editor')).toBeVisible();
-  expect(panel).toBeVisible();
-  expect(within(panel).getByRole('tab', { name: /参数/ })).toHaveAttribute('aria-selected', 'true');
+  const parameterPage = await screen.findByRole('main', { name: '任务工作台' });
+  expect(await within(parameterPage).findByTestId('confirmation-editor')).toBeVisible();
+  expect(within(parameterPage).getByRole('tab', { name: /参数/ })).toHaveAttribute('aria-selected', 'true');
   expect(composer).toHaveValue('原有草稿');
 });
 

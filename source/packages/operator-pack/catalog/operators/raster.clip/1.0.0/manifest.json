@@ -47,8 +47,7 @@
         "flatgeobuf",
         "geojson",
         "geopackage",
-        "geoparquet",
-        "parquet"
+        "geoparquet"
       ],
       "mediaTypes": [
         "application/geopackage+sqlite3",
@@ -64,7 +63,6 @@
   "outputs": [
     {
       "formats": [
-        "cog",
         "geotiff"
       ],
       "kind": "artifact",
@@ -96,7 +94,12 @@
   "runtime": "native",
   "tags": [
     "raster",
-    "clip"
+    "clip",
+    "capability:clip",
+    "栅格裁剪",
+    "裁剪影像",
+    "掩膜裁剪",
+    "按多边形边界裁剪影像"
   ],
   "timeoutSeconds": 1800,
   "title": "Clip raster",

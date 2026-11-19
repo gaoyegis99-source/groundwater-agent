@@ -252,10 +252,10 @@ def _snapshot_schema_versions(
         raise ResearchArtifactError("SNAPSHOT_KERNEL_SCHEMA_UNREADABLE")
     kernel_version = row[0]
     manifest_version = instance["schemaVersion"]
-    if manifest_version == "instance-manifest.v4":
+    if manifest_version == "instance-manifest.v4" and kernel_version in {34, 35, 36}:
         versions: dict[str, Any] = {
             "publicApi": "v12",
-            "kernel": 34,
+            "kernel": kernel_version,
             "data": 8,
             "knowledge": 7,
             "manifest": 4,

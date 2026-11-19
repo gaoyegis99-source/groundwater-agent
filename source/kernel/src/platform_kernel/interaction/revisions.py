@@ -18,6 +18,8 @@ from ..errors import (
     UpstreamServiceError,
 )
 from ..contracts import DataVersionRefV2
+from ..workflow_selection import require_selected_arguments
+from .output_steps import copy_output_steps
 from .state_projection import confirmation_from_row
 
 
@@ -107,6 +109,10 @@ async def revise_confirmation(
             or source["goal_revision"] != session["goal_revision"]
         ):
             raise ConfirmationConflictError("CONFIRMATION_NOT_CURRENT")
+        saved_selection = connection.execute(
+            "SELECT selection_json FROM message_workflow_selections WHERE agent_run_id=?", (source["agent_run_id"],),
+        ).fetchone()
+        workflow_selection = json.loads(saved_selection[0]) if saved_selection else None
         stored = connection.execute(
             "SELECT * FROM confirmation_actions WHERE confirmation_id=? ORDER BY position",
             (confirmation_id,),
@@ -172,6 +178,13 @@ async def revise_confirmation(
                     raise ConfirmationConflictError("CONFIRMATION_DATA_VERSION_INVALID")
                 reference = frozen
             input_references[parameter] = reference
+        if workflow_selection and workflow_selection.get("continuation"):
+            try:
+                require_selected_arguments({**workflow_selection, "parameters": {}}, arguments, {
+                    name: reference.as_storage_dict() for name, reference in input_references.items()
+                })
+            except ValueError as error:
+                raise ConfirmationConflictError("WORKFLOW_CONTINUATION_INVALID") from error
         action_fingerprint = hashlib.sha256(
             f"{source['agent_run_id']}:{old['tool']}:{_canonical(arguments)}".encode()
         ).hexdigest()
@@ -249,6 +262,7 @@ async def revise_confirmation(
                     ),
                 ),
             )
+        copy_output_steps(connection, confirmation_id, new_id)
         bind_confirmation(connection, new_id, session_id)
         append_event(
             connection,

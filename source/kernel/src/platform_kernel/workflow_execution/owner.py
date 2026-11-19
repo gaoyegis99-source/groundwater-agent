@@ -17,8 +17,9 @@ from ..database import connect_database, duration_ms, utc_now
 from ..errors import UpstreamServiceError, WorkflowDefinitionUnavailableError
 from ..application.workflow_api import dispatch_confirmation_current
 
+from .persistence.output_steps import enqueue_output_step
 from .persistence.status import save_cancelled
-from .persistence.queue import get_target_digest, service_target_digest
+from .persistence.queue import get_target_digest, has_pending_run, service_target_digest
 from ..settings import ExecutableModelDefinition, ServiceBinding
 from .execution_client import ExecutionClient, ExecutionClientError, ExecutionRejectedError
 from ..application.query_dtos import ConfirmedAction
@@ -165,6 +166,9 @@ class WorkflowExecutionOwner:
 
     def for_agent(self, agent_run_id: str) -> tuple[WorkflowRun, ...]:
         return runs_for_agent(self.database, agent_run_id)
+
+    def has_pending_run(self, agent_run_id: str) -> bool:
+        return has_pending_run(self.database, agent_run_id)
 
     def recover_interrupted(self) -> None:
         recover_dispatches(self.database)
@@ -413,7 +417,12 @@ class WorkflowExecutionOwner:
                 status = await self.execution_client.get(service, status.job_id)
                 if status.request_id != work.run.run_id:
                     raise ExecutionClientError("EXECUTION_JOB_REQUEST_MISMATCH")
-            return save_job_status(self.database, work, status)
+            return save_job_status(
+                self.database, work, status,
+                on_published=lambda connection, source, outputs: enqueue_output_step(
+                    connection, source, outputs, models=self.models, services=self.services,
+                ),
+            )
         except ExecutionRejectedError as error:
             if str(error) == "JOB_DEADLINE_EXCEEDED":
                 save_timeout(self.database, work.run)

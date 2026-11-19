@@ -35,6 +35,8 @@ class Confirmation:
     source_workflow_run_id: str | None = None
     request_id: str | None = None
     created_at: str | None = None
+    decision_requested_at: str | None = None
+    published_output_steps: tuple[dict, ...] = ()
 
 
 @dataclass(frozen=True)

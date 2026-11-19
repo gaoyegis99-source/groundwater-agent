@@ -41,6 +41,8 @@ def run_limits(capabilities: AgentModeCapabilities) -> RunLimits:
         return RunLimits(2, 0, 2, 0, None, 0)
     if capabilities.mode == "WORKFLOW_DRAFT":
         return RunLimits(14, 11, 3, 24, 300_000, 40_000)
+    if capabilities.allow_operator_catalog:
+        return RunLimits(18, 12, 6, 28, 300_000, 40_000)
     if capabilities.allow_model_tools:
         # Every exact model input may need one immutable-version inspection and
         # one table-schema inspection before the action can be frozen.  Keep

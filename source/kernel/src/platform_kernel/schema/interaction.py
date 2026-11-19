@@ -221,4 +221,23 @@ CREATE TABLE control_proposals (
 );
 """
 
+WORKFLOW_SELECTION_SCHEMA = """CREATE TABLE message_workflow_selections (
+    agent_run_id TEXT PRIMARY KEY REFERENCES message_requests(agent_run_id),
+    selection_json TEXT NOT NULL
+);"""
+
 V23_INTERACTION_INDEX_STATEMENTS = ('CREATE INDEX sessions_agent_start_idx ON sessions(agent_start_state) WHERE pending_agent_run_id IS NOT NULL', 'CREATE INDEX messages_session_revision_role_idx ON messages(session_id, goal_revision, role)', "CREATE INDEX message_requests_route_queue_idx ON message_requests(routing_status) WHERE requested_mode = 'AUTO'", 'CREATE INDEX message_requests_session_revision_idx ON message_requests(session_id, goal_revision)', 'CREATE INDEX control_proposals_session_status_idx ON control_proposals(session_id, status)', 'CREATE INDEX confirmations_session_revision_idx ON confirmations(session_id, goal_revision)', 'CREATE INDEX confirmations_decision_queue_idx ON confirmations(status, decision_state)', "CREATE UNIQUE INDEX confirmations_current_pending_idx ON confirmations(agent_run_id) WHERE status = 'PENDING'")
+
+PUBLISHED_OUTPUT_STEPS_SCHEMA = """CREATE TABLE published_output_steps (
+    confirmation_id TEXT NOT NULL REFERENCES confirmations(confirmation_id),
+    source_tool_call_id TEXT NOT NULL,
+    tool_call_id TEXT NOT NULL,
+    plan_json TEXT NOT NULL,
+    PRIMARY KEY (confirmation_id, tool_call_id),
+    UNIQUE (confirmation_id, source_tool_call_id)
+);
+CREATE TABLE workflow_output_sources (
+    workflow_run_id TEXT PRIMARY KEY REFERENCES workflow_runs(run_id),
+    source_workflow_run_id TEXT NOT NULL REFERENCES workflow_runs(run_id)
+);
+"""

@@ -11,7 +11,7 @@ from pathlib import Path
 import sqlite3
 
 
-SCHEMA_VERSION = 34
+SUPPORTED_SCHEMA_VERSIONS = {34, 35, 36}
 DISCOVERY_TOOLS = {
     "get_data_inventory",
     "discover_datasets",
@@ -37,7 +37,7 @@ def build_report(database: Path) -> dict[str, object]:
     with sqlite3.connect(uri, uri=True) as connection:
         connection.row_factory = sqlite3.Row
         versions = connection.execute("SELECT version FROM schema_version").fetchall()
-        if len(versions) != 1 or versions[0]["version"] != SCHEMA_VERSION:
+        if len(versions) != 1 or versions[0]["version"] not in SUPPORTED_SCHEMA_VERSIONS:
             raise ValueError("KERNEL_SCHEMA_VERSION_UNSUPPORTED")
         runs = connection.execute(
             """SELECT a.agent_run_id,a.status,r.dialogue_policy,r.resolved_mode
@@ -153,7 +153,7 @@ def build_report(database: Path) -> dict[str, object]:
         "generated_at": datetime.now(timezone.utc)
         .isoformat(timespec="seconds")
         .replace("+00:00", "Z"),
-        "database_schema_version": SCHEMA_VERSION,
+        "database_schema_version": versions[0]["version"],
         "scope": {
             "definition": (
                 "execution proposals, workflow drafts, or runs with durable "

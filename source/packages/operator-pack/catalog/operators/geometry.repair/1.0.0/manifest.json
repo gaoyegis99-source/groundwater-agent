@@ -33,8 +33,7 @@
         "flatgeobuf",
         "geojson",
         "geopackage",
-        "geoparquet",
-        "parquet"
+        "geoparquet"
       ],
       "mediaTypes": [
         "application/geopackage+sqlite3",
@@ -80,7 +79,12 @@
   "runtime": "qgis",
   "tags": [
     "geometry",
-    "repair"
+    "repair",
+    "capability:repair",
+    "几何修复",
+    "修复几何",
+    "自交修复",
+    "修复图层里的无效几何"
   ],
   "timeoutSeconds": 3600,
   "title": "Repair invalid geometries",

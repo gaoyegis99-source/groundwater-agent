@@ -6,9 +6,11 @@ import json
 
 from platform_workflow_compiler import compile_draft, WorkflowValidationError
 from platform_workflow_compiler.composition import definition_digest
+from platform_workflow_compiler.composition.execution import CompositionValidationError
 
 from ..errors import AgentRunError
 from .evidence import collect_turn_evidence
+from .input_roles import verify_input_roles
 from .models import WorkflowDataReference, WorkflowDraftInput
 
 
@@ -98,9 +100,8 @@ def _without_unset_optional_parameters(
 
 
 def prepare_workflow_draft(
-    draft: WorkflowDraftInput, result, settings, draft_id: str, *, user_goal: str,
+    draft: WorkflowDraftInput, items: list[dict], settings, draft_id: str, *, user_goal: str,
 ) -> dict:
-    items = result.to_input_list()
     try:
         evidence = collect_turn_evidence(items)
         for index, ref in enumerate(draft.knowledge_refs):
@@ -126,6 +127,11 @@ def prepare_workflow_draft(
                 ),
             }))
         draft = draft.model_copy(update={"data_bindings": normalized_bindings})
+        verify_input_roles(
+            user_goal, draft.graph,
+            {row.input_name: row.data_ref.version_id for row in normalized_bindings},
+            evidence.data_versions, evidence.data_descriptions,
+        )
         for index, source in enumerate(draft.parameter_sources):
             if (source.source == "DATA" and not draft.data_bindings
                     or source.source == "KNOWLEDGE" and not draft.knowledge_refs):
@@ -164,10 +170,17 @@ def prepare_workflow_draft(
         "unresolved_items": draft.unresolved_items, "limitations": draft.limitations,
     }
     profile = settings.workflow_composition
-    if (
-        profile is not None and not compiled["missing_inputs"] and not draft.unresolved_items
-        and all((item["operator_id"], item["operator_version"]) in profile.manifests for item in compiled["operators"])
-    ):
+    if profile is None:
+        return payload
+    unsupported = [
+        item for item in compiled["operators"]
+        if (item["operator_id"], item["operator_version"]) not in profile.manifests
+    ]
+    if unsupported:
+        payload["composition_check"] = {
+            "status": "INVALID", "code": "COMPOSITION_OPERATOR_UNSUPPORTED",
+        }
+    elif not compiled["missing_inputs"] and not draft.unresolved_items:
         missing_semantics = [
             item["data_ref"]["version_id"] for item in compiled["data_bindings"]
             if item["data_ref"]["version_id"] not in evidence.semantic_checksums
@@ -181,12 +194,13 @@ def prepare_workflow_draft(
             workflow = profile.candidate(compiled, settings.project_id, evidence.semantic_checksums, {
                 "id": f"goal.{draft_id}", "version": "1.0.0",
                 "digest": definition_digest({"message": user_goal}),
-            }, raster_descriptors=evidence.raster_descriptors)
+            }, data_descriptions=evidence.data_descriptions)
             _, report = profile.compile(workflow, settings.project_id)
         except WorkflowValidationError as error:
             payload["composition_check"] = {
                 "status": "INCOMPLETE" if error.code == "COMPOSITION_FACT_REQUIRED" else "INVALID",
                 "code": error.code, "path": error.path,
+                **({"diagnostic": error.diagnostic} if isinstance(error, CompositionValidationError) else {}),
             }
         else:
             payload.update(execution_allowed=True, composition=workflow, composition_check=report)

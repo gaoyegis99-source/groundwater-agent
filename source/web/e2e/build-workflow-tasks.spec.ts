@@ -95,6 +95,9 @@ test('desktop recovery retries safely, confirms the failed scope, tracks publish
     if (url.pathname.endsWith('/data/versions/recovered-output-version')) return route.fulfill({
       json: dataDetail({ versionId: output.versionId }),
     });
+    if (url.pathname.endsWith('/data/versions/recovered-output-version/objects/object-1/content')) {
+      return route.fulfill({ json: { status: 'SUCCEEDED' } });
+    }
     if (url.pathname.endsWith('/results')) {
       resultReads++;
       return route.fulfill({ json: sessionResultsFixture(phase === 'complete' ? [{ goalRevision: 2, agentRunId: 'agent-2', toolCallId: 'source', modelId: source.modelId,
@@ -123,6 +126,15 @@ test('desktop recovery retries safely, confirms the failed scope, tracks publish
   await expect(page.locator('[data-workflow-run-id="blocked-downstream"]')).toContainText('因前项失败未执行');
   expect(nodeReads).toEqual([]);
   const failedNodes = workspace.locator('[data-execution-run-id="failed-source"]');
+  await workspace.getByLabel('定位运行尝试').selectOption(source.workflowRunId);
+  await workspace.getByRole('button', { name: '跳到所选尝试' }).click();
+  await expect(failedNodes).toBeFocused();
+  await expect(failedNodes).toHaveAttribute('aria-current', 'true');
+  await expect.poll(() => failedNodes.evaluate(record => {
+    const tabs = record.closest('.workspace-scroll')?.querySelector('.workspace-tabs');
+    return !!tabs && record.getBoundingClientRect().top >= tabs.getBoundingClientRect().bottom;
+  })).toBe(true);
+  await expect(failedNodes.getByRole('list', { name: '运行时间线' }).locator('time').first()).toHaveAttribute('datetime', source.createdAt);
   await failedNodes.getByText('运行标识与时间', { exact: true }).click();
   await expect(failedNodes.getByText('failed-source', { exact: true })).toBeVisible();
   await expect(failedNodes.getByText('工作流版本', { exact: true })).toBeVisible();
@@ -148,7 +160,7 @@ test('desktop recovery retries safely, confirms the failed scope, tracks publish
   expect(confirmPosts).toBe(0);
   await confirmation.getByRole('button', { name: /^确认执行修订 / }).click();
   const recovered = page.locator('[data-workflow-run-id="recovered-source"]');
-  await expect(recovered).toContainText('正在执行');
+  await expect(page.getByRole('region', { name: '当前研究任务' }).getByRole('status')).toHaveText('正在执行');
   await page.getByRole('navigation', { name: '会话详情' }).getByRole('link', { name: '运行' }).click();
   const recoveredNodes = workspace.locator('[data-execution-run-id="recovered-source"]');
   await recoveredNodes.getByText('节点详情', { exact: true }).click();
@@ -158,13 +170,16 @@ test('desktop recovery retries safely, confirms the failed scope, tracks publish
   phase = 'publishing'; cursor++;
   await emit(page, 'workflow.stage_changed', cursor);
   await expect(workspace).toContainText('正在发布结果');
+  await expect(workspace.locator('.workspace-state-title .gw-badge')).toHaveText('正在发布成果');
   expect(resultReads).toBe(readsBeforePublishing);
   phase = 'complete'; cursor++;
   await emit(page, 'workflow.recovery_completed', cursor);
   await page.getByRole('button', { name: '返回对话', exact: true }).click();
-  await expect(recovered.getByRole('link', { name: '下载', exact: true })).toHaveAttribute('href', '/api/v12/data/versions/recovered-output-version/objects/object-1/content');
+  await expect(recovered.getByRole('link', { name: /^下载/ })).toHaveAttribute('href', '/api/v12/data/versions/recovered-output-version/objects/object-1/content');
   await expect(recovered).toContainText('已通过第 2 次执行恢复');
-  await page.getByRole('navigation', { name: '会话详情' }).getByRole('link', { name: '运行' }).click();
+  await recovered.locator('[data-resource-id="recovered-output-version"] .output-heading button').click();
+  await workspace.getByRole('button', { name: '查看来源运行' }).click();
+  await expect(recoveredNodes).toBeFocused();
   await recoveredNodes.getByText('节点详情', { exact: true }).click();
   await expect(recoveredNodes).toContainText('节点已完成');
   await failedNodes.getByText('节点详情', { exact: true }).click();
@@ -174,18 +189,19 @@ test('desktop recovery retries safely, confirms the failed scope, tracks publish
   expect(confirmPosts).toBe(1);
   await page.reload();
   await page.getByRole('button', { name: '返回对话', exact: true }).click();
-  await expect(page.locator('[data-workflow-run-id="recovered-source"]').getByRole('link', { name: '下载', exact: true })).toBeVisible();
+  await expect(page.locator('[data-workflow-run-id="recovered-source"]').getByRole('link', { name: /^下载/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /^确认执行修订 / })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /准备恢复未完成步骤/ })).toHaveCount(0);
   expect(pageErrors).toEqual([]);
   await page.screenshot({ path: info.outputPath('workflow-recovered-desktop.png'), fullPage: true });
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize({ width: 1024, height: 768 });
   await page.getByRole('navigation', { name: '会话详情' }).getByRole('link', { name: '运行' }).click();
   await recoveredNodes.getByText('运行标识与时间', { exact: true }).click();
   await recoveredNodes.getByText('节点详情', { exact: true }).click();
-  await expect(recoveredNodes).toContainText('summarize-recovered · 节点已完成');
+  const recoveredNode = recoveredNodes.locator('.workflow-node-facts dt').filter({ hasText: 'summarize-recovered' });
+  await expect(recoveredNode).toContainText('节点已完成');
   await expect(recoveredNodes).not.toContainText('summarize-original');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await recoveredNodes.scrollIntoViewIfNeeded();
-  await page.screenshot({ path: info.outputPath('workflow-recovered-mobile.png') });
+  await page.screenshot({ path: info.outputPath('workflow-recovered-desktop-1024.png') });
 });

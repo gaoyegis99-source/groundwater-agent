@@ -3,7 +3,7 @@ from __future__ import annotations
 from platform_protocol_contracts import to_camel
 
 
-_OPAQUE_OBJECTS = {"arguments", "metadata", "provenance", "composition"}
+_OPAQUE_OBJECTS = {"arguments", "metadata", "provenance", "composition", "parameter_values"}
 _NAMED_OBJECTS = {
     "input_references", "inputs", "parameter_sources", "parameters",
     "default_parameters",

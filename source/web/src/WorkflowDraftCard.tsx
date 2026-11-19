@@ -5,6 +5,7 @@ import { ErrorNotice } from './ErrorNotice';
 import { Icon } from './Icon';
 import { selectWorkflowDraftUi } from './ui-selectors';
 import { inputMembers, WorkflowDraftGraph } from './WorkflowDraftGraph';
+import { Loading } from './ui/Feedback';
 
 const sourceNames = { USER: '用户说明', DATA: '数据', KNOWLEDGE: '知识', OPERATOR_DEFAULT: '算子默认值' };
 
@@ -26,16 +27,18 @@ export function WorkflowDraftCard({ draft, onKnowledge, onResource }: {
     [node.nodeId, `第 ${index + 1} 步 · ${nodeTitles.get(node.nodeId) ?? node.nodeId}`]));
   const nodeName = (id: string) => stepLabels.get(id) ?? id;
   return <section className="workflow-draft-card" data-testid="workflow-draft-card" data-draft-id={draft.draftId} aria-label="工作流编排草稿">
-    <div className="card-eyebrow"><Icon name="branch" />编排草稿 <span className="task-badge" data-tone={state.tone}>{state.label}</span></div>
+    <header className="draft-heading">
+      <div className="card-eyebrow"><Icon name="branch" />编排草稿 <span className="task-badge" data-tone={state.tone}>{state.label}</span></div>
+      {payload && <><h3>{payload.title}</h3><p className="prose">{payload.summary}</p></>}
+    </header>
     <p className="draft-notice">{payload?.executionAllowed ? '编排校验通过。请核对步骤和数据，然后在执行确认卡片上批准。' : '仅草稿，不可执行。'}</p>
     {payload?.compositionCheck?.code && <ErrorNotice code={payload.compositionCheck.code} title="执行校验未通过" />}
-    {!payload ? draft.status === 'FAILED' ? <ErrorNotice code={draft.errorCode!} diagnostics={draft.diagnostics} title="编排未完成" /> : <p className="muted" role="status">
-      {draft.status === 'GENERATING' ? '正在查阅可用方法与当前资料，整理分析步骤。'
-        : draft.status === 'CANCELLED' ? '编排已停止。'
+    {!payload ? draft.status === 'FAILED' ? <ErrorNotice code={draft.errorCode!} diagnostics={draft.diagnostics} title="编排未完成" />
+      : draft.status === 'GENERATING' ? <Loading>正在查阅可用方法与当前资料，整理分析步骤。</Loading> : <p className="muted" role="status">
+      {draft.status === 'CANCELLED' ? '编排已停止。'
         : draft.status === 'SUPERSEDED' ? '本次编排已由新的要求替代。'
         : state.description}
     </p> : <>
-      <h3>{payload.title}</h3><p className="prose">{payload.summary}</p>
       <div className="draft-overview"><span>{payload.workflow.nodes.length} 个分析步骤</span><span>{payload.workflow.inputs.length} 份所需资料</span><span>{payload.workflow.outputs.length} 项预期输出</span></div>
       {(payload.missingInputs.length > 0 || payload.unresolvedItems.length > 0) && <section className="draft-missing" data-testid="draft-missing"><h4>待补充与待核实</h4>
         {payload.missingInputs.length > 0 && <ul>{payload.missingInputs.map(input => <li key={`${input.kind}:${input.name}`}>
@@ -49,10 +52,11 @@ export function WorkflowDraftCard({ draft, onKnowledge, onResource }: {
       <h4>分析步骤</h4>
       <ol className="draft-nodes" data-testid="draft-nodes">{payload.workflow.nodes.map((node, index) => {
         const title = nodeTitles.get(node.nodeId) ?? node.nodeId;
+        const inputs = Object.values(node.inputs).flatMap(inputMembers);
         return <li key={node.nodeId} data-node-id={node.nodeId}>
-          <span className="draft-node-number">{String(index + 1).padStart(2, '0')}</span>
+          <span aria-hidden="true" className="draft-node-number">{index + 1}</span>
           <div className="draft-node-body"><strong>{title}</strong>
-            <p className="muted">使用：{Object.values(node.inputs).flatMap(inputMembers).map(binding => 'workflowInput' in binding ? `输入资料「${argumentLabel(binding.workflowInput)}」` : `${nodeName(binding.nodeOutput.nodeId)}的输出`).join('；')}</p>
+            {!!inputs.length && <p className="muted">使用：{inputs.map(binding => 'workflowInput' in binding ? `输入资料「${argumentLabel(binding.workflowInput)}」` : `${nodeName(binding.nodeOutput.nodeId)}的输出`).join('；')}</p>}
           </div>
         </li>;
       })}</ol>

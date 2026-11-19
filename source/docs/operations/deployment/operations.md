@@ -19,6 +19,14 @@
 `dev clean --dry-run` 列出可清理项。清理保留当前装配和本地容器仍引用的装配，
 包括可以重新启动的容器。无法核验 Docker 挂载时，保留旧装配。
 
+科研开发实例从 Kernel SQLite v34 或 v35 升级到 v36 时，在 `source/` 停止服务后执行显式迁移。迁移前会为原数据库创建内容校验可核对的备份。
+
+```bash
+../bin/gw dev down --product groundwater
+../bin/gw dev migrate-kernel --product groundwater
+../bin/gw dev up --product groundwater
+```
+
 ## 快照与归档
 
 ```bash

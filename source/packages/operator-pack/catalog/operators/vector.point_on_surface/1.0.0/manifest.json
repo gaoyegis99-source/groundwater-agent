@@ -33,8 +33,7 @@
         "flatgeobuf",
         "geojson",
         "geopackage",
-        "geoparquet",
-        "parquet"
+        "geoparquet"
       ],
       "mediaTypes": [
         "application/geopackage+sqlite3",
@@ -76,7 +75,11 @@
   "runtime": "qgis",
   "tags": [
     "vector",
-    "point-on-surface"
+    "point-on-surface",
+    "capability:point_on_surface",
+    "面内点",
+    "代表点",
+    "为每个面生成一个位于面内的代表点"
   ],
   "timeoutSeconds": 3600,
   "title": "Create point on surface",

@@ -97,7 +97,7 @@
       "validatorRef": {
         "id": "workflow-composition",
         "version": "1.0.0",
-        "digest": "sha256:9aa482686a29cf611d2cc84698b58839c8400a78f4999c9b17c3e0b88fe84667"
+        "digest": "sha256:1a9a435f1e2c54f067678c0193c64ef941d60e0c5b491037fe7bf9e8f072a739"
       }
     }
   ],
@@ -110,5 +110,5 @@
       "defaultPolicy": "declared"
     }
   },
-  "definitionDigest": "sha256:1b0dbf11be4276a9e17486f70ba19cd6092117c7be53afbeffaae582426a23a6"
+  "definitionDigest": "sha256:850a9e4eb42a8e82b08f745a544fa66c4887232c8a1857b6c2185f9c88169896"
 }

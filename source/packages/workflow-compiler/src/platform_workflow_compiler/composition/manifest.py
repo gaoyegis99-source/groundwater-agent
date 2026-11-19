@@ -25,6 +25,8 @@ def validate_port(port: dict, path: str) -> None:
     if port["kind"] == "value":
         schema = port["schema"]
         validate_parameter_schema(schema, path + "/schema")
+        if schema.get("type") == "object" and port.get("maxBytes"):
+            return
         scalar = schema.get("items") if schema.get("type") == "array" else schema
         if (
             not isinstance(scalar, dict)

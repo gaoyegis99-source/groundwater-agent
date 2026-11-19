@@ -127,7 +127,7 @@ def _identity_map(path: Path) -> tuple[dict[str, dict[str, str]], str]:
 def _kernel_subjects(database: Path) -> set[str]:
     with sqlite3.connect(database) as connection:
         version = connection.execute("SELECT version FROM schema_version").fetchone()[0]
-        if version not in range(29, 35):
+        if version not in range(29, 36):
             raise MigrationError("KERNEL_SCHEMA_UNSUPPORTED")
         rows = connection.execute(
             "SELECT DISTINCT owner_subject AS subject FROM sessions "
@@ -303,7 +303,7 @@ def create_plan(
             },
             "targets": {
                 "publicApi": "v12",
-                "kernel": 34,
+                "kernel": 36,
                 "data": 8,
                 "knowledge": 7,
                 "manifest": 4,

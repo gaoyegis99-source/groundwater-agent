@@ -1135,6 +1135,10 @@ class SemanticUpdateResponse(BaseModel):
     version_id: str = Field(..., alias='versionId', title='Versionid')
 
 
+class ValueKind(RootModel[str]):
+    root: str = Field(..., pattern='^[a-z][a-z0-9_.-]{0,127}$', title='Valuekind')
+
+
 class Direction(Enum):
     asc = 'asc'
     desc = 'desc'
@@ -1494,6 +1498,7 @@ class Semantics(BaseModel):
     spatial_extent: SpatialExtent | None = Field(None, alias='spatialExtent')
     time_range: str | None = Field(None, alias='timeRange', title='Timerange')
     timezone: str | None = Field(None, title='Timezone')
+    value_kind: ValueKind | None = Field(None, alias='valueKind', title='Valuekind')
     vertical_datum: str | None = Field(
         None, alias='verticalDatum', title='Verticaldatum'
     )

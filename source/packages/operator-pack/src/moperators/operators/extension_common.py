@@ -4,24 +4,28 @@ from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any
 
 import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as parquet
 
-from moperators.operators.analysis_common import artifact, bucket, field, number, rows, timestamp
+from moperators.operators.analysis_common import (
+    TableInput,
+    artifact,
+    bucket,
+    field,
+    grouped_series,
+    input_null_values,
+    input_timezone,
+    is_missing,
+    number,
+    rows,
+    timestamp,
+)
 
 
-class Input(Protocol):
-    @property
-    def path(self) -> Path: ...
-
-    @property
-    def format_id(self) -> str: ...
-
-
-def one(inputs: Mapping[str, Sequence[Input]], port: str) -> Input:
+def one(inputs: Mapping[str, Sequence[TableInput]], port: str) -> TableInput:
     values = inputs.get(port, ())
     if len(values) != 1:
         raise ValueError(f"FIELD_REQUIRED: {port}")
@@ -34,29 +38,22 @@ def write_rows(values: list[dict[str, Any]], path: Path) -> dict[str, Any]:
 
 
 def grouped_values(
-    source: Input,
+    source: TableInput,
     *,
     group_field: str,
     time_field: str,
     value_field: str,
     reject_duplicates: bool = True,
 ) -> dict[Any, list[tuple[datetime, float]]]:
-    result: dict[Any, list[tuple[datetime, float]]] = defaultdict(list)
-    seen: set[tuple[Any, datetime]] = set()
-    for row in rows(source):
-        group = field(row, group_field)
-        moment = timestamp(field(row, time_field))
-        if reject_duplicates and (group, moment) in seen:
-            raise ValueError("DUPLICATE_TIMESTAMP")
-        seen.add((group, moment))
-        result[group].append((moment, number(field(row, value_field))))
-    for series in result.values():
-        series.sort(key=lambda item: item[0])
-    return result
+    return grouped_series(
+        source,
+        {"groupField": group_field, "timeField": time_field, "valueField": value_field},
+        reject_duplicates=reject_duplicates,
+    )
 
 
 def grouped_values_with_missing(
-    source: Input,
+    source: TableInput,
     *,
     group_field: str,
     time_field: str,
@@ -66,22 +63,17 @@ def grouped_values_with_missing(
     result: dict[Any, list[tuple[datetime, float]]] = defaultdict(list)
     missing: dict[Any, int] = defaultdict(int)
     seen: set[tuple[Any, datetime]] = set()
-    metadata = getattr(source, "metadata", {})
-    contract = metadata.get("dataContract", {}) if isinstance(metadata, Mapping) else {}
-    declared_nulls = {
-        str(value) for value in contract.get("nullValues", [])
-    } if isinstance(contract, Mapping) else set()
+    timezone_ = input_timezone(source)
+    declared_nulls = input_null_values(source)
     for row in rows(source):
         group = field(row, group_field)
         result[group]
-        moment = timestamp(field(row, time_field))
+        moment = timestamp(field(row, time_field), timezone_)
         if (group, moment) in seen:
             raise ValueError("DUPLICATE_TIMESTAMP")
         seen.add((group, moment))
         raw = field(row, value_field)
-        if raw is None or (
-            isinstance(raw, str) and (not raw.strip() or raw in declared_nulls)
-        ):
+        if is_missing(raw, declared_nulls):
             missing[group] += 1
             continue
         result[group].append((moment, number(raw)))
@@ -91,7 +83,7 @@ def grouped_values_with_missing(
 
 
 def period_values(
-    source: Input,
+    source: TableInput,
     *,
     group_field: str,
     time_field: str,
@@ -99,12 +91,19 @@ def period_values(
     frequency: str,
 ) -> dict[Any, dict[datetime, float]]:
     result: dict[Any, dict[datetime, float]] = defaultdict(dict)
+    timezone_ = input_timezone(source)
+    null_values = input_null_values(source)
+    seen = set()
     for row in rows(source):
         group = field(row, group_field)
-        period = bucket(timestamp(field(row, time_field)), frequency)
-        if period in result[group]:
+        period = bucket(timestamp(field(row, time_field), timezone_), frequency)
+        if (group, period) in seen:
             raise ValueError("DUPLICATE_PERIOD")
-        result[group][period] = number(field(row, value_field))
+        seen.add((group, period))
+        series = result[group]
+        raw = field(row, value_field)
+        if not is_missing(raw, null_values):
+            series[period] = number(raw)
     return result
 
 
@@ -117,7 +116,7 @@ def shift_period(value: datetime, frequency: str, periods: int) -> datetime:
     if step is None:
         raise ValueError("FREQUENCY_UNSUPPORTED")
     month_index = value.year * 12 + value.month - 1 + step * periods
-    return datetime(month_index // 12, month_index % 12 + 1, 1)
+    return datetime(month_index // 12, month_index % 12 + 1, 1, tzinfo=value.tzinfo)
 
 
 def summary(value: dict[str, Any]) -> dict[str, Any]:

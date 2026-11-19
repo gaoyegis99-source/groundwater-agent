@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { identityScope } from "@platform/ui-boundary";
 import {
   DiagnosticsPanel,
@@ -11,8 +11,6 @@ import {
   useVisitedViews,
 } from "@platform/operator-ui";
 import { CatalogPanel } from "./CatalogPanel";
-import { ImportPanel } from "./ImportPanel";
-import { RetrievalPanel } from "./RetrievalPanel";
 import {
   dataApi,
   decodeDataCapabilities,
@@ -24,6 +22,9 @@ import {
 } from "./api";
 import type { DataCapabilities, KnowledgeCapabilities } from "./api";
 import { importRecoveryKey, readImportRecovery } from "./recovery";
+
+const ImportPanel = lazy(() => import("./ImportPanel").then(module => ({ default: module.ImportPanel })));
+const RetrievalPanel = lazy(() => import("./RetrievalPanel").then(module => ({ default: module.RetrievalPanel })));
 
 type Boundary = {
   knowledge: KnowledgeCapabilities;
@@ -60,6 +61,8 @@ export function App() {
           && data.project === knowledge.project
           && data.currentUser.subject === knowledge.currentUser.subject
         );
+        if (controller.signal.aborted) return;
+        document.documentElement.dataset.product = knowledge.productId;
         setBoundary({ knowledge, data, compatible, dataError });
       } catch (caught) {
         if (!(caught instanceof DOMException && caught.name === "AbortError")) {
@@ -73,7 +76,7 @@ export function App() {
     const unavailable = error.status === 0 || error.status === 502 || error.status === 503;
     return <main className="initialization-error"><h1>{unavailable ? "Knowledge 服务暂时不可用" : "Knowledge 管理配置不可用"}</h1><p role="alert">{errorText(error)}</p><p>管理操作保持禁用。{unavailable ? "请检查服务状态后重新加载。" : "请将请求 ID 提供给项目管理员。"}</p><button onClick={() => window.location.reload()}>重新检查</button><DiagnosticsPanel sink={knowledgeDiagnostics} /></main>;
   }
-  if (!boundary) return <main><p role="status">正在读取 Knowledge 管理边界…</p></main>;
+  if (!boundary) return <main className="workspace-shell"><p role="status" className="operator-loading">正在读取 Knowledge 管理边界…</p></main>;
   return <KnowledgeWorkspace boundary={boundary} />;
 }
 
@@ -119,17 +122,21 @@ function KnowledgeWorkspace({ boundary }: { boundary: Boundary }) {
         <CatalogPanel scope={scope} capabilities={knowledge} refreshToken={refreshToken} active={view === "catalog"} />
       </div>}
       {visitedViews.has("retrieval") && <div id={tabIds("knowledge-task", "retrieval").panel} role="tabpanel" aria-labelledby={tabIds("knowledge-task", "retrieval").tab} hidden={view !== "retrieval"}>
-        <RetrievalPanel capabilities={knowledge} dataCapabilities={data} crossServiceCompatible={bindingAvailable} />
+        <Suspense fallback={<p role="status" className="operator-loading">正在加载证据检索…</p>}>
+          <RetrievalPanel capabilities={knowledge} dataCapabilities={data} crossServiceCompatible={bindingAvailable} />
+        </Suspense>
       </div>}
       {visitedViews.has("import") && <div id={tabIds("knowledge-task", "import").panel} role="tabpanel" aria-labelledby={tabIds("knowledge-task", "import").tab} hidden={view !== "import"}>
-        <ImportPanel
-          scope={scope}
-          recoveryKey={recoveryKey}
-          capabilities={knowledge}
-          dataCapabilities={data}
-          crossServiceCompatible={bindingAvailable}
-          onImported={() => setRefreshToken(value => value + 1)}
-        />
+        <Suspense fallback={<p role="status" className="operator-loading">正在加载导入更新…</p>}>
+          <ImportPanel
+            scope={scope}
+            recoveryKey={recoveryKey}
+            capabilities={knowledge}
+            dataCapabilities={data}
+            crossServiceCompatible={bindingAvailable}
+            onImported={() => setRefreshToken(value => value + 1)}
+          />
+        </Suspense>
       </div>}
       <DiagnosticsPanel sink={knowledgeDiagnostics} />
     </main>

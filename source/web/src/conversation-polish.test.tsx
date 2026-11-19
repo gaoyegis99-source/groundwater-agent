@@ -6,7 +6,7 @@ import { identityStorageScope, scopedStorageKey } from './browser-scope';
 import { MessageComposer } from './MessageComposer';
 import { productUi } from './product-ui';
 import { SessionRenameDialog } from './SessionRenameDialog';
-import { capabilitiesFixture, dataDetail, dataRef, historyFixture, sessionResponseFixture, sessionResultsFixture, sessionSummaryFixture, taskFixture } from './test-fixtures';
+import { capabilitiesFixture, dataDetail, dataRef, historyFixture, replyFixture, sessionResponseFixture, sessionResultsFixture, sessionSummaryFixture, taskFixture } from './test-fixtures';
 import { useProjectSessions } from './use-project-sessions';
 
 const json = (body: unknown) => new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json' } });
@@ -47,6 +47,43 @@ it('offers an explicit template undo and retires it after further editing', asyn
   expect(vi.mocked(fetch).mock.calls).toHaveLength(2);
 });
 
+it.each([
+  { dialoguePolicy: 'READ_ONLY', semanticIntent: 'CONSULT', needsInputs: false },
+  { dialoguePolicy: null, semanticIntent: null, needsInputs: false },
+  { dialoguePolicy: 'EXECUTION_PROPOSAL', semanticIntent: 'EXECUTE_ON_DATA', needsInputs: true },
+] as const)('uses the turn intent to decide whether reply follow-ups block execution ($dialoguePolicy)', async ({ dialoguePolicy, semanticIntent, needsInputs }) => {
+  const reply = { ...replyFixture('建议做描述统计。'), unresolvedItems: [
+    { markdown: '可提供监测数据版本与数值列。', sourceIndexes: [] },
+  ] };
+  window.history.replaceState({}, '', '/#/sessions/session-1');
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    if (url.endsWith('/capabilities')) return json(capabilitiesFixture());
+    if (url.endsWith('/sessions')) return json({ items: [], nextCursor: null });
+    if (url.includes('/results')) return json(sessionResultsFixture());
+    if (url.endsWith('/messages')) return json(historyFixture({
+      goalRevision: 2,
+      items: [{ messageId: 1, role: 'user', goalRevision: 2, content: '我想了解监测数据中数值列的分布。' }],
+      turns: [{}, { goalRevision: 2, agentRunId: 'agent-2', dialoguePolicy, semanticIntent, reply }],
+    }));
+    throw new Error(`unexpected endpoint ${url}`);
+  }));
+  render(<App />);
+  await screen.findByText('建议做描述统计。');
+  expect(within(screen.getByTestId('message-list')).getByText('可提供监测数据版本与数值列。')).toBeVisible();
+  if (needsInputs) expect(screen.getByRole('button', { name: '补齐资料' })).toBeVisible();
+  else expect(screen.queryByRole('region', { name: '当前研究任务' })).not.toBeInTheDocument();
+  if (semanticIntent === 'CONSULT') expect(screen.getByRole('heading', { name: '后续可补充' })).toBeVisible();
+
+  fireEvent.change(screen.getByLabelText('筛选轮次'), { target: { value: 'pending' } });
+  const index = within(screen.getByLabelText('定位对话轮次'));
+  if (needsInputs) expect(index.getByRole('option', { name: /第 2 轮/ })).toBeInTheDocument();
+  else expect(index.queryByRole('option', { name: /第 2 轮/ })).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('link', { name: '运行', exact: true }));
+  if (needsInputs) await screen.findAllByText('需要补充信息');
+  else await screen.findByText('本轮未创建持续任务。');
+});
+
 it('keeps the newest search result when an older session request finishes late', async () => {
   const first = deferred<Response>();
   vi.stubGlobal('fetch', vi.fn(async (url: string) => {
@@ -78,7 +115,7 @@ it('keeps rename errors in the dialog and blocks duplicate saves while pending',
   await within(dialog).findByRole('alert');
   expect(within(dialog).getByRole('textbox')).toHaveValue('修改后的名称');
   fireEvent.click(within(dialog).getByRole('button', { name: '保存' }));
-  expect(within(dialog).getByRole('button', { name: '正在保存…' })).toBeDisabled();
+  expect(within(dialog).getByRole('button', { name: '保存' })).toHaveAttribute('aria-disabled', 'true');
   fireEvent.submit(within(dialog).getByRole('textbox').closest('form')!);
   expect(rename).toHaveBeenCalledTimes(2);
   await act(async () => pending.resolve());
@@ -99,7 +136,7 @@ it('shows archived session state, current selection and a complete long title', 
   const current = await screen.findByRole('link', { name: title });
   expect(current).toHaveAttribute('title', title);
   expect(current).toHaveAttribute('aria-current', 'page');
-  expect(within(current).getByText('已归档')).toBeVisible();
+  expect(current).toHaveAccessibleDescription(/已归档/);
 });
 
 it('closes a rename dialog when navigation changes its owning session', async () => {
@@ -156,7 +193,7 @@ it('summarizes a pending attachment while retaining its full immutable identity 
   expect(screen.getByRole('button', { name: '发送消息' })).toBeEnabled();
 });
 
-it('uses the shared short version for sent structured attachments and exposes the complete version', async () => {
+it('uses the business name for a published attachment without printing the version', async () => {
   const versionId = '01234567-89ab-cdef-0123-456789abcdef';
   const reference = dataRef({ versionId, outputName: 'summary' });
   window.history.replaceState({}, '', '/#/sessions/session-1');
@@ -169,9 +206,8 @@ it('uses the shared short version for sent structured attachments and exposes th
     throw new Error(`unexpected endpoint ${url}`);
   }));
   render(<App />);
-  const attachment = await screen.findByRole('button', { name: /查看附件 summary/ });
-  expect(attachment).toHaveTextContent('01234567…cdef');
-  expect(attachment).toHaveAttribute('title', `数据版本 ${versionId}`);
+  const attachment = await screen.findByRole('button', { name: '汇总结果' });
+  expect(attachment).not.toHaveTextContent('01234567');
 });
 
 it('creates one continuation session for duplicate clicks and permits an explicit retry after failure', async () => {

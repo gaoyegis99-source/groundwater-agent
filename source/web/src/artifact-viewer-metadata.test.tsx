@@ -47,5 +47,5 @@ it('does not show the previous JSON under a newly selected data version while lo
   view.rerender(<ArtifactViewer resource={{ ...receipt, versionId: 'second-version' }} project="groundwater-demo" />);
   expect(screen.getByText('second-version')).toBeVisible();
   expect(screen.queryByText('"first-operation"')).not.toBeInTheDocument();
-  expect(await screen.findByText('正在读取…')).toBeVisible();
+  expect(await screen.findByText('正在读取 JSON…')).toBeVisible();
 });

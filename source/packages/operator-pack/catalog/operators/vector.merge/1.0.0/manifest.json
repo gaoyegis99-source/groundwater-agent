@@ -41,8 +41,7 @@
         "flatgeobuf",
         "geojson",
         "geopackage",
-        "geoparquet",
-        "parquet"
+        "geoparquet"
       ],
       "maxItems": 32,
       "mediaTypes": [
@@ -52,7 +51,8 @@
         "application/vnd.apache.parquet"
       ],
       "name": "vectors",
-      "required": true
+      "required": true,
+      "minItems": 1
     }
   ],
   "memoryLimitBytes": 8589934592,
@@ -76,7 +76,11 @@
   "runtime": "qgis",
   "tags": [
     "vector",
-    "merge"
+    "merge",
+    "capability:merge",
+    "合并图层",
+    "图层合并",
+    "把多份同类图层合并为一层"
   ],
   "timeoutSeconds": 3600,
   "title": "Merge vector layers",

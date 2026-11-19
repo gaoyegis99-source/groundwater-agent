@@ -62,8 +62,24 @@
       "kind": "value",
       "name": "summary",
       "schema": {
-        "type": "object"
-      }
+        "type": "object",
+        "properties": {
+          "fieldCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "rowCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "fieldCount",
+          "rowCount"
+        ],
+        "additionalProperties": false
+      },
+      "maxBytes": 1048576
     }
   ],
   "parametersSchema": {
@@ -74,7 +90,12 @@
   "runtime": "native",
   "tags": [
     "table",
-    "profile"
+    "profile",
+    "capability:profile",
+    "字段画像",
+    "表格画像",
+    "列统计",
+    "统计每一列的缺失与不同值数量"
   ],
   "timeoutSeconds": 1800,
   "title": "Profile table columns",

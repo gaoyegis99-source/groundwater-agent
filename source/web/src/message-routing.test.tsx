@@ -197,7 +197,7 @@ it('retains separate unsent text and attachment identities across sessions and r
   fireEvent.change(second, { target: { value: '第二个问题' } });
   await act(async () => { window.location.hash = '#/sessions/routing'; window.dispatchEvent(new HashChangeEvent('hashchange')); });
   const restored = await ready(); expect(restored).toHaveValue('第一份草稿');
-  expect(screen.getByRole('button', { name: '井号W01.csv · version-3' })).toBeVisible();
+  expect(screen.getByRole('button', { name: '井号W01.csv CSV · 版本 version-3' })).toBeVisible();
   view.unmount(); render(<App />); const reloaded = await ready();
   await waitFor(() => expect(reloaded).toHaveValue('第一份草稿'));
   fireEvent.keyDown(reloaded, { key: 'Enter' });

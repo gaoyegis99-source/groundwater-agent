@@ -236,7 +236,11 @@
   "runtime": "native",
   "tags": [
     "data",
-    "convert"
+    "convert",
+    "capability:convert",
+    "格式转换",
+    "转换格式",
+    "转换数据文件格式"
   ],
   "timeoutSeconds": 3600,
   "title": "Convert data format",

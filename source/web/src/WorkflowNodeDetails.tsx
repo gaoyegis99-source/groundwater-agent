@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ApiError, callApi } from './api';
+import { ApiError, callApi, errorCodeMessage } from './api';
 import { selectWorkflowNodeStatus } from './ui-selectors';
 import { ErrorNotice } from './ErrorNotice';
+import { Badge, Loading } from './ui/Feedback';
 import type { components } from './generated/public-api-v12';
 
 type Diagnostics = components['schemas']['kernel__WorkflowNodeDiagnosticsResponse'];
@@ -66,16 +67,14 @@ function RunDependencyGraph({ graph, nodes }: { graph: Graph; nodes: Node[] }) {
 }
 
 function NodeDetails({ node }: { node: Node }) {
-  return <div>
-    <dt>{node.nodeId} · {selectWorkflowNodeStatus(node.status).label}</dt>
+  const state = selectWorkflowNodeStatus(node.status);
+  return <div className="workflow-node-facts">
+    <dt><strong>{node.nodeId}</strong><Badge tone={state.tone}>{state.label}</Badge></dt>
     <dd>{node.operatorId} · {node.runtime}{node.attemptCount !== null && ` · 尝试 ${node.attemptCount} 次`}</dd>
-    {(node.startedAt || node.finishedAt) && <dd>{formatTime(node.startedAt)} → {formatTime(node.finishedAt)}</dd>}
-    {node.errorCode && <dd><code>{node.errorCode}</code></dd>}
+    {node.startedAt && <dd>开始 <time dateTime={node.startedAt}>{new Date(node.startedAt).toLocaleString()}</time></dd>}
+    {node.finishedAt && <dd>结束 <time dateTime={node.finishedAt}>{new Date(node.finishedAt).toLocaleString()}</time></dd>}
+    {node.errorCode && <dd className="workflow-task-error">{errorCodeMessage(node.errorCode)} <code>{node.errorCode}</code></dd>}
   </div>;
-}
-
-function formatTime(value: string | null) {
-  return value ? new Date(value).toLocaleString() : '—';
 }
 
 export function WorkflowNodeDetails({ runId, project, status }: { runId: string; project: string; status: string }) {
@@ -130,7 +129,7 @@ export function WorkflowNodeDetails({ runId, project, status }: { runId: string;
     if (!event.currentTarget.open) setRead(null);
   }}>
     <summary>节点详情</summary>
-    {open && state.kind === 'loading' && <p role="status">正在读取节点状态…</p>}
+    {open && state.kind === 'loading' && <Loading>正在读取节点状态…</Loading>}
     {open && state.kind === 'error' && <>
       <ErrorNotice error={state.error} />
       <button type="button" onClick={reload}>重新加载</button>

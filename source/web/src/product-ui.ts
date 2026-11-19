@@ -4,11 +4,29 @@ import validateProductUiSchema from './generated/product-ui.v1.validator.js';
 
 export type ViewerKind = 'auto' | 'table' | 'chart' | 'map' | 'image' | 'json' | 'metadata';
 export interface ParameterPresentation { label: string; group: string; unit?: string; values?: Record<string, string> }
+export interface WorkflowContinuation {
+  output: string;
+  targetModel: string;
+  targetInput: string;
+  label: string;
+  reviewReport?: string;
+}
+export interface ResultOverview {
+  description: string;
+  regressionMetrics?: string;
+  insight?: { kind: 'darcy' | 'kriging' | 'drastic' | 'calibration' | 'trend' | 'map' | 'statistics'; output: string; schemaVersion?: string; categoricalVisual?: string };
+  visuals?: string[];
+  sections: { label: string; outputs: string[] }[];
+}
 export interface ModelPresentation {
   displayName: string; description: string; applicability: string;
   inputs: Record<string, { label: string; description: string; formats: string[] }>;
   parameterOverrides: Record<string, ParameterPresentation>;
   confirmationSummary: { label: string; parameters: string[] }[];
+  resultOverview?: ResultOverview;
+  continuation?: WorkflowContinuation;
+  inputCaseTag?: string;
+  publishedOutputStep?: { output: string; targetModel: string; targetInput: string; arguments: Record<string, unknown> };
 }
 export interface ProductUiProfile {
   schemaVersion: 'product-ui.v1'; productId: string; locale: string;
@@ -18,6 +36,7 @@ export interface ProductUiProfile {
   models: Record<string, ModelPresentation>;
   parameterNames: Record<string, ParameterPresentation>;
   parameterStages: Record<string, { label: string; group: string }>;
+  quantityKindLabels?: Record<string, string>;
   outputs: Record<string, { label: string; viewer: ViewerKind }>;
   cases: Record<string, { label: string; profiles: Record<string, string> }>;
 }
@@ -48,8 +67,8 @@ function parameter(value: unknown): ParameterPresentation {
 export function decodeProductUi(value: unknown): ProductUiProfile {
   if (!validateProductUiSchema(value)) throw new TypeError('PRODUCT_UI_INVALID');
   const root = object(value);
-  exact(root, ['schemaVersion', 'productId', 'locale', 'brand', 'examples', 'models', 'parameterNames', 'parameterStages', 'outputs', 'cases',
-    ...('theme' in root ? ['theme'] : [])]);
+  const optionalFields = ['theme', 'quantityKindLabels'].filter(key => Object.hasOwn(root, key));
+  exact(root, ['schemaVersion', 'productId', 'locale', 'brand', 'examples', 'models', 'parameterNames', 'parameterStages', 'outputs', 'cases', ...optionalFields]);
   if (root.schemaVersion !== 'product-ui.v1') throw new TypeError('PRODUCT_UI_INVALID');
   const brand = object(root.brand); exact(brand, ['productName', 'workspaceName', 'assistantName', 'welcome', 'icon']);
   const icon = object(brand.icon); exact(icon, ['path', 'checksum', 'mediaType']);
@@ -57,12 +76,17 @@ export function decodeProductUi(value: unknown): ProductUiProfile {
   if (!Array.isArray(root.examples) || root.examples.length < 1 || root.examples.length > 12) throw new TypeError('PRODUCT_UI_INVALID');
   const examples = root.examples.map(raw => { const item = object(raw); exact(item, ['id', 'title', 'prompt', 'icon', 'featured']); if (!iconNames.has(String(item.icon)) || typeof item.featured !== 'boolean') throw new TypeError('PRODUCT_UI_INVALID'); return { id: text(item.id), title: text(item.title), prompt: text(item.prompt), icon: item.icon as IconName, featured: item.featured }; });
   const models = Object.fromEntries(Object.entries(object(root.models)).map(([id, raw]) => {
-    const item = object(raw); exact(item, ['displayName', 'description', 'applicability', 'inputs', 'parameterOverrides', 'confirmationSummary']);
+    const item = object(raw);
+    const resultOverview = item.resultOverview as ResultOverview | undefined;
+    const continuation = item.continuation as WorkflowContinuation | undefined;
+    const inputCaseTag = item.inputCaseTag as string | undefined;
+    const publishedOutputStep = item.publishedOutputStep as ModelPresentation['publishedOutputStep'];
+    exact(item, ['displayName', 'description', 'applicability', 'inputs', 'parameterOverrides', 'confirmationSummary', ...(resultOverview ? ['resultOverview'] : []), ...(continuation ? ['continuation'] : []), ...(inputCaseTag ? ['inputCaseTag'] : []), ...(publishedOutputStep ? ['publishedOutputStep'] : [])]);
     const inputs = Object.fromEntries(Object.entries(object(item.inputs)).map(([name, inputRaw]) => { const input = object(inputRaw); exact(input, ['label', 'description', 'formats']); if (!Array.isArray(input.formats) || input.formats.some(format => typeof format !== 'string')) throw new TypeError('PRODUCT_UI_INVALID'); return [name, { label: text(input.label), description: text(input.description), formats: input.formats as string[] }]; }));
     const parameterOverrides = Object.fromEntries(Object.entries(object(item.parameterOverrides)).map(([name, rawValue]) => [name, parameter(rawValue)]));
     if (!Array.isArray(item.confirmationSummary)) throw new TypeError('PRODUCT_UI_INVALID');
     const confirmationSummary = item.confirmationSummary.map(rawSummary => { const summary = object(rawSummary); exact(summary, ['label', 'parameters']); if (!Array.isArray(summary.parameters) || summary.parameters.some(name => typeof name !== 'string')) throw new TypeError('PRODUCT_UI_INVALID'); return { label: text(summary.label), parameters: summary.parameters as string[] }; });
-    return [id, { displayName: text(item.displayName), description: text(item.description), applicability: text(item.applicability), inputs, parameterOverrides, confirmationSummary }];
+    return [id, { displayName: text(item.displayName), description: text(item.description), applicability: text(item.applicability), inputs, parameterOverrides, confirmationSummary, ...(resultOverview && { resultOverview }), ...(continuation && { continuation }), ...(inputCaseTag && { inputCaseTag }), ...(publishedOutputStep && { publishedOutputStep }) }];
   }));
   const parameterNames = Object.fromEntries(Object.entries(object(root.parameterNames)).map(([name, raw]) => [name, parameter(raw)]));
   const parameterStages = Object.fromEntries(Object.entries(object(root.parameterStages)).map(([name, raw]) => { const item = object(raw); exact(item, ['label', 'group']); return [name, { label: text(item.label), group: text(item.group) }]; }));
@@ -71,7 +95,10 @@ export function decodeProductUi(value: unknown): ProductUiProfile {
   const theme = 'theme' in root
     ? Object.fromEntries(Object.entries(object(root.theme)).map(([name, value]) => [name, text(value)]))
     : undefined;
-  return { schemaVersion: 'product-ui.v1', productId: text(root.productId), locale: text(root.locale), brand: { productName: text(brand.productName), workspaceName: text(brand.workspaceName), assistantName: text(brand.assistantName), welcome: text(brand.welcome), icon: { path: 'product-icon.svg', checksum: text(icon.checksum), mediaType: 'image/svg+xml' } }, examples, models, parameterNames, parameterStages, outputs, cases, ...(theme && { theme }) };
+  const quantityKindLabels = 'quantityKindLabels' in root
+    ? Object.fromEntries(Object.entries(object(root.quantityKindLabels)).map(([kind, label]) => [kind, text(label)]))
+    : undefined;
+  return { schemaVersion: 'product-ui.v1', productId: text(root.productId), locale: text(root.locale), brand: { productName: text(brand.productName), workspaceName: text(brand.workspaceName), assistantName: text(brand.assistantName), welcome: text(brand.welcome), icon: { path: 'product-icon.svg', checksum: text(icon.checksum), mediaType: 'image/svg+xml' } }, examples, models, parameterNames, parameterStages, outputs, cases, ...(theme && { theme }), ...(quantityKindLabels && { quantityKindLabels }) };
 }
 
 export async function loadProductUi(): Promise<ProductUiProfile> {
@@ -82,8 +109,8 @@ export async function loadProductUi(): Promise<ProductUiProfile> {
 export function setProductUi(profile: ProductUiProfile) {
   if (typeof document !== 'undefined') {
     const root = document.documentElement;
-    for (const name of Object.keys(active?.theme ?? {})) root.style.removeProperty(`--workspace-${name}`);
-    for (const [name, value] of Object.entries(profile.theme ?? {})) root.style.setProperty(`--workspace-${name}`, value);
+    for (const name of Object.keys(active?.theme ?? {})) root.style.removeProperty(`--product-theme-${name}`);
+    for (const [name, value] of Object.entries(profile.theme ?? {})) root.style.setProperty(`--product-theme-${name}`, value);
     root.lang = profile.locale;
     root.dataset.product = profile.productId;
     document.title = profile.brand.workspaceName;

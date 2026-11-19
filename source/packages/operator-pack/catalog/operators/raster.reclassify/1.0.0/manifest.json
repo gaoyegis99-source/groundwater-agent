@@ -50,7 +50,6 @@
       "formats": [
         "arrow-ipc-file",
         "csv",
-        "geoparquet",
         "json",
         "parquet"
       ],
@@ -61,14 +60,14 @@
         "application/vnd.apache.arrow.file"
       ],
       "name": "rules",
-      "required": true
+      "required": true,
+      "logicalType": "record"
     }
   ],
   "memoryLimitBytes": 8589934592,
   "outputs": [
     {
       "formats": [
-        "cog",
         "geotiff"
       ],
       "kind": "artifact",
@@ -114,9 +113,97 @@
   "runtime": "native",
   "tags": [
     "raster",
-    "reclassify"
+    "reclassify",
+    "capability:reclassify",
+    "重分类",
+    "区间赋值",
+    "栅格分类",
+    "按区间规则重分类栅格"
   ],
   "timeoutSeconds": 3600,
   "title": "Reclassify raster values",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "composition": {
+    "portSemantics": {
+      "raster": {
+        "requiredFacts": [
+          "crs",
+          "grid",
+          "rasterBands"
+        ]
+      }
+    },
+    "outputSemantics": {
+      "raster": {
+        "inherit": [
+          {
+            "inputPort": "raster",
+            "facts": [
+              "crs",
+              "grid"
+            ]
+          }
+        ],
+        "transform": [
+          {
+            "property": "nodata",
+            "parameter": "noData",
+            "rule": "parameterFact"
+          }
+        ]
+      }
+    },
+    "constraints": [
+      {
+        "id": "selected-band",
+        "condition": {
+          "predicate": "rasterBandExists",
+          "arguments": [
+            {
+              "port": "raster",
+              "property": "rasterBands"
+            },
+            {
+              "parameter": "band"
+            }
+          ]
+        },
+        "severity": "error",
+        "checkStage": "compile"
+      },
+      {
+        "id": "input-nodata",
+        "condition": {
+          "predicate": "rasterMaskSupported",
+          "arguments": [
+            {
+              "port": "raster",
+              "property": "rasterBands"
+            },
+            {
+              "parameter": "band"
+            }
+          ]
+        },
+        "severity": "error",
+        "checkStage": "compile"
+      },
+      {
+        "id": "output-nodata",
+        "condition": {
+          "predicate": "rasterNoDataFits",
+          "arguments": [
+            {
+              "parameter": "noData"
+            },
+            {
+              "parameter": "outputType"
+            }
+          ]
+        },
+        "severity": "error",
+        "checkStage": "compile"
+      }
+    ]
+  }
 }

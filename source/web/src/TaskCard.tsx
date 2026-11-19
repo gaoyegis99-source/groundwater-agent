@@ -2,6 +2,7 @@ import type { History, ResourceReference, Result, TaskContext } from './types';
 import { errorCodeMessage } from './api';
 import { outputName } from './card-presentation';
 import { selectTaskCriterion, selectTaskCriterionOutputs, selectTaskStep, selectTaskUi } from './ui-selectors';
+import { Icon } from './Icon';
 import './task-overview.css';
 
 export function sessionTask(history: History | null, sessionId: string) {
@@ -21,25 +22,49 @@ export function TaskHeader({ task, name, onOpen, onSupplement, onConfirmation }:
 }) {
   const { state, lifecycle } = selectTaskUi(task, Boolean(onSupplement));
   const status = lifecycle?.tone === 'success' ? lifecycle : state;
-  const blocker = task.progress.blockingReasons?.[0];
-  const missing = state?.raw === 'WAITING_INPUT' ? task.spec.unresolvedItems[0] : undefined;
-  return <section className="task-header" aria-label="当前研究任务">
+  return <section className="task-header" aria-label="当前研究任务" data-tone={status?.tone}>
     <div className="task-header-top">
       <h2>{name?.trim() || '研究任务'}</h2>
-      <span className="task-badge" data-tone={status?.tone}>{status?.label}</span>
+      <div className="task-header-status"><span>当前阶段</span> <span className="task-badge" data-tone={status?.tone}>{status?.label}</span></div>
     </div>
-    <p><strong>当前研究目标</strong> {task.spec.objective}</p>
+    <div className="task-header-facts" role="group" aria-label="研究目标与待办" tabIndex={0}><TaskFacts task={task} /></div>
     <div className="task-header-next">
-      <span>{blocker ? blockerDescription(blocker) : missing ?? state?.description}</span>
       <div className="task-header-actions">
-        <button type="button" onClick={onOpen}>查看任务概览</button>
         {state?.actions.includes('clarify') && onSupplement &&
-          <button type="button" onClick={onSupplement}>补充任务信息</button>}
+          <button type="button" className="primary" onClick={onSupplement}>补充任务信息</button>}
         {state?.raw === 'WAITING_CONFIRMATION' && onConfirmation &&
-          <button type="button" onClick={onConfirmation}>查看当前执行确认</button>}
+          <button type="button" className="primary" onClick={onConfirmation}>查看当前执行确认</button>}
+        <button type="button" onClick={onOpen}>查看任务概览 <Icon name="arrow-up-right" /></button>
       </div>
     </div>
   </section>;
+}
+
+export function TaskFacts({ task, runPhase }: { task: TaskContext; runPhase?: string }) {
+  const { state, lifecycle } = selectTaskUi(task, false);
+  const delivery = lifecycle?.tone === 'success' ? lifecycle : state;
+  const blockers = task.progress.blockingReasons?.map(blockerDescription) ?? [];
+  const pending = state?.raw === 'WAITING_REVIEW'
+    ? task.spec.criteria.filter(item => item.kind === 'USER_REVIEW' && selectTaskCriterion(item, task.progress.criteria).state === 'pending').map(item => item.text)
+    : state?.raw === 'WAITING_INPUT' ? task.spec.unresolvedItems : [];
+  const [first, ...rest] = new Set([...blockers, ...pending]);
+  const objective = task.spec.objective;
+  const objectiveCharacters = Array.from(objective);
+  return <div className="task-facts">
+    {runPhase && delivery && delivery.label !== runPhase && <p className="task-fact">
+      <strong>交付状态</strong> <span className="task-badge" data-tone={delivery.tone}>{delivery.label}</span>
+    </p>}
+    {objectiveCharacters.length > 56 ? <details className="task-objective-details">
+      <summary className="task-fact"><strong>当前研究目标</strong> {objectiveCharacters.slice(0, 48).join('')}…</summary>
+      <p className="task-fact">{objective}</p>
+    </details> : <p className="task-fact"><strong>当前研究目标</strong> <span>{objective}</span></p>}
+    {first
+      ? <div className="task-pending">
+        <p className="task-fact"><strong>待处理</strong> <span>{first}</span></p>
+        {rest.length > 0 && <details><summary>其余 {rest.length} 项</summary><ul>{rest.map(item => <li key={item}>{item}</li>)}</ul></details>}
+      </div>
+      : state && <p className="task-fact task-status-description">{state.description}</p>}
+  </div>;
 }
 
 function TaskOutputLinks({ items, onResource }: {

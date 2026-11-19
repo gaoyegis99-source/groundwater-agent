@@ -143,7 +143,7 @@ describe("Knowledge UI trust boundary", () => {
     );
     renderApp();
     await user.click(await screen.findByRole("tab", { name: /导入更新/ }));
-    const fileInput = await screen.findByLabelText("知识包文件");
+    const fileInput = await screen.findByLabelText(/知识包文件/);
     const pkg = {
       schemaVersion: "knowledge-package.v1",
       projectId: capabilities.project,
@@ -175,7 +175,7 @@ describe("Knowledge UI trust boundary", () => {
     await user.click(screen.getByText("系统信息"));
     expect(await screen.findByText(/operator-1/)).toBeVisible();
     await user.click(screen.getByRole("tab", { name: /导入更新/ }));
-    expect(screen.queryByLabelText("知识包文件")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/知识包文件/)).not.toBeInTheDocument();
     expect(screen.getByText("当前身份没有导入权限。")).toBeVisible();
   });
 

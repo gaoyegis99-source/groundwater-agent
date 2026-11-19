@@ -1,13 +1,16 @@
 import { useState } from "react";
 import { Button, Dialog, DialogTrigger, Heading, Modal } from "react-aria-components";
+import { FilePicker } from "@platform/operator-ui";
 import { errorText, pretty } from "./api";
-import type { RunAction } from "./api";
-import type { OutputDraft, usePublication } from "./use-publication";
+import type { DataCapabilities, RunAction } from "./api";
+import { usePublication, type OutputDraft } from "./use-publication";
 
 type Props = {
-  controller: ReturnType<typeof usePublication>;
+  scope: string;
+  recoveryKey: string;
+  capabilities: DataCapabilities;
   run: RunAction;
-  formats: string[];
+  onPublished: () => Promise<void>;
 };
 
 const publicationStateLabels: Record<string, string> = {
@@ -35,7 +38,12 @@ function bytes(value: number): string {
 
 const progressLabels = { waiting: "等待处理", hash: "正在计算 SHA-256", upload: "正在上传", complete: "上传完成" } as const;
 
-export function PublicationPanel({ controller, run, formats }: Props) {
+export function PublicationPanel({ scope, recoveryKey, capabilities, run, onPublished }: Props) {
+  const { formats, formatMediaTypes, limits } = capabilities;
+  const controller = usePublication(
+    scope, recoveryKey, formats, formatMediaTypes, limits.uploadBytes ?? 1_073_741_824,
+    limits.prepareSeconds ?? 3_600, onPublished,
+  );
   const {
     publication,
     publicationId,
@@ -88,12 +96,11 @@ export function PublicationPanel({ controller, run, formats }: Props) {
       {step === 1 && (
         <div className="upload-start">
           <label className="file-dropzone">
-            <span className="dropzone-icon" aria-hidden="true">＋</span>
             <strong>选择要发布的文件</strong>
             <span>可一次选择多个文件；同一批次将整体成功或整体失败。单文件上限 {bytes(uploadBytes)}。</span>
-            <input
+            <FilePicker
+              action="选择文件"
               aria-label="选择文件"
-              type="file"
               multiple
               disabled={busy}
               onChange={event => {
@@ -155,7 +162,7 @@ export function PublicationPanel({ controller, run, formats }: Props) {
         </div>
       )}
       {busy && <button className="danger" onClick={cancelUpload}>取消上传</button>}
-      {notice && <p role="status" className="notice">{notice}</p>}
+      {notice && <p role="status" className="notice publication-notice">{notice}</p>}
       {error && <p role="alert" className="inline-error">{errorText(error)}</p>}
       {deadlineStopped && <p role="status" className="notice">自动检查已停止，操作 ID 已保留。<button onClick={() => void checkNow()}>手动检查</button></p>}
       {publication && step >= 4 && (

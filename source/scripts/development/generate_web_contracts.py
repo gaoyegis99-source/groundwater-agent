@@ -312,17 +312,64 @@ _INITIAL_UI_OPERATIONS = {
     }),
 }
 
+_DATA_VERSION_OPERATIONS = frozenset({
+    "data_get_dataset_governance",
+    "data_get_semantic_revision",
+    "data_get_version",
+    "data_list_dataset_versions",
+    "data_list_semantic_revisions",
+})
 
-def _write_initial_ui_validators(contract: Path, validators: Path, *, check: bool) -> None:
-    operations = _INITIAL_UI_OPERATIONS.get(validators.name)
-    if operations is None:
+def _write_ui_validator_groups(contract: Path, validators: Path, *, check: bool) -> None:
+    initial = _INITIAL_UI_OPERATIONS.get(validators.name)
+    if initial is None:
         return
-    initial = validators.with_name(validators.stem + ".initial.js")
-    content, declarations = _standalone_operation_validators(contract, operations=operations)
-    _write_or_check(initial, content, check=check, code="INITIAL_UI_VALIDATORS_STALE")
+    groups = {"initial": initial}
+    if validators.name == "data-api-v3.validators.js":
+        groups["version"] = _DATA_VERSION_OPERATIONS
+    for suffix, operations in groups.items():
+        path = validators.with_name(f"{validators.stem}.{suffix}.js")
+        content, declarations = _standalone_operation_validators(contract, operations=operations)
+        _write_or_check(path, content, check=check, code="UI_VALIDATOR_GROUP_STALE")
+        _write_or_check(
+            path.with_suffix(".d.ts"), declarations, check=check,
+            code="UI_VALIDATOR_GROUP_TYPES_STALE",
+        )
+    if "version" in groups:
+        _write_data_validator_loader(validators, groups, check=check)
+
+
+def _write_data_validator_loader(
+    validators: Path, groups: dict[str, frozenset[str]], *, check: bool,
+) -> None:
+    loaders = "".join(
+        f"const {suffix} = () => import('./{validators.stem}.{suffix}.js');\n"
+        for suffix in groups
+    )
+    entries = "".join(
+        f"  {json.dumps(operation)}: {suffix},\n"
+        for suffix, operations in groups.items()
+        for operation in sorted(operations)
+    )
+    content = (
+        "// Generated from OpenAPI. Do not edit.\n"
+        + loaders
+        + "const readLoaders = {\n" + entries + "};\n"
+        + "export function loadDataValidators(operationId) {\n"
+        + "  if (operationId && Object.hasOwn(readLoaders, operationId)) return readLoaders[operationId]();\n"
+        + f"  return import('./{validators.name}');\n"
+        + "}\n"
+    ).encode("utf-8")
+    declarations = (
+        "// Generated validator declaration. Do not edit.\n"
+        "export declare function loadDataValidators(operationId?: string): "
+        f"Promise<typeof import('./{validators.name}')>;\n"
+    ).encode("utf-8")
+    loader = validators.with_name(validators.stem + ".loader.js")
+    _write_or_check(loader, content, check=check, code="DATA_VALIDATOR_LOADER_STALE")
     _write_or_check(
-        initial.with_suffix(".d.ts"), declarations, check=check,
-        code="INITIAL_UI_VALIDATOR_TYPES_STALE",
+        loader.with_suffix(".d.ts"), declarations, check=check,
+        code="DATA_VALIDATOR_LOADER_TYPES_STALE",
     )
 
 
@@ -435,7 +482,7 @@ def run(product: str | None, *, check: bool) -> None:
         )
     if not check:
         for source, output, validators in clients:
-            _write_initial_ui_validators(source, validators, check=False)
+            _write_ui_validator_groups(source, validators, check=False)
             _typescript(source, output)
             validator_source, declarations = _standalone_operation_validators(source)
             _write_or_check(
@@ -454,7 +501,7 @@ def run(product: str | None, *, check: bool) -> None:
     with tempfile.TemporaryDirectory(prefix="platform-web-contracts-") as directory:
         temporary = Path(directory)
         for index, (source, expected, validators) in enumerate(clients):
-            _write_initial_ui_validators(source, validators, check=True)
+            _write_ui_validator_groups(source, validators, check=True)
             generated = temporary / f"client-{index}.ts"
             _typescript(source, generated)
             if not expected.is_file() or expected.read_bytes() != generated.read_bytes():

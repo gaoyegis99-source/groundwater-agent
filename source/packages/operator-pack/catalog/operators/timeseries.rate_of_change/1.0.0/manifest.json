@@ -64,8 +64,24 @@
       "kind": "value",
       "name": "summary",
       "schema": {
-        "type": "object"
-      }
+        "type": "object",
+        "properties": {
+          "groupCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "rowCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "groupCount",
+          "rowCount"
+        ],
+        "additionalProperties": false
+      },
+      "maxBytes": 1048576
     }
   ],
   "parametersSchema": {
@@ -94,7 +110,11 @@
   "runtime": "native",
   "tags": [
     "timeseries",
-    "rate_of_change"
+    "rate_of_change",
+    "capability:rate_of_change",
+    "变化速率",
+    "日变化率",
+    "计算相邻实测水位的日变化速率"
   ],
   "timeoutSeconds": 1800,
   "title": "Calculate observation rate of change",

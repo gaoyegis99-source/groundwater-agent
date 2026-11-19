@@ -17,16 +17,20 @@ from .schema.interaction import (
     RUN_CONTROLS_SCHEMA,
     SESSIONS_OWNER_SUBJECT_TRIGGER,
     SESSIONS_SCHEMA,
+    WORKFLOW_SELECTION_SCHEMA,
+    PUBLISHED_OUTPUT_STEPS_SCHEMA,
 )
 from .schema.agent import PROVIDER_REQUESTS_SCHEMA
 from .schema.workflow import WORKFLOW_SERVICE_BINDINGS_SCHEMA
 from .schema.common import RESEARCH_IDENTITY_SCHEMA
 
 
+V35_SCHEMA_DIGEST = "ae7eb011c73da8ea53799393bd7d9d9ab57408f5a852e4c4e848bc9314febd0e"
 V29_SCHEMA_DIGEST = "b52e947cc231e822f3c3536ad6ae8d8e6a20c688330e38bb60053229ed872fcc"
 V30_SCHEMA_DIGEST = "20748d39effe13c30dc3c3f602170d021ea24ea507b339b4bf68943a1205c3ed"
 V31_SCHEMA_DIGEST = "1547c6e45d08f63b6fb7e1e602ae730ac1d13fb933c38478011a52d76b71e008"
 V32_SCHEMA_DIGEST = "540f693c1e743bc8aae7c1b4d0309e11bac0024f268fdd480ca73c0482239364"
+V34_SCHEMA_DIGEST = "037ac6df53d0968713823e5c5519bd03905e448f5ee3dadef866a5d277838867"
 V33_SCHEMA_DIGEST = "805b0f2272c4da80f615a78d8006d5507446f00175f6348ac75ece82bf239e75"
 
 
@@ -133,7 +137,7 @@ def scheduler_store_writable(path: Path) -> bool:
 
 
 def initialize_database(path: Path) -> None:
-    """Create v34 or open an exact v34 store without implicit upgrades."""
+    """Create v35 or open an exact v35 store without implicit upgrades."""
 
     path.parent.mkdir(parents=True, exist_ok=True)
     with connect_database(path) as connection:
@@ -164,7 +168,7 @@ def initialize_database(path: Path) -> None:
 
 
 def migrate_database(path: Path) -> None:
-    """Explicitly migrate one frozen v29-v33 store through every version."""
+    """Explicitly migrate one frozen v29-v34 store through every version."""
     path.parent.mkdir(parents=True, exist_ok=True)
     upgrade_from: int | None = None
     with connect_database(path) as connection:
@@ -209,6 +213,14 @@ def migrate_database(path: Path) -> None:
                 if _schema_digest(_schema_signature(connection)) != V33_SCHEMA_DIGEST:
                     raise ValueError("SCHEMA_VERSION_UNSUPPORTED")
                 upgrade_from = 33
+            elif rows[0]["version"] == 34:
+                if _schema_digest(_schema_signature(connection)) != V34_SCHEMA_DIGEST:
+                    raise ValueError("SCHEMA_VERSION_UNSUPPORTED")
+                upgrade_from = 34
+            elif rows[0]["version"] == 35:
+                if _schema_digest(_schema_signature(connection)) != V35_SCHEMA_DIGEST:
+                    raise ValueError("SCHEMA_VERSION_UNSUPPORTED")
+                upgrade_from = 35
             elif rows[0]["version"] != SCHEMA_VERSION:
                 raise ValueError("SCHEMA_VERSION_UNSUPPORTED")
             elif _schema_signature(connection) != _expected_schema_signature():
@@ -228,6 +240,31 @@ def migrate_database(path: Path) -> None:
         upgrade_from = 33
     if upgrade_from == 33:
         _upgrade_v33_database(path)
+        upgrade_from = 34
+    if upgrade_from == 34:
+        _backup_database(path, 34)
+        with connect_database(path) as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            if (
+                connection.execute("SELECT version FROM schema_version").fetchone()[0] != 34
+                or _schema_digest(_schema_signature(connection)) != V34_SCHEMA_DIGEST
+            ):
+                raise ValueError("SCHEMA_VERSION_UNSUPPORTED")
+            connection.execute(WORKFLOW_SELECTION_SCHEMA)
+            connection.execute("UPDATE schema_version SET version=35")
+        upgrade_from = 35
+    if upgrade_from == 35:
+        _backup_database(path, 35)
+        with connect_database(path) as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            if (
+                connection.execute("SELECT version FROM schema_version").fetchone()[0] != 35
+                or _schema_digest(_schema_signature(connection)) != V35_SCHEMA_DIGEST
+            ):
+                raise ValueError("SCHEMA_VERSION_UNSUPPORTED")
+            for statement in PUBLISHED_OUTPUT_STEPS_SCHEMA.strip().rstrip(";").split(";"):
+                connection.execute(statement)
+            connection.execute("UPDATE schema_version SET version=36")
     with connect_database(path) as connection:
         rows = connection.execute("SELECT version FROM schema_version").fetchall()
         if len(rows) != 1 or rows[0]["version"] != SCHEMA_VERSION:

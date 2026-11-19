@@ -32,7 +32,7 @@ def _load_manifest(root: Path, manifest_path: Path | str) -> tuple[Path, dict]:
         relative = candidate
     path = resolve_inside(products, relative, "PRODUCT_MANIFEST_INVALID")
     manifest = load_json(path)
-    require_fields(manifest, MANIFEST_FIELDS | ({"compositionOperators"} & manifest.keys()), "PRODUCT_MANIFEST_FIELDS_INVALID")
+    require_fields(manifest, MANIFEST_FIELDS | ({"compositionOperators", "operatorValidation"} & manifest.keys()), "PRODUCT_MANIFEST_FIELDS_INVALID")
     if "compositionOperators" in manifest:
         _string_set(manifest["compositionOperators"], "PRODUCT_COMPOSITION_OPERATORS_INVALID")
     if manifest["schemaVersion"] != "product-manifest.v8":

@@ -121,6 +121,8 @@ def reconcile_execution(deps: RunDependencies, agent_run_id: str) -> bool:
     run = get_run(deps.database, agent_run_id)
     if run.status != "WAITING_EXECUTION":
         return False
+    if deps.workflow_execution.has_pending_run(agent_run_id):
+        return False
     return all(
         (
             action.status not in {"PENDING", "QUEUED", "RUNNING"}

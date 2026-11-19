@@ -266,18 +266,29 @@ export function WorkflowDraftGraph({ draftId, payload }: {
 
         {layout.nodes.map(visual => {
           const selectedNode = selectedNodeId === visual.node.nodeId;
-          return <g key={visual.node.nodeId} className={`draft-graph-node${selectedNode ? ' is-selected' : ''}`} role="button" tabIndex={0} aria-label={`查看${visual.operator.title}节点详情`} aria-expanded={selectedNode} aria-controls={detailId} data-node-id={visual.node.nodeId} data-level={visual.level} data-terminal-output-count={visual.terminalOutputCount} transform={`translate(${visual.x} ${visual.y})`} onClick={() => chooseNode(visual.node.nodeId)} onKeyDown={event => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault();
-              chooseNode(visual.node.nodeId);
-            }
-          }}>
-            <rect width={NODE_WIDTH} height={NODE_HEIGHT} rx="9" />
+          const title = compact(visual.operator.title, 20);
+          const nodeId = compact(visual.node.nodeId, 24);
+          const ports = `${Object.keys(visual.node.inputs).length} 入 · ${visual.outputPorts.length} 出`;
+          const output = visual.terminalOutputCount > 0 ? `输出 ×${visual.terminalOutputCount}` : '';
+          return <g key={visual.node.nodeId} transform={`translate(${visual.x} ${visual.y})`}>
             <title>{visual.operator.title} · {visual.node.nodeId}</title>
-            <text className="draft-graph-node-title" x="14" y="25">{compact(visual.operator.title, 20)}</text>
-            <text className="draft-graph-node-id" x="14" y="47">{compact(visual.node.nodeId, 24)}</text>
-            <text className="draft-graph-node-count" x="14" y="68">{Object.keys(visual.node.inputs).length} 入 · {visual.outputPorts.length} 出</text>
-            {visual.terminalOutputCount > 0 && <text className="draft-graph-terminal-badge" x={NODE_WIDTH - 12} y="68" textAnchor="end">输出 ×{visual.terminalOutputCount}</text>}
+            <g className={`draft-graph-node${selectedNode ? ' is-selected' : ''}`} role="button" tabIndex={0}
+              aria-label={`${title} · 查看${visual.operator.title}节点详情`} aria-description={[visual.node.nodeId, ports, output].filter(Boolean).join('，')}
+              aria-expanded={selectedNode} aria-controls={detailId} data-node-id={visual.node.nodeId} data-level={visual.level} data-terminal-output-count={visual.terminalOutputCount}
+              onClick={() => chooseNode(visual.node.nodeId)} onKeyDown={event => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  chooseNode(visual.node.nodeId);
+                }
+              }}>
+              <rect width={NODE_WIDTH} height={NODE_HEIGHT} rx="9" />
+              <text className="draft-graph-node-title" x="14" y="25">{title}</text>
+            </g>
+            <g aria-hidden="true" pointerEvents="none">
+              <text className="draft-graph-node-id" x="14" y="47">{nodeId}</text>
+              <text className="draft-graph-node-count" x="14" y="68">{ports}</text>
+              {output && <text className="draft-graph-terminal-badge" x={NODE_WIDTH - 12} y="68" textAnchor="end">{output}</text>}
+            </g>
           </g>;
         })}
 

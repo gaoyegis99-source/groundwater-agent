@@ -99,7 +99,7 @@ def test_migration_plan_freezes_identity_map_and_all_target_versions(
     assert result["legacySubjects"] == ["legacy:alice", "legacy:bob"]
     assert result["targets"] == {
         "publicApi": "v12",
-        "kernel": 34,
+        "kernel": 36,
         "data": 8,
         "knowledge": 7,
         "manifest": 4,

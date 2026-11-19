@@ -27,7 +27,7 @@ class TurnEvidence:
     ]
     prepared_targets: frozenset[str]
     semantic_checksums: dict[str, str]
-    raster_descriptors: dict[str, dict]
+    data_descriptions: dict[str, dict]
 
 
 def knowledge_identity(value: object) -> KnowledgeKey | None:
@@ -129,6 +129,12 @@ def _data_reference(data: dict[str, object]) -> DataVersionRefV2:
         raise AgentRunError("OBSERVATION_RESPONSE_INVALID") from error
 
 
+TURN_EVIDENCE_TOOLS = frozenset({
+    "read_evidence", "inspect_data_version", "inspect_data_table", "get_operator",
+    "prepare_task_inputs", "retrieve_evidence", "lookup_knowledge",
+})
+
+
 def collect_turn_evidence(input_items: list[dict[str, Any]]) -> TurnEvidence:
     calls = {
         item["call_id"]: item.get("name")
@@ -138,7 +144,7 @@ def collect_turn_evidence(input_items: list[dict[str, Any]]) -> TurnEvidence:
     knowledge: dict[KnowledgeKey, str] = {}
     data_versions: dict[str, DataVersionRefV2] = {}
     semantic_checksums: dict[str, str] = {}
-    raster_descriptors: dict[str, dict] = {}
+    data_descriptions: dict[str, dict] = {}
     operators: dict[tuple[str, str], str] = {}
     latest_checks: dict[
         str, dict[str, tuple[int, tuple[dict[str, object], str] | None]]
@@ -149,10 +155,7 @@ def collect_turn_evidence(input_items: list[dict[str, Any]]) -> TurnEvidence:
         if item.get("type") != "function_call_output":
             continue
         tool = calls.get(item.get("call_id"))
-        if tool not in {
-            "read_evidence", "inspect_data_version", "inspect_data_table", "get_operator",
-            "prepare_task_inputs", "retrieve_evidence", "lookup_knowledge",
-        }:
+        if tool not in TURN_EVIDENCE_TOOLS:
             continue
         raw_output = _object(item.get("output"))
         if raw_output.get("status") in {
@@ -163,6 +166,8 @@ def collect_turn_evidence(input_items: list[dict[str, Any]]) -> TurnEvidence:
             # call, but must never be interpreted as a successful read later.
             continue
         if tool == "prepare_task_inputs":
+            if raw_output.get("status") in {"RULES_READY", "RULES_BLOCKED"}:
+                continue
             payload = raw_output
             target_id = payload.get("target_id")
             selection_policy = payload.get("selection_policy", "PINNED")
@@ -254,9 +259,10 @@ def collect_turn_evidence(input_items: list[dict[str, Any]]) -> TurnEvidence:
             data_versions[reference.version_id] = reference
             if tool == "inspect_data_version" and isinstance(data.get("semantics"), dict):
                 semantic_checksums[reference.version_id] = sha256_bytes(canonical_json(data["semantics"]))
-                descriptor = data.get("descriptor")
-                if isinstance(descriptor, dict) and isinstance(descriptor.get("raster"), dict):
-                    raster_descriptors[reference.version_id] = descriptor["raster"]
+                data_descriptions[reference.version_id] = {
+                    "title": data.get("title"), "descriptor": data.get("descriptor") or {},
+                    "semantics": data["semantics"],
+                }
             continue
     return TurnEvidence(
         knowledge=knowledge,
@@ -268,5 +274,5 @@ def collect_turn_evidence(input_items: list[dict[str, Any]]) -> TurnEvidence:
         },
         prepared_targets=frozenset(prepared_targets),
         semantic_checksums=semantic_checksums,
-        raster_descriptors=raster_descriptors,
+        data_descriptions=data_descriptions,
     )

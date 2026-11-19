@@ -267,8 +267,9 @@ def record_interruption(
         prepared = prepare_interruption(
             run,
             result,
-            deps.models_by_tool,
+            {model.tool_name: model for model in capabilities.models},
             provider=deps.settings.agent_provider,
+            workflow_selection=context.get("workflow_selection"),
             explicit_model_tool_request=load_explicit_model_tool_request(
                 deps.database, deps.settings, run.agent_run_id,
             ),
@@ -337,17 +338,21 @@ def record_final(
             normalize_reply_json(final_output)
         )
         draft_input = submitted.workflow_draft
+        direct_draft = draft_input is not None and context["mode"] == "DIALOGUE"
+        draft_id = context.get("workflow_draft_id") or run.agent_run_id
         workflow_draft = (
             prepare_workflow_draft(
                 draft_input,
-                result,
+                result.to_input_list(),
                 deps.settings,
-                context["workflow_draft_id"],
+                draft_id,
                 user_goal=context["draft_message"],
             )
             if draft_input is not None
             else None
         )
+        if direct_draft and deps.settings.workflow_composition is None:
+            raise AgentRunError("AGENT_WORKFLOW_DRAFT_INVALID")
         if workflow_draft is not None and draft_input is not None:
             blockers = [
                 f"WORKFLOW_DRAFT_MISSING_{item['kind']}:{item['name']}"
@@ -381,7 +386,7 @@ def record_final(
                 blockers.append(composition_check["code"])
                 blocking_issues.append({"code": composition_check["code"], "kind": "UNRESOLVED_ITEM"})
             workflow_preparation = (
-                f"workflow-draft:{context['workflow_draft_id']}",
+                f"workflow-draft:{draft_id}",
                 (
                     {
                         "target_kind": "WORKFLOW_DRAFT",

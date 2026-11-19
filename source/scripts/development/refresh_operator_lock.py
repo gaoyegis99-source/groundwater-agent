@@ -77,6 +77,7 @@ def main():
                 "src/moperators/operators/" + module + ".py"
                 for module in (
                     "analysis",
+                    "analysis_common",
                     "linear_trend",
                     "mann_kendall",
                     "statistics_pettitt",

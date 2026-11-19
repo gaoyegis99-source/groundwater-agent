@@ -14,8 +14,12 @@ from .query_dtos import AgentRunView
 class AgentProjectionAdapter:
     """Apply Agent transitions to Interaction and Task projections atomically."""
 
+    def __init__(self, models=(), output_steps=()) -> None:
+        self.models = models
+        self.output_steps = output_steps
+
     def project_agent_run(self, connection: sqlite3.Connection, run: AgentRunView) -> bool:
-        return project_agent_run(connection, run)
+        return project_agent_run(connection, run, models=self.models, output_steps=self.output_steps)
 
     def upsert_assistant_message(
         self,

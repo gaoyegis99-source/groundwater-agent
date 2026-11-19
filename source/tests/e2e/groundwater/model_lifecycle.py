@@ -321,7 +321,8 @@ def _execute(
         return {"session_id": session_id, "status": "CANCELLED"}
     if completed["agent_steps"][-1] != "COMPLETE":
         raise AssertionError(_failure_diagnostics(client, completed, model_id))
-    assert len(completed["workflow_run_ids"]) == 1
+    steps = confirmation.get("published_output_steps", [])
+    assert len(completed["workflow_run_ids"]) == 1 + len(steps)
     workflow = _request(
         client,
         "GET",
@@ -329,7 +330,26 @@ def _execute(
         params={"projectId": PROJECT},
     )
     assert workflow["status"] == "SUCCEEDED", workflow
-    assert workflow["outputs"] == completed["remote_outputs"]
+    all_outputs = list(workflow["outputs"])
+    dependent_reports = []
+    for step, dependent_id in zip(steps, completed["workflow_run_ids"][1:], strict=True):
+        dependent = _request(client, "GET", f"/api/v12/workflow-runs/{dependent_id}", params={"projectId": PROJECT})
+        assert dependent["model_id"] == step["model_id"] and dependent["status"] == "SUCCEEDED", dependent
+        source, = [item for item in workflow["outputs"] if item["output_name"] == step["output"]]
+        assert source["version_id"] in dependent["arguments"].values()
+        assert [ref["output_name"] for ref in dependent["outputs"]] == step["outputs"]
+        for ref in dependent["outputs"]:
+            content = client.get(
+                f"/api/v12/data/versions/{ref['version_id']}/objects/{ref['object_id']}/content",
+                headers={"X-Project-ID": PROJECT},
+            ).raise_for_status().content
+            assert len(content) == ref["size_bytes"]
+            assert "sha256:" + hashlib.sha256(content).hexdigest() == ref["checksum"]
+            if ref["format"] == "png":
+                assert content.startswith(bytes.fromhex("89504e470d0a1a0a"))
+        all_outputs.extend(dependent["outputs"])
+        dependent_reports.append({"workflow_run_id": dependent_id, "source_version_id": source["version_id"]})
+    assert all_outputs == completed["remote_outputs"]
     assert [item["output_name"] for item in workflow["outputs"]] == model[
         "final_outputs"
     ]
@@ -420,6 +440,7 @@ def _execute(
         "input_version_ids": sorted(input_versions),
         "output_references": output_references,
         "publication_group": next(iter(publication_ids)),
+        **({"published_output_steps": dependent_reports} if dependent_reports else {}),
         **({"node_evidence": node_evidence} if node_evidence is not None else {}),
         "status": "PASS",
     }
@@ -503,6 +524,28 @@ def _coverage_geojson() -> bytes:
         },
         ensure_ascii=False,
     ).encode()
+
+
+def run_published_output_step_case(base_url: str) -> dict:
+    with httpx.Client(base_url=base_url, timeout=60, trust_env=False, headers=public_api_headers()) as client:
+        capabilities = _request(client, "GET", "/api/v12/capabilities")
+        points = _publish(
+            client,
+            name="同批制图验收井点",
+            content=_coverage_geojson(),
+            format_="geojson",
+            media_type="application/geo+json",
+            data_nature=SYNTHETIC_TEST_ONLY,
+            source="v12-reference-bound-output-step",
+            semantics={"crs": "OGC:CRS84"},
+        )
+        report = _execute(
+            client, capabilities, model_id="groundwater.monitoring-coverage", tool="run_monitoring_coverage",
+            arguments={"versionId": points["version_id"], "outputFormat": "geojson"},
+            input_versions={points["version_id"]}, data_nature=SYNTHETIC_TEST_ONLY, timeout=150,
+        )
+    assert len(report["published_output_steps"]) == 1
+    return report
 
 
 def run_suite(base_url: str, transfer_case: Path) -> list[dict]:

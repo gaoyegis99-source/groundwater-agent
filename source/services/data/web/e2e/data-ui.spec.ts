@@ -1,5 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { createHash } from "node:crypto";
+import { once } from "node:events";
+import { createServer, request as forwardRequest } from "node:http";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
 
 const createdAt = "2026-10-17T10:00:00Z";
@@ -154,6 +156,17 @@ test("catalog, semantic CAS, query pagination, version selection and scoped refr
   await expect(page.getByRole("cell", { name: "001", exact: true })).toBeVisible();
   await page.getByRole("tab", { name: /^数据目录/ }).click();
   await expect(page.getByRole("heading", { name: "监测数据", exact: true })).toBeVisible();
+  await page.setViewportSize({ width: 1024, height: 768 });
+  const back = page.getByRole("button", { name: "返回数据目录" });
+  await back.click();
+  await expect(datasetButton).toBeInViewport();
+  await datasetButton.press("Enter");
+  await expect(back).toBeFocused();
+  await expect(page.getByRole("heading", { name: "监测数据", exact: true })).toBeInViewport();
+  await expect(datasetButton).toBeVisible();
+  await back.press("Enter");
+  await expect(datasetButton).toBeFocused();
+  expect(new URL(page.url()).searchParams.has("version")).toBe(false);
 });
 
 test("previews an XLSX object through the bounded Preview service", async ({ page }) => {
@@ -225,9 +238,11 @@ test("combines Data and Knowledge work in the cross-service operation center", a
   await expect(page.getByText("1 项进行中", { exact: true })).toBeVisible();
 });
 
-test("upload hashes bytes, prepares, confirms and restores publication without mutation replay", async ({ page }) => {
+test("upload hashes bytes, prepares, confirms and restores publication without mutation replay", async ({ page, baseURL }) => {
   const content = Buffer.from("well,value\n001,2\n");
   const commands: string[] = [];
+  let uploadedBytes: Buffer | undefined;
+  let uploadedChecksum: string | undefined;
   let state = "OPEN";
   let uploaded = false;
   const publication = () => ({
@@ -244,13 +259,9 @@ test("upload hashes bytes, prepares, confirms and restores publication without m
     else if (path === "discovery") response = { items: state === "PUBLISHED" ? [discoveryItem] : [], nextCursor: null, totalMatches: state === "PUBLISHED" ? 1 : 0, matchBasis: "semantic_projection" };
     else if (path === "inventory") response = { ...inventory, datasetCount: state === "PUBLISHED" ? 1 : 0 };
     else {
+      if (path === "publications/p1/items/output_0") return route.continue();
       if (request.method() !== "GET") commands.push(path);
-      if (path === "publications/p1/items/output_0") {
-        expect(request.postDataBuffer()).toEqual(content);
-        expect(request.headers()["x-content-sha256"]).toBe(`sha256:${createHash("sha256").update(content).digest("hex")}`);
-        uploaded = true;
-        response = { objectId: "upload-1", size: content.length, checksum: request.headers()["x-content-sha256"], role: "raw", format: "csv", mediaType: "text/csv" };
-      } else if (path === "publications/p1/prepare") { state = "READY"; response = { operationId: "prepare-1" }; }
+      if (path === "publications/p1/prepare") { state = "READY"; response = { operationId: "prepare-1" }; }
       else if (path === "publications/p1/commit") { state = "PUBLISHED"; response = publication().receipt; }
       else if (path === "publications") response = publication();
       else if (path === "publications/p1") response = publication();
@@ -258,23 +269,59 @@ test("upload hashes bytes, prepares, confirms and restores publication without m
     }
     await route.fulfill({ json: response });
   });
-  await page.goto("/data/");
-  await page.getByRole("tab", { name: /发布数据/ }).click();
-  await page.getByLabel("选择文件").setInputFiles({ name: "upload.csv", mimeType: "text/csv", buffer: content });
-  await page.getByRole("button", { name: "核对发布内容" }).click();
-  await page.getByRole("button", { name: "上传并准备", exact: true }).click();
-  await expect(page.getByRole("button", { name: "确认发布", exact: true })).toBeVisible();
-  await expect.poll(() => new URL(page.url()).searchParams.get("publication")).toBe("p1");
-  await page.getByRole("button", { name: "确认发布", exact: true }).click();
-  await expect(page.getByRole("dialog", { name: "提交不可变数据版本？" })).toBeVisible();
-  await assertNoSeriousAxe(page);
-  await page.getByRole("button", { name: "确认提交" }).click();
-  await expect(page.locator(".publication")).toContainText("发布完成");
-  expect(await page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith("data-publication:")))).toHaveLength(1);
-  await page.reload();
-  expect(await page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith("data-publication:")))).toHaveLength(1);
-  await expect(page.locator(".publication")).toContainText("发布完成");
-  expect(commands).toEqual(["publications", "publications/p1/items/output_0", "publications/p1/prepare", "publications/p1/commit"]);
+  // Read the actual XHR body. WebKit interception does not expose Blob bytes.
+  const server = createServer(async (incoming, response) => {
+    const url = new URL(incoming.url ?? "/", baseURL);
+    if (url.pathname === "/data/v3/publications/p1/items/output_0" && incoming.method === "PUT") {
+      const chunks: Buffer[] = [];
+      incoming.on("data", chunk => chunks.push(chunk));
+      incoming.on("end", () => {
+        uploadedBytes = Buffer.concat(chunks);
+        const header = incoming.headers["x-content-sha256"];
+        uploadedChecksum = typeof header === "string" ? header : undefined;
+        commands.push("publications/p1/items/output_0");
+        uploaded = true;
+        response.writeHead(200, { "Content-Type": "application/json" });
+        response.end(JSON.stringify({ objectId: "upload-1", size: uploadedBytes.length, checksum: uploadedChecksum,
+          role: "raw", format: "csv", mediaType: "text/csv" }));
+      });
+      return;
+    }
+    const forward = forwardRequest(url, { method: incoming.method }, upstream => {
+      response.writeHead(upstream.statusCode ?? 502, upstream.headers);
+      upstream.pipe(response);
+    });
+    forward.on("error", () => response.destroy());
+    incoming.pipe(forward);
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  try {
+    const address = server.address();
+    if (!address || typeof address === "string") throw new Error("Local upload fixture address unavailable");
+    await page.goto(`http://127.0.0.1:${address.port}/data/`);
+    await page.getByRole("tab", { name: /发布数据/ }).click();
+    await page.getByLabel("选择文件").setInputFiles({ name: "upload.csv", mimeType: "text/csv", buffer: content });
+    await page.getByRole("button", { name: "核对发布内容" }).click();
+    await page.getByRole("button", { name: "上传并准备", exact: true }).click();
+    await expect(page.getByRole("button", { name: "确认发布", exact: true })).toBeVisible();
+    await expect.poll(() => new URL(page.url()).searchParams.get("publication")).toBe("p1");
+    await page.getByRole("button", { name: "确认发布", exact: true }).click();
+    await expect(page.getByRole("dialog", { name: "提交不可变数据版本？" })).toBeVisible();
+    await assertNoSeriousAxe(page);
+    await page.getByRole("button", { name: "确认提交" }).click();
+    await expect(page.locator(".publication")).toContainText("发布完成");
+    expect(await page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith("data-publication:")))).toHaveLength(1);
+    await page.reload();
+    expect(await page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith("data-publication:")))).toHaveLength(1);
+    await expect(page.locator(".publication")).toContainText("发布完成");
+    expect(uploadedBytes).toEqual(content);
+    expect(uploadedChecksum).toBe(`sha256:${createHash("sha256").update(content).digest("hex")}`);
+    expect(commands).toEqual(["publications", "publications/p1/items/output_0", "publications/p1/prepare", "publications/p1/commit"]);
+  } finally {
+    server.closeAllConnections();
+    await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+  }
 });
 
 test("keeps the reviewed publication draft when beginning the server operation fails", async ({ page }) => {
@@ -402,7 +449,7 @@ test("desktop content view shows CSV fixture rows and keeps governance on demand
   await assertNoSeriousAxe(page);
 });
 
-for (const viewport of [{ width: 1440, height: 900 }, { width: 1366, height: 768 }]) {
+for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }, { width: 1024, height: 768 }]) {
   test(`has no serious accessibility findings at ${viewport.width}x${viewport.height} and 200%`, async ({ page }, testInfo) => {
     await page.setViewportSize(viewport);
     await page.route("**/data/v3/**", route => {
@@ -415,7 +462,8 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1366, height: 768
     await expect(page.getByRole("heading", { name: "数据管理", exact: true })).toBeVisible();
     await expect(page.getByText("没有找到匹配的数据")).toBeVisible();
     await expect(page.getByRole("textbox", { name: "搜索数据" })).toBeInViewport();
-    expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe("rgb(250, 249, 246)");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe("rgb(247, 248, 250)");
     await capture(page, testInfo, `data-catalog-${viewport.width}.png`);
     await assertNoSeriousAxe(page);
     await page.evaluate(() => { document.documentElement.style.zoom = "2"; });

@@ -14,7 +14,7 @@ from ...errors import (
     KernelUnavailableError,
 )
 from ..dependencies import current_identity, platform_application
-from ..identity import RequestIdentity
+from ..identity import RequestIdentity, resolve_identity
 from ...access.research_auth import SESSION_COOKIE, authenticate
 from ..schemas import (
     CapabilitiesResponse,
@@ -44,17 +44,20 @@ def verify_ingress_identity(
     """
 
     settings = application.settings
-    identity = authenticate(
-        application.database,
-        settings.project_id,
-        authorization=request.headers.get("Authorization", ""),
-        session_id=request.cookies.get(SESSION_COOKIE, ""),
-        csrf=request.headers.get("X-CSRF-Token", ""),
-        require_csrf=(
-            request.headers.get("X-Original-Method", request.method)
-            not in {"GET", "HEAD", "OPTIONS"}
-        ),
-    )
+    if settings.research_auth_required:
+        identity = authenticate(
+            application.database,
+            settings.project_id,
+            authorization=request.headers.get("Authorization", ""),
+            session_id=request.cookies.get(SESSION_COOKIE, ""),
+            csrf=request.headers.get("X-CSRF-Token", ""),
+            require_csrf=(
+                request.headers.get("X-Original-Method", request.method)
+                not in {"GET", "HEAD", "OPTIONS"}
+            ),
+        )
+    else:
+        identity = resolve_identity(request.headers, settings)
     subject = identity.subject
     display_name = identity.display_name
     roles = tuple(sorted(identity.roles))
@@ -163,6 +166,7 @@ def capabilities(
 ):
     value = json.loads(application.capabilities_json)
     value["currentUser"] = identity.as_wire()
+    value["authenticationRequired"] = application.settings.research_auth_required
     return Response(
         content=json.dumps(value, ensure_ascii=False, separators=(",", ":")),
         media_type="application/json",

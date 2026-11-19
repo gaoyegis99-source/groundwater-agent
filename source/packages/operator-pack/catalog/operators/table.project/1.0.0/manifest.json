@@ -58,7 +58,9 @@
         "application/json"
       ],
       "name": "rules",
-      "required": true
+      "required": true,
+      "logicalType": "record",
+      "rulesSchema": "table-project-rules.v1"
     }
   ],
   "memoryLimitBytes": 8589934592,
@@ -77,8 +79,24 @@
       "kind": "value",
       "name": "summary",
       "schema": {
-        "type": "object"
-      }
+        "type": "object",
+        "properties": {
+          "fieldCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "rowCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "fieldCount",
+          "rowCount"
+        ],
+        "additionalProperties": false
+      },
+      "maxBytes": 1048576
     }
   ],
   "parametersSchema": {
@@ -89,7 +107,12 @@
   "runtime": "native",
   "tags": [
     "table",
-    "project"
+    "project",
+    "capability:project",
+    "选列",
+    "重命名列",
+    "字段投影",
+    "筛选并重命名要保留的列"
   ],
   "timeoutSeconds": 1200,
   "title": "Project and cast table columns",

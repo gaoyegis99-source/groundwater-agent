@@ -17,6 +17,7 @@ from ..schemas import (
     SessionDetailResponse,
     SessionPage,
     SessionResultsResponse,
+    TaskHistoryPage,
     TaskResponse,
 )
 from ..wire import to_wire
@@ -48,6 +49,16 @@ def list_sessions(
     )
 
 
+@router.get("/api/v12/sessions/task-history", response_model=TaskHistoryPage, operation_id="kernel_list_task_history")
+def task_history(
+    application: Annotated[PlatformApplication, Depends(platform_application)],
+    identity: Annotated[RequestIdentity, Depends(current_identity)],
+    cursor: Annotated[int | None, Query(gt=0)] = None,
+    limit: Annotated[int, Query(ge=1, le=50)] = 20,
+):
+    return to_wire(application.interaction.task_history(identity.subject, cursor, limit))
+
+
 @router.get(
     "/api/v12/sessions/{sessionId}/messages",
     response_model=MessageHistoryResponse,
@@ -58,8 +69,9 @@ def get_messages(
     application: Annotated[PlatformApplication, Depends(platform_application)],
     cursor: Annotated[int | None, Query(gt=0)] = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    revision: Annotated[int | None, Query(alias="goalRevision", ge=1)] = None,
 ):
-    return to_wire(application.interaction.messages(session_id, cursor, limit))
+    return to_wire(application.interaction.messages(session_id, cursor, limit, revision=revision))
 
 
 @router.get(
@@ -121,8 +133,9 @@ def get_session_results(
     session_id: Annotated[str, Path(alias="sessionId")],
     application: Annotated[PlatformApplication, Depends(platform_application)],
     cursor: Annotated[int, Query(ge=0)] = 0,
+    revision: Annotated[int | None, Query(alias="goalRevision", ge=1)] = None,
 ):
-    return to_wire(application.interaction.results(session_id, cursor))
+    return to_wire(application.interaction.results(session_id, cursor, revision=revision))
 
 
 __all__ = (

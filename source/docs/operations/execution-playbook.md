@@ -9,6 +9,7 @@
 ../bin/bootstrap --sync
 ../bin/dev compile --product groundwater
 ../bin/dev operator-smoke --operator-id timeseries.gap_runs --operator-version 1.0.0
+../bin/dev operator-impact --product groundwater --operator-id cartography.render-png --operator-version 1.0.0 --verify
 ../bin/dev workflow-golden --case monitoring-trend
 ../bin/dev real-case --case all --source-root "$GROUNDWATER_CASE_SOURCE_ROOT" \
   --runtime-image source-groundwater-executor-native-worker:latest
@@ -63,6 +64,15 @@ snapshot identity。运行证据原子写入 `$XDG_CACHE_HOME/groundwater-v6/age
 描述声明与使用关系，不代表 `remote_http` 服务可达，也不把 Pastas/MF6 独立 spike 纳入默认 runtime。
 
 ## Per-change checks
+
+算子升版时用 `operator-impact --operator-id <id> --operator-version <候选版本> --previous-version <旧版本>`
+检查旧版与候选版的工作流和预设引用。`--baseline-config` 可接收已发布装配中的 Kernel 配置，核对历史
+算子版本及实现摘要是否保留。计划中的 `operatorVersions` 显示每个工作流实际锁定的版本。
+加 `--verify` 分别检查单算子样例和每个关联工作流。Native 样例沿用 `operator-smoke`，有签入用例的
+工作流沿用 `workflow-golden`。有合适的本地验收实例时，用 `--gateway-url` 配合
+`--operator-run <会话ID>=<运行ID>` 或重复传入 `--workflow-run <工作流ID>@<版本>=<运行ID>`，
+核对对应的单节点样例或完整工作流的执行身份及发布状态。缺少回归证据时命令返回失败并列出缺项。
+在装配中显式选择新版本可以将其启用于独立调用，预设通过领域包的工作流版本引用启用。
 
 按改动范围运行 `../bin/dev check --scope <scope>`；不确定影响范围时使用 `--scope all`。该入口按组件拥有者定义的检查拓扑运行，不允许以手工挑选的单测替代适用检查。
 

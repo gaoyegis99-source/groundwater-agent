@@ -79,7 +79,11 @@
   "runtime": "native",
   "tags": [
     "raster",
-    "contour"
+    "contour",
+    "capability:contour",
+    "等高线",
+    "提取等值线",
+    "从高程栅格生成等高线"
   ],
   "timeoutSeconds": 3600,
   "title": "Create elevation contours",

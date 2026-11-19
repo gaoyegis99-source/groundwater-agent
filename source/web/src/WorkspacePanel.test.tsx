@@ -176,11 +176,11 @@ it('recovers invalid persisted tab, pin and width without hiding the panel', () 
   sessionStorage.setItem(width, '99999');
   render(<WorkspacePanel history={null} results={[]} activeId="damaged" collapsed={false} onToggle={vi.fn()} onJump={vi.fn()} />);
 
-  expect(screen.getByRole('complementary', { name: '任务工作台' })).toHaveStyle({ width: '460px' });
+  expect(screen.getByRole('complementary', { name: '任务工作台' })).toHaveStyle({ width: '392px' });
   expect(screen.getByRole('tab', { name: '任务' })).toHaveClass('active');
   expect(screen.getByRole('button', { name: '固定当前页签' })).not.toHaveClass('active');
   expect(sessionStorage.getItem(tab)).toBe('tasks');
-  expect(sessionStorage.getItem(width)).toBe('460');
+  expect(sessionStorage.getItem(width)).toBe('392');
   expect(sessionStorage.getItem(pinned)).toBeNull();
 });
 
@@ -191,8 +191,8 @@ it('opens an explicitly selected result even when the task tab is pinned', async
   await waitFor(() => expect(screen.getByRole('tab', { name: '成果' })).toHaveClass('active'));
 });
 
-it('projects an unresolved completed turn as needing input rather than task completion', () => {
-  const history = historyFixture({ turns: [{ status: 'COMPLETE', reply: { ...replyFixture('未找到匹配的数据'), unresolvedItems: [{ markdown: '未找到数据', sourceIndexes: [] }] } }] });
+it('projects a completed execution proposal with missing data as needing input', () => {
+  const history = historyFixture({ turns: [{ status: 'COMPLETE', dialoguePolicy: 'EXECUTION_PROPOSAL', reply: { ...replyFixture('未找到匹配的数据'), unresolvedItems: [{ markdown: '未找到数据', sourceIndexes: [] }] } }] });
   expect(resolveWorkspaceState(history)).toMatchObject({ taskStatus: '需要补充信息', recommendedTab: 'inputs' });
   render(<WorkspacePanel history={history} results={[]} activeId="missing-data" collapsed={false} onToggle={vi.fn()} onJump={vi.fn()} />);
   expect(screen.getAllByText('需要补充信息')[0]).toBeVisible();
@@ -241,7 +241,7 @@ it('does not count a consumed preparation as an active prepared input', () => {
   render(<WorkspacePanel history={history} results={[]} activeId="consumed" collapsed={false} onToggle={vi.fn()} onJump={vi.fn()} onResource={vi.fn()} />);
   fireEvent.click(screen.getByRole('tab', { name: '数据' }));
   expect(screen.queryByText('consumed-prepared-dataset')).not.toBeInTheDocument();
-  expect(screen.getAllByText('暂无数据')).toHaveLength(4);
+  expect(screen.getByText('尚未添加数据')).toBeInTheDocument();
 });
 
 it('displays verified Data facts and discards a late version read after a session switch', async () => {

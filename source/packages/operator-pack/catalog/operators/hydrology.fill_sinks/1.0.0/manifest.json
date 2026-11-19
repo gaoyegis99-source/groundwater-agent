@@ -44,7 +44,6 @@
   "outputs": [
     {
       "formats": [
-        "cog",
         "geotiff"
       ],
       "kind": "artifact",
@@ -75,9 +74,39 @@
   "tags": [
     "hydrology",
     "dem",
-    "conditioning"
+    "conditioning",
+    "capability:fill_sinks",
+    "填洼",
+    "填平洼地",
+    "洼地填充",
+    "给 DEM 填洼以计算排水方向"
   ],
   "timeoutSeconds": 3600,
   "title": "Fill DEM sinks",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "composition": {
+    "portSemantics": {
+      "dem": {
+        "requires": {
+          "valueKind": "dem"
+        }
+      }
+    },
+    "outputSemantics": {
+      "dem": {
+        "fixed": {
+          "valueKind": "dem"
+        },
+        "inherit": [
+          {
+            "inputPort": "dem",
+            "facts": [
+              "crs",
+              "grid"
+            ]
+          }
+        ]
+      }
+    }
+  }
 }

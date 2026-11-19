@@ -4192,6 +4192,18 @@
             ],
             "title": "Timezone"
           },
+          "valueKind": {
+            "anyOf": [
+              {
+                "pattern": "^[a-z][a-z0-9_.-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valuekind"
+          },
           "verticalDatum": {
             "anyOf": [
               {

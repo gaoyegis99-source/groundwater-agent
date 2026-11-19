@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from ast import literal_eval
 import asyncio
 from contextlib import ExitStack
+from copy import deepcopy
 from dataclasses import replace
 from hashlib import sha256
 import io
@@ -32,9 +34,11 @@ from platform_executor_service.app import create_app as executor_app
 from platform_executor_service.composition import ExecutorApplication
 from platform_executor_service.contracts import JobRequestV6
 from platform_executor_service.database import connect_database as executor_database
+from platform_executor_service.remote_http import RemoteOperationRunner
 from platform_executor_service.worker import Worker as ExecutorWorker
 from platform_knowledge_next.models import EvidenceBundleV1
 from platform_knowledge_next.wire import model_to_wire
+from platform_kernel.agent_runtime.evidence import _data_reference
 from platform_kernel.api import create_app as kernel_app
 from platform_kernel.composition import PlatformApplication
 from platform_kernel.settings import KernelSettings
@@ -62,9 +66,12 @@ TABLE_QUALITY_OUTPUTS = (
 TABLE_QUALITY_SCENARIOS = {"table-quality", "table-quality-missing-rules", "table-quality-invalid-rules"}
 
 
-def _upload(client, worker, title, fmt, content):
+def _upload(client, worker, title, fmt, content, *, semantics=None):
     policy = "FILE_QUERYABLE" if fmt == "parquet" else "FILE_ONLY"
-    pid = start(client, [{"name": "input", "title": title, "format": fmt, "policy": policy}])
+    output = {"name": "input", "title": title, "format": fmt, "policy": policy}
+    if semantics is not None:
+        output["semantics"] = semantics
+    pid = start(client, [output])
     upload(client, pid, name="input", content=content)
     ready(client, worker, pid)
     result = client.post(f"/data/v3/publications/{pid}/commit")
@@ -78,6 +85,48 @@ def _upload(client, worker, title, fmt, content):
         "object_id": raw["objectId"], "media_type": raw["mediaType"], "format": raw["format"],
         "size_bytes": raw["size"], "checksum": raw["checksum"],
     }
+
+
+def _join_case(client, worker, catalog):
+    references = {}
+    bodies = {
+        "left": pa.table({"id": [1, 2], "measurement": [4.0, 9.0]}),
+        "right": pa.table({"id": [1, 3], "label": ["A", "C"]}),
+    }
+    for name, table in bodies.items():
+        stream = io.BytesIO()
+        parquet.write_table(table, stream)
+        references[name] = _upload(client, worker, name, "parquet", stream.getvalue())
+    rules = json.loads((catalog / "fixtures/data/table-join-rules.json").read_bytes())
+    values = {"joinType": "left", "cardinality": "oneToOne", "maxOutputRows": 100}
+    draft = {
+        "title": "按编号连接两张表",
+        "summary": "保留左表全部行并按编号补齐标签。",
+        "graph": {
+            "inputs": [
+                {"name": name, "cardinality": "one", "mediaTypes": [ref["media_type"]], "formats": [ref["format"]]}
+                for name, ref in references.items()
+            ] + [{"name": "rules", "cardinality": "one", "mediaTypes": ["application/json"], "formats": ["json"]}],
+            "parameters": list(values),
+            "nodes": [{
+                "nodeId": "join", "operatorId": "table.join", "operatorVersion": "1.0.0",
+                "inputs": {name: {"workflowInput": name} for name in (*references, "rules")},
+                "parameters": {name: {"workflowParameter": name} for name in values},
+            }],
+            "outputs": [
+                {"name": "joined", "nodeOutput": {"nodeId": "join", "port": "data"}},
+                {"name": "join-summary", "nodeOutput": {"nodeId": "join", "port": "summary"}},
+            ],
+        },
+        "data_bindings": [{"input_name": name, "data_ref": ref} for name, ref in references.items()],
+        "parameter_values": values,
+        "parameter_sources": [
+            {"name": name, "source": "USER", "explanation": "本轮用户指定"}
+            for name in values
+        ],
+        "knowledge_refs": [], "unresolved_items": [], "limitations": [],
+    }
+    return references, draft, rules
 
 
 def _draft(references):
@@ -131,6 +180,80 @@ def _raster_bytes(pixels, *, crs="EPSG:32650", x=500000, affine=None):
         ) as raster:
             raster.write(values, 1)
         return file.read()
+
+
+HYDROLOGY = ("fill_sinks", "flow_direction", "flow_accumulation", "stream_extract")
+
+
+def _hydrology_case(client, worker):
+    dem = _raster_bytes([[100 - 3 * y - x for x in range(7)] for y in range(7)])
+    terrain = _upload(client, worker, "DEM", "geotiff", dem, semantics={"valueKind": "dem"})
+    steps = [
+        ("fill_sinks", "dem", {"workflowInput": "terrain"}),
+        ("flow_direction", "dem", {"nodeOutput": {"nodeId": "fill_sinks", "port": "dem"}}),
+        ("flow_accumulation", "flowDirection", {"nodeOutput": {"nodeId": "flow_direction", "port": "flowDirection"}}),
+        ("stream_extract", "accumulation", {"nodeOutput": {"nodeId": "flow_accumulation", "port": "accumulation"}}),
+    ]
+    count = "minimumContributingCells"
+    draft = {
+        "title": "提取地表汇流河网",
+        "summary": "先填洼，再计算流向和汇流累积，最后以三格汇水面积为门槛提取河网。",
+        "graph": {
+            "inputs": [{"name": "terrain", "cardinality": "one", "formats": ["geotiff"], "mediaTypes": [terrain["media_type"]]}],
+            "parameters": [count],
+            "nodes": [
+                {
+                    "nodeId": name, "operatorId": f"hydrology.{name}", "operatorVersion": "1.0.0",
+                    "inputs": {port: binding},
+                    "parameters": {count: {"workflowParameter": count}} if name == "stream_extract" else {},
+                }
+                for name, port, binding in steps
+            ],
+            "outputs": [
+                {"name": "accumulation", "nodeOutput": {"nodeId": "flow_accumulation", "port": "accumulation"}},
+                {"name": "streams", "nodeOutput": {"nodeId": "stream_extract", "port": "streams"}},
+            ],
+        },
+        "data_bindings": [{"input_name": "terrain", "data_ref": terrain}],
+        "parameter_values": {count: 3},
+        "parameter_sources": [{"name": count, "source": "USER", "explanation": "本轮用户指定汇水格数"}],
+        "knowledge_refs": [], "unresolved_items": [], "limitations": [],
+    }
+    return {"terrain": terrain}, draft
+
+
+def _worker_child(monkeypatch, image, runtime):
+    from scripts.maintenance.project_environment import docker_executable
+
+    spawn = asyncio.create_subprocess_exec
+
+    async def launch(*args, **kwargs):
+        if len(args) >= 7 and args[2] == "platform_executor_service.operator_child":
+            payload = json.loads(Path(args[-2]).read_bytes())
+            if payload["runtime"] == runtime:
+                workspace = Path(args[-2]).parent
+                package = ROOT / "packages/operator-pack"
+                # The Docker launcher uses its regular assembly root. The
+                # test Executor reads its own config before spawning the child.
+                kwargs["env"] = {key: value for key, value in kwargs["env"].items() if key != "PLATFORM_GENERATED_ROOT"}
+                pythonpath = "/operator-pack/src"
+                if runtime == "qgis":
+                    pythonpath += ":/usr/share/qgis/python:/usr/share/qgis/python/plugins"
+                return await spawn(
+                    docker_executable(), "run", "--rm", "--pull=never", "--network=none", "--read-only",
+                    "--tmpfs", "/tmp:rw,nosuid,nodev,size=2g", "--user", "0:0",
+                    "--mount", f"type=bind,src={workspace},dst={workspace}",
+                    "--mount", f"type=bind,src={package},dst=/operator-pack,readonly",
+                    "--workdir", str(workspace),
+                    "--env", "XDG_DATA_HOME=/tmp/qgis-data",
+                    "--env", "XDG_CONFIG_HOME=/tmp/qgis-config",
+                    "--env", "XDG_CACHE_HOME=/tmp/qgis-cache",
+                    "--env", f"PYTHONPATH={pythonpath}", "--env", "GDAL_DRIVER_PATH=disable",
+                    image, "/usr/bin/python3", *args[1:], **kwargs,
+                )
+        return await spawn(*args, **kwargs)
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", launch)
 
 
 def _raster_draft(references, nodata=255):
@@ -324,6 +447,91 @@ def _reference_grid_case(data, worker):
     return references, authored, task
 
 
+def _catalog_scenarios():
+    requested = os.getenv("COMPOSITION_E2E_OPERATOR_SCOPE")
+    if not requested:
+        return {}
+    product = json.loads((ROOT / "products/groundwater/product-manifest.json").read_bytes())
+    domain_ref = product["domainPackage"]
+    domain = ROOT / "domains" / domain_ref["domainId"] / domain_ref["version"]
+    manifest = json.loads((domain / "domain-manifest.json").read_bytes())
+    pinned = {
+        f"{node['operatorId']}@{node['operatorVersion']}"
+        for path in manifest["workflowDefinitions"]
+        for node in json.loads((domain / path).read_bytes())["nodes"]
+    }
+    catalog = ROOT / "packages/operator-pack/catalog/operators"
+    selected = {}
+    for identity in sorted(set(product["compositionOperators"]) - pinned):
+        identifier, version = identity.split("@")
+        operator = json.loads((catalog / identifier / version / "manifest.json").read_bytes())
+        if requested in {"all", operator["runtime"], identity}:
+            selected[identity] = operator
+    if not selected:
+        raise ValueError(f"Empty composition acceptance scope {requested!r}")
+    return selected
+
+
+CATALOG_SCENARIOS = _catalog_scenarios()
+
+
+def _catalog_case(client, worker, catalog, operator):
+    identity = operator["id"], operator["version"]
+    smoke = json.loads((catalog / "operators" / identity[0] / identity[1] / "smoke.json").read_bytes())
+    fixtures = json.loads((catalog / "fixtures/index.json").read_bytes())["fixtures"]
+    references, ports = {}, {}
+    roles = operator.get("composition", {}).get("portSemantics", {})
+    for port in operator["inputs"]:
+        name = port["name"]
+        members = smoke["inputs"][name]
+        members = members if isinstance(members, list) else [members]
+        bindings = []
+        for member in members:
+            if operator["runtime"] == "remote_http":
+                directory = Path(os.environ["COMPOSITION_E2E_PEST_FIXTURES"])
+                format_id = port["formats"][0]
+                content = (directory / f"{name}.{format_id}").read_bytes()
+            else:
+                fixture = fixtures[member["fixtureId"]]
+                format_id = fixture["format"]
+                content = (catalog / "fixtures" / fixture["path"]).read_bytes()
+            data_name = f"input-{len(references)}"
+            role = roles.get(name, {}).get("requires", {}).get("valueKind")
+            references[data_name] = _upload(
+                client, worker, data_name, format_id, content,
+                semantics={"valueKind": role} if role else None,
+            )
+            bindings.append({"workflowInput": data_name})
+        ports[name] = {"collection": bindings} if port["cardinality"] == "many" else bindings[0]
+    values = smoke["parameters"]
+    expected = {port: item.get("format", "json") for port, item in smoke["expectedOutputs"].items()}
+    draft = {
+        "title": operator["title"],
+        "summary": "按已确认的输入和显式参数运行单算子并发布结果。",
+        "graph": {
+            "inputs": [
+                {"name": name, "cardinality": "one", "mediaTypes": [ref["media_type"]], "formats": [ref["format"]]}
+                for name, ref in references.items()
+            ],
+            "parameters": list(values),
+            "nodes": [{
+                "nodeId": "analyze", "operatorId": identity[0], "operatorVersion": identity[1],
+                "inputs": ports, "parameters": {name: {"workflowParameter": name} for name in values},
+            }],
+            "outputs": [
+                {"name": port, "nodeOutput": {"nodeId": "analyze", "port": port}} for port in expected
+            ],
+        },
+        "data_bindings": [{"input_name": name, "data_ref": ref} for name, ref in references.items()],
+        "parameter_values": values,
+        "parameter_sources": [
+            {"name": name, "source": "USER", "explanation": "本轮合成验收指定"} for name in values
+        ],
+        "knowledge_refs": [], "unresolved_items": [], "limitations": [],
+    }
+    return references, draft, expected
+
+
 @pytest.fixture
 def assembly(tmp_path, monkeypatch):
     monkeypatch.syspath_prepend(str(ROOT / "platform/assembler"))
@@ -342,12 +550,45 @@ def native_site():
 
 
 @pytest.mark.parametrize("scenario", [
-    "table", "raster", "crs", "grid", "nodata", "missing-crs", "reference-grid",
-    *sorted(TABLE_QUALITY_SCENARIOS),
+    "table", "join", "hydrology", "raster", "crs", "grid", "nodata", "missing-crs", "reference-grid",
+    *sorted(TABLE_QUALITY_SCENARIOS), *CATALOG_SCENARIOS,
 ])
 def test_agent_composes_confirms_executes_and_publishes(
     assembly, kernel_settings, request, native_site, tmp_path, monkeypatch, scenario,
 ):
+    single = CATALOG_SCENARIOS.get(scenario)
+    qgis = scenario == "hydrology" or single is not None and single["runtime"] == "qgis"
+    if qgis:
+        qgis_image = os.getenv("COMPOSITION_E2E_QGIS_IMAGE")
+        if qgis_image is None:
+            pytest.skip("Set COMPOSITION_E2E_QGIS_IMAGE to the verified QGIS worker image digest")
+        _worker_child(monkeypatch, qgis_image, "qgis")
+    if single is not None and single["runtime"] == "native":
+        if native_image := os.getenv("COMPOSITION_E2E_NATIVE_IMAGE"):
+            _worker_child(monkeypatch, native_image, "native")
+    direct = scenario in {"join", "hydrology"} or single is not None
+    lost_receipts = []
+    if single is not None and single["runtime"] == "remote_http":
+        if not os.getenv("COMPOSITION_E2E_PEST_FIXTURES") or not os.getenv("POROUS_GROUNDWATER_BASE_URL"):
+            pytest.skip("Set the isolated PEST fixture directory and remote binding")
+        secrets = Path(os.environ["COMPOSITION_E2E_PEST_FIXTURES"])
+        monkeypatch.setattr(RemoteOperationRunner, "_secret_path", staticmethod(lambda name: secrets / name))
+        real_client = RemoteOperationRunner._client
+
+        async def lose_first_receipt(response):
+            if response.request.method == "POST" and response.request.url.path == "/api/v1/operations":
+                if not lost_receipts:
+                    await response.aread()
+                    response.raise_for_status()
+                    lost_receipts.append(response.json()["operationId"])
+                    raise httpx.ReadTimeout("synthetic lost submit response")
+
+        def client_with_lost_receipt(runner):
+            client = real_client(runner)
+            client.event_hooks["response"].append(lose_first_receipt)
+            return client
+
+        monkeypatch.setattr(RemoteOperationRunner, "_client", client_with_lost_receipt)
     executor_config = assembly / "executor-config.json"
     data_config = replace(request.getfixturevalue("data_settings"), project="p")
     data_worker = DataWorker(data_config)
@@ -361,7 +602,17 @@ def test_agent_composes_confirms_executes_and_publishes(
         )))
         for key in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS"):
             monkeypatch.setenv(key, "1")
-        if scenario == "table":
+        if single is not None:
+            operators = (single["id"],)
+            references, authored, expected = _catalog_case(data, data_worker, catalog, single)
+            task = single["tags"][-1] + "。按指定参数执行并发布成果。" + json.dumps(authored["parameter_values"])
+            if single["id"] == "vector.spatial_join":
+                ports = authored["graph"]["nodes"][0]["inputs"]
+                task += "\n" + "\n".join(
+                    f"输入角色 {port} = {references[ports[port]['workflowInput']]['version_id']}"
+                    for port in ("target", "join")
+                ) + "\n"
+        elif scenario == "table":
             operators = OPERATORS
             table = io.BytesIO()
             parquet.write_table(pa.table({"site": ["A", "B", "C"], "value": [2, 1, 4]}), table)
@@ -377,6 +628,17 @@ def test_agent_composes_confirms_executes_and_publishes(
                 "对合成测试表按已给的规则筛选（filter），再稳定排序，最后对排序表生成字段画像（profile）。"
                 "保留 Parquet 排序表和字段画像。以下两份规则已经核对，请绑定原文件版本。\n"
                 f"筛选规则\n{filter_rules.decode()}\n排序规则\n{sort_rules.decode()}"
+            )
+        elif scenario == "hydrology":
+            operators = tuple(f"hydrology.{name}" for name in HYDROLOGY)
+            references, authored = _hydrology_case(data, data_worker)
+            task = "对指定高程做填洼、流向和汇流累积，再按汇水格数至少为 3 提取河网。输出累积格数与河网。"
+        elif scenario == "join":
+            operators = ("table.join",)
+            references, authored, join_rules = _join_case(data, data_worker, catalog)
+            task = (
+                "用两张表的 id 字段做一对一左连接，最多输出 100 行。请把指定的连接键保存为规则文件，"
+                "再执行连接并输出连接表和摘要。左表是 left，右表是 right。"
             )
         elif scenario == "reference-grid":
             operators = ("raster.reproject", "raster.align_grid", *RASTER_OPERATORS)
@@ -419,9 +681,18 @@ def test_agent_composes_confirms_executes_and_publishes(
             )
             executor_http = stack.enter_context(TestClient(executor_app(executor)))
             config = executor.control.config
+            runtimes = (single["runtime"],) if single else ("native", "qgis") if qgis else ("native",)
+            if direct:
+                for runtime in runtimes:
+                    capacity = config["workerRuntimes"][runtime]
+                    executor.control.heartbeat({
+                        "worker_id": f"acceptance-{runtime}", "runtime": runtime,
+                        "catalog_digest": config["operatorCatalogDigest"],
+                        "slots": capacity["slots"], "memory_bytes": capacity["memoryBytes"],
+                    })
             original = kernel_settings()
             live = (
-                scenario in {"table", "raster", "reference-grid"} | TABLE_QUALITY_SCENARIOS
+                scenario in {"table", "raster", "reference-grid", "join", "hydrology"} | TABLE_QUALITY_SCENARIOS
                 and os.getenv("COMPOSITION_E2E_LIVE") == "1"
             )
             if live:
@@ -474,6 +745,10 @@ def test_agent_composes_confirms_executes_and_publishes(
                     return inspect_table(request)
                 if request.url.path.startswith("/internal/tools/v4/"):
                     return _bridge(data, request)
+                if scenario == "join" and request.url.path.startswith("/data/v3/publications"):
+                    if request.method == "GET":
+                        data_worker.once()
+                    return _bridge(data, request)
                 if live and request.url.path.startswith("/internal/tools/v5/"):
                     no_match = EvidenceBundleV1(
                         status="NO_MATCH", receipt_id="receipt-test", knowledge_revision=0,
@@ -486,22 +761,127 @@ def test_agent_composes_confirms_executes_and_publishes(
                     })
                 raise AssertionError(f"Unexpected request {request.url}")
 
+            discovery = [ModelStep(output=[function_call("list_operators", {
+                "progress_intent": {
+                    "capability": "workflow.operator.discovery",
+                    "template_key": "workflow.operator.discovery",
+                    "objective": "找出符合两表连接任务的算子",
+                },
+                "query": single["tags"][-1] if single else "按键连接两张表",
+                "capability": None, "domain": None, "after": None, "limit": 8,
+            }, call_id="find-operator")])] if scenario == "join" or single else []
+            def inspect_call(name, version_id):
+                return function_call("inspect_data_version", {
+                    "version_id": version_id,
+                    "progress_intent": {
+                        "capability": inspect.progress.capability,
+                        "template_key": inspect.progress.template_key,
+                        "objective": "核验本轮输入版本",
+                    },
+                }, call_id=name)
+
+            def tool_result(call, call_id):
+                return next(
+                    literal_eval(item["output"])
+                    for item in call.input
+                    if item.get("type") == "function_call_output" and item.get("call_id") == call_id
+                )
+
+            def inspect_new_rules(call):
+                result = tool_result(call, "prepare-join-rules")
+                assert result["status"] == "RULES_READY", result
+                return [inspect_call("join-rules", result["version_id"])]
+
+            def validate_join(call):
+                rules_ref = _data_reference(tool_result(call, "join-rules")["data"]).as_storage_dict()
+                references["rules"] = rules_ref
+                authored["data_bindings"].append({"input_name": "rules", "data_ref": rules_ref})
+                return [function_call("validate_workflow", authored, call_id="validate-composition")]
+
+            if scenario == "join":
+                rule_request = {
+                    "operator_id": "table.join", "operator_version": "1.0.0", "rules_port": "rules",
+                    "rules": join_rules,
+                    "data_inputs": {name: ref["version_id"] for name, ref in references.items()},
+                }
+                invalid_rule = {
+                    **rule_request,
+                    "rules": {**join_rules, "keys": [{"left": "missing", "right": "id"}]},
+                }
+
+                def prepare_valid_rules(call):
+                    blocked = tool_result(call, "invalid-join-rules")
+                    assert blocked == {
+                        "status": "RULES_BLOCKED", "code": "RULE_FIELD_NOT_FOUND",
+                        "port": "left", "fields": ["missing"],
+                    }
+                    return [function_call("prepare_task_inputs", rule_request, call_id="prepare-join-rules")]
+
+                draft_steps = [
+                    ModelStep(output=[function_call("prepare_task_inputs", invalid_rule, call_id="invalid-join-rules")]),
+                    ModelStep.respond(prepare_valid_rules),
+                    ModelStep.respond(inspect_new_rules),
+                    ModelStep.respond(validate_join),
+                    ModelStep.respond(lambda _: _reply(authored, cited=False).output),
+                ]
+            elif scenario == "hydrology":
+                invalid_graph = deepcopy(authored)
+                invalid_graph["graph"]["nodes"][-1]["inputs"]["accumulation"] = {
+                    "nodeOutput": {"nodeId": "flow_direction", "port": "flowDirection"},
+                }
+
+                def validate_corrected_graph(call):
+                    issue = tool_result(call, "invalid-hydrology")
+                    assert issue["status"] == "INVALID"
+                    assert issue["code"] == "COMPOSITION_FACT_MISMATCH"
+                    assert "accumulation" in issue["diagnostic"]["path"]
+                    assert issue["diagnostic"]["expected"] == "contributing-cells"
+                    assert issue["diagnostic"]["actual"] == "d8-direction"
+                    return [function_call("validate_workflow", authored, call_id="validate-composition")]
+
+                draft_steps = [
+                    ModelStep(output=[function_call("validate_workflow", invalid_graph, call_id="invalid-hydrology")]),
+                    ModelStep.respond(validate_corrected_graph),
+                    _reply(authored, cited=False),
+                ]
+            elif single and single["id"] == "vector.spatial_join":
+                swapped = deepcopy(authored)
+                ports = swapped["graph"]["nodes"][0]["inputs"]
+                ports["target"], ports["join"] = ports["join"], ports["target"]
+
+                def validate_corrected_spatial_join(call):
+                    issue = tool_result(call, "swapped-spatial-inputs")
+                    assert issue["status"] == "INVALID"
+                    assert issue["code"] == "WORKFLOW_INPUT_ROLE_MISMATCH"
+                    assert issue["path"].endswith("/inputs/target")
+                    return [function_call("validate_workflow", authored, call_id="validate-composition")]
+
+                draft_steps = [
+                    ModelStep(output=[function_call("validate_workflow", swapped, call_id="swapped-spatial-inputs")]),
+                    ModelStep.respond(validate_corrected_spatial_join),
+                    _reply(authored, cited=False),
+                ]
+            elif single:
+                draft_steps = [
+                    ModelStep(output=[function_call("validate_workflow", authored, call_id="validate-composition")]),
+                    _reply(authored, cited=False),
+                ]
+            else:
+                draft_steps = [_reply(authored, cited=False)]
             agent = ScriptedModel([
-                *[_operator(op, version="1.1.0" if op == "raster.reproject" else "1.0.0") for op in operators],
+                *discovery,
                 *[
-                    ModelStep(output=[function_call("inspect_data_version", {
-                        "version_id": ref["version_id"],
-                        "progress_intent": {
-                            "capability": inspect.progress.capability,
-                            "template_key": inspect.progress.template_key,
-                            "objective": "核验本轮输入版本",
-                        },
-                    }, call_id=name)])
+                    _operator(op, version=single["version"] if single else "1.1.0" if op == "raster.reproject" else "1.0.0")
+                    for op in operators
+                ],
+                *[
+                    ModelStep(output=[inspect_call(name, ref["version_id"])])
                     for name, ref in references.items()
                 ],
-                _reply(authored, cited=False),
+                *draft_steps,
             ])
-            router = ScriptedModel([ModelStep(output=[assistant_message("CREATE_WORKFLOW|NONE|NONE")])])
+            route_intent = "EXECUTE_ON_DATA" if direct else "CREATE_WORKFLOW"
+            router = ScriptedModel([ModelStep(output=[assistant_message(f"{route_intent}|NONE|NONE")])])
             kernel = PlatformApplication(
                 settings=settings, model=None if live else agent, intent_router_model=None if live else router,
                 client=httpx.AsyncClient(transport=httpx.MockTransport(route)),
@@ -509,7 +889,8 @@ def test_agent_composes_confirms_executes_and_publishes(
             api = stack.enter_context(TestClient(kernel_app(application=kernel)))
             sid = api.post("/api/v12/sessions", json={"projectId": "p"}).json()["sessionId"]
             message = (
-                "请编排可复用工作流，校验通过后提交我确认。" + task
+                ("请处理这些数据。" if direct else "请编排可复用工作流，校验通过后提交我确认。")
+                + task
                 + " 本轮使用的版本为" + "，".join(f"{name}={ref['version_id']}" for name, ref in references.items())
                 + "。"
                 + ("" if missing_rules else "我已确定全部输入和处理规则。正常的运行时规则检查属于执行说明，校验通过即可提交确认。")
@@ -529,6 +910,24 @@ def test_agent_composes_confirms_executes_and_publishes(
             session = api.get(f"/api/v12/sessions/{sid}").json()
             draft_id = session["workflowDraftId"]
             assert draft_id, session
+            if direct and not live:
+                received = {
+                    item["call_id"]: literal_eval(item["output"])
+                    for item in agent.calls[-1].input
+                    if item.get("type") == "function_call_output"
+                    and item.get("call_id") in {"find-operator", "validate-composition", *operators}
+                }
+                assert received["validate-composition"]["status"] == "VALIDATED", received
+                if scenario == "join":
+                    hits = received["find-operator"]["items"]
+                    assert hits[0]["operator_id"] == "table.join"
+                    assert hits[0]["confirmation_supported"]
+                    assert received["table.join"]["worker_status"] == "UP"
+                elif single:
+                    assert any(
+                        hit["operator_id"] == single["id"] and hit["operator_version"] == single["version"]
+                        and hit["confirmation_supported"] for hit in received["find-operator"]["items"]
+                    )
             draft = api.get(f"/api/v12/sessions/{sid}/workflow-drafts/{draft_id}").json()
             assert draft["payload"] is not None, draft
             if missing_rules:
@@ -575,18 +974,23 @@ def test_agent_composes_confirms_executes_and_publishes(
             monkeypatch.setenv("EXECUTOR_CONTROL_URL", "http://executor")
 
             async def drive():
-                capacity = config["workerRuntimes"]["native"]
-                worker = ExecutorWorker("native", capacity["slots"], capacity["memoryBytes"])
-                await worker.client.aclose()
-                worker.client = httpx.AsyncClient(transport=httpx.MockTransport(lambda req: _bridge(executor_http, req)))
+                workers = {}
                 try:
-                    executor.control.heartbeat({
-                        "worker_id": worker.worker_id, "runtime": worker.runtime,
-                        "catalog_digest": worker.catalog_digest, "slots": worker.slots,
-                        "memory_bytes": worker.memory_bytes,
-                    })
+                    for runtime in runtimes:
+                        capacity = config["workerRuntimes"][runtime]
+                        worker = ExecutorWorker(runtime, capacity["slots"], capacity["memoryBytes"])
+                        await worker.client.aclose()
+                        worker.client = httpx.AsyncClient(transport=httpx.MockTransport(lambda req: _bridge(executor_http, req)))
+                        workers[runtime] = worker
+                        executor.control.heartbeat({
+                            "worker_id": worker.worker_id, "runtime": worker.runtime,
+                            "catalog_digest": worker.catalog_digest, "slots": worker.slots,
+                            "memory_bytes": worker.memory_bytes,
+                        })
                     remaining = set(operators)
                     for index, expected_operator in enumerate(operators[:-1] if invalid_rules else operators):
+                        runtime = single["runtime"] if single else "qgis" if expected_operator == "hydrology.fill_sinks" else "native"
+                        worker = workers[runtime]
                         for _ in range(200):
                             response = await worker.client.post(
                                 "http://executor/internal/workers/v3/nodes:claim", json=worker.identity,
@@ -598,7 +1002,7 @@ def test_agent_composes_confirms_executes_and_publishes(
                         else:
                             with executor_database(executor.database) as connection:
                                 state = [tuple(row) for row in connection.execute("SELECT status,error FROM executor_jobs")]
-                            raise AssertionError(f"Expected a native lease, job state {state}")
+                            raise AssertionError(f"Expected a {runtime} lease for {expected_operator}, job state {state}")
                         claimed_operator = lease["operatorId"]
                         if scenario == "reference-grid" and index < 2:
                             assert claimed_operator in remaining & {"raster.reproject", "raster.align_grid"}
@@ -624,7 +1028,8 @@ def test_agent_composes_confirms_executes_and_publishes(
                         raise AssertionError(dict(job))
                     return job["job_id"], job["request_id"]
                 finally:
-                    await worker.client.aclose()
+                    for worker in workers.values():
+                        await worker.client.aclose()
 
             job_id, run_id = asyncio.run(drive())
             status = executor.control.get(job_id)
@@ -638,12 +1043,61 @@ def test_agent_composes_confirms_executes_and_publishes(
                     assert [row["error"] for row in failed] == ["RULESET_INVALID"]
                     assert connection.execute("SELECT count(*) FROM job_nodes WHERE status='SUCCEEDED'").fetchone()[0] == 3
                 return
-            assert len(status.outputs) == (len(TABLE_QUALITY_OUTPUTS) if scenario == "table-quality" else 2)
+            if single:
+                assert {item.output_name: item.format_id for item in status.outputs} == expected
+            else:
+                assert len(status.outputs) == (len(TABLE_QUALITY_OUTPUTS) if scenario == "table-quality" else 2)
             publication = executor.control.publication(job_id)
             assert publication["state"] == "PUBLISHED"
             receipt = data.get(f"/data/v3/publications/{publication['publicationId']}").json()
-            assert set(receipt["manifest"]["inputVersions"]) == {ref["version_id"] for ref in references.values()}
+            bound_versions = set(receipt["manifest"]["inputVersions"])
+            if scenario == "join":
+                source_versions = {references[name]["version_id"] for name in ("left", "right")}
+                rule_id, = bound_versions - source_versions
+                rule_version = data.get(f"/data/v3/versions/{rule_id}").json()
+                assert rule_version["semantics"]["source"] == "agent_operator_rules"
+                rule_raw = next(obj for obj in rule_version["objects"] if obj["role"] == "raw")
+                saved = data.get(f"/data/v3/versions/{rule_id}/objects/{rule_raw['objectId']}/content")
+                assert saved.json() == join_rules
+                assert source_versions < bound_versions
+            else:
+                assert bound_versions == {ref["version_id"] for ref in references.values()}
             assert receipt["manifest"]["provenance"]["workflow_checksum"] == confirmation["actions"][0]["workflowChecksum"]
+            if single:
+                if single["runtime"] == "remote_http":
+                    with executor_database(executor.database) as connection:
+                        remote = connection.execute("SELECT remote_state_json FROM job_nodes").fetchone()[0]
+                    assert [json.loads(remote)["remote_task_id"]] == lost_receipts
+                for output in status.outputs:
+                    content = data.get(f"/data/v3/versions/{output.version_id}/objects/{output.object_id}/content")
+                    assert content.status_code == 200 and content.content
+                    assert "sha256:" + sha256(content.content).hexdigest() == output.checksum
+                return
+            if scenario == "hydrology":
+                rasters = {}
+                for output in status.outputs:
+                    result = data.get(f"/data/v3/versions/{output.version_id}/objects/{output.object_id}/content")
+                    assert result.status_code == 200, result.text
+                    meta = data.get(f"/data/v3/versions/{output.version_id}").json()["semantics"]
+                    with MemoryFile(result.content) as file, file.open() as raster:
+                        rasters[meta["valueKind"]] = raster.read(1)
+                accumulation = rasters["contributing-cells"]
+                assert accumulation.max() == 49
+                np.testing.assert_array_equal(rasters["stream-mask"], accumulation >= 3)
+                return
+            if scenario == "join":
+                outputs = {}
+                for output in status.outputs:
+                    result = data.get(f"/data/v3/versions/{output.version_id}/objects/{output.object_id}/content")
+                    assert result.status_code == 200, result.text
+                    outputs[output.format_id] = result.content
+                assert parquet.read_table(io.BytesIO(outputs["parquet"])).to_pylist() == [
+                    {"id": 1, "measurement": 4.0, "label": "A"},
+                    {"id": 2, "measurement": 9.0, "label": None},
+                ]
+                assert json.loads(outputs["json"]) == {"rowCount": 2}
+                assert kernel.workflow_execution.get("p", run_id).status == "SUCCEEDED"
+                return
             if scenario == "table-quality":
                 definition = draft["payload"]["composition"]
                 provenance = receipt["manifest"]["provenance"]

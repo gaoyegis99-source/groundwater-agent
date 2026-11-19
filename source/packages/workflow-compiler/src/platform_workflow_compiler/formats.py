@@ -26,6 +26,23 @@ MEDIA_TYPE_FORMATS = {
     "application/octet-stream": {"binary"},
 }
 
+# Physical formats select the logical type for polymorphic ports.
+_FORMAT_TYPES = {
+    "table": {"csv", "parquet", "arrow-ipc-file", "xlsx"},
+    "vector": {"geojson", "geopackage", "flatgeobuf", "geoparquet"},
+    "raster": {"geotiff", "cog"}, "pointCloud": {"las", "laz", "copc"},
+    "document": {"text", "markdown", "pdf", "docx"}, "tensor": {"npy"},
+    "model": {"zip", "pytorch-state-dict"}, "image": {"png"}, "record": {"json"},
+}
+
+
+def logical_type(formats):
+    types = {kind for kind, members in _FORMAT_TYPES.items() if members.intersection(formats)}
+    if not formats or set(formats).difference(*_FORMAT_TYPES.values()):
+        raise WorkflowValidationError("COMPOSITION_FORMAT_UNSUPPORTED")
+    return next(iter(types)) if len(types) == 1 else "byFormat"
+
+
 def _port_pairs(port: dict) -> set[tuple[str, str]]:
     if "formatPairs" in port:
         return {(item["mediaType"], item["format"]) for item in port["formatPairs"]}

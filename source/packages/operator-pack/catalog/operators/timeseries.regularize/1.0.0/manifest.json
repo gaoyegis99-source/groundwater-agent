@@ -75,8 +75,39 @@
       "kind": "value",
       "name": "summary",
       "schema": {
-        "type": "object"
-      }
+        "type": "object",
+        "properties": {
+          "groupCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "rowCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "imputedCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "observedCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unfilledCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "groupCount",
+          "rowCount",
+          "imputedCount",
+          "observedCount",
+          "unfilledCount"
+        ],
+        "additionalProperties": false
+      },
+      "maxBytes": 1048576
     }
   ],
   "parametersSchema": {
@@ -144,7 +175,13 @@
   "runtime": "native",
   "tags": [
     "timeseries",
-    "regularize"
+    "regularize",
+    "capability:regularize",
+    "序列补齐",
+    "补齐到每月",
+    "时间规整",
+    "时间序列补齐",
+    "把每口井的时间序列补齐到每月"
   ],
   "timeoutSeconds": 1800,
   "title": "Regularize and interpolate time series",

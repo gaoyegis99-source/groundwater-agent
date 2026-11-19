@@ -31,8 +31,7 @@
         "flatgeobuf",
         "geojson",
         "geopackage",
-        "geoparquet",
-        "parquet"
+        "geoparquet"
       ],
       "mediaTypes": [
         "application/geopackage+sqlite3",
@@ -60,8 +59,23 @@
       "kind": "value",
       "name": "summary",
       "schema": {
-        "type": "object"
-      }
+        "type": "object",
+        "properties": {
+          "valid": {
+            "type": "boolean"
+          },
+          "errorCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "valid",
+          "errorCount"
+        ],
+        "additionalProperties": false
+      },
+      "maxBytes": 1048576
     }
   ],
   "parametersSchema": {
@@ -76,7 +90,12 @@
   "runtime": "qgis",
   "tags": [
     "geometry",
-    "validate"
+    "validate",
+    "capability:validate",
+    "几何有效性",
+    "检查几何",
+    "无效几何",
+    "找出图层里不合法的几何"
   ],
   "timeoutSeconds": 1800,
   "title": "Validate geometry",

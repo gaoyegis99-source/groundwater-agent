@@ -74,6 +74,27 @@ function operation(value: unknown, id: 'queryId' | 'previewId'): RecordValue {
   return item;
 }
 
+export function parseDataQueryJson(text: string): unknown {
+  const value: unknown = JSON.parse(text);
+  const result = record(record(value)?.result);
+  if (!result || !Array.isArray(result.rows)) return value;
+  const hasUnsafeInteger = result.rows.some(row => Array.isArray(row) && row.some(cell =>
+    typeof cell === 'number' && Number.isInteger(cell) && !Number.isSafeInteger(cell),
+  ));
+  if (!hasUnsafeInteger) return value;
+
+  // Match quoted strings and complete number tokens so their contents cannot be mistaken for integers.
+  const tokens = /"[^"\\]*(?:\\.[^"\\]*)*"|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g;
+  const exactText = text.replace(tokens, (token, number: string | undefined) =>
+    number !== undefined && /^-?\d+$/.test(number) && !Number.isSafeInteger(Number(number))
+      ? '"' + number + '"' : token,
+  );
+  // Only project the recovered cells. Counts and all other metadata keep their normal JSON types.
+  const exact = JSON.parse(exactText) as { result: { rows: unknown[] } };
+  result.rows = exact.result.rows;
+  return value;
+}
+
 export function decodeDataQueryResponse(value: unknown): DataQueryResponse {
   const item = operation(value, 'queryId');
   const result = item.result === null ? null : record(item.result);

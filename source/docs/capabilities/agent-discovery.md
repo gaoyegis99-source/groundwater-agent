@@ -61,7 +61,7 @@ Turn 中状态为 `OK` 的完整读取才能引用。数据绑定证据还必须
 
 ## 从候选到可执行准备
 
-执行请求在读取必要事实后调用 `prepare_task_inputs`。工具重新解析目标模型的输入合同，
+预设工作流的执行请求在读取必要事实后调用 `prepare_task_inputs`。工具重新解析目标模型的输入合同，
 重新检查每个 Data 版本，绑定本轮已读 Knowledge 引用，并记录参数来源。版本策略有两种：
 
 - `CURRENT_REQUIRED`：用户要求“当前/最新”，或任务必须继续使用 Dataset 当前版本；若
@@ -89,6 +89,41 @@ Turn 中状态为 `OK` 的完整读取才能引用。数据绑定证据还必须
 当前 Turn 已检查的精确事实重建同一准备集合；这条兜底不能绕过检查，也不能接受显式
 准备之后发生的参数变化。确认后执行使用冻结的 AgentAction/RunState，不再从准备记录
 重新构造参数。
+
+## 从算子发现到确认执行
+
+执行数据任务时，Agent 可以按操作名称、中文任务词或算子标识调用 `list_operators`。它
+用 `get_operator` 读取具体版本的端口、参数和组合条件，并用 `inspect_data_version`
+核验每个外部输入。详情分别显示产品确认准入和当前 Worker 心跳状态。Groundwater 装配了 18 个预设之外的 59 个算子版本，以及已有的表筛选
+和用于显式转换的格式转换、坐标变换。用户选定预设时走预设准备入口。
+
+能力目录的「算子」页与 `get_operator` 使用相同的版本级元数据，包括引用该版本的工作流和预设、
+产品独立调用准入、Worker 就绪状态及开发验收范围。验收记录由产品清单按校验和引用，
+实现摘要变化后界面标为需复验。科学适用性取决于对应案例与领域复核。
+
+单步任务使用一个节点，多步任务用具名端口连边。表连接、排序等需要规则的操作绑定已登记的
+JSON 规则版本。用户已明确规则但还没有规则文件时，`prepare_task_inputs` 校验规则内容，
+并通过 Data 发布可复用的版本。连接键还要匹配已检查的左右源表字段。水文图采用 Data 语义版本中的 `valueKind` 区分高程、D8 流向、汇水格数
+和河网掩膜。Agent 调用 `validate_workflow` 预检当前草稿。该工具返回缺失输入或校验结果，
+用户确认后由 Executor 调度相应 Worker 并发布选定结果。确认项冻结实际数据、算子实现和
+图的摘要，Executor 重新校验后才接收作业。
+
+要锁定输入角色，在消息中另起一行写 `输入角色 target = 《资料标题》`。也可填精确版本 ID，
+或用 `vector.spatial_join.target` 指定算子端口。同名版本或多处同名端口应写得足够明确。
+Kernel 对照本轮已检查的资料核验这些约定，调换输入会阻止确认。确认卡列出每个端口的冻结资料版本，
+内部连线显示对应的上游节点与输出端口。
+
+离线检查已冻结的图可使用同一装配的 Executor 配置。
+
+```sh
+python -m platform_workflow_compiler.composition frozen-workflow.json \
+  --executor-config executor-config.json --project groundwater-demo
+```
+
+逐项验收复用 `tests/e2e/test_composed_workflow.py`。用 `COMPOSITION_E2E_OPERATOR_SCOPE`
+按 `native`、`qgis`、`remote_http` 或具体版本选择用例。依赖 GDAL 命令的 Native
+用例和 QGIS 用例使用各自锁定的 Worker 镜像。PEST 用例使用隔离服务签发的测试模型包，
+并校验首次提交回执丢失后，Executor 能恢复同一个远端作业。
 
 ## 为什么不使用统一资源状态表
 

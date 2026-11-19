@@ -66,8 +66,33 @@
       "kind": "value",
       "name": "summary",
       "schema": {
-        "type": "object"
-      }
+        "type": "object",
+        "properties": {
+          "format": {
+            "type": "string",
+            "enum": [
+              "arrow-ipc-file",
+              "cog",
+              "copc",
+              "csv",
+              "flatgeobuf",
+              "geojson",
+              "geopackage",
+              "geoparquet",
+              "geotiff",
+              "json",
+              "las",
+              "laz",
+              "npy",
+              "parquet"
+            ]
+          }
+        },
+        "required": [
+          "format"
+        ]
+      },
+      "maxBytes": 1048576
     }
   ],
   "parametersSchema": {
@@ -82,7 +107,13 @@
   },
   "runtime": "native",
   "tags": [
-    "metadata"
+    "metadata",
+    "capability:inspect",
+    "查看结构",
+    "元数据",
+    "文件信息",
+    "数据检查",
+    "查看这个数据文件的结构"
   ],
   "timeoutSeconds": 600,
   "title": "Inspect data",

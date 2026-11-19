@@ -27,6 +27,7 @@ from platform_kernel.agent_runtime.memory import ExecutionContextV1
 from platform_kernel.api import create_app
 from platform_kernel.composition import PlatformApplication
 from platform_kernel.database import connect_database, initialize_database
+from platform_kernel.schema import SCHEMA_VERSION
 from platform_kernel.settings import IntentRouterSettings, KernelSettings
 from platform_kernel.tasks.models import TaskPreparationEntryV1
 
@@ -129,6 +130,7 @@ def assembly_root(tmp_path):
     (air / "instructions.md").write_text(AIR_PROMPT)
     product = _read(root / "products/groundwater/product-manifest.json")
     product["productId"] = "air-quality"
+    product.pop("operatorValidation", None)
     product["services"] = ["data", "executor"]
     product["publicRoutes"] = [
         route
@@ -430,6 +432,8 @@ def test_domain_packages_change_agent_surface_but_not_kernel_schema(
         expected = {
             "submit_reply",
             "update_task",
+            "list_operators",
+            "get_operator",
             *(t.name for t in settings.observation_tools),
         }
         assert {tool.name for tool in call.tools} == expected
@@ -441,7 +445,12 @@ def test_domain_packages_change_agent_surface_but_not_kernel_schema(
             t.needs_approval is True for t in call.tools if t.name in model_tools
         )
         capabilities = client.get("/api/v12/capabilities").json()
-        assert len(capabilities["models"]) == models and "operators" not in capabilities
+        assert len(capabilities["models"]) == models
+        assert len(capabilities["operators"]) == len(settings.operator_catalog)
+        assert all(
+            use["workflowId"].startswith(product + ".")
+            for operator in capabilities["operators"] for use in operator["workflowUses"]
+        )
         assert capabilities["services"] == sorted(settings.services_by_name)
         from scripts.lib.assembly_paths import compiled_bundle
 
@@ -459,7 +468,7 @@ def test_domain_packages_change_agent_surface_but_not_kernel_schema(
             ]
             assert (
                 connection.execute("SELECT version FROM schema_version").fetchone()[0]
-                == 34
+                == SCHEMA_VERSION
             )
         schemas.append(schema)
         agent = sdk_execution._build_agent(

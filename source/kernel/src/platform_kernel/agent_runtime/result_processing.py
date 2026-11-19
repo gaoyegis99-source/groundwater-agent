@@ -8,6 +8,7 @@ from typing import Any
 
 from jsonschema import ValidationError as JsonSchemaError, validate
 
+from ..workflow_selection import require_selected_arguments
 from ..errors import AgentRunError
 from ..settings import ExecutableModelDefinition
 from .evidence import collect_turn_evidence
@@ -170,6 +171,7 @@ def prepare_interruption(
     *,
     provider: str = "deepseek",
     explicit_model_tool_request: object = None,
+    workflow_selection: dict | None = None,
 ) -> PreparedInterruption:
     plan = run.plans[-1] if run.plans else None
     if plan is None:
@@ -224,6 +226,9 @@ def prepare_interruption(
                 if not isinstance(version_id, str) or version_id not in evidence.data_versions:
                     raise _InputReferenceError(parameter)
                 references[parameter] = evidence.data_versions[version_id]
+            require_selected_arguments(workflow_selection, arguments, {
+                name: reference.as_storage_dict() for name, reference in references.items()
+            })
             canonical = json.dumps(
                 arguments,
                 ensure_ascii=False,
