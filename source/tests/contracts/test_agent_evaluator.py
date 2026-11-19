@@ -692,7 +692,7 @@ def test_failed_live_cases_are_reported_once_without_retry(monkeypatch, capsys):
     assert len({report["case_id"] for report in reports}) == 12
 
 
-def test_compose_compiles_temporary_sources_and_cleans_up(monkeypatch):
+def test_compose_compiles_temporary_sources_and_cleans_up(monkeypatch, tmp_path):
     script = Path(__file__).resolve().parents[2] / "scripts/checks/check_compose_e2e.py"
     from scripts.checks.compose_e2e import command
     from scripts.checks.compose_e2e import scenarios as runner
@@ -794,7 +794,7 @@ def test_compose_compiles_temporary_sources_and_cleans_up(monkeypatch):
             "--network-subnet",
             "10.253.252.0/24",
             "--transfer-evidence",
-            str(Path.cwd() / ".generated/test-compose-cleanup"),
+            str(tmp_path / "transfer-evidence"),
         ],
     )
     with pytest.raises(RuntimeError, match="injected bootstrap failure"):

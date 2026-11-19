@@ -52,6 +52,7 @@ from scripts.maintenance.worktree_identity import worktree_identity as _worktree
 
 _CACHE_DIRECTORIES = frozenset(
     {
+        ".mypy_cache",
         ".pytest_cache",
         ".ruff_cache",
         ".retired-build",

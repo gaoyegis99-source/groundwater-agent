@@ -31,7 +31,7 @@ def _repository(tmp_path: Path) -> Path:
     root.mkdir()
     subprocess.run(["git", "init", "-q", str(root)], check=True)
     (root / ".gitignore").write_text(
-        ".generated/\n__pycache__/\nbuild/\ndist/\nnode_modules/\n"
+        ".generated/\n.mypy_cache/\n__pycache__/\nbuild/\ndist/\nnode_modules/\n"
         "evidence/\nrelease/\n.venv/\n.env\n",
         encoding="utf-8",
     )
@@ -66,7 +66,8 @@ def test_clean_dry_run_and_clean_preserve_active_assembly_and_protected_paths(
     generated_evidence = generated / "webui-evidence/artifacts"
     generated_evidence.mkdir(parents=True)
     (generated_evidence / "results.json").write_text("{}")
-    for relative in ("module/__pycache__", "web/dist", "package/build"):
+    workspace_outputs = (".mypy_cache", "module/__pycache__", "web/dist", "package/build")
+    for relative in workspace_outputs:
         directory = root / relative
         directory.mkdir(parents=True)
         (directory / "output").write_text("generated")
@@ -85,25 +86,17 @@ def test_clean_dry_run_and_clean_preserve_active_assembly_and_protected_paths(
     expected = {
         "@build/.releases/groundwater/stale",
         "@build/webui-evidence",
-        "module/__pycache__",
-        "package/build",
-        "web/dist",
+        *workspace_outputs,
     }
     assert set(clean_workspace(root, dry_run=True)) == expected
     assert stale.exists()
     assert generated_evidence.parent.exists()
-    assert all(
-        (root / relative).exists()
-        for relative in ("module/__pycache__", "package/build", "web/dist")
-    )
+    assert all((root / relative).exists() for relative in workspace_outputs)
 
     assert set(clean_workspace(root)) == expected
     assert not stale.exists()
     assert not generated_evidence.parent.exists()
-    assert not any(
-        (root / relative).exists()
-        for relative in ("module/__pycache__", "package/build", "web/dist")
-    )
+    assert not any((root / relative).exists() for relative in workspace_outputs)
     assert (generated / "groundwater.current.json").is_file()
     assert active.is_dir()
     assert all(
