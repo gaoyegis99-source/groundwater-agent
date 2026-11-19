@@ -12,11 +12,12 @@ from urllib.parse import urlsplit
 import time
 
 from fastapi import FastAPI, HTTPException, Query, Request, Response
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 import httpx
 
 COOKIE = "gw_monitor_session"
 WEB = Path(__file__).with_name("web")
+CONTENT_SECURITY_POLICY = "default-src 'self'; frame-ancestors 'none'; form-action 'self'"
 
 
 class ResearchIdentity:
@@ -115,9 +116,9 @@ def make_app(store, identity, snapshot, *, clock=time.monotonic, origin=None, se
             if request.method not in {"GET", "HEAD"}:
                 return JSONResponse({"detail": "监控端口为只读"}, status_code=405, headers={"Allow": "GET, HEAD"})
         response = await call_next(request)
+        response.headers.setdefault("Content-Security-Policy", CONTENT_SECURITY_POLICY)
         response.headers.update({
             "Cache-Control": "no-store",
-            "Content-Security-Policy": "default-src 'self'; frame-ancestors 'none'; form-action 'self'",
             "X-Content-Type-Options": "nosniff",
             "Referrer-Policy": "no-referrer",
         })
@@ -125,7 +126,14 @@ def make_app(store, identity, snapshot, *, clock=time.monotonic, origin=None, se
 
     @app.get("/")
     def page():
-        return FileResponse(WEB / "index.html")
+        nonce = secrets.token_urlsafe(24)
+        document = (WEB / "index.html").read_text(encoding="utf-8")
+        stylesheet = (WEB / "monitor.css").read_text(encoding="utf-8")
+        javascript = (WEB / "monitor.js").read_text(encoding="utf-8")
+        document = document.replace('<link rel="stylesheet" href="/monitor.css">', f'<style nonce="{nonce}">{stylesheet}</style>')
+        document = document.replace('<script src="/monitor.js" defer></script>', f'<script nonce="{nonce}">{javascript}</script>')
+        policy = f"{CONTENT_SECURITY_POLICY}; script-src 'nonce-{nonce}'; style-src 'nonce-{nonce}'"
+        return HTMLResponse(document, headers={"Content-Security-Policy": policy})
 
     @app.get("/monitor.js")
     def javascript():

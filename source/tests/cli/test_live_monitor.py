@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import re
 
 from fastapi.testclient import TestClient
 
@@ -20,6 +21,24 @@ class Identity:
 
     def logout(self, session, csrf):
         pass
+
+
+def test_page_includes_its_assets_under_the_response_policy(tmp_path):
+    app = make_app(LogStore(tmp_path / "logs.db"), Identity(), lambda: {"services": []})
+    with TestClient(app) as client:
+        page = client.get("/")
+        assert page.status_code == 200
+        nonce = re.search(r'<style nonce="([\w-]+)">', page.text).group(1)
+        assert f'<script nonce="{nonce}">' in page.text
+        assert 'href="/monitor.css"' not in page.text
+        assert 'src="/monitor.js"' not in page.text
+        assert 'href="/api/logs?limit=30"' in page.text
+        policy = page.headers["content-security-policy"]
+        assert f"script-src 'nonce-{nonce}'" in policy
+        assert f"style-src 'nonce-{nonce}'" in policy
+        assert "frame-ancestors 'none'" in policy
+        assert "'unsafe-inline'" not in policy
+        assert page.headers["cache-control"] == "no-store"
 
 
 def test_access_outage_and_revocation(tmp_path):
