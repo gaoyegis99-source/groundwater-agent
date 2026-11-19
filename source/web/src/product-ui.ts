@@ -30,6 +30,7 @@ export interface ModelPresentation {
 }
 export interface ProductUiProfile {
   schemaVersion: 'product-ui.v1'; productId: string; locale: string;
+  workspaceLayout?: 'standard' | 'research';
   theme?: Record<string, string>;
   brand: { productName: string; workspaceName: string; assistantName: string; welcome: string; icon: { path: 'product-icon.svg'; checksum: string; mediaType: 'image/svg+xml' } };
   examples: { id: string; title: string; prompt: string; icon: IconName; featured: boolean }[];
@@ -67,7 +68,7 @@ function parameter(value: unknown): ParameterPresentation {
 export function decodeProductUi(value: unknown): ProductUiProfile {
   if (!validateProductUiSchema(value)) throw new TypeError('PRODUCT_UI_INVALID');
   const root = object(value);
-  const optionalFields = ['theme', 'quantityKindLabels'].filter(key => Object.hasOwn(root, key));
+  const optionalFields = ['theme', 'quantityKindLabels', 'workspaceLayout'].filter(key => Object.hasOwn(root, key));
   exact(root, ['schemaVersion', 'productId', 'locale', 'brand', 'examples', 'models', 'parameterNames', 'parameterStages', 'outputs', 'cases', ...optionalFields]);
   if (root.schemaVersion !== 'product-ui.v1') throw new TypeError('PRODUCT_UI_INVALID');
   const brand = object(root.brand); exact(brand, ['productName', 'workspaceName', 'assistantName', 'welcome', 'icon']);
@@ -98,7 +99,8 @@ export function decodeProductUi(value: unknown): ProductUiProfile {
   const quantityKindLabels = 'quantityKindLabels' in root
     ? Object.fromEntries(Object.entries(object(root.quantityKindLabels)).map(([kind, label]) => [kind, text(label)]))
     : undefined;
-  return { schemaVersion: 'product-ui.v1', productId: text(root.productId), locale: text(root.locale), brand: { productName: text(brand.productName), workspaceName: text(brand.workspaceName), assistantName: text(brand.assistantName), welcome: text(brand.welcome), icon: { path: 'product-icon.svg', checksum: text(icon.checksum), mediaType: 'image/svg+xml' } }, examples, models, parameterNames, parameterStages, outputs, cases, ...(theme && { theme }), ...(quantityKindLabels && { quantityKindLabels }) };
+  const workspaceLayout = root.workspaceLayout as ProductUiProfile['workspaceLayout'];
+  return { schemaVersion: 'product-ui.v1', productId: text(root.productId), locale: text(root.locale), brand: { productName: text(brand.productName), workspaceName: text(brand.workspaceName), assistantName: text(brand.assistantName), welcome: text(brand.welcome), icon: { path: 'product-icon.svg', checksum: text(icon.checksum), mediaType: 'image/svg+xml' } }, examples, models, parameterNames, parameterStages, outputs, cases, ...(theme && { theme }), ...(quantityKindLabels && { quantityKindLabels }), ...(workspaceLayout && { workspaceLayout }) };
 }
 
 export async function loadProductUi(): Promise<ProductUiProfile> {
@@ -113,6 +115,7 @@ export function setProductUi(profile: ProductUiProfile) {
     for (const [name, value] of Object.entries(profile.theme ?? {})) root.style.setProperty(`--product-theme-${name}`, value);
     root.lang = profile.locale;
     root.dataset.product = profile.productId;
+    root.dataset.workspaceLayout = profile.workspaceLayout ?? 'standard';
     document.title = profile.brand.workspaceName;
   }
   active = profile;

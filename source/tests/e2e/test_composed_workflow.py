@@ -534,11 +534,12 @@ def _catalog_case(client, worker, catalog, operator):
 
 @pytest.fixture
 def assembly(tmp_path, monkeypatch):
-    monkeypatch.syspath_prepend(str(ROOT / "platform/assembler"))
-    monkeypatch.setenv("PLATFORM_GENERATED_ROOT", str(tmp_path / "assembly"))
-    from assembler import compile_product
+    with monkeypatch.context() as assembly_environment:
+        assembly_environment.syspath_prepend(str(ROOT / "platform/assembler"))
+        assembly_environment.setenv("PLATFORM_GENERATED_ROOT", str(tmp_path / "assembly"))
+        from assembler import compile_product
 
-    return compile_product(ROOT, "groundwater/product-manifest.json")
+        return compile_product(ROOT, "groundwater/product-manifest.json")
 
 
 @pytest.fixture(scope="module")

@@ -176,6 +176,7 @@ def compile_product(
             for version in sorted(rule_versions)
         }
         composition = {
+            "domainId": domain.identity["domainId"],
             "operators": composition_members,
             "ruleSchemas": rule_schemas,
             "catalogDigest": catalog_digest,

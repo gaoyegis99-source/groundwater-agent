@@ -1,4 +1,4 @@
-"""Version-specific catalog facts shared by the public API and the Agent."""
+"""Project version-specific catalog facts for the API and Agent tools."""
 
 
 def operator_metadata(operator: dict, settings) -> dict:

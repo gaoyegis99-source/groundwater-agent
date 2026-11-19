@@ -1,11 +1,11 @@
 """Compose mode-specific Agent tools; handlers own their individual policies."""
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Any
 
-from ...readiness import ServiceReadinessProbe
-from ...operator_metadata import operator_metadata
+from ...application.operator_catalog import operator_metadata
 from ...settings import (
     ExecutableModelDefinition,
     KernelSettings,
@@ -35,6 +35,7 @@ def build_agent_tools(
     composition_operators: dict | None = None,
     composition_settings: KernelSettings | None = None,
     catalog_settings: KernelSettings | None = None,
+    worker_status: Callable[[str], Awaitable[str]] | None = None,
     capabilities: AgentModeCapabilities | None = None,
     provider: str = "deepseek",
     include_execution_facts: bool = True,
@@ -109,26 +110,6 @@ def build_agent_tools(
         )
     if allow_catalog:
         settings = catalog_settings or composition_settings
-        worker_status = None
-        executor = services_by_name.get("executor")
-        if settings is not None and executor is not None and (composition_settings is not None or settings.operator_uses):
-            readiness_probe = ServiceReadinessProbe(
-                name="executor", url=executor.internal_base_url + "/internal/health/ready",
-                project_id=settings.project_id, client=observation_client.client,
-                timeout_seconds=settings.readiness_timeout_seconds,
-                success_cache_seconds=settings.readiness_success_cache_seconds,
-                failure_cache_seconds=settings.readiness_failure_cache_seconds,
-            )
-
-            async def worker_status(runtime):
-                readiness = await readiness_probe.check()
-                if readiness.get("status") != "UP":
-                    return "UNAVAILABLE"
-                if readiness.get("definition_set_digest") != settings.definition_set_digest:
-                    return "DEFINITION_SET_MISMATCH"
-                components = readiness.get("components", {})
-                return components.get(runtime, "UNKNOWN")
-
         tools.extend(build_catalog_tools(
             operator_catalog, composition_operators,
             rule_schemas=composition_settings.workflow_composition.rule_schemas if composition_settings else None,

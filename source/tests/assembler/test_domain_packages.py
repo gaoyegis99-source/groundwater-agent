@@ -33,7 +33,8 @@ def write(path, value):
 
 
 @pytest.fixture
-def source(tmp_path):
+def source(tmp_path, monkeypatch):
+    monkeypatch.setenv("PLATFORM_GENERATED_ROOT", str(tmp_path / ".generated-output"))
     for path in (
         ROOT / "kernel/module.yaml",
         *sorted((ROOT / "services").glob("*/module.yaml")),
@@ -100,6 +101,7 @@ def test_two_products_reuse_one_package_without_copying_definitions(source):
     original = source / "products/groundwater/product-manifest.json"
     product = json.loads(original.read_text())
     product["productId"] = "second-product"
+    product.pop("operatorValidation", None)
     target = source / "products/second-product"
     shutil.copytree(source / "products/groundwater/ui", target / "ui")
     ui_path = target / product["uiProfile"]["path"]
@@ -468,6 +470,7 @@ def test_native_only_declarations_select_only_required_services(source):
     write(domain_path, domain)
     product_path = source / "products/groundwater/product-manifest.json"
     product = json.loads(product_path.read_text())
+    product.pop("compositionOperators", None)
     product["services"] = ["data", "executor"]
     product["publicRoutes"] = [
         route

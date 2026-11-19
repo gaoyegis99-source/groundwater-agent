@@ -67,10 +67,10 @@ export default function App() {
     openCapabilities, openReadiness,
   } = useDrawerController();
   const drawerShadeVisible = drawer?.kind === 'database' || drawer?.kind === 'knowledge';
-  const groundwaterWorkspace = ui.productId === 'groundwater';
-  const compactConversation = groundwaterWorkspace && !!activeId;
+  const researchWorkspace = ui.workspaceLayout === 'research';
+  const compactConversation = researchWorkspace && !!activeId;
   const workspace = useWorkspaceController(activeId, storageScope);
-  const hideCollapsedHomeWorkspace = !activeId && groundwaterWorkspace;
+  const hideCollapsedHomeWorkspace = !activeId && researchWorkspace;
   const deferHomeWorkspace = hideCollapsedHomeWorkspace && !workspace.homeOpened && !workspace.routeTab;
   const sessionWorkspaceOpen = compactConversation && !historyPanelOpen && !workspace.collapsed;
   function toggleWorkspace() {
@@ -655,7 +655,7 @@ export default function App() {
             <span className={`status-dot ${project && (!activeId || connected) ? 'online' : ''}`} aria-hidden="true" />
             <span className="connection-label">{connectionLabel}</span><span className="connection-compact" aria-hidden="true">状态</span>
           </button>
-          {!activeId && groundwaterWorkspace && <button type="button" ref={homeWorkbenchOpener} className="icon-button home-workbench-entry" aria-label={workspace.collapsed ? '打开任务工作台' : '收起任务工作台'}
+          {!activeId && researchWorkspace && <button type="button" ref={homeWorkbenchOpener} className="icon-button home-workbench-entry" aria-label={workspace.collapsed ? '打开任务工作台' : '收起任务工作台'}
             aria-controls="workspace-panel" aria-expanded={!workspace.collapsed}
             onClick={toggleWorkspace}><Icon name="layers" />工作台</button>}
           {compactConversation && signOut}

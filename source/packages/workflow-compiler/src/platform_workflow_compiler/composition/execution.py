@@ -57,7 +57,7 @@ def _port(contract):
     return port
 
 
-def _manifest(operator):
+def _manifest(operator, domain_id: str | None):
     schema = operator["parametersSchema"]
     remote = operator["runtime"] == "remote_http"
     result = {key: operator[key] for key in (
@@ -72,7 +72,7 @@ def _manifest(operator):
         inputs=[_port(item) for item in operator["inputs"]],
         outputs=[_port(item) for item in operator["outputs"]],
         parametersSchema=schema,
-        classification={"reuseScope": "domain" if operator["domain"] == "groundwater" else "generic",
+        classification={"reuseScope": "domain" if operator["domain"] == domain_id else "generic",
                         "providerKind": "external" if remote else "platform"},
         parameterPolicies={
             name: {"allowedSources": ["USER", *(["OPERATOR_DEFAULT"] if "default" in prop else [])],
@@ -156,12 +156,15 @@ class ArtifactComposition:
 
     @classmethod
     def from_config(cls, config: dict) -> ArtifactComposition:
-        if set(config) != {"operators", "resourceLimits", "catalogDigest", "ruleSchemas"}:
+        if set(config) - {"domainId"} != {"operators", "resourceLimits", "catalogDigest", "ruleSchemas"}:
+            raise WorkflowValidationError("COMPOSITION_CONFIG_INVALID")
+        domain_id = config.get("domainId")
+        if "domainId" in config and (not isinstance(domain_id, str) or not domain_id):
             raise WorkflowValidationError("COMPOSITION_CONFIG_INVALID")
         operators = {(row["id"], row["version"]): row for row in config["operators"]}
         if not operators or len(operators) != len(config["operators"]):
             raise WorkflowValidationError("COMPOSITION_CONFIG_INVALID")
-        manifests = {key: _manifest(operator) for key, operator in operators.items()}
+        manifests = {key: _manifest(operator, domain_id) for key, operator in operators.items()}
         schemas = config["ruleSchemas"]
         referenced = {
             port["rulesSchema"]

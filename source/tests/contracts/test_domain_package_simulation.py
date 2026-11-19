@@ -75,8 +75,9 @@ def _assert_domain_instructions(instructions, domain_prompt):
 
 
 @pytest.fixture
-def assembly_root(tmp_path):
+def assembly_root(tmp_path, monkeypatch):
     root = tmp_path / "assembly"
+    monkeypatch.setenv("PLATFORM_GENERATED_ROOT", str(tmp_path / "generated"))
     # Only assembly inputs are copied; existing deployments and local data are unused.
     for path in (
         ROOT / "kernel/module.yaml",

@@ -18,7 +18,8 @@ def _write(path: Path, value: object) -> None:
 
 
 @pytest.fixture
-def source(tmp_path: Path) -> Path:
+def source(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    monkeypatch.setenv("PLATFORM_GENERATED_ROOT", str(tmp_path / ".generated-output"))
     ignored = shutil.ignore_patterns(
         ".generated", ".pytest_cache", ".ruff_cache", ".venv", "__pycache__",
         "build", "dist", "node_modules",

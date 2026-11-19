@@ -217,6 +217,16 @@ class PlatformReadiness:
             return {"status": "DOWN", "error": "SERVICE_NOT_CONFIGURED"}
         return await probe.check()
 
+    async def worker_status(self, runtime: str) -> str:
+        readiness = await self._service("executor")
+        if readiness.get("status") != "UP":
+            return "UNAVAILABLE"
+        if readiness.get("definition_set_digest") != self.expected_executor_digest:
+            return "DEFINITION_SET_MISMATCH"
+        components = readiness.get("components")
+        status = components.get(runtime) if isinstance(components, dict) else None
+        return status if isinstance(status, str) else "UNKNOWN"
+
     @staticmethod
     async def _provider(pool: ProviderPool | None) -> dict[str, object]:
         if pool is None:

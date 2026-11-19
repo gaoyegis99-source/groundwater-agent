@@ -207,8 +207,8 @@ class ReplySubmission:
                     context, diagnostics,
                     "Call submit_reply once more. Use human-readable titles in the reply and "
                     "in the draft title, summary, limitations, unresolved items and parameter "
-                    "explanations. Remove versioned operator IDs, UUIDs, checksums and URLs "
-                    "from those fields. Keep the graph, exact bindings, parameter values and "
+                    "explanations. Omit versioned operator IDs, UUIDs, checksums and URLs in "
+                    "visible text. Keep the graph, exact bindings, parameter values and "
                     "references unchanged.",
                     error,
                 )

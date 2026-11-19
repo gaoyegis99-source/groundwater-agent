@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sqlite3
 
+from ..interaction.message_request_common import materialize_workflow_draft
 from ..interaction.state_projection import (
     activity_counts,
     project_agent_run,
@@ -29,6 +30,24 @@ class AgentProjectionAdapter:
         content: str,
     ) -> None:
         upsert_assistant_message(connection, session_id, goal_revision, content)
+
+    def materialize_workflow_draft(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        session_id: str,
+        request_id: str,
+        message: str,
+        goal_revision: int,
+        agent_run_id: str,
+        workflow_draft_id: str,
+        created_at: str,
+    ) -> None:
+        materialize_workflow_draft(
+            connection, session_id=session_id, request_id=request_id,
+            message=message, goal_revision=goal_revision, agent_run_id=agent_run_id,
+            workflow_draft_id=workflow_draft_id, created_at=created_at,
+        )
 
     def activity_counts(
         self,

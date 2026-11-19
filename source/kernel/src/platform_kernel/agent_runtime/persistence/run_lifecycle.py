@@ -7,7 +7,6 @@ import sqlite3
 
 from ...application.ports import AgentProjectionPort
 from ...database import append_event, connect_database, duration_ms, utc_now
-from ...interaction.message_request_common import materialize_workflow_draft
 from ..memory import MemoryUpdate
 from ..models import AgentFinalV5, AgentRun
 from ..result_processing import PreparedAction
@@ -101,7 +100,7 @@ def save_waiting_result(
         save_memory_connection(connection, run.session_id, memory_update)
         composition_plan_revision = None
         if workflow_draft is not None:
-            publish_workflow_draft(connection, run.agent_run_id, workflow_draft)
+            publish_workflow_draft(connection, run.agent_run_id, workflow_draft, agent_projection)
             composition_plan_revision = connection.execute(
                 "SELECT COALESCE(MAX(revision), 0) + 1 FROM agent_plans WHERE agent_run_id=?",
                 (run.agent_run_id,),
@@ -408,7 +407,7 @@ def finish_run(
             )
         _project_current(connection, run.agent_run_id, agent_projection)
         if workflow_draft is not None:
-            publish_workflow_draft(connection, run.agent_run_id, workflow_draft)
+            publish_workflow_draft(connection, run.agent_run_id, workflow_draft, agent_projection)
         refresh_task(connection, run.session_id)
 
 
@@ -469,7 +468,10 @@ def supersede_waiting_run(
         return True
 
 
-def publish_workflow_draft(connection, agent_run_id: str, payload: dict) -> None:
+def publish_workflow_draft(
+    connection: sqlite3.Connection, agent_run_id: str, payload: dict,
+    agent_projection: AgentProjectionPort,
+) -> None:
     row = connection.execute(
         "SELECT draft_id, session_id FROM workflow_drafts WHERE agent_run_id=?",
         (agent_run_id,),
@@ -485,7 +487,7 @@ def publish_workflow_draft(connection, agent_run_id: str, payload: dict) -> None
         ).fetchone()
         if request is None:
             raise ValueError("WORKFLOW_DRAFT_PUBLICATION_INVALID")
-        materialize_workflow_draft(
+        agent_projection.materialize_workflow_draft(
             connection, **dict(request), agent_run_id=agent_run_id,
             workflow_draft_id=agent_run_id, created_at=utc_now(),
         )

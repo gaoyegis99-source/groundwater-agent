@@ -121,23 +121,23 @@
 .markdown-content img { display: block; max-width: 100%; height: auto; border-radius: 10px; }
 
 /* Conversation occupies the research surface. Workspace routes open from its toolbar. */
-:root[data-product="groundwater"] .app-shell {
+:root[data-workspace-layout="research"] .app-shell {
   max-inline-size: var(--gw-shell-max);
   margin-inline: auto;
   gap: 0;
   padding: 0;
 }
-:root[data-product="groundwater"] .app-shell.has-session:not(.workspace-route) {
+:root[data-workspace-layout="research"] .app-shell.has-session:not(.workspace-route) {
   --gw-content-width: 56rem;
   --gw-content-edge: max(var(--gw-content-gutter), calc((100% - var(--gw-content-width)) / 2 + var(--gw-content-gutter)));
 }
-:root[data-product="groundwater"] .app-shell .main-panel {
+:root[data-workspace-layout="research"] .app-shell .main-panel {
   border: 0;
   border-radius: 0;
   box-shadow: none;
 }
-:root[data-product="groundwater"] .app-shell.has-session .main-panel { container-type: inline-size; }
-:root[data-product="groundwater"] .main-panel .topbar {
+:root[data-workspace-layout="research"] .app-shell.has-session .main-panel { container-type: inline-size; }
+:root[data-workspace-layout="research"] .main-panel .topbar {
   padding-inline: var(--gw-content-edge);
   border-block-end-color: var(--gw-line);
 }
@@ -177,7 +177,7 @@
 }
 .session-context .session-workbench-entry .app-icon { width: 1rem; height: 1rem; }
 .session-workbench-entry .workbench-label-short { display: none; }
-:root[data-product="groundwater"] .main-panel .topbar.session-toolbar {
+:root[data-workspace-layout="research"] .main-panel .topbar.session-toolbar {
   align-self: center;
   inline-size: min(100%, var(--gw-content-width));
   height: auto;
@@ -261,7 +261,7 @@
 .conversation .message-input-references { padding-block-start: var(--gw-space-2); border-block-start: 1px solid var(--gw-line); }
 .conversation .message-input-references button { min-block-size: var(--gw-control-compact); border-color: var(--gw-control-border); color: var(--gw-action); }
 .conversation .copy-message .text-button { color: var(--gw-text-muted); }
-:where(:root[data-product="groundwater"]) .conversation .intent-options {
+:where(:root[data-workspace-layout="research"]) .conversation .intent-options {
   padding: var(--gw-space-3) 0 0;
   border: 0;
   border-block-start: 1px solid var(--gw-line);
@@ -372,7 +372,7 @@
   box-shadow: none;
 }
 .main-panel .composer:focus-within { border-color: var(--gw-focus); outline: var(--gw-focus-width) solid var(--gw-focus); }
-:where(:root:not([data-product="groundwater"]), .app-shell:not(.has-session)) .composer .composer-label {
+:where(:root:not([data-workspace-layout="research"]), .app-shell:not(.has-session)) .composer .composer-label {
   margin: var(--gw-space-2) var(--gw-space-3) 0;
   color: var(--gw-text-secondary);
   font-size: var(--gw-size-note);
@@ -380,7 +380,7 @@
 }
 .main-panel .composer textarea { padding: var(--gw-space-1) var(--gw-space-3) var(--gw-space-2); font-size: var(--gw-size-body); }
 .app-shell:not(.has-session) .composer textarea { min-height: 64px; }
-:where(:root[data-product="groundwater"] .app-shell.has-session) .main-panel .composer textarea {
+:where(:root[data-workspace-layout="research"] .app-shell.has-session) .main-panel .composer textarea {
   min-height: 56px;
   padding-block-start: var(--gw-space-3);
 }

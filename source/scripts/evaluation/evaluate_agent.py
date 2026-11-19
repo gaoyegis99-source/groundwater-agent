@@ -475,14 +475,21 @@ def run_case(
 ):
     capabilities = request(client, "GET", "/api/v12/capabilities")
     assert capabilities["product_id"] == "groundwater", "GROUNDWATER_PRODUCT_REQUIRED"
-    assert TOOLS <= {item["name"] for item in capabilities["observation_tools"]}
-    assert "operators" not in capabilities and "workflows" not in capabilities
+    assert TOOLS <= {item["name"] for item in capabilities["observation_tools"]}, (
+        "SUMMARY_OBSERVATION_TOOLS_MISSING"
+    )
+    assert "workflows" not in capabilities, "UNEXPECTED_WORKFLOW_DEFINITIONS"
     (model,) = [
         item
         for item in capabilities["models"]
         if item["model_id"] == "groundwater.summary"
     ]
-    assert model["model_id"] == "groundwater.summary"
+    assert any(
+        use["workflow_id"] == model["workflow_id"]
+        and use["version"] == model["workflow_version"]
+        for operator in capabilities["operators"]
+        for use in operator["workflow_uses"]
+    ), "SUMMARY_OPERATOR_WORKFLOW_USE_MISSING"
     project = report["project_id"]
     resource_name = f"北区监测样本-{report['case_id']}"
     # Distinct fixture bytes make each case independently inspectable.

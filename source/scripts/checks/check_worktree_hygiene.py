@@ -108,7 +108,14 @@ def _activity_plan_violations(root: Path) -> list[str]:
     if not plans.is_dir() or plans.is_symlink():
         return ["../plans: ACTIVITY_PLAN_ROOT_INVALID"]
     index = plans / "README.md"
-    retained = {"knowledge-data-foundation", "ui-interaction-spec", "workflow-composition-standard"}
+    retained = {
+        "data-knowledge-design",
+        "data-knowledge-improvement",
+        "knowledge-data-foundation",
+        "repository-assessment",
+        "ui-interaction-spec",
+        "workflow-composition-standard",
+    }
     violations = [
         f"../plans/{child.name}: EXTRA_ACTIVITY_PLAN_CONTENT"
         for child in plans.iterdir()

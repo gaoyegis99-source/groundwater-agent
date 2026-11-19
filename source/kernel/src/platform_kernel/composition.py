@@ -47,7 +47,7 @@ from .application.agent_projection import AgentProjectionAdapter
 from .interaction.control_persistence import ControlRequests
 from .interaction.access import agent_owner_subject
 from .interaction.owner import InteractionOwner
-from .operator_metadata import operator_metadata
+from .application.operator_catalog import operator_metadata
 from platform_protocol_contracts import to_wire
 from .runtime import KernelRuntime
 from .readiness import PlatformReadiness, ReadinessReport
@@ -163,6 +163,20 @@ class PlatformApplication:
             self.provider_pool = build_agent_provider_pool(self.settings)
             model = self.provider_pool.model
         agent_slots = asyncio.Semaphore(self.settings.agent_concurrency)
+        router_provider_pool = None
+        if intent_router_model is None:
+            router_provider_pool = build_intent_router_provider_pool(
+                self.settings.intent_router,
+                timeout_seconds=self.settings.readiness_timeout_seconds,
+                success_cache_seconds=self.settings.readiness_success_cache_seconds,
+                failure_cache_seconds=self.settings.readiness_failure_cache_seconds,
+            )
+        self.readiness = PlatformReadiness(
+            self.settings,
+            agent_providers=self.provider_pool,
+            router_providers=router_provider_pool,
+            client=self.client,
+        )
         self.workflow_execution = WorkflowExecutionOwner(
             self.database,
             self.settings.models,
@@ -197,28 +211,18 @@ class PlatformApplication:
                 if self.settings.agent_preview_enabled
                 else None,
                 usage_ledger=SQLiteUsageLedger(self.database),
+                operator_worker_status=self.readiness.worker_status if (
+                    self.settings.workflow_composition is not None or self.settings.operator_uses
+                ) else None,
             ),
             self.agent_projection,
         )
-        router_provider_pool = None
-        if intent_router_model is None:
-            router_provider_pool = build_intent_router_provider_pool(
-                self.settings.intent_router,
-                timeout_seconds=self.settings.readiness_timeout_seconds,
-                success_cache_seconds=self.settings.readiness_success_cache_seconds,
-                failure_cache_seconds=self.settings.readiness_failure_cache_seconds,
-            )
         self.intent_router = IntentRouter(
             self.settings.intent_router,
             agent_slots=agent_slots,
             model=intent_router_model,
             usage_ledger=SQLiteUsageLedger(self.database),
             provider_pool=router_provider_pool,
-        )
-        self.readiness = PlatformReadiness(
-            self.settings,
-            agent_providers=self.provider_pool,
-            router_providers=router_provider_pool,
         )
         self.interaction = InteractionOwner(
             self.agent_runtime,

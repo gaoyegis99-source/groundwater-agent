@@ -89,7 +89,7 @@ details[open] > summary { margin-bottom: 8px; }
 .control-proposal p { margin: 6px 0 10px; color: var(--muted); }
 .control-proposal button + button { margin-left: 8px; }
 .control-proposal.stale, .control-proposal.dismissed, .control-proposal.complete { border-color: var(--border); background: var(--soft); }
-.sr-only, :where(:root[data-product="groundwater"] .app-shell.has-session) .composer .composer-label { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.sr-only, :where(:root[data-workspace-layout="research"] .app-shell.has-session) .composer .composer-label { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .app-icon { display: inline-block; width: var(--gw-size-icon); height: var(--gw-size-icon); flex: 0 0 auto; vertical-align: middle; }
 
 /* Navigation and page frame. */

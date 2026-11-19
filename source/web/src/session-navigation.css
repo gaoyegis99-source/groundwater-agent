@@ -16,7 +16,7 @@
   background: var(--session-surface);
 }
 
-:root[data-product="groundwater"] .sidebar.session-navigation {
+:root[data-workspace-layout="research"] .sidebar.session-navigation {
   --session-surface: var(--gw-nav);
   --session-hover: var(--gw-nav-hover);
   --session-selected: var(--gw-nav-selected);
@@ -162,16 +162,16 @@
   background: var(--gw-surface);
 }
 
-:root[data-product="groundwater"] .app-shell > .sidebar.session-navigation {
+:root[data-workspace-layout="research"] .app-shell > .sidebar.session-navigation {
   border: 0;
   border-radius: 0;
 }
-:root[data-product="groundwater"] .sidebar.session-navigation:not(.is-collapsed) {
+:root[data-workspace-layout="research"] .sidebar.session-navigation:not(.is-collapsed) {
     inline-size: clamp(11rem, 15vw, 14rem);
     padding-inline: var(--gw-space-3);
   }
 @media (max-height: 560px) {
-  :root[data-product="groundwater"] .session-navigation .sidebar-heading { padding-block-end: var(--gw-space-2); }
-  :root[data-product="groundwater"] .session-navigation .sidebar-label { margin-block-start: var(--gw-space-3); }
-  :root[data-product="groundwater"] .session-navigation .sidebar-tools { margin-block-start: var(--gw-space-2); padding-block-start: var(--gw-space-1); }
+  :root[data-workspace-layout="research"] .session-navigation .sidebar-heading { padding-block-end: var(--gw-space-2); }
+  :root[data-workspace-layout="research"] .session-navigation .sidebar-label { margin-block-start: var(--gw-space-3); }
+  :root[data-workspace-layout="research"] .session-navigation .sidebar-tools { margin-block-start: var(--gw-space-2); padding-block-start: var(--gw-space-1); }
 }

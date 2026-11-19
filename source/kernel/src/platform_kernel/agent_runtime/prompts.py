@@ -47,16 +47,17 @@ def build_instructions(
     execution_context_json: str,
     execution_allowed: bool = False,
     operator_proposal: bool = False,
+    operator_discovery: bool = False,
 ) -> str:
     retrieval_instruction = _execution_retrieval_instruction(
         execution_context_json
     )
+    catalog_guidance = ", read the catalog with list_operators or get_operator," if operator_discovery else ""
     turn_boundary = (
         "This Turn has EXECUTION_PROPOSAL permission. You may record a plan and propose "
         "installed model calls, but Kernel confirmation is still mandatory before execution."
         if execution_allowed
-        else "This Turn is READ_ONLY. You may inspect Data and Knowledge evidence, read the "
-        "operator catalog through list_operators and get_operator when available, and call "
+        else f"This Turn is READ_ONLY. You may inspect Data and Knowledge evidence{catalog_guidance} and call "
         "update_task or submit_reply, but you must not record a plan, call an executable model, use an operation "
         "tool, or propose confirmation. A later generic execution rule cannot grant those powers."
     )

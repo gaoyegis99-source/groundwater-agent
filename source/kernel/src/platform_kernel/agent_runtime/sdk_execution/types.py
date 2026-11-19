@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -40,6 +40,7 @@ class SDKExecutionDependencies:
     activity_log: ActivityLogPort
     publish_preview: Callable[[str, str, str | None], None] | None = None
     usage_ledger: UsageLedgerPort | None = None
+    operator_worker_status: Callable[[str], Awaitable[str]] | None = None
 
 
 class SDKExecutionError(RuntimeError):

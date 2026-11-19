@@ -31,10 +31,14 @@ it('applies validated workspace tokens and clears them when switching to a defau
   const profile = decodeProductUi(copy());
   setProductUi(profile);
   expect(document.documentElement.style.getPropertyValue('--product-theme-accent')).toBe('#2563eb');
+  expect(document.documentElement.dataset.workspaceLayout).toBe('research');
   const unthemed = copy();
   delete unthemed.theme;
+  delete unthemed.workspaceLayout;
   setProductUi(decodeProductUi(unthemed));
   expect(document.documentElement.style.getPropertyValue('--product-theme-accent')).toBe('');
+  expect(document.documentElement.dataset.workspaceLayout).toBe('standard');
+  expect(() => decodeProductUi({ ...unthemed, workspaceLayout: 'unknown' })).toThrow('PRODUCT_UI_INVALID');
   expect(() => decodeProductUi({ ...unthemed, theme: { accent: 'url(/external)' } })).toThrow('PRODUCT_UI_INVALID');
   expect(() => decodeProductUi({ ...unthemed, theme: { unknown: '#123456' } })).toThrow('PRODUCT_UI_INVALID');
   setProductUi(profile);

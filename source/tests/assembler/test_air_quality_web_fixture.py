@@ -7,6 +7,7 @@ from pathlib import Path
 import shutil
 
 from assembler import compile_product
+import pytest
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -20,8 +21,9 @@ SPEC.loader.exec_module(FIXTURE)
 
 
 def test_air_quality_fixture_assembles_when_source_product_uses_another_ui_profile(
-    tmp_path: Path,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setenv("PLATFORM_GENERATED_ROOT", str(tmp_path / ".generated-output"))
     FIXTURE._copy_assembly_inputs(tmp_path)
     source_product = tmp_path / "products/groundwater"
     source_profile = source_product / "ui/alternate-profile.v2.json"

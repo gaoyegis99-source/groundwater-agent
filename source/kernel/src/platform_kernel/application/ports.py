@@ -21,6 +21,19 @@ class AgentProjectionPort(Protocol):
         content: str,
     ) -> None: ...
 
+    def materialize_workflow_draft(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        session_id: str,
+        request_id: str,
+        message: str,
+        goal_revision: int,
+        agent_run_id: str,
+        workflow_draft_id: str,
+        created_at: str,
+    ) -> None: ...
+
     def activity_counts(
         self,
         connection: sqlite3.Connection,

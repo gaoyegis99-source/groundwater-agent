@@ -11,16 +11,19 @@ def test_current_common_domain_tool_surface_fits_hard_input_budget(kernel_settin
     result = asyncio.run(measure.measure(settings))
     assert len(settings.models) in {10, 18}
     assert result["available_input_tokens"] == 131072 - 4096
+    composition = settings.workflow_composition is not None
+    catalog_discovery = composition or bool(settings.operator_uses)
     assert {mode: value["tool_count"] for mode, value in result["modes"].items()} == {
-        "DIALOGUE_READ_ONLY": 9,
-        "DIALOGUE_EXECUTION_PROPOSAL": 11 + len(settings.models),
-        "WORKFLOW_DRAFT": 11,
+        "DIALOGUE_READ_ONLY": 9 + (2 if catalog_discovery else 0),
+        "DIALOGUE_EXECUTION_PROPOSAL": 11 + len(settings.models) + (3 if composition else 0),
+        "WORKFLOW_DRAFT": 11 + (1 if composition else 0),
     }
+    execution_ceiling = 22_600 if len(settings.models) == 18 else 20_750
     initial_token_ceiling = {
         "DIALOGUE_READ_ONLY": 15_000,
-        # The base and porous releases use 20,491 and 22,305 tokens.
-        "DIALOGUE_EXECUTION_PROPOSAL": 22_600 if len(settings.models) == 18 else 20_750,
-        "WORKFLOW_DRAFT": 15_000,
+        # Composition adds a graph and validation schema to the preset tools.
+        "DIALOGUE_EXECUTION_PROPOSAL": execution_ceiling + (4_400 if composition else 0),
+        "WORKFLOW_DRAFT": 15_500 if composition else 15_000,
     }
     for name, mode in result["modes"].items():
         assert mode["fits_input_budget"]

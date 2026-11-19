@@ -100,6 +100,7 @@ plus 2–3 mutually exclusive natural-language interaction_options.
             execution_context_json,
             execution_allowed=capabilities.allow_model_tools,
             operator_proposal=composition_settings is not None,
+            operator_discovery=capabilities.allow_operator_catalog,
         )
     selection = request_context.get("workflow_selection") if request_context else None
     if selection is not None:
@@ -170,6 +171,7 @@ plus 2–3 mutually exclusive natural-language interaction_options.
             operator_catalog=dependencies.settings.operator_catalog,
             composition_settings=composition_settings,
             catalog_settings=dependencies.settings,
+            worker_status=dependencies.operator_worker_status,
             composition_operators=(
                 None if dependencies.settings.workflow_composition is None
                 else dependencies.settings.workflow_composition.manifests

@@ -622,6 +622,13 @@ def test_wrong_confirmation_is_never_approved(monkeypatch, field):
                 "product_id": "groundwater",
                 "models": [model],
                 "observation_tools": [{"name": name} for name in evaluator.TOOLS],
+                "operators": [
+                    {
+                        "workflow_uses": [
+                            {"workflow_id": "summary", "version": "1.0.0"}
+                        ]
+                    }
+                ],
             }
         return session
 

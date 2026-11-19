@@ -2,6 +2,7 @@
   "schemaVersion": "product-ui.v1",
   "productId": "groundwater",
   "locale": "zh-CN",
+  "workspaceLayout": "research",
   "theme": {
     "ink": "#172b4d",
     "muted": "#52657c",

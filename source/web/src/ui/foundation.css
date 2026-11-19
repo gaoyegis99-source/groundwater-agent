@@ -6,8 +6,8 @@ body {
   font-size: var(--gw-size-ui);
 }
 
-/* Keep the product profile contract while adopting the Groundwater palette in this shell. */
-:root[data-product="groundwater"] {
+/* Apply the research workspace palette when selected by the product profile. */
+:root[data-workspace-layout="research"] {
   font-family: var(--gw-font-ui);
   font-variant-numeric: var(--gw-numeric);
   background: var(--gw-canvas);
@@ -34,11 +34,11 @@ body {
   --radius-panel: var(--gw-radius-panel);
 }
 
-:root[data-product="groundwater"] .app-shell { background: var(--gw-canvas); }
-:root[data-product="groundwater"] :is(.welcome h1, .markdown-content h1) { font-family: var(--gw-font-title); }
-:root[data-product="groundwater"] :is(pre, code, .mono) { font-family: var(--gw-font-id); }
+:root[data-workspace-layout="research"] .app-shell { background: var(--gw-canvas); }
+:root[data-workspace-layout="research"] :is(.welcome h1, .markdown-content h1) { font-family: var(--gw-font-title); }
+:root[data-workspace-layout="research"] :is(pre, code, .mono) { font-family: var(--gw-font-id); }
 
-.gw-page-title, :root[data-product="groundwater"] .welcome h1 {
+.gw-page-title, :root[data-workspace-layout="research"] .welcome h1 {
   font: var(--gw-weight-strong) var(--gw-size-title)/var(--gw-leading-title) var(--gw-font-title);
   letter-spacing: normal;
   overflow-wrap: anywhere;

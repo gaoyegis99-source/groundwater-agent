@@ -87,7 +87,7 @@
 }
 .workspace-panel .preparation-check p { flex-basis: 100%; margin: 0; }
 .workspace-panel :is(.preparation-check, .preparation-blocker) button { margin: 0; }
-:root[data-product="groundwater"] .workspace-panel:not(.is-route, .is-overlay) {
+:root[data-workspace-layout="research"] .workspace-panel:not(.is-route, .is-overlay) {
   border: 0;
   border-inline-start: 1px solid var(--gw-line);
   border-radius: 0;

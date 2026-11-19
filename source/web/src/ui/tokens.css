@@ -1,4 +1,4 @@
-/* Groundwater Agent · 独立设计系统 v1.0 · light
+/* 科研工作台 · 独立设计系统 v1.0 · light
    单位 rem 随用户根字号缩放。断点用 em，媒体查询与下方断点 Token 同步。
    本文件只声明变量。禁止在业务组件中覆盖 --gw-ref-*。 */
 :root {

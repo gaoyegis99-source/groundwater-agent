@@ -31,7 +31,7 @@ test('数据库工作台显示表格、工作簿、结构树和模型安全元�
   const workbench = await openWorkbench(page);
 
   const observationsTitle = '六模型观测表';
-  const search = workbench.getByRole('textbox', { name: '搜索', exact: true });
+  const search = workbench.getByRole('searchbox', { name: '搜索', exact: true });
   await workbench.getByLabel('格式筛选').selectOption('csv');
   await search.fill(observationsTitle);
   await workbench.locator('.database-item').filter({
@@ -119,7 +119,7 @@ test('数据库工作台显示表格、工作簿、结构树和模型安全元�
   }, null, 2) + '\n');
 
   await chooseFormat(workbench, 'xlsx');
-  await expect(workbench.getByLabel('工作表')).toBeVisible();
+  await expect(workbench.getByRole('combobox', { name: '工作表', exact: true })).toBeVisible();
 
   await chooseFormat(workbench, 'json');
   await expect(workbench.getByLabel('搜索 JSON')).toBeVisible();

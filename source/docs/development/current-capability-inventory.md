@@ -7,10 +7,10 @@
 
 | 来源 | 路径 | 身份 |
 |---|---|---|
-| Product manifest | `products/groundwater/product-manifest.json` | `sha256:1f65fb0c91438c7cbf044ebda3a4779b1721ffae3201477ad8a7cdcb3519f207` |
+| Product manifest | `products/groundwater/product-manifest.json` | `sha256:5c1e12f9ef6ac5f57652dd6c6b7a4102ae83bfbad62788b53f92bd52042f6c80` |
 | Domain manifest | `domains/groundwater/6.2.0/domain-manifest.json` | package `sha256:9862f88dd7cce5bcdcf58dd008edb6465bcfde031d97548785a66eb3e14c5fc3` |
-| Operator Catalog index | `packages/operator-pack/catalog/index.json` | manifest `sha256:2cdd11ce900a37642be750c972a2602dd832818e7cff5d6f668883c878860125`<br>execution `sha256:e4a1ef262f94a262d1b549808517afbbe013208fb6432a929bad908f3d1599de` |
-| Product UI | `products/groundwater/ui/product-ui-porous.v1.json` | source `sha256:43d927fc3466b69050af4a442e73aab460f2541a3560ea6e87132be8ce2365d5`<br>compiled `sha256:37f59be0e514ed30705aa4be8b8add2d56804401d53363b1c7aa870e17069a5a` |
+| Operator Catalog index | `packages/operator-pack/catalog/index.json` | manifest `sha256:3881423fa69deae67a4d31bbab2c202541b8c7ccaf7c1182497da74a67b672ab`<br>execution `sha256:47eb493ad355de2062110e459c5d69368fd6de457d5debabc9f2f8c2363f4494` |
+| Product UI | `products/groundwater/ui/product-ui-porous.v1.json` | source `sha256:7b6554c54e4d57a6392ea427de8ec937464dddbbd3a5c1d6c885a3ee8b572091`<br>compiled `sha256:a5424dfafd27d95e6e5d4c63e00074aed24ebfd8e05c47bbe7dd3a19d6b97bfd` |
 
 ## 摘要
 

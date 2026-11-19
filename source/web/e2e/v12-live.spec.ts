@@ -28,6 +28,10 @@ async function session(page: Page, id: string) {
   return response.json();
 }
 
+async function openTaskOverview(page: Page) {
+  await page.getByRole('navigation', { name: '会话详情' }).getByRole('link', { name: '运行', exact: true }).click();
+}
+
 async function productUi(page: Page) {
   const response = await page.request.get('/product-ui.json');
   expect(response.ok(), `${response.status()} ${await response.text()}`).toBeTruthy();
@@ -280,15 +284,17 @@ test('04 execution proposal confirms, publishes, downloads and restores results'
   const workspace = page.getByTestId('workspace-panel');
   await expect(workspace.getByRole('heading', { name: outputLabel })).toBeVisible();
   await expect(workspace.getByRole('heading', { name: 'Summary' })).toHaveCount(0);
+  await workspace.getByText('查看精确版本与来源', { exact: true }).click();
   await expect(workspace.getByText('数据集', { exact: true })).toBeVisible();
   await expect(workspace.getByText('数据版本', { exact: true })).toBeVisible();
   await expect(workspace.getByText('语义版本', { exact: true })).toBeVisible();
   await expect(workspace).toContainText('血缘输入');
   await expect(workspace).toContainText(inputVersion);
   await expect(workspace.getByText('科学验证状态未提供', { exact: true })).toBeVisible();
-  await expect(workspace.getByRole('textbox', { name: '搜索 JSON' })).toBeVisible();
-  await workspace.getByRole('button', { name: 'hydraulic_head_m', exact: true }).locator('..').click();
-  await expect(workspace.getByText('count', { exact: true }).first()).toBeVisible();
+  await expect(workspace.getByRole('searchbox', { name: '搜索 JSON' })).toBeVisible();
+  const jsonTree = workspace.getByRole('region', { name: 'JSON 字段树' });
+  await jsonTree.locator('summary').filter({ hasText: /^hydraulic_head_m\b/ }).click();
+  await expect(jsonTree.getByText('count', { exact: true })).toBeVisible();
   await page.screenshot({ path: info.outputPath('04-structured-report-preview.png') });
   await page.reload();
   await expect(page).toHaveURL(/\/workbench\/results$/);
@@ -309,6 +315,7 @@ test('04 execution proposal confirms, publishes, downloads and restores results'
     const key = Object.keys(sessionStorage).find(entry => !entry.includes(':unbound:') && entry.endsWith(`:draft-attachments:${current}`));
     return key ? JSON.parse(sessionStorage.getItem(key) ?? '[]') : [];
   }, sessionId);
+  await row.locator('.output-more > summary').click();
   await row.getByRole('button', { name: '附加到当前草稿' }).click();
   await expect(page.getByTestId('pending-attachments')).toContainText(outputLabel);
   await expect.poll(() => readDraftAttachment(id)).toEqual([expect.objectContaining(output)]);
@@ -338,7 +345,7 @@ test('04 execution proposal confirms, publishes, downloads and restores results'
   await expect(page).toHaveURL(/#\/$/);
   await page.getByRole('checkbox', { name: '显示归档' }).check();
   const archived = page.locator(`a.session-link[href="#/sessions/${id}"]`);
-  await expect(archived).toContainText('已归档');
+  await expect(archived).toHaveAccessibleDescription(/已归档/);
   await archived.click();
   await expect(page.locator(`[data-resource-id="${output.versionId}"]`).getByRole('link', { name: '下载' }))
     .toHaveAttribute('href', contentPath);
@@ -382,8 +389,9 @@ test('06 Task review is persisted and the archived Session restores its completi
   await page.getByRole('textbox', { name: '消息输入框' }).fill(goal);
   await page.getByRole('button', { name: '发送消息', exact: true }).click();
   await expect.poll(async () => (await history()).task?.progress.state).toBe('WAITING_REVIEW');
-  const header = page.getByRole('region', { name: '当前研究任务' });
-  await expect(header).toContainText(goal);
+  const workspace = page.getByTestId('workspace-panel');
+  const taskCard = workspace.getByRole('region', { name: '主任务' });
+  await expect(taskCard).toContainText(goal);
   const firstRevision = (await history()).task!.spec.revision;
   const composer = page.getByRole('textbox', { name: '消息输入框' });
   await composer.fill('补充要求：仅使用公开资料。请更新主任务，保留原有交付和评审条件。');
@@ -392,8 +400,7 @@ test('06 Task review is persisted and the archived Session restores its completi
     const task = (await history()).task;
     return task?.progress.state === 'WAITING_REVIEW' ? task.spec.revision : 0;
   }).toBeGreaterThan(firstRevision);
-  await header.getByRole('button', { name: '查看任务概览' }).click();
-  const taskCard = page.getByRole('region', { name: '主任务' });
+  await openTaskOverview(page);
   await expect(taskCard.getByRole('button', { name: '确认此项满足' })).toHaveCount(2);
   const reviewLines = (await history()).task!.spec.criteria
     .filter(criterion => criterion.kind === 'USER_REVIEW')
@@ -405,7 +412,7 @@ test('06 Task review is persisted and the archived Session restores its completi
   const completed = await history();
   expect(completed.task?.progress.criteria.every(criterion => criterion.satisfied)).toBe(true);
   expect(completed.turns.flatMap(turn => turn.executionTasks)).toEqual([]);
-  await header.getByRole('button', { name: '查看任务概览' }).click();
+  await openTaskOverview(page);
   await expect(taskCard.getByRole('blockquote')).toHaveCount(2);
   await page.screenshot({ path: info.outputPath('06-task-reviewed.png') });
 
@@ -414,11 +421,12 @@ test('06 Task review is persisted and the archived Session restores its completi
   await expect(page).toHaveURL(/#\/$/);
   await page.getByRole('checkbox', { name: '显示归档' }).check();
   const archived = page.locator(`a.session-link[href="#/sessions/${id}"]`);
-  await expect(archived).toContainText('已归档');
+  await expect(archived).toHaveAccessibleDescription(/已归档/);
   await archived.click();
-  await expect(header.getByText('任务已完成', { exact: true })).toBeVisible();
+  const taskStatus = workspace.getByText('任务已完成', { exact: true });
+  await expect(taskStatus).toBeVisible();
   await page.reload();
-  await expect(header.getByText('任务已完成', { exact: true })).toBeVisible();
+  await expect(taskStatus).toBeVisible();
   expect((await history()).task?.spec.taskId).toBe(completed.task?.spec.taskId);
   await page.screenshot({ path: info.outputPath('06-archived-task-restored.png') });
 });
@@ -498,9 +506,9 @@ test('07 one Task retains its reviewed publication after archiving and reloading
   expect(taskResults).toContainEqual(comparisonOutput);
   expect(comparisonOutput.versionId).not.toBe(output.versionId);
   const objectPath = `/api/v12/data/versions/${output.versionId}/objects/${output.objectId}/content`;
-  const header = page.getByRole('region', { name: '当前研究任务' });
-  await header.getByRole('button', { name: '查看任务概览' }).click();
-  const taskCard = page.getByRole('region', { name: '主任务' });
+  await openTaskOverview(page);
+  const workspace = page.getByTestId('workspace-panel');
+  const taskCard = workspace.getByRole('region', { name: '主任务' });
   const resultCriterion = taskCard.locator('.task-criteria > li').filter({
     has: page.getByText('水位统计汇总', { exact: true }),
   });
@@ -530,7 +538,7 @@ test('07 one Task retains its reviewed publication after archiving and reloading
   });
   await expect(taskCard.getByRole('button', { name: '确认此项满足' })).toBeEnabled();
   await taskCard.getByRole('button', { name: '确认此项满足' }).click();
-  const retry = page.getByTestId('workspace-panel').getByRole('button', { name: '重试发送' });
+  const retry = workspace.getByRole('button', { name: '重试发送' });
   await expect(retry).toBeEnabled();
   expect((await history()).task?.progress.state).toBe('WAITING_REVIEW');
   await page.reload();
@@ -553,10 +561,10 @@ test('07 one Task retains its reviewed publication after archiving and reloading
   await expect(page).toHaveURL(/#\/$/);
   await page.getByRole('checkbox', { name: '显示归档' }).check();
   const archived = page.locator(`a.session-link[href="#/sessions/${id}"]`);
-  await expect(archived).toContainText('已归档');
+  await expect(archived).toHaveAccessibleDescription(/已归档/);
   await archived.click();
   await page.reload();
-  await expect(header.getByText('任务已完成', { exact: true })).toBeVisible();
+  await expect(workspace.getByText('任务已完成', { exact: true })).toBeVisible();
   expect((await history()).task).toEqual(complete.task);
   const newestPage = await page.request.get(`/api/v12/sessions/${id}/messages?limit=1`);
   expect(newestPage.status()).toBe(200);
@@ -571,13 +579,17 @@ test('07 one Task retains its reviewed publication after archiving and reloading
   expect(older.items).toHaveLength(1);
   expect(older.items[0].messageId).toBeLessThan(newest.items[0].messageId);
   expect(older.eventCursor).toBeGreaterThanOrEqual(newest.eventCursor);
+  for (const revision of [executionRevision, comparisonPending.goalRevision]) {
+    const turn = page.getByRole('region', { name: `第 ${revision} 轮`, exact: true });
+    await turn.getByRole('button', { name: '核验并查看本轮成果', exact: true }).click();
+  }
   const card = page.locator(`[data-workflow-run-id="${run.workflowRunId}"]`);
-  const download = card.locator(`[data-resource-id="${output.versionId}"]`).getByRole('link', { name: '下载', exact: true });
+  const download = card.locator(`[data-resource-id="${output.versionId}"]`).getByRole('link', { name: `下载 ${resultLabel}`, exact: true });
   await expect(download).toHaveAttribute('href', objectPath);
   const comparisonCard = page.locator(`[data-workflow-run-id="${comparison.workflowRunId}"]`);
   await expect(comparisonCard.locator(`[data-resource-id="${output.versionId}"]`)).toHaveCount(0);
   await expect(card.locator(`[data-resource-id="${comparisonOutput.versionId}"]`)).toHaveCount(0);
-  await expect(comparisonCard.locator(`[data-resource-id="${comparisonOutput.versionId}"]`).getByRole('link', { name: '下载', exact: true }))
+  await expect(comparisonCard.locator(`[data-resource-id="${comparisonOutput.versionId}"]`).getByRole('link', { name: `下载 ${resultLabel}`, exact: true }))
     .toHaveAttribute('href', `/api/v12/data/versions/${comparisonOutput.versionId}/objects/${comparisonOutput.objectId}/content`);
   const response = await page.request.get(objectPath);
   expect(response.status()).toBe(200);
@@ -585,7 +597,7 @@ test('07 one Task retains its reviewed publication after archiving and reloading
   const comparisonResponse = await page.request.get(`/api/v12/data/versions/${comparisonOutput.versionId}/objects/${comparisonOutput.objectId}/content`);
   expect(comparisonResponse.status()).toBe(200);
   expect(`sha256:${createHash('sha256').update(await comparisonResponse.body()).digest('hex')}`).toBe(comparisonOutput.checksum);
-  await header.getByRole('button', { name: '查看任务概览' }).click();
+  await openTaskOverview(page);
   await expect(taskCard.getByRole('blockquote')).toHaveText(quote);
   await expect(resultCriterion.getByRole('button', { name: new RegExp(resultLabel) })).toBeVisible();
   await page.screenshot({ path: info.outputPath('07-archived-task-publication.png') });
