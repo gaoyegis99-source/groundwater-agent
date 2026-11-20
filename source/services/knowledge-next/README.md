@@ -36,6 +36,9 @@ Data 仅在知识包带绑定时需要。可设置 `KNOWLEDGE_DATA_URL` 为容�
 
 完整输入约束由 `KnowledgePackageV1` 的 OpenAPI Schema 定义；最小示例见 [example.json](examples/example.json)。页面直接上传这个格式。每包至多 128 篇文档、16 MiB；每篇至多 64 个单元、16 个来源、32 个 Data 绑定；每单元至多 4,000 字符。非法输入返回字段位置，不部分入库。
 
+项目 DOCX 可先用[离线报告编译器](docs/docx-packages.md)保留正文出处、表头和表注，
+生成此格式后再人工整理专业解释与意图示例。公式、图像和来源正确性须单独复核。
+
 装配启动时的领域目录 bootstrap 先调用 preflight，对语义内容完全一致的条目直接返回
 `ALREADY_APPLIED`，只为新增或变化条目提交原子导入。更新条目的当前版本只作为本次提交的
 CAS 前置条件；`expectedVersion` 不写入不可变知识正文。bootstrap 是独立的一次性初始化状态，
