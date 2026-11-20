@@ -21,8 +21,27 @@ from .persistence.run_queries import load_request_message
 from .result_processing import PreparedAction
 
 
-_EXECUTION_VERBS = ("运行", "执行", "启动", "开始运行", "run", "execute")
-_NEGATED_EXECUTION = ("停止", "取消", "拒绝", "不要执行", "不要运行", "不执行", "不运行")
+_COMMAND_PREFIX = r"^\s*(?:(?:请|麻烦)\s*)?(?:(?:帮我|为我)\s*|please\s+)?"
+_EXECUTION_COMMAND = re.compile(
+    _COMMAND_PREFIX + r"""(?:开始运行|运行|执行|启动|run\b|execute\b)\s*[`'"“‘「]?"""
+)
+_CASE_END = re.compile(
+    r"""[`'"”’」]?\s*(?:[,，]\s*)?(?:快速档|快速模式|development_fast|优先使用系统中的标准化资料)?"""
+    r"\s*[。.!！]?\s*"
+)
+_TOOL_COMMAND = re.compile(
+    _COMMAND_PREFIX + r"""(?:使用\s*工具\s*|调用\s*工具\s*|(?:use|invoke|call)\s+(?:the\s+)?tool\s+)[`'"]?"""
+    r"(?P<tool>[a-z0-9_-]+)"
+)
+_TOOL_END = re.compile(
+    r"""[`'"]?\s*(?:[,，]\s*)?(?:并?先提出执行方案等待确认|等我确认后运行|after checking the input)?"""
+    r"\s*[。.!！]?\s*"
+)
+_MODEL_EXECUTION_MARKER = re.compile(r"\[Model execution\]\s*", re.IGNORECASE)
+_NEGATED_EXECUTION = (
+    "停止", "取消", "拒绝", "不要执行", "不要运行", "不执行", "不运行",
+    "do not run", "do not execute", "don't run", "don't execute",
+)
 _NEGATED_TOOL_USE = ("不要使用", "不要调用", "do not use", "don't use")
 
 
@@ -42,17 +61,38 @@ class ExplicitModelToolRequest:
     arguments: dict[str, object]
 
 
-def matches_execution_case_request(settings: KernelSettings, message: str) -> bool:
-    """Recognize configured case entry points without granting execution authority."""
+def _requested_execution_case(settings: KernelSettings, message: str) -> ExecutionCaseDefinition | None:
     lowered = message.casefold()
-    if any(term.casefold() in lowered for term in _NEGATED_EXECUTION):
-        return False
-    has_action = any(verb.casefold() in lowered for verb in _EXECUTION_VERBS)
-    return has_action and any(
-        alias.casefold() in lowered
+    command = _EXECUTION_COMMAND.match(lowered)
+    if command is None or any(term in lowered for term in _NEGATED_EXECUTION):
+        return None
+    target = lowered[command.end():]
+    return next((
+        case
         for case in settings.execution_cases
         for alias in case.aliases
-    )
+        if target.startswith(alias.casefold()) and _CASE_END.fullmatch(target[len(alias.casefold()):])
+    ), None)
+
+
+def matches_execution_case_request(settings: KernelSettings, message: str) -> bool:
+    """Recognize configured case commands without granting execution authority."""
+    return _requested_execution_case(settings, message) is not None
+
+
+def _explicit_model_tool(settings: KernelSettings, message: str) -> tuple[str, int] | None:
+    lowered = message.casefold()
+    command = _TOOL_COMMAND.match(lowered)
+    if (
+        command is None
+        or any(term in lowered for term in (*_NEGATED_EXECUTION, *_NEGATED_TOOL_USE))
+    ):
+        return None
+    requested = command["tool"]
+    return next((
+        (model.tool_name, command.end())
+        for model in settings.models if model.tool_name.casefold() == requested
+    ), None)
 
 
 def matches_explicit_model_tool_request(
@@ -65,29 +105,25 @@ def matches_explicit_model_tool_request(
     phrase plus an exact installed tool name avoids treating documentation or
     general model discussion as execution authority.
     """
-    lowered = message.casefold()
-    if any(term.casefold() in lowered for term in (*_NEGATED_EXECUTION, *_NEGATED_TOOL_USE)):
+    command = _explicit_model_tool(settings, message)
+    if command is None:
         return False
-    for model in settings.models:
-        escaped = re.escape(model.tool_name.casefold())
-        if re.search(
-            rf"(?:使用|调用)\s*工具\s*[`'\"]?{escaped}(?![a-z0-9_])",
-            lowered,
-        ) or re.search(
-            rf"(?:use|invoke|call)\s+(?:the\s+)?tool\s+[`'\"]?{escaped}(?![a-z0-9_])",
-            lowered,
-        ):
-            return True
-    return False
+    marker = _MODEL_EXECUTION_MARKER.search(message)
+    end = len(message) if marker is None else marker.start()
+    return _TOOL_END.fullmatch(message[command[1]:end].casefold()) is not None and (
+        marker is None or parse_explicit_model_tool_request(settings, message) is not None
+    )
 
 
 def parse_explicit_model_tool_request(
     settings: KernelSettings, message: str,
 ) -> ExplicitModelToolRequest | None:
     """Parse the closed structured payload attached to an explicit tool command."""
-    if not matches_explicit_model_tool_request(settings, message):
+    command = _explicit_model_tool(settings, message)
+    if command is None:
         return None
-    marker = re.search(r"\[Model execution\]\s*", message, re.IGNORECASE)
+    requested, _ = command
+    marker = _MODEL_EXECUTION_MARKER.search(message)
     if marker is None:
         return None
     try:
@@ -100,15 +136,13 @@ def parse_explicit_model_tool_request(
         return None
     tool = payload.get("tool")
     arguments = payload.get("arguments")
-    installed = {model.tool_name for model in settings.models}
     if (
-        not isinstance(tool, str)
-        or tool not in installed
+        tool != requested
         or not isinstance(arguments, dict)
         or not all(isinstance(name, str) for name in arguments)
     ):
         return None
-    return ExplicitModelToolRequest(tool, dict(arguments))
+    return ExplicitModelToolRequest(requested, dict(arguments))
 
 
 def load_explicit_model_tool_request(
@@ -204,13 +238,7 @@ async def resolve_execution_case(
     actor_subject: str | None = None,
 ) -> ResolvedExecutionCase | None:
     """Resolve an exact configured case; return None for the generic Agent path."""
-    case = next(
-        (
-            item for item in settings.execution_cases
-            if any(alias.casefold() in message.casefold() for alias in item.aliases)
-        ),
-        None,
-    )
+    case = _requested_execution_case(settings, message)
     if case is None:
         return None
     model = next(

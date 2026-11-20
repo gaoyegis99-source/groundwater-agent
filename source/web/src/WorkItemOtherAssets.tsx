@@ -1,20 +1,19 @@
 import { useCallback, useEffect, useId, useState } from 'react';
-import { ApiError, callApi, projectQuery, readDataVersion, readDataVersionSemantic } from './api';
+import { ApiError, callApi } from './api';
 import { modelName, outputName } from './card-presentation';
 import { statusLabel } from './chat-state';
 import { selectResourcePublicationUi } from './ui-selectors';
 import { useWorkItemPages } from './use-work-item-queries';
 import { workItemTime } from './work-item-presentation';
+import { readWorkItemOutput, readWorkItemPublication, readWorkItemRun, workItemOutputRows } from './work-item-result-evidence';
 import type { components, operations } from './generated/public-api-v12';
 import type { BusinessAssetReference, WorkItemDetail } from './types';
+import type { WorkItemNamedOutput as NamedOutput, WorkItemRun as WorkflowRun, WorkItemRunLink as WorkflowLink } from './work-item-result-evidence';
 
 type AssetSelection = operations['kernel_link_work_item_asset']['requestBody']['content']['application/json']['reference'];
 type KnowledgeReference = Extract<BusinessAssetReference, { kind: 'KNOWLEDGE' }>;
 type Document = components['schemas']['knowledge_next__DocumentSummary'];
 type VersionSummary = components['schemas']['knowledge_next__VersionSummary'];
-type WorkflowRun = components['schemas']['kernel__WorkflowRunResponse'];
-type WorkflowLink = WorkItemDetail['workflowRuns'][number];
-type NamedOutput = components['schemas']['kernel__WorkItemResultDataReference'];
 type SelectionProps = {
   disabled: boolean;
   onSelect?: (reference: AssetSelection) => void;
@@ -205,32 +204,9 @@ function KnowledgePicker({ project, detail, disabled, onSelect }: Omit<Props, 'm
   </>;
 }
 
-function isNamedOutput(output: WorkflowRun['outputs'][number]): output is NamedOutput {
-  return Object.keys(output).length === 11 && output.kind === 'data_version' && output.service === 'data-primary'
-    && typeof output.outputName === 'string' && !!output.outputName.trim() && Array.from(output.outputName).length <= 256
-    && ['datasetId', 'versionId', 'semanticId', 'objectId', 'mediaType', 'format'].every(key => {
-      const value = output[key];
-      return typeof value === 'string' && !!value.trim() && value !== '.' && value !== '..';
-    })
-    && typeof output.sizeBytes === 'number' && Number.isSafeInteger(output.sizeBytes) && output.sizeBytes >= 0
-    && typeof output.checksum === 'string' && checksumPattern.test(output.checksum);
-}
-
-function uniqueNamedOutputs(run: WorkflowRun) {
-  const counts = new Map<unknown, number>();
-  for (const { outputName: name } of run.outputs) counts.set(name, (counts.get(name) ?? 0) + 1);
-  return run.outputs.filter(isNamedOutput).filter(output => counts.get(output.outputName) === 1);
-}
-
 async function verifyPublishedOutput(output: NamedOutput, project: string, publicationId: string, signal: AbortSignal) {
   try {
-    const version = await readDataVersion(output.versionId, signal);
-    if (version.project !== project || version.publicationId !== publicationId || version.datasetId !== output.datasetId) return false;
-    const matches = version.objects.filter(object => object.objectId === output.objectId);
-    const object = matches[0];
-    if (matches.length !== 1 || !object || object.role !== 'raw' || object.checksum !== output.checksum
-      || object.format !== output.format || object.mediaType !== output.mediaType || object.size !== output.sizeBytes) return false;
-    await readDataVersionSemantic(version, output.semanticId, signal);
+    await readWorkItemOutput(output, project, publicationId, signal);
     return true;
   } catch (error) {
     if (signal.aborted || error instanceof ApiError) return false;
@@ -283,10 +259,9 @@ function RunPublication({ run, project, assets, disabled, onSelect }: SelectionP
 }) {
   const { runId } = run;
   const get = useCallback(async (signal: AbortSignal) => {
-    const path = `/workflow-runs/${safePathSegment(runId)}/publication?${projectQuery(project)}`;
-    const value = await callApi('kernel_get_workflow_run_publication', path, undefined, signal);
-    if (value.workflowRunId !== runId || (value.publicationId === null) !== (value.state === null)) throw identityMismatch();
-    return { publication: value, outputs: uniqueNamedOutputs(run) };
+    const publication = await readWorkItemPublication(runId, project, signal);
+    const outputs = workItemOutputRows(run).flatMap(row => row.output ? [row.output] : []);
+    return { publication, outputs };
   }, [run, runId, project]);
   const { value, loading, error, retry } = useAssetRead(get);
   if (loading) return <p role="status">正在读取成果发布状态…</p>;
@@ -311,14 +286,8 @@ function RunDetails({ link, project, assets, disabled, onSelect }: SelectionProp
   project: string;
   assets: WorkItemDetail['assets'];
 }) {
-  const { runId, agentRunId, workflowRef: { id, version, checksum }, sessionId } = link;
-  const get = useCallback(async (signal: AbortSignal) => {
-    const path = `/workflow-runs/${safePathSegment(runId)}?${projectQuery(project)}`;
-    const value = await callApi('kernel_get_workflow_run', path, undefined, signal);
-    if (value.runId !== runId || value.projectId !== project || value.agentRunId !== agentRunId
-      || value.workflowId !== id || value.workflowVersion !== version || value.workflowChecksum !== checksum) throw identityMismatch();
-    return value;
-  }, [project, runId, agentRunId, id, version, checksum]);
+  const { runId, sessionId } = link;
+  const get = useCallback((signal: AbortSignal) => readWorkItemRun(link, project, signal), [link, project]);
   const { value, loading, error, retry } = useAssetRead(get);
   if (loading) return <p role="status">正在读取计算记录…</p>;
   if (error) return <ReadIssue label="计算记录" error={error} retry={retry} />;

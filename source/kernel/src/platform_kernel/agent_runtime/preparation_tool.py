@@ -446,6 +446,8 @@ async def _prepare_capability_inputs(
                 inspect_definition=inspect_definition, inspect_service=inspect_service,
                 observation_client=observation_client, inspected=inspected,
             )
+            if "UTC_TIME_FIELD" in capability["requiredChecks"]:
+                checks.extend(_utc_time_field_checks(checks))
             issue = issues[0] if issues else _capability_check_issue(capability, checks)
             if issue is None:
                 issue = _capability_time_issue(model, capability, arguments, details)
@@ -553,6 +555,23 @@ def _capability_check_issue(capability, checks):
                 input=problem.get("input"), validator=kind,
             )
     return None
+
+
+def _utc_time_field_checks(checks: list[dict]) -> list[dict]:
+    results = []
+    for check in checks:
+        if check["kind"] != "TIMEZONE":
+            continue
+        field_type = check.get("actual_type")
+        timezone_name = check.get("timezone")
+        utc_timestamp = isinstance(field_type, str) and re.fullmatch(
+            r"timestamp\[(?:s|ms|us|ns),\s*tz=(?:UTC|Etc/UTC|\+00:00)\]", field_type, re.IGNORECASE,
+        )
+        status = "PASS" if utc_timestamp and timezone_name in {"UTC", "Etc/UTC"} else (
+            "UNKNOWN" if timezone_name is None else "FAIL"
+        )
+        results.append({**check, "kind": "UTC_TIME_FIELD", "status": status})
+    return results
 
 
 def _capability_time_issue(model, capability, arguments, details):

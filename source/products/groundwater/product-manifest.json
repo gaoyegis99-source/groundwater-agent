@@ -151,10 +151,10 @@
   },
   "workflowPlatform": {
     "path": "workflows/workflow-platform.v1.json",
-    "checksum": "sha256:fe14d9b7280109e0b1d2ec00829a12ffde34577c6db0a610af6ab5726bec79ab"
+    "checksum": "sha256:f52c7df05ca62bb2cdbc5c0c01ad7bc87fbd4a7577c4b1a698ea0dda579d4981"
   },
   "businessCapabilities": {
     "path": "capabilities/business-capabilities.v1.json",
-    "checksum": "sha256:e2783550ede2734785da81da7e72876796b5f001ffc0060ce675e36d711e7d90"
+    "checksum": "sha256:5f276ca3dfbec2aa024b71b0fb35ed5203ca121e79b43f7e46689f4cde7d91ca"
   }
 }

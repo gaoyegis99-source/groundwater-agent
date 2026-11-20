@@ -96,12 +96,17 @@ def load_initial_context_sources(
             """SELECT a.*,m.request_id,m.semantic_intent,m.task_action,
                       COALESCE(m.clarification_required,0) clarification_required,
                       COALESCE(m.input_references_json,'[]') input_references_json,
-                      w.selection_json workflow_selection_json
+                      CASE WHEN m.clarification_required = 1
+                           THEN json_extract(w.selection_json, '$.business_capability_options')
+                      END business_capability_options_json,
+                      CASE WHEN COALESCE(m.clarification_required, 0)=0
+                           THEN w.selection_json END workflow_selection_json
                FROM agent_requests a LEFT JOIN message_requests m ON m.agent_run_id=a.agent_run_id
                LEFT JOIN message_workflow_selections w ON w.agent_run_id=a.agent_run_id
-                 AND a.mode='DIALOGUE' AND COALESCE(m.clarification_required, 0)=0
-                 AND (COALESCE(m.requested_mode, 'DIALOGUE')!='AUTO'
-                      OR m.semantic_intent IN ('EXECUTE_ON_DATA','CONSULT'))
+                 AND a.mode='DIALOGUE'
+                 AND (m.clarification_required = 1
+                      OR COALESCE(m.requested_mode, 'DIALOGUE')!='AUTO'
+                      OR (m.semantic_intent='EXECUTE_ON_DATA' AND m.dialogue_policy='EXECUTION_PROPOSAL'))
                WHERE a.agent_run_id=?""",
             (agent_run_id,),
         ).fetchone()
@@ -160,6 +165,9 @@ def load_initial_context_sources(
             request_context.pop("clarification_required")
         )
         request_context["workflow_selection"] = json.loads(request_context.pop("workflow_selection_json") or "null")
+        options_json = request_context.pop("business_capability_options_json")
+        if options_json is not None:
+            request_context["business_capability_options"] = json.loads(options_json)
         request_context["input_references"] = json.loads(
             request_context.pop("input_references_json")
         )

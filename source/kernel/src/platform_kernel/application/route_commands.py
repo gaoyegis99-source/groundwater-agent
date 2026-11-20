@@ -10,6 +10,7 @@ from ..database import append_event, connect_database, duration_ms, utc_now
 from ..errors import ResourceNotFoundError
 from ..interaction.message_request_common import (
     INTENT_DECISIONS,
+    has_business_capability_options,
     materialize_workflow_draft,
     response_from_row,
     supersede_pending_confirmation,
@@ -76,6 +77,9 @@ def resolve_intent_route(
         ).fetchone()
         if row is None:
             raise ResourceNotFoundError("MESSAGE_REQUEST_NOT_FOUND")
+        if semantic_intent == "EXECUTE_ON_DATA" and has_business_capability_options(connection, agent_run_id):
+            response_kind, semantic_intent, dialogue_policy = "NEEDS_CLARIFICATION", "UNKNOWN", None
+            task_action, clarification_reason = "NONE", "TASK_CONFLICT"
         if row["routing_status"] in {"DECIDED", "START_REQUESTED"}:
             if (
                 row["intent_decision"] != response_kind

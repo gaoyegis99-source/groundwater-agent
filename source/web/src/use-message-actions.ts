@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ApiError, callApi } from './api';
 import { canConfirm, isBusy } from './chat-state';
 import { inputReferences, isResourceItems, messageBody, newRequestId, savedSubmission, savedSubmissionForKey, saveSubmission, type SavedSubmission } from './message-routing';
@@ -58,6 +58,7 @@ type MessageActionOptions = {
   activeId: string;
   storageScope: string;
   project: string;
+  subject: string;
   history: History | null;
   connected: boolean;
   loading: boolean;
@@ -81,6 +82,7 @@ export function useMessageActions({
   activeId,
   storageScope,
   project,
+  subject,
   history,
   connected,
   loading,
@@ -113,6 +115,13 @@ export function useMessageActions({
   const [actionError, setActionError] = useState<ApiError | null>(null);
   const draftRef = useRef(draft);
   const previousStorageScope = useRef(storageScope);
+  const activeStorageScope = useRef(storageScope);
+  activeStorageScope.current = storageScope;
+  const resultCheck = useRef<AbortController | null>(null);
+  useLayoutEffect(() => () => {
+    resultCheck.current?.abort();
+    resultCheck.current = null;
+  }, [activeId, storageScope]);
   const skipAttachmentPersist = useRef(false);
   draftRef.current = draft;
   const mutationSerial = useRef(0);
@@ -192,9 +201,10 @@ export function useMessageActions({
   }, [history, submission, activeId, storageScope]);
 
   function acceptSubmission(id: string, sent: SavedSubmission, updateView = true) {
+    const sameSession = activeStorageScope.current === storageScope && activeRef.current === id;
     if (sent.queueItemId) {
       const remaining = readQueue(storageScope, id).filter(item => item.id !== sent.queueItemId);
-      saveQueue(storageScope, id, remaining); if (activeRef.current === id) { setQueue(remaining); queueSending.current = false; }
+      saveQueue(storageScope, id, remaining); if (sameSession) { setQueue(remaining); queueSending.current = false; }
     }
     saveSubmission(storageScope, id, null);
     const retained = sent.draftText !== null && sent.body.workflowSelection ? new Set(
@@ -207,7 +217,7 @@ export function useMessageActions({
       if (sessionStorage.getItem(scopedStorageKey(storageScope, 'draft', id)) === sent.draftText) sessionStorage.removeItem(scopedStorageKey(storageScope, 'draft', id));
     }
     sessionStorage.setItem(scopedStorageKey(storageScope, 'draft-attachments', id), JSON.stringify(savedAttachments(storageScope, id).filter(remaining)));
-    if (activeRef.current !== id) return;
+    if (!sameSession) return;
     setSubmission(previous => previous?.body.requestId === sent.body.requestId ? null : previous);
     if (!updateView) return;
     if (sent.draftText !== null && draftRef.current === sent.draftText) {
@@ -216,6 +226,10 @@ export function useMessageActions({
     setAttachments(previous => previous.filter(remaining));
   }
   function changeQueue(items: QueuedMessage[]) { saveQueue(storageScope, activeId, items); setQueue(items); }
+  function retryQueuedResult(id: string) {
+    changeQueue(queue.map(item => item.id === id ? { ...item, resultCheckBlocked: undefined } : item));
+    setActionError(error => error?.code === 'WORK_ITEM_RESULT_REUSE_UNAVAILABLE' ? null : error);
+  }
   function enqueue(correctsAgentRunId?: string) {
     if (!activeId || (!draft.trim() && !attachments.length && !workflow)) return;
     const item: QueuedMessage = { id: newRequestId(), text: draft, attachments, createdAt: new Date().toISOString(),
@@ -254,7 +268,7 @@ export function useMessageActions({
   useEffect(() => {
     if (!activeId || busy || stopping || awaitingConfirmation || submission || error || !connected || !queue.length || queueSending.current) return;
     const head = queue[0];
-    if (!head.text.trim() && !head.attachments.length) return;
+    if (head.resultCheckBlocked || (!head.text.trim() && !head.attachments.length)) return;
     // A persisted ID means the previous POST may have reached Kernel. Recover the
     // receipt first and offer only the existing request for an explicit retry.
     if (head.requestId) {
@@ -264,9 +278,7 @@ export function useMessageActions({
       return;
     }
     queueSending.current = true;
-    const item = { ...head, requestId: head.requestId ?? newRequestId() };
-    const updated = [item, ...queue.slice(1)]; saveQueue(storageScope, activeId, updated); setQueue(updated);
-    void send({ queueItemId: item.id, body: queuedRequest(item, item.requestId), draftText: null, attachments: item.attachments });
+    void send({ queueItemId: head.id, body: queuedRequest(head, newRequestId()), draftText: null, attachments: head.attachments }, undefined, true);
   }, [activeId, busy, stopping, awaitingConfirmation, submission, error, connected, queue]);
   function updateDraft(value: string) { setDraft(value); if (storageScope) sessionStorage.setItem(scopedStorageKey(storageScope, 'draft', activeId), value); }
   function navigate(id: string) { window.location.hash = `/sessions/${id}`; }
@@ -306,7 +318,7 @@ export function useMessageActions({
     catch (caught) { if (operation === mutationSerial.current && generation === viewGeneration.current && activeRef.current === activeId) showError(caught); }
     finally { sessionCreationPending.current = false; setContinuationVersionId(null); setPendingOperation(previous => previous?.id === operation ? null : previous); }
   }
-  async function send(retry?: SavedSubmission, suggestedMessage?: string) {
+  async function send(retry?: SavedSubmission, suggestedMessage?: string, firstQueuedAttempt = false) {
     if (suggestedMessage && optionSubmission.current) return;
     const selected = suggestedMessage ? null : workflow;
     const message = suggestedMessage ?? (draft.trim() || (selected ? '请准备所选工作流。' : attachments.length ? '请处理已附加的数据。' : ''));
@@ -320,6 +332,10 @@ export function useMessageActions({
         ...(!suggestedMessage && attachments.length ? { inputReferences: inputReferences(attachments) } : {}) },
       draftText: suggestedMessage ? null : draft, attachments: suggestedMessage ? [] : attachments,
     };
+    const checksResult = sent.attachments.some(item => item.resultProvenance !== undefined);
+    if (checksResult && resultCheck.current) return;
+    const validation = checksResult ? new AbortController() : null;
+    if (validation) resultCheck.current = validation;
     const startedAt = performance.now();
     interactionTiming.current = {
       requestId: sent.body.requestId, startedAt, lastFeedbackAt: startedAt,
@@ -328,12 +344,44 @@ export function useMessageActions({
     const operation = ++mutationSerial.current;
     if (suggestedMessage) optionSubmission.current = true;
     const generation = viewGeneration.current;
-    setPendingOperation({ id: operation, sessionId: activeId, generation, label: '正在提交消息' }); setActionError(null);
-    setSubmission(sent); saveSubmission(storageScope, activeId, sent);
+    setPendingOperation({ id: operation, sessionId: activeId, generation,
+      label: validation ? '正在核对成果附件' : '正在提交消息' }); setActionError(null);
     let id = activeId;
     let migrated = false;
-    const current = () => activeRef.current === id && viewGeneration.current === generation + (migrated ? 1 : 0);
+    let submitted = false;
+    const current = () => activeStorageScope.current === storageScope && activeRef.current === id
+      && viewGeneration.current === generation + (migrated ? 1 : 0);
+    const currentResultCheck = () => current() && currentSessionId() === id && !validation?.signal.aborted;
     try {
+      if (validation) {
+        try {
+          const { verifySubmittedWorkItemResults } = await import('./work-item-result-reuse');
+          if (!currentResultCheck()) return;
+          await verifySubmittedWorkItemResults(sent, id, { project, subject }, validation.signal);
+        } catch (error) {
+          if (!currentResultCheck()) return;
+          if (firstQueuedAttempt) {
+            const queued = readQueue(storageScope, id);
+            const updated = queued.map(item => item.id === sent.queueItemId && !item.requestId
+              ? { ...item, resultCheckBlocked: true as const } : item);
+            changeQueue(updated);
+          }
+          showError(error);
+          return;
+        }
+        if (!currentResultCheck() || (retry && !firstQueuedAttempt
+          && savedSubmission(storageScope, id)?.body.requestId !== sent.body.requestId)) return;
+        setPendingOperation(previous => previous?.id === operation ? { ...previous, label: '正在提交消息' } : previous);
+      }
+      if (firstQueuedAttempt) {
+        const queued = readQueue(storageScope, id);
+        const head = queued[0];
+        if (!head || head.id !== sent.queueItemId || head.requestId
+          || JSON.stringify(queuedRequest(head, sent.body.requestId)) !== JSON.stringify(sent.body)) return;
+        changeQueue([{ ...head, requestId: sent.body.requestId }, ...queued.slice(1)]);
+      }
+      setSubmission(sent); saveSubmission(storageScope, id, sent);
+      submitted = true;
       if (!id) {
         const created = await createSession(operation, { text: draft, attachments, submission: sent, workflow: selected ?? undefined });
         if (created === null) return;
@@ -343,9 +391,10 @@ export function useMessageActions({
         sessionStorage.removeItem(scopedStorageKey(storageScope, 'draft-attachments'));
         saveWorkflowSelection(storageScope, '', null);
       }
-      await callApi('kernel_create_message', `/sessions/${id}/messages`, sent.body);
+      await callApi('kernel_create_message', `/sessions/${id}/messages`, sent.body, validation?.signal);
       acceptSubmission(id, sent, current());
     } catch (caught) {
+      if (validation?.signal.aborted) return;
       if (!(caught instanceof ApiError)) throw caught;
       if (!id || (caught.status >= 400 && caught.status < 500)) {
         saveSubmission(storageScope, id, null);
@@ -353,7 +402,14 @@ export function useMessageActions({
       }
       if (current()) showError(caught);
     }
-    finally { if (id && current()) await refresh(id); await loadSessions(); if (suggestedMessage) optionSubmission.current = false; setPendingOperation(previous => previous?.id === operation ? null : previous); }
+    finally {
+      if (resultCheck.current === validation) resultCheck.current = null;
+      if (firstQueuedAttempt && !submitted && current()) queueSending.current = false;
+      if (id && current() && (submitted || (retry && !firstQueuedAttempt))) await refresh(id);
+      if (submitted) await loadSessions();
+      if (suggestedMessage) optionSubmission.current = false;
+      setPendingOperation(previous => previous?.id === operation ? null : previous);
+    }
   }
   const receiptState = currentUncertain && history?.sessionId === activeId && history !== currentUncertain.before
     ? reconcileConfirmation(currentUncertain.mutation, history) : 'checking';
@@ -450,6 +506,7 @@ export function useMessageActions({
     setWorkflow,
     queue,
     changeQueue,
+    retryQueuedResult,
     enqueue,
     draft,
     updateDraft,

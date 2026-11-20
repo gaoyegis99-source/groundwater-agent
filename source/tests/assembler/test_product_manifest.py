@@ -1137,11 +1137,11 @@ def test_unreachable_workflow_node_fails_before_output(tmp_path):
 def test_workflow_node_order_does_not_change_valid_graph(tmp_path):
     _copy_inputs(tmp_path)
     domain = _selected_groundwater_domain(tmp_path)
-    workflow_path = domain / "workflows/flow-field.workflow.json"
+    workflow_path = domain / "workflows/monitoring-coverage.workflow.json"
     workflow = json.loads(workflow_path.read_text())
     workflow["nodes"].reverse()
     workflow_path.write_text(json.dumps(workflow))
-    model_path = domain / "models/flow-field.model.json"
+    model_path = domain / "models/monitoring-coverage.model.json"
     model = json.loads(model_path.read_text())
     model["workflowRef"]["checksum"] = _checksum(workflow)
     model_path.write_text(json.dumps(model))
@@ -1150,12 +1150,12 @@ def test_workflow_node_order_does_not_change_valid_graph(tmp_path):
 
     output = compile_product(tmp_path, manifest_path)
     executor = json.loads((output / "executor-config.json").read_text())
-    flow = next(
+    coverage = next(
         item
         for item in executor["models"]
-        if item["modelId"] == "groundwater.flow-field"
+        if item["modelId"] == "groundwater.monitoring-coverage"
     )
-    assert [node["nodeId"] for node in flow["workflow"]["nodes"]] == [
+    assert [node["nodeId"] for node in coverage["workflow"]["nodes"]] == [
         node["nodeId"] for node in workflow["nodes"]
     ]
 

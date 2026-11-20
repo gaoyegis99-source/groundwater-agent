@@ -260,8 +260,10 @@ def _unstarted_control(connection: Connection, scope: dict, session: Row) -> Row
              AND NOT EXISTS (SELECT 1 FROM agent_runs AS a WHERE a.agent_run_id = m.agent_run_id)
              AND (:task_id IS NULL OR p.task_revision = :task_revision)
              AND (m.dialogue_policy = 'EXECUTION_PROPOSAL' OR m.intent_decision = 'WORKFLOW_DRAFT'
-                  OR EXISTS (SELECT 1 FROM message_workflow_selections AS sel
-                             WHERE sel.agent_run_id = m.agent_run_id))
+                  OR (m.intent_decision IS NULL
+                      AND EXISTS (SELECT 1 FROM message_workflow_selections AS sel
+                                  WHERE sel.agent_run_id = m.agent_run_id
+                                    AND json_type(sel.selection_json, '$.model_id') = 'text')))
            GROUP BY m.agent_run_id HAVING stop_pending OR stopped
            ORDER BY m.goal_revision DESC, m.rowid DESC LIMIT 1""",
         scope | {

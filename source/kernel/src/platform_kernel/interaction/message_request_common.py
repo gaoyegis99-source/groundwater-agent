@@ -27,6 +27,14 @@ class IntentRouteRequest:
     route_attempt: int
 
 
+def has_business_capability_options(connection: sqlite3.Connection, agent_run_id: str) -> bool:
+    return connection.execute(
+        """SELECT 1 FROM message_workflow_selections WHERE agent_run_id=?
+           AND json_type(selection_json, '$.business_capability_options')='array'""",
+        (agent_run_id,),
+    ).fetchone() is not None
+
+
 def materialize_workflow_draft(
     connection: sqlite3.Connection, *, session_id: str, request_id: str,
     message: str, goal_revision: int, agent_run_id: str,

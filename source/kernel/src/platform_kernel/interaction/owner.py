@@ -180,7 +180,6 @@ class InteractionOwner:
         return {
             "title": business["title"],
             "continues_preparation": business.get("continuesPreparation", False),
-            "guidance": "A supplied answer to the blocked preparation continues the current analysis request.",
         }
 
     def route_metrics(self) -> IntentRoutingMetrics:

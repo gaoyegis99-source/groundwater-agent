@@ -16,6 +16,20 @@ from .workflow_selection import selected_model
 _DIGEST = re.compile(r"sha256:[0-9a-f]{64}")
 _ROLES = {"admin", "researcher"}
 _REFS = ("profileRef", "modelRef", "workflowRef", "resultContractRef")
+_PROFILE_CHOICE = re.compile(
+    r"(?P<negation>暂不|不要|不想|不|别|禁止|\bdo\s+not\s+|\bdon't\s+|\bnever\s+)?\s*"
+    r"(?:选用|选择|使用|采用|\buse|\bselect|\bchoose)\s*(?:档位|\bprofile\b)"
+    r"\s*[:=]?\s*[`'\"「“‘]?(?P<id>[a-z](?:[a-z0-9_.-]*[a-z0-9])?)"
+    r"(?:(?P<pin>@)(?P<version>[a-z0-9](?:[a-z0-9_.+-]*[a-z0-9])?)?)?"
+)
+_QUOTED_TEXT = re.compile(r"""```[\s\S]*?```|`[^`\n]*`|"[^"\n]*"|(?<!\w)'[^'\n]*'(?!\w)|“[^”]*”|‘[^’]*’|「[^」]*」""")
+_REPLY_SEPARATORS = " \t\r\n，,；;。.!！"
+_ATTACHMENT_REPLY = re.compile(
+    r"(?:请\s*)?(?:用|使用|采用|上传了|补充)?\s*(?:这份|这个|该)?\s*(?:附件|资料|数据)"
+    r"(?:已上传)?|请处理已附加的数据"
+    r"|(?:please\s+)?(?:use\s+)?(?:this|the\s+attached)\s+(?:file|data|dataset)",
+    re.IGNORECASE,
+)
 
 
 def _valid_ref(ref: object) -> bool:
@@ -159,27 +173,66 @@ def _input_bindings(roles: dict, references: list[dict]) -> dict[str, int]:
     return {name: index for name, index in result.items() if counts[index] == 1}
 
 
-def select_business_capability(
-    registry: tuple[dict, ...], message: str, actor_roles: frozenset[str], references: list[dict],
-) -> dict | None:
+def _eligible(capability: dict, actor_roles: frozenset[str]) -> bool:
+    return (
+        capability["tier"] == "CORE" and capability["defaultVisible"]
+        and capability["validationStatus"] == "TECHNICALLY_VALIDATED"
+        and bool(actor_roles.intersection(capability["roles"]))
+    )
+
+
+def business_capability_candidates(
+    registry: tuple[dict, ...], message: str, actor_roles: frozenset[str],
+) -> tuple[tuple[dict, dict], ...]:
+    """Discover eligible options. The semantic route determines whether they apply."""
     if not registry or len(message) > 12000:
-        return None
-    normalized = unicodedata.normalize("NFKC", message)
-    folded = normalized.casefold()
-    matches = [
+        return ()
+    folded = unicodedata.normalize("NFKC", message).casefold()
+    quoted = tuple(match.span() for match in _QUOTED_TEXT.finditer(folded))
+    requested = set()
+    for match in _PROFILE_CHOICE.finditer(folded):
+        if any(start <= match.start() < end for start, end in quoted):
+            continue
+        if match["negation"] or (match["pin"] and not match["version"]):
+            return ()
+        requested.add((match["id"], match["version"]))
+    matches = tuple(
         (capability, option)
         for capability in registry
-        if capability["tier"] == "CORE" and capability["defaultVisible"]
-        and capability["validationStatus"] == "TECHNICALLY_VALIDATED"
-        and actor_roles.intersection(capability["roles"])
+        if _eligible(capability, actor_roles)
         and _matches(folded, capability["matchTerms"])
         and not any(term.casefold() in folded for term in capability["excludeTerms"])
         for option in capability["profiles"]
         if actor_roles.intersection(option["roles"]) and _matches(folded, option["matchTerms"])
-    ]
+    )
+    if not requested:
+        return matches
+    available = {
+        choice for _, option in matches
+        for choice in ((option["profileRef"]["id"], None), (option["profileRef"]["id"], option["profileRef"]["version"]))
+    }
+    if not requested <= available:
+        return ()
+    return tuple(
+        (capability, option) for capability, option in matches
+        if (option["profileRef"]["id"], None) in requested
+        or (option["profileRef"]["id"], option["profileRef"]["version"]) in requested
+    )
+
+
+def select_business_capability(
+    registry: tuple[dict, ...], message: str, actor_roles: frozenset[str], references: list[dict],
+) -> dict | None:
+    matches = business_capability_candidates(registry, message, actor_roles)
     if len(matches) != 1:
         return None
-    capability, option = matches[0]
+    return business_workflow_selection(*matches[0], message, references)
+
+
+def business_workflow_selection(
+    capability: dict, option: dict, message: str, references: list[dict],
+) -> dict:
+    normalized = unicodedata.normalize("NFKC", message)
     parameters, sources, conflicts, threshold_unit = _interpret_parameters(option, normalized)
     return {
         **_execution_identity(option),
@@ -211,6 +264,22 @@ def _installed_option(registry: tuple[dict, ...], selection: dict) -> tuple[dict
     ), None)
 
 
+def _is_parameter_reply(option: dict, message: str) -> bool:
+    """Keep cross-turn binding limited to replies entirely described by Profile patterns."""
+    spans = sorted(
+        match.span()
+        for spec in option["textParameters"]
+        for rule in spec["patterns"] + spec.get("replyPatterns", [])
+        for match in re.finditer(rule["pattern"], message, re.IGNORECASE)
+    )
+    end = 0
+    for start, stop in spans:
+        if start > end and message[end:start].strip(_REPLY_SEPARATORS):
+            return False
+        end = max(end, stop)
+    return bool(spans) and not message[end:].strip(_REPLY_SEPARATORS)
+
+
 def continue_business_capability(
     registry: tuple[dict, ...], previous: dict, issue: dict, message: str, actor_roles: frozenset[str],
     references: list[dict],
@@ -224,7 +293,8 @@ def continue_business_capability(
     capability, option = installed
     normalized = unicodedata.normalize("NFKC", message)
     if (
-        not actor_roles.intersection(option["roles"])
+        not _eligible(capability, actor_roles)
+        or not actor_roles.intersection(option["roles"])
         or any(term.casefold() in normalized.casefold() for term in capability["excludeTerms"])
     ):
         return None
@@ -232,9 +302,14 @@ def continue_business_capability(
     supplied = {name: parameters[name] for name, source in sources.items() if source == "USER"}
     fresh_bindings = _input_bindings(option["inputRoles"], references)
     if issue.get("kind") == "MISSING_DATA":
-        addressed = issue.get("input") in fresh_bindings
+        reply = normalized.strip(_REPLY_SEPARATORS)
+        addressed = issue.get("input") in fresh_bindings and (
+            not reply or _ATTACHMENT_REPLY.fullmatch(reply) is not None
+            or _is_parameter_reply(option, normalized)
+        )
     else:
-        addressed = issue.get("parameter") in supplied
+        parameter = issue.get("parameter")
+        addressed = (parameter in supplied or parameter in conflicts) and _is_parameter_reply(option, normalized)
     if not addressed:
         return None
     previous_business = previous["business_capability"]

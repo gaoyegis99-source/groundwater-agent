@@ -24,7 +24,7 @@ export function resolveViewerPreference(preferred: ViewerKind, object: ResourceD
   return 'auto';
 }
 
-export function ArtifactViewer({ resource, project, objectId, showIdentity = true, allowDownload = true, contextHeading: ContextHeading = 'h4', preferredViewer = 'auto', onResource = () => {} }: { resource: ResourceDetail; project: string; objectId?: string; showIdentity?: boolean; allowDownload?: boolean; contextHeading?: 'h3' | 'h4'; preferredViewer?: ViewerKind; onResource?: (id: string) => void }) {
+export function ArtifactViewer({ resource, project, objectId, showIdentity = true, allowDownload = true, contextHeading: ContextHeading = 'h4', preferredViewer = 'auto', onResource }: { resource: ResourceDetail; project: string; objectId?: string; showIdentity?: boolean; allowDownload?: boolean; contextHeading?: 'h3' | 'h4'; preferredViewer?: ViewerKind; onResource?: (id: string) => void }) {
   const [openedJson, setOpenedJson] = useState<string | null>(null);
   const object = objectId === undefined
     ? resource.objects.find(item => item.role === 'raw') ?? resource.objects[0]
@@ -68,7 +68,10 @@ export function ArtifactViewer({ resource, project, objectId, showIdentity = tru
         <div><dt>数据集</dt><dd>{resource.datasetId}</dd></div>
         <div><dt>语义版本</dt><dd>{resource.semanticId}</dd></div><div><dt>数据对象</dt><dd>{object.objectId}</dd></div>
       </dl>
-      {resource.inputVersions.length > 0 && <section className="lineage-section"><h4>血缘输入</h4><div className="citation-list">{resource.inputVersions.map(id => <button className="citation" key={id} onClick={() => onResource(id)}>{id}<Icon name="arrow-up-right" /></button>)}</div></section>}
+      {resource.inputVersions.length > 0 && <section className="lineage-section"><h4>血缘输入</h4><div className="citation-list">
+        {resource.inputVersions.map(id => onResource ? <button className="citation" key={id} onClick={() => onResource(id)}>{id}<Icon name="arrow-up-right" /></button>
+          : <code key={id}>{id}</code>)}
+      </div></section>}
     </details>}
   </div>;
 }

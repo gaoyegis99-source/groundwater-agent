@@ -1,19 +1,15 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { localizedSessionTitle } from './SessionNavigation';
-import { outputName } from './card-presentation';
 import { WorkItemArchive, WorkItemEdit, WorkItemIssue } from './WorkItemForms';
 import { WorkItemSessions } from './WorkItemSessions';
-import { MaterialIdentity, WorkItemMaterials } from './WorkItemMaterials';
-import { listWorkItemActivity, readWorkItem, reviewWorkItem } from './work-item-api';
-import { useWorkItemCommand } from './use-work-item-command';
+import { WorkItemMaterials } from './WorkItemMaterials';
+import { WorkItemResults } from './WorkItemResults';
+import { listWorkItemActivity, readWorkItem } from './work-item-api';
 import { useWorkItemPages, workItemAccessLost } from './use-work-item-queries';
 import { subscribeWorkItem } from './work-item-stream';
-import { sessionFromWorkItem } from './work-item-route';
 import { workItemNextStep, workItemStateLabel, workItemTime } from './work-item-presentation';
-import { newRequestId } from './message-routing';
-import type { WorkItemActivityEntry, WorkItemDetail, WorkItemLifecycleSnapshot, WorkItemReviewCommand } from './types';
+import type { WorkItemActivityEntry, WorkItemDetail, WorkItemLifecycleSnapshot } from './types';
 
-type Track = WorkItemLifecycleSnapshot['tracks'][number];
 const eventsKey = (event: WorkItemActivityEntry) => event.sequence;
 
 const commands: Record<Extract<WorkItemActivityEntry, { kind: 'COMMAND' }>['command'], string> = {
@@ -56,88 +52,23 @@ function WorkItemActivity({ id, project, cursor }: { id: string; project: string
   </WorkItemSection>;
 }
 
-function WorkItemReview({ item, track, title, disabled, onRefresh }: {
-  item: WorkItemDetail['workItem'];
-  track: Track;
-  title: string;
-  disabled: boolean;
-  onRefresh: () => void;
-}) {
-  const [confirmation, setConfirmation] = useState<{ token: string; revision: number } | null>(null);
-  const review = track.review;
-  const command = useWorkItemCommand<WorkItemReviewCommand>(
-    (value, signal) => reviewWorkItem(item.workItemId, value, signal),
-    () => { setConfirmation(null); onRefresh(); },
-    { onRejected: onRefresh },
-  );
-  const stale = !!confirmation && (confirmation.token !== review?.token || confirmation.revision !== item.revision);
-  const confirming = !!confirmation && !stale;
-  if (!review && !command.unsettled && !command.error && !stale) return null;
-  return <div className="work-item-command">
-    <WorkItemIssue error={command.error} />
-    {stale && !command.unsettled && <p role="status">交付已变化，请重新核对并发起验收。</p>}
-    {!confirming && !command.unsettled && review && <button type="button" disabled={disabled}
-      onClick={() => setConfirmation({ token: review.token, revision: item.revision })}>验收 · {title}</button>}
-    {confirming || command.unsettled ? <div className="work-item-actions">
-      <span>{`验收「${title}」的交付${review?.resultLinkIds.length ? `（${review.resultLinkIds.length} 项成果）` : ''}？`}</span>
-      <button type="button" disabled={command.busy || (!command.unsettled && disabled)} onClick={() => {
-        if (command.unsettled) { void command.submit(command.unsettled); return; }
-        if (!confirmation || stale || disabled) return;
-        void command.submit({
-          projectId: item.projectId, sessionId: track.sessionId, reviewToken: confirmation.token,
-          requestId: newRequestId(), expectedRevision: confirmation.revision,
-        });
-      }}>{command.busy ? '正在验收…' : command.unsettled ? '重试验收' : '确认验收'}</button>
-      {!command.unsettled && <button type="button" onClick={() => setConfirmation(null)}>取消</button>}
-    </div> : null}
-  </div>;
-}
-
-function sessionHref(sessionId: string, workItemId: string, results = false) {
-  return sessionFromWorkItem(`#/sessions/${encodeURIComponent(sessionId)}${results ? '/workbench/results' : ''}`, workItemId);
-}
-
-function WorkItemResults({ detail, snapshot, disabled, onRefresh }: {
-  detail: WorkItemDetail;
-  snapshot: WorkItemLifecycleSnapshot | null;
-  disabled: boolean;
-  onRefresh: () => void;
-}) {
-  const assets = detail.assets.flatMap(({ linkId, reference, state }) =>
-    state === 'AVAILABLE' && reference?.kind === 'RESULT' ? [{ linkId, reference }] : []);
-  return <WorkItemSection id="work-item-results" title="成果">
-    {!assets.length && <p>暂无可读的关联成果。</p>}
-    {!!assets.length && <ul className="work-item-items">
-      {assets.map(({ linkId, reference }) => {
-        const run = detail.workflowRuns.find(workflow => workflow.runId === reference.runId);
-        return <li key={linkId}>
-          <div><strong>{outputName(reference.outputName)}</strong><span>已发布 · {reference.dataRef.format.toUpperCase()}</span>
-            <MaterialIdentity reference={reference.dataRef} /></div>
-          {run && <a href={sessionHref(run.sessionId, detail.workItem.workItemId, true)}>在会话中查看成果</a>}
-        </li>;
-      })}
-    </ul>}
-    {snapshot?.tracks.map(track => <WorkItemReview key={track.sessionId} track={track} item={detail.workItem}
-      title={localizedSessionTitle(detail.sessions.find(session => session.sessionId === track.sessionId)?.title ?? null)}
-      disabled={disabled || detail.workItem.status === 'ARCHIVED' || !!track.review?.resultLinkIds.some(id => !assets.some(asset => asset.linkId === id))}
-      onRefresh={onRefresh} />)}
-  </WorkItemSection>;
-}
-
 type Observation = { snapshot: WorkItemLifecycleSnapshot | null; error: unknown; epoch: number; fresh: boolean };
 
-export function WorkItemDetails({ id, project, subject, scope, dataEnabled, knowledgeEnabled, onSessionsChange }: {
+export function WorkItemDetails({ id, project, subject, scope, roles, dataEnabled, knowledgeEnabled, onSessionsChange }: {
   id: string;
   project: string;
   subject: string;
   scope: string;
+  roles?: readonly string[];
   dataEnabled: boolean;
   knowledgeEnabled: boolean;
   onSessionsChange: () => void;
 }) {
   const [attempt, setAttempt] = useState(0);
   const [observed, setObserved] = useState<Observation>({ snapshot: null, error: null, epoch: 0, fresh: false });
-  const [body, setBody] = useState<{ detail: WorkItemDetail | null; error: unknown; epoch: number }>({ detail: null, error: null, epoch: 0 });
+  const [body, setBody] = useState<{
+    detail: WorkItemDetail | null; error: unknown; epoch: number; snapshot: WorkItemLifecycleSnapshot | null;
+  }>({ detail: null, error: null, epoch: 0, snapshot: null });
   const { snapshot, epoch } = observed;
 
   function refresh() {
@@ -166,10 +97,10 @@ export function WorkItemDetails({ id, project, subject, scope, dataEnabled, know
   useEffect(() => {
     const controller = new AbortController();
     void readWorkItem(id, { project, subject }, controller.signal).then(
-      detail => { if (!controller.signal.aborted) setBody({ detail, error: null, epoch }); },
+      detail => { if (!controller.signal.aborted) setBody({ detail, error: null, epoch, snapshot }); },
       error => {
         if (!controller.signal.aborted) {
-          setBody(previous => ({ detail: workItemAccessLost(error) || previous.epoch !== epoch ? null : previous.detail, error, epoch }));
+          setBody(previous => ({ ...previous, detail: workItemAccessLost(error) || previous.epoch !== epoch ? null : previous.detail, error, epoch }));
         }
       },
     );
@@ -221,7 +152,8 @@ export function WorkItemDetails({ id, project, subject, scope, dataEnabled, know
         </WorkItemSection>
         {!body.error && <WorkItemMaterials detail={detail} scope={scope} current={current}
           dataEnabled={dataEnabled} knowledgeEnabled={knowledgeEnabled} onRefresh={refresh} />}
-        {!body.error && <WorkItemResults detail={detail} snapshot={snapshot} disabled={!current} onRefresh={refresh} />}
+        {!body.error && <WorkItemResults detail={detail} snapshot={snapshot} scope={scope} roles={roles}
+          current={current && snapshot === body.snapshot} recheck={attempt} onRefresh={refresh} />}
       </div>
       <aside className="work-item-detail-aside">
         <WorkItemSection id="work-item-operations" title="可用操作">

@@ -188,7 +188,7 @@ def load_request_context(database: Path, agent_run_id: str) -> dict:
                  LEFT JOIN message_workflow_selections AS w ON w.agent_run_id = a.agent_run_id
                    AND a.mode='DIALOGUE' AND COALESCE(m.clarification_required, 0)=0
                    AND (COALESCE(m.requested_mode, 'DIALOGUE')!='AUTO'
-                        OR m.semantic_intent IN ('EXECUTE_ON_DATA','CONSULT'))
+                        OR (m.semantic_intent='EXECUTE_ON_DATA' AND m.dialogue_policy='EXECUTION_PROPOSAL'))
                 WHERE a.agent_run_id = ?""",
             (agent_run_id,),
         ).fetchone()

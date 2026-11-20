@@ -72,6 +72,16 @@ include_execution_status=false and workflow_draft=null. Supply exactly one conci
 natural-language question in unresolved_items, with no citation, ending in ? or ？,
 plus 2–3 mutually exclusive natural-language interaction_options.
 """
+        options = request_context.get("business_capability_options") if request_context else None
+        if options:
+            mode_instructions += (
+                "Several governed business options match this calculation. Ask which outcome "
+                "to prepare first. Offer only the supplied capability titles and distinguish "
+                "options under the same title by the exact profile reference. For each option's "
+                "message, restate the user's calculation request with an explicit 'use profile' "
+                "choice for that option so the next turn has a clear goal.\n"
+                + json.dumps(options, ensure_ascii=False)
+            )
     elif composition_settings is not None:
         mode_instructions = (
             "\nCall validate_workflow with the structured draft before submitting it. "

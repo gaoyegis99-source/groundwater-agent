@@ -147,6 +147,7 @@ def capability_preparation(kernel_settings):
         attached=True,
         threshold_unit=None,
         conflicts=(),
+        required_checks=None,
     ):
         calls = []
 
@@ -201,7 +202,7 @@ def capability_preparation(kernel_settings):
                     {"name": name, "label": name} for name in REQUIRED
                 ],
                 "metadataParameters": METADATA if metadata is None else metadata,
-                "requiredChecks": [
+                "requiredChecks": required_checks or [
                     "FIELD_METADATA",
                     "FIELD_UNIT",
                     "TIME_FIELD",
@@ -250,6 +251,31 @@ def capability_preparation(kernel_settings):
         return result, persisted, calls
 
     return lambda **kwargs: asyncio.run(invoke(**kwargs))
+
+
+@pytest.mark.parametrize(("field_type", "timezone_name", "expected"), [
+    ("timestamp[ms, tz=UTC]", "UTC", "READY"),
+    ("timestamp[ms, tz=Etc/UTC]", "Etc/UTC", "READY"),
+    ("timestamp[ms, tz=Asia/Shanghai]", "UTC", "BLOCKED"),
+    ("timestamp[ms, tz=UTC]", "Asia/Shanghai", "BLOCKED"),
+    ("timestamp[ms]", "UTC", "BLOCKED"),
+    ("time32[s]", "UTC", "BLOCKED"),
+    ("timestamp[ms, tz=UTC]", None, "BLOCKED"),
+])
+def test_capability_exact_snapshot_requires_a_typed_and_declared_utc_field(
+    capability_preparation, field_type, timezone_name, expected,
+):
+    fields = [dict(field) for field in FIELDS]
+    fields[1]["type"] = field_type
+    result, persisted, _ = capability_preparation(
+        fields=fields, semantics={**SEMANTICS, "timezone": timezone_name},
+        pinned={**PINNED, "timeField": "observed"}, required_checks=["UTC_TIME_FIELD"],
+    )
+    assert result["status"] == persisted["status"] == expected
+    check, = [item for item in result["checks"] if item["kind"] == "UTC_TIME_FIELD"]
+    assert (check["status"] == "PASS") is (expected == "READY")
+    if expected == "BLOCKED":
+        assert result["blocking_issues"][0]["validator"] == "UTC_TIME_FIELD"
 
 
 def test_capability_uses_one_exact_data_read_and_ignores_provider_guesses(

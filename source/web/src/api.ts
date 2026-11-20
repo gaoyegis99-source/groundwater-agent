@@ -431,6 +431,7 @@ export function errorMessage(error: unknown) {
 }
 
 const errorDescriptions: Record<string, string> = {
+  WORK_ITEM_RESULT_REUSE_UNAVAILABLE: '成果附件当前无法核验。请返回业务工作核对访问权限与发布版本，恢复后重试，或从草稿移除该附件。若上一条消息可能已发出，请先核对会话记录。',
   MESSAGE_REQUEST_CONFLICT: '这条消息的编号已对应另一次提交，请刷新对话核对已接收的内容。',
   FILE_READ_FAILED: '无法读取本地文件，请重新选择可读取的文件。',
   HASH_WORKER_FAILED: '文件校验未完成，尚未上传。请重新选择文件后重试。',

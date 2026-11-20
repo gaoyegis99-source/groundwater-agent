@@ -87,10 +87,18 @@ def test_case_rule_requires_alias_and_explicit_positive_execution(kernel_setting
     assert matches_execution_case_request(
         settings, "请运行腰站堡迁移学习开发案例"
     )
+    assert matches_execution_case_request(
+        settings, "请运行腰站堡迁移学习开发案例，优先使用系统中的标准化资料。"
+    )
     assert matches_execution_case_request(settings, "执行腰站堡的迁移学习模型")
     assert matches_execution_case_request(settings, "execute Y01")
     assert not matches_execution_case_request(settings, "请说明腰站堡迁移学习开发案例")
     assert not matches_execution_case_request(settings, "请停止运行腰站堡迁移学习开发案例")
+    assert not matches_execution_case_request(settings, "请说明怎样执行腰站堡迁移学习开发案例")
+    assert not matches_execution_case_request(settings, "执行腰站堡迁移学习开发案例的进度怎样？")
+    assert not matches_execution_case_request(settings, "执行腰站堡迁移学习开发案例，是什么意思？")
+    assert not matches_execution_case_request(settings, "do not execute Y01")
+    assert not matches_execution_case_request(settings, "请照例引用“执行腰站堡迁移学习开发案例”")
 
 
 def test_explicit_installed_model_tool_request_is_deterministic_execution_intent(
@@ -112,6 +120,22 @@ def test_explicit_installed_model_tool_request_is_deterministic_execution_intent
     )
     assert not matches_explicit_model_tool_request(
         settings, "请使用工具 run_not_installed。"
+    )
+    assert not matches_explicit_model_tool_request(
+        settings, "请解释怎么使用工具 run_summary。"
+    )
+    assert not matches_explicit_model_tool_request(
+        settings, "What happens if I call tool run_summary?"
+    )
+    assert not matches_explicit_model_tool_request(
+        settings, "请查看调用工具 run_summary 的状态。"
+    )
+    assert not matches_explicit_model_tool_request(
+        settings, "使用工具 run_summary，请说明参数。"
+    )
+    assert not matches_explicit_model_tool_request(
+        settings, '使用工具 run_summary，请说明参数。\n[Model execution] '
+        '{"tool":"run_summary","arguments":{"resource_id":"version-1"}}',
     )
 
     parsed = parse_explicit_model_tool_request(

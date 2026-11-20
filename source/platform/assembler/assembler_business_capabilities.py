@@ -15,6 +15,14 @@ from assembler_workflow_platform import _identity, _pinned_json, _ref
 
 SCHEMA = "business-capabilities.v1.schema.json"
 ERROR = "BUSINESS_CAPABILITY_INVALID"
+_SEMANTIC_CHECKS = {
+    "fieldUnit": "FIELD_UNIT",
+    "timeField": "TIME_FIELD",
+    "timeRange": "TIME_RANGE",
+    "crs": "CRS",
+    "crsParameter": "CRS_PARAMETER",
+    "verticalBasis": "VERTICAL_BASIS",
+}
 
 
 @cache
@@ -108,6 +116,17 @@ def _compile_option(raw, capability, profiles, contracts, models, ui):
     model = models[_identity(profile["modelRef"])]
     if not {"data", model["executionService"]} <= set(capability["requiredServices"]):
         raise ValueError(f"{ERROR}: missing runtime dependency declaration")
+    supported_checks = {
+        _SEMANTIC_CHECKS[requirement["kind"]]
+        for requirement in model.get("semanticRequirements", [])
+        if requirement["kind"] in _SEMANTIC_CHECKS
+    }
+    if model.get("fieldRequirements"):
+        supported_checks.add("FIELD_METADATA")
+    if "TIME_FIELD" in supported_checks:
+        supported_checks.add("UTC_TIME_FIELD")
+    if not set(raw["requiredChecks"]) <= supported_checks:
+        raise ValueError(f"{ERROR}: unsupported mandatory preparation check")
     contract = contracts[_identity(profile["resultContractRef"])]
     properties, required = _model_arguments(profile, model)
     specs = {item["name"]: item for item in raw["textParameters"]}
@@ -145,7 +164,11 @@ def _compile_option(raw, capability, profiles, contracts, models, ui):
         **{name: profile[name] for name in ("modelRef", "workflowRef", "resultContractRef", "label")},
         "profileRef": profile["ref"], "roles": roles, "inputs": inputs,
         "outputs": [
-            {key: output[key] for key in ("name", "role", "meaning", "format")}
+            {
+                key: output[key]
+                for key in ("name", "role", "meaning", "format", "mediaType", "unit", "qualitySource")
+                if key in output
+            }
             for output in contract["outputs"]
         ],
         "limitations": list(dict.fromkeys(capability["limitations"] + profile["limitations"])),

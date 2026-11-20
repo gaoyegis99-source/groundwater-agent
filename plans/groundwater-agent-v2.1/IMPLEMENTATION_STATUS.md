@@ -229,3 +229,92 @@
 历史语义和其他对象仍可按原身份追溯。用于计算时，需显式选择该数据版本的当前语义和唯一原始对象。未取得匹配质量记录时保持待核验。真实业务数据、外部模型供应商和生产环境留待独立发布验证。
 
 阶段 4 达到本地技术退出条件。
+
+## 阶段 5 成果中心、业务审核与成果复用
+
+### 实施方案
+
+- **EXISTING**。基线为本地 `main@abaa1bebbc4adf5823a097c7cf039bf1acbf4443`。WorkItem 提供关联会话、运行、资产、生命周期快照及审核候选。Kernel 提供运行、发布、历史确认和 Task 证据。Data 提供精确发布数据的版本、语义和质量。Web 已有 Viewer、业务档位展示以及会话草稿附件合同。
+- **EXTEND**。WorkItem 成果中心归集关联会话中的运行和具名输出。运行、发布、工作验收分别展示权威状态。按需读取单次运行和单个成果，核对已冻结输入、执行版本、参数、Data 对象与质量；历史身份仍可追溯。已有未完成或不可读的记录给出状态和下一步。
+- **NEW**。在成果中心打开精确 Viewer，查看用途、输出角色、质量和适用限制。所选运行的业务档位来源与装配投影一致时展示对应档位和成果合同，并标示缺项或冲突。其余历史运行按实际来源展示已知事实。具名发布成果可显式关联，再选同一工作的可用会话，核验目标和源成果后附加到草稿。附件保留来源工作、运行、输出名、发布和 Data 版本，以现有消息合同提交精确 Data 引用。
+- **DECISION**。沿用 WorkItem 审核命令、候选 token 和乐观修订。展示候选包含的成果，候选不再新鲜时引导核对，超时可用原请求重放。发布身份仍由原有 Kernel/Data 读取，不增 API、数据库迁移或成果登记服务。执行、发布、任务采用和接受决定分别呈现。
+- 影响成果区组件、资料/发布读取复用、草稿交接和现有 WorkItem 详情，以及本阶段专项 Web、合同和联调测试。风险集中在未发布误用、旧结果混入其他会话、合同输出不符、撤权及审核重放。先写对应回归用例，再运行 Web、合同、隔离执行—发布—审核—复用测试及本地浏览器旅程。
+
+### 实现与边界
+
+- 成果中心按关联会话选择运行，展示执行、发布与当前交付事实。检查一次运行和选中的具名成果。Viewer 和下载读取匹配的 Data 项目、发布、版本、语义修订、对象与校验和。Executor 调整后，已关联的历史成果可凭原运行和 Data 发布绑定回读。明确的待发布、发布失败和身份不符均阻止读取为正式成果。
+- 从匹配的冻结能力引用和装配读取成果合同。静态 Product UI 投影补充可选的媒体类型、合同单位和诊断来源。历史档位缺少可核对的装配时显示待核验。区分缺失、重复、格式不符和未列入合同的输出。工作流诊断可跳到同一运行的精确具名输出，Data 质量记录单独显示。运行来源展开可核对冻结输入、参数、工作流和模型版本，并查看任务对该精确输出的采用状态。
+- 业务验收使用当前快照的候选和同一修订的详情，显示本次候选包含的成果和数据版本。沿用 WorkItem 审核命令、原请求 ID 和服务端重验。回执不确定可在重开页面后重放，过期候选或并发修订冲突要求重新核对。
+- 复用到同一工作的其他未归档会话时保留具名成果身份、已有草稿、附件顺序和输入绑定。发送、队列和待确认回执重试均重新调用服务端读取核对来源及目标。失去可见性时保留草稿或队列，等用户处理。已有接收回执仍可从历史恢复。公共消息继续提交现有精确 Data 引用，工作和发布来源留在草稿与 WorkItem 的权威关联中。
+- 静态产品展示 schema 及验证器同步更新，旧装配缺少可选展示字段时仍可读取。公开 API、OpenAPI、生成客户端、执行授权合同及数据库保持原合同。
+
+| 影响范围 | 文件 |
+| --- | --- |
+| 成果中心与验收 | `WorkItemResults.tsx`、`WorkItemReview.tsx`、`WorkItemDetails.tsx`、`WorkItemWorkspace.tsx`、`ArtifactViewer.tsx`、`work-item-workspace.css` |
+| 精确来源与复用 | `work-item-result-evidence.ts`、`WorkItemOtherAssets.tsx`、`WorkItemResultReuse.tsx`、`work-item-result-reuse.ts`、`use-message-actions.ts`、`MessageQueue.tsx`、`task-state.ts`、`types.ts`、`App.tsx`、`api.ts` |
+| 装配与静态展示 | `assembler_business_capabilities.py`、`product-ui.v1.schema.json`、`product-ui.ts`、生成的静态 Product UI schema 和校验器 |
+| 测试与文档 | 两个成果专项 Web 测试、工作台和能力投影回归、装配业务能力与固定摘要测试、`test_monitoring_work_item.py`、《Agent 发现、理解与任务准备》及本报告 |
+
+### 验证与退出条件
+
+| 检查 | 结果 |
+| --- | --- |
+| `../bin/dev check --scope web` | 49 个测试文件、542 个用例通过。TypeScript、生产构建、Ruff 和差异空白检查通过。 |
+| `../bin/dev check --scope contracts` | 191 个用例通过。运行时 OpenAPI、Python SDK 和 TypeScript/Ajv 生成校验通过。 |
+| `python -B -m pytest -q -p no:cacheprovider tests/assembler` | 完整装配套件 191 个用例通过。已有离线缓存和临时内存文件系统内复跑，核对更新后的静态展示及装配锁摘要。 |
+| `python -B -m pytest -q -p no:cacheprovider tests/e2e/test_monitoring_work_item.py tests/e2e/test_composed_workflow.py::test_monitoring_trend_publishes_exact_results` | 5 个用例通过。用隔离的 PostgreSQL、Data、Executor、Native Worker 和脚本模型完成执行、发布、候选过期与修订冲突拒绝、验收幂等重放和精确成果引用的跨会话提交。 |
+| 本地 Chromium 与生产构建 | 登录后核对具名 Viewer、合同单位与诊断、验收请求、跨会话草稿以及实际提交载荷。核对 1,440、768 和 390 像素布局、撤权及页面异常。浏览器使用可控的发布与验收响应，真实执行与发布由端到端用例覆盖。 |
+| `python -B -m scripts.checks.check_documentation` 与 `git diff --check` | 文档与变更检查通过。 |
+
+首轮 Web 回归确认没有成果中心入口。联调加入跨会话使用后，归档事件的预期游标改为引用采用后的权威快照。合同检查首次因隔离环境的 loopback 未启用失败，启用 loopback 后通过。装配摘要首次核对发现产品展示字节变化及旧基线仍记录前一个 Kernel 合同摘要，复核现有签入文件并重新核对两项装配摘要。
+
+实际使用时，缺少精确历史档位、冻结确认或诊断对象会保留待核验状态。工作流成果合同和 Data 质量诊断提供各自的证据。真实水文业务数据、外部模型供应商和生产环境的适用性留待独立验证。阶段 6 扩展新业务能力时需要明确目标用户、输入条件、既有可执行流程及科学验证案例。
+
+阶段 5 达到本地技术退出条件。
+
+## 阶段 6 业务能力扩展与选择质量
+
+### 实施方案
+
+- **EXISTING**。基线为本地 `main@abaa1bebbc4adf5823a097c7cf039bf1acbf4443` 加阶段 5 已验证的工作区改动。产品装配已有监测趋势业务入口。流场模型 3.1.0、工作流 1.1.0 和 8 项具名成果已有合成 Golden；现有模型区分水头、梯度、流向、达西通量和孔隙水流速，并要求明确时间、垂向基准、投影和介质参数。
+- **NEW**。新增面向业务工程师的同一时刻流场估算能力和一个受控 Profile。以同一资料版本中的坐标、井号、观测时间、参考面高程、向下量取的埋深为输入。固定同一时刻匹配，要求明确投影、格网大小、渗透系数及有效孔隙率。模型、工作流和历史监测档位沿用固定版本。输出沿用 8 个具名成果并绑定单位、诊断和合成验证证据。
+- **EXTEND**。产品装配沿用精确引用和证据验证。Kernel 的候选发现继续用可审计规则；意图路由决定纯咨询、状态、明确分析、草稿或控制的入口。分析有多个合规候选时澄清，显式工作流及现有只读路径沿用既有权限。准备检查纳入流场所需字段、时间、单位、坐标参考和垂向基准。缺项、否定、冲突和错误单位不能从默认值推断。继续补答只作用于紧邻的阻塞准备。
+- **DECISION**。根据现有 Golden 技术证据先交付有限的稳态二维达西估算。显示均质、各向同性、标量渗透系数和统一孔隙率等假设，科学适用性留给独立场地验证。现有产品能力和成果中心承接新入口。无需公开 API 或数据库改动。
+- 计划先增加精确装配、路由歧义、只读与补答测试，再装配新能力并跑隔离的准备、确认、原生执行、发布和诊断链路。影响产品清单与治理证据、装配验证、Kernel 候选和准备、小范围前端回归、业务语言评估和阶段报告。报告区分可重复的标注场景指标、本地执行结果与真实用户纠正率。
+
+### 实现与边界
+
+- 新业务能力 `groundwater.flow-field@1.0.0` 绑定 `groundwater.flow-field.same-time-darcy@1.0.0`、原模型 3.1.0、原工作流 1.1.0 与专用成果合同。时间按精确时刻匹配，窗口为零。输入需具有可核对的井号、坐标、高程、埋深和共同垂向基准，源坐标系须与声明相符，目标投影须为米制。渗透系数、有效孔隙率和格网大小由用户提供。原始字符串时间需先规范化成有 UTC 类型和声明的资料，目标时刻使用 UTC。原算法、观测快照、合成样例和监测趋势身份保留。
+- 候选先按装配、角色与业务词义边界筛选，语义路由确认 `EXECUTE_ON_DATA` 后才启用精确选择。多个候选的分析请求进入澄清，提示列出当前候选，已有的咨询、状态和工作流草稿仍进入各自路径。用户可在重述任务时显式给出档位。澄清的新请求由用户明确附加所用资料，旧附件留在原请求历史中。
+- 紧邻的同一会话阻塞准备接受可完整匹配的参数补答或明确附加资料。冲突补答继续绑定原档位与精确资料，等用户提交无冲突的值。显式档位选择忽略引用文字，拒绝否定与不匹配的版本。受控案例和旧式显式模型捷径只识别封闭命令，任意说明性后缀交给语义路由。
+- 准备重新检查字段、单位、时区、覆盖时间、源和目标坐标系以及垂向基准。发现时间元数据问题时可打开精确资料核对。结果合同区分水头、梯度、流向、达西通量和孔隙水流速。快照诊断用于查看逐井时刻匹配，栅格摘要中的水平 CRS 描述目标栅格。合成 Golden 与算子实现范围只证明技术回归。
+- 公开 API、OpenAPI、SDK、前端生成 API 类型和数据库承接原合同。业务声明的内部校验允许新增必要检查，装配会验证固定模型实际提供对应检查。
+
+| 影响范围 | 文件 |
+| --- | --- |
+| 能力、档位、结果及证据 | 产品 `business-capabilities.v1.json`、`workflow-platform.v1.json`、`product-manifest.json`、`flow-field-golden-scope.v1.json`，装配业务能力校验和内部配置 schema |
+| 候选、意图与可见性 | Kernel `business_capabilities.py`、`message_requests.py`、`message_request_common.py`、`owner.py`、`route_commands.py`、`intent_routing/router.py`、`case_resolver.py`、Agent 请求上下文及 WorkItem 生命周期投影 |
+| 准备与工作界面 | `preparation_tool.py`、`WorkspacePanel.tsx`、`workflow-draft.test.tsx`、能力说明文档 |
+| 验证及注册 | `test_flow_field_capability.py`、`v6_test_suite.py`、Kernel 定向回归、装配验证及产物摘要测试、本报告 |
+
+### 验证与退出条件
+
+| 检查 | 结果 |
+| --- | --- |
+| `../bin/dev check --scope web` | 49 个测试文件、543 个用例通过，类型检查和生产构建通过。 |
+| `../bin/dev check --scope contracts` | 191 个用例通过，运行时 OpenAPI、Python SDK 和 TypeScript/Ajv 合同校验通过。 |
+| `../bin/dev check --scope kernel` | 1,030 个用例通过，类型、Ruff、核心导入与架构边界检查通过。 |
+| `../bin/dev check --scope assembler` 与独立架构检查 | 离线装配和 225 个用例通过。首次命令在共享的核心导入检查发现 Kernel 表所有权问题。将读取移至 Interaction 后，核心导入和架构边界分别复跑通过。 |
+| `python -B -m pytest -q -p no:cacheprovider tests/e2e/test_monitoring_work_item.py tests/e2e/test_composed_workflow.py::test_monitoring_trend_publishes_exact_results tests/e2e/test_composed_workflow.py::test_monitoring_trend_capability_requires_user_threshold` | 6 个回归用例通过，核对既有监测档位、阈值准备、具名发布和 WorkItem 成果链路。 |
+| `python -B -m pytest -q -p no:cacheprovider tests/e2e/test_flow_field_capability.py` | 2 个用例通过。用隔离的 PostgreSQL、Data、Executor 和 Native Worker 验证阻塞、补参、精确确认、8 项具名成果的发布与读取、会话恢复，以及两种流速的数量关系。NumPy 依赖产生两条弃用警告。 |
+| `../bin/dev workflow-golden --case flow-field --runtime-image source-groundwater-executor-native-worker:latest` | 本地已缓存的 Native Worker 重放与签入的流场 Golden 一致，差异为零。 |
+| 本地 Chromium 与生产构建 | 登录后核对流场能力入口、输入条件、达西通量与孔隙水流速的区分、390 像素布局和显式工作流草稿。入口操作未发起执行。 |
+| `python -B -m scripts.checks.check_documentation` 与 `git diff --check` | 文档及差异空白检查通过。 |
+
+21 条标注话语经本地脚本语义路由验证，覆盖分析、方法咨询、状态查询和双目标。预期候选命中 15/15，额外候选 0，澄清 1/21，实际能力选择 9 次，与标注一致。真实用户纠正率及外部模型供应商的选择质量仍待评估。
+
+流场联调的 4 次准备中，共同垂向基准缺失、渗透系数缺失及渗透系数冲突均按预期阻塞。用户提供唯一的有效值后完成确认及 1 次原生执行。首次联调在主流程结束后停止了 Worker，生成地图的附属节点仍在等待。测试现在继续驱动 Worker，直到会话处理完已确认的工作。
+
+澄清后的新请求需要用户明确附加资料。科学验证覆盖合成样例，场地应用仍需核实等时观测、共同垂向基准、介质假设及参数依据。真实业务数据和生产部署留待单独验证。
+
+阶段 6 达到本地技术退出条件。

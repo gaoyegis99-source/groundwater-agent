@@ -90,7 +90,7 @@ const preparationCheckLabels: Record<string, string> = {
   DATA_FORMAT: '文件格式', DATA_VERSION: '数据版本', DATA_OBJECT: '数据对象',
   FIELD_METADATA: '字段元数据', FIELD_SEMANTICS: '字段含义', FIELD_UNIT: '字段单位',
   CRS: '坐标参考系', CRS_PARAMETER: '分析坐标参考系', TIME_FIELD_PARSEABILITY: '时间字段可读性',
-  TIMEZONE: '时区', TIME_RANGE: '时间覆盖范围', VERTICAL_BASIS: '高程与埋深基准',
+  TIMEZONE: '时区', TIME_RANGE: '时间覆盖范围', VERTICAL_BASIS: '高程与埋深基准', UTC_TIME_FIELD: 'UTC 观测时间',
 };
 
 export function PreparationDetails({ history, dataAvailable = true, onData, onVersion, onUseCurrentVersion, onParameter }: { history: History; dataAvailable?: boolean; onData: (formats: string[], input?: MethodInput) => void; onVersion: (id: string, reference: ResourceReference) => void; onUseCurrentVersion?: (id: string, datasetId: string) => void; onParameter: (name: string) => void }) {
@@ -127,6 +127,10 @@ export function PreparationDetails({ history, dataAvailable = true, onData, onVe
         <strong>{check.input ? `${argumentLabel(check.input, entry.targetId)} · ` : ''}{preparationCheckLabels[check.kind] ?? check.kind}</strong>
       </div>
       {facts && <p className="muted">{facts}</p>}
+      {check.kind === 'UTC_TIME_FIELD' && check.status !== 'PASS' && <>
+        <p className="muted">请核对 UTC 类型的时间戳和资料的 UTC 时区声明。</p>
+        {dataAvailable && input && <button type="button" onClick={() => onVersion(input.versionId, input)}>核对时间字段和时区</button>}
+      </>}
       {actionable && dataAvailable && check.currentVersion && check.status === 'FAIL' && input && onUseCurrentVersion && <button onClick={() => onUseCurrentVersion(check.currentVersion!, input.datasetId)}>使用当前版本</button>}
       {needsAdmin && input && <><p className="muted">需要 Data 管理员补充字段、单位、CRS 或时间语义。</p>{dataAvailable && <button onClick={() => onVersion(input.versionId, input)}>查看数据详情</button>}</>}
     </div>;

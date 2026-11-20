@@ -139,7 +139,7 @@ export default function App() {
     connection, connected, trace, refresh, olderMessages, loadTrace,
   } = stream;
   const {
-    queue, changeQueue, enqueue, draft, updateDraft, attachments, setAttachments,
+    queue, changeQueue, retryQueuedResult, enqueue, draft, updateDraft, attachments, setAttachments,
     submission, receiptPending, canRetryReceipt, retryReceipt, pending, pendingLabel, continuationVersionId, runtimeBusy, pendingControl, busy, lastTurn,
     awaitingConfirmation, stopping, error, clearError, canSend, stopRun, newChat, send,
     decision, controlDecision, reviseConfirmation, recoverWorkflow, newChatWithAttachments, workflow, setWorkflow,
@@ -147,6 +147,7 @@ export default function App() {
     activeId,
     storageScope,
     project,
+    subject: capabilities?.currentUser.subject ?? '',
     history,
     connected,
     loading,
@@ -624,6 +625,7 @@ export default function App() {
     <button className="text-button" onClick={() => void logoutResearch().finally(() => window.location.reload())}>退出</button>;
   if (workRoute) return <Suspense fallback={<main aria-busy="true"><Loading>正在打开业务工作…</Loading></main>}>
     <WorkItemWorkspace route={workRoute} scope={storageScope} project={project} subject={capabilities?.currentUser.subject ?? ''}
+      roles={capabilities?.currentUser.roles}
       mark={mark} brand={ui.brand.productName} signOut={signOut} permitted={showWorkItems} identityError={!!capabilityError}
       dataEnabled={configuredServices.has('data')} knowledgeEnabled={configuredServices.has('knowledge-next')}
       retryIdentity={() => void connectProject()} onSessionsChange={() => void loadSessions()} />
@@ -783,7 +785,7 @@ export default function App() {
           {!viewingWorkbench && operationFeedback}
           {uploadConfigError && <div className="error-banner"><ErrorNotice error={uploadConfigError} title="上传配置不可用" /><button disabled={preparingUpload} onClick={() => { if (uploadCandidate.current) void prepareUpload(uploadCandidate.current); }}>重试读取上传配置</button><button className="icon-button" aria-label="关闭上传提示" onClick={() => setUploadConfigError(null)}><Icon name="close" /></button></div>}
           {!viewingWorkbench && submissionFeedback}
-          <MessageQueue items={queue} onChange={changeQueue} />
+          <MessageQueue items={queue} onChange={changeQueue} onRetryResult={retryQueuedResult} />
           {activeId && (runtimeBusy || awaitingConfirmation) && !loading && <div className="run-controls">
             {lastTurn && <small>第 {lastTurn.goalRevision} 轮</small>}
             <button disabled={stopping || pending} onClick={() => void stopRun()}>{stopAcknowledged ? '等待停止结果' : stopping ? '正在请求停止…' : awaitingConfirmation && !runtimeBusy ? '撤回本轮待确认请求' : '停止当前处理'}</button>

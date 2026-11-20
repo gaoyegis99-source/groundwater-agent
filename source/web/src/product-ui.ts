@@ -39,7 +39,15 @@ export interface BusinessCapabilityProfile {
   label: string;
   roles: ProjectRole[];
   inputs: { label: string; meaning: string; formats: string[]; preconditions: string[] }[];
-  outputs: { name: string; role: 'PRIMARY_RESULT' | 'DIAGNOSTIC' | 'VISUALIZATION' | 'SUMMARY'; meaning: string; format: string }[];
+  outputs: {
+    name: string;
+    role: 'PRIMARY_RESULT' | 'DIAGNOSTIC' | 'VISUALIZATION' | 'SUMMARY';
+    meaning: string;
+    format: string;
+    mediaType?: string;
+    unit?: string;
+    qualitySource?: { outputName: string; fields: string[] };
+  }[];
   limitations: string[];
 }
 export interface BusinessCapability {

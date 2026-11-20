@@ -79,6 +79,22 @@ it('decodes the projected capability and rejects malformed profile references, n
   expect(() => decode(row, { ...row, title: '相同身份' })).toThrow('PRODUCT_UI_INVALID');
 });
 
+it('retains declared Result Contract display evidence and rejects malformed quality fields', () => {
+  const capability = businessCapability();
+  const option = capability.profiles[0];
+  const result = {
+    ...option.outputs[0], mediaType: 'application/vnd.apache.parquet', unit: 'm',
+    qualitySource: { outputName: 'aggregate-summary', fields: ['groupPeriodCount', 'notEvaluableGroupCount'] },
+  };
+  const decode = (output: unknown) => decodeProductUi({ ...sourceProfile,
+    businessCapabilities: [{ ...capability, profiles: [{ ...option, outputs: [output] }] }],
+  });
+  expect(decode(result).businessCapabilities?.[0].profiles[0].outputs).toEqual([result]);
+  expect(() => decode({ ...result, qualitySource: { ...result.qualitySource, fields: ['groupPeriodCount', 'groupPeriodCount'] } }))
+    .toThrow('PRODUCT_UI_INVALID');
+  expect(() => decode({ ...result, qualitySource: { fields: ['groupPeriodCount'] } })).toThrow('PRODUCT_UI_INVALID');
+});
+
 it('opens a generated home entry with business inputs, expected outputs and limitations', async () => {
   installCapability();
   const calls = openApp();

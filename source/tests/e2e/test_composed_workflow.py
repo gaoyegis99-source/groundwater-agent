@@ -669,7 +669,7 @@ def _wait_for_session(api, session_path, expected):
     raise AssertionError(session)
 
 
-async def _run_monitoring_trend_worker(executor_http, data_worker, kernel_http, run_path, capacity):
+async def _run_native_workflow_worker(executor_http, data_worker, kernel_http, run_path, capacity, *, session_path=None):
     worker = ExecutorWorker("native", capacity["slots"], capacity["memoryBytes"])
     await worker.client.aclose()
     worker.client = httpx.AsyncClient(transport=httpx.MockTransport(lambda req: _bridge(executor_http, req)))
@@ -682,9 +682,14 @@ async def _run_monitoring_trend_worker(executor_http, data_worker, kernel_http, 
                 await worker._execute(lease)
             data_worker.once()
             run = kernel_http.get(run_path, params={"projectId": "p"}).raise_for_status().json()
-            if run["status"] in {"SUCCEEDED", "FAILED"}:
-                assert run["status"] == "SUCCEEDED", run
-                return run
+            assert run["status"] != "FAILED", run
+            if run["status"] == "SUCCEEDED":
+                if session_path is None:
+                    return run
+                session = kernel_http.get(session_path).raise_for_status().json()
+                assert "FAILED" not in session["agentSteps"], session
+                if session["agentSteps"][-1:] == ["COMPLETE"]:
+                    return run
             await asyncio.sleep(0.025)
         raise AssertionError(run)
     finally:
@@ -700,7 +705,7 @@ def test_monitoring_trend_publishes_exact_results(
         from scripts.development.workflow_profile import describe_workflow_result, select_workflow_profile
 
         platform = json.loads((assembly / "workflow-platform.json").read_text())
-        profile = platform["profiles"][0]
+        profile = next(item for item in platform["profiles"] if item["ref"]["id"] == "groundwater.monitoring-trend.seasonal-and-threshold")
         profile_ref = profile["ref"]
         assert profile_ref["id"] == "groundwater.monitoring-trend.seasonal-and-threshold"
         assert profile_ref["version"] == "1.0.0"
@@ -836,7 +841,7 @@ def test_monitoring_trend_publishes_exact_results(
             assert accepted.status_code == 202, accepted.text
             run_id, = api.get(session_path).raise_for_status().json()["workflowRunIds"]
             run_path = f"/api/v12/workflow-runs/{run_id}"
-            run = asyncio.run(_run_monitoring_trend_worker(executor_http, data_worker, api, run_path, capacity))
+            run = asyncio.run(_run_native_workflow_worker(executor_http, data_worker, api, run_path, capacity))
             _wait_for_session(api, session_path, "COMPLETE")
             if route_kind == "capability":
                 _assert_monitoring_capability_tools(agent, settings)

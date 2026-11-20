@@ -1,0 +1,45 @@
+{
+  "schemaVersion": "workflow-profile-golden-scope.v1",
+  "status": "PASS",
+  "caseId": "flow-field",
+  "workflow": {
+    "definitionChecksum": "sha256:bda102fc7492dccae5e2fe60a9e56cc1d5a1028ed382fdf28ede10a673e8ff6b",
+    "id": "groundwater.flow-field",
+    "sourceSha256": "sha256:bda102fc7492dccae5e2fe60a9e56cc1d5a1028ed382fdf28ede10a673e8ff6b",
+    "version": "1.1.0"
+  },
+  "operatorCatalogDigest": "sha256:3881423fa69deae67a4d31bbab2c202541b8c7ccaf7c1182497da74a67b672ab",
+  "baselineSha256": "sha256:730d0dbdb930f60233fd623e6f9bdbfd424d4cf2cea9247de7a707e778725f49",
+  "operatorsByNode": {
+    "gradient": {
+      "id": "groundwater.hydraulic_gradient",
+      "implementationRevision": "sha256:8f79ef87f29c1542de45c009092800d3d2aef686ce725f511c22a9398ddb856b",
+      "runtime": "native",
+      "version": "1.0.0"
+    },
+    "head": {
+      "id": "groundwater.head.calculate",
+      "implementationRevision": "sha256:dbd47221e7a3535a13e60cda66db1612135c4c5ca75195b6e5ab67ddb4352fa9",
+      "runtime": "native",
+      "version": "1.0.0"
+    },
+    "idw": {
+      "id": "points.interpolate.idw",
+      "implementationRevision": "sha256:f9b075cffe5b6a89a4c09e2a48d4026c91fc3faa3c924d7da8eaf4be250e9661",
+      "runtime": "native",
+      "version": "1.0.0"
+    },
+    "snapshot": {
+      "id": "timeseries.snapshot",
+      "implementationRevision": "sha256:870bb13b7f16132aa51191168c4bb83d097719d7b96f8fce6cccf73439c1e339",
+      "runtime": "native",
+      "version": "1.0.0"
+    },
+    "velocity": {
+      "id": "groundwater.darcy_velocity",
+      "implementationRevision": "sha256:569a717cf06b7eaf5650257029a57790da8fbf57d36eda8b689b35385ef33b6c",
+      "runtime": "native",
+      "version": "1.0.0"
+    }
+  }
+}

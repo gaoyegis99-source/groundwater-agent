@@ -171,7 +171,21 @@ export default {
         "name": {"$ref": "#/$defs/businessName"},
         "role": {"enum": ["PRIMARY_RESULT", "DIAGNOSTIC", "VISUALIZATION", "SUMMARY"]},
         "meaning": {"$ref": "#/$defs/text"},
-        "format": {"$ref": "#/$defs/text"}
+        "format": {"$ref": "#/$defs/text"},
+        "mediaType": {"$ref": "#/$defs/text"},
+        "unit": {"$ref": "#/$defs/text"},
+        "qualitySource": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["outputName", "fields"],
+          "properties": {
+            "outputName": {"$ref": "#/$defs/businessName"},
+            "fields": {
+              "type": "array", "minItems": 1, "uniqueItems": true,
+              "items": {"type": "string", "$ref": "#/$defs/text"}
+            }
+          }
+        }
       }
     },
     "stringMap": {

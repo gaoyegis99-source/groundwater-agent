@@ -368,13 +368,116 @@ it('invalidates an open review confirmation when the verified result set changes
   fixture({ onReview: review, readSnapshot: () => reviewed });
   open('#/work-items/work-1');
   render(<App />);
-  fireEvent.click(await screen.findByRole('button', { name: '验收 · 水位资料核对' }));
+  const candidate = await screen.findByRole('button', { name: '验收 · 水位资料核对' });
+  await waitFor(() => expect(candidate).toBeEnabled());
+  fireEvent.click(candidate);
   expect(screen.getByRole('button', { name: '确认验收' })).toBeEnabled();
   reviewed = reviewing(laterToken, 6);
   act(() => EventStream.connections[0].dispatchEvent(new Event('work_item.refresh')));
   expect(await screen.findByText('交付已变化，请重新核对并发起验收。')).toBeVisible();
   expect(screen.queryByRole('button', { name: '确认验收' })).not.toBeInTheDocument();
   expect(review).not.toHaveBeenCalled();
+});
+
+it.each([
+  ['PREPARING', '待发布'],
+  ['FAILED', '发布失败'],
+] as const)('separates execution from publication in the work results center (%s)', async (state, label) => {
+  const workflowRef = { id: 'monitoring', version: '1.0.0', checksum: `sha256:${'1'.repeat(64)}` };
+  const run = {
+    runId: 'run-1', agentRunId: 'agent-1', projectId: 'demo', toolCallId: 'tool-1', position: 0,
+    modelId: 'monitoring', modelVersion: '1.0.0', modelChecksum: workflowRef.checksum,
+    workflowId: workflowRef.id, workflowVersion: workflowRef.version, workflowChecksum: workflowRef.checksum,
+    executorId: 'executor', executionService: 'executor', remoteJobId: 'job-1', status: 'SUCCEEDED',
+    outputs: [], arguments: {}, error: null, createdAt: instant, startedAt: instant, finishedAt: instant, durationMs: 1,
+  };
+  fixture({
+    readDetail: () => ({ ...detail, workflowRuns: [{ runId: 'run-1', agentRunId: 'agent-1', sessionId: 'session-1', workflowRef }] }),
+    customResponse: async ({ pathname }) => {
+      if (pathname === '/api/v12/workflow-runs/run-1') return json(run);
+      if (pathname === '/api/v12/workflow-runs/run-1/publication') {
+        return json({ workflowRunId: 'run-1', publicationId: 'publication-1', state });
+      }
+      return undefined;
+    },
+  });
+  open('#/work-items/work-1');
+  render(<App />);
+  const center = await screen.findByRole('region', { name: '成果中心' });
+  expect(await within(center).findByText('执行成功')).toBeVisible();
+  expect(await within(center).findByText(label)).toBeVisible();
+  expect(within(center).queryByRole('button', { name: /复用|确认验收/ })).not.toBeInTheDocument();
+});
+
+it('opens only the checked output, then removes its viewer and reuse action when Data access is revoked', async () => {
+  const output = { ...dataRef(), outputName: 'result-summary' };
+  const reference = { kind: 'RESULT', runId: 'run-1', publicationId: 'publication-1', outputName: output.outputName, dataRef: output } as const;
+  const workflowRef = { id: 'monitoring', version: '1.0.0', checksum: `sha256:${'1'.repeat(64)}` };
+  let readable = true;
+  const run = {
+    runId: 'run-1', agentRunId: 'agent-1', projectId: 'demo', toolCallId: 'tool-1', position: 0,
+    modelId: 'monitoring', modelVersion: '1.0.0', modelChecksum: workflowRef.checksum,
+    workflowId: workflowRef.id, workflowVersion: workflowRef.version, workflowChecksum: workflowRef.checksum,
+    executorId: 'executor', executionService: 'executor', remoteJobId: 'job-1', status: 'SUCCEEDED',
+    outputs: [output], arguments: {}, error: null, createdAt: instant, startedAt: instant, finishedAt: instant, durationMs: 1,
+  };
+  fixture({
+    readDetail: () => ({ ...detail, agentRuns: [{ sessionId: 'session-1', agentRunId: 'agent-1', goalRevision: 1 }],
+      workflowRuns: [{ runId: 'run-1', agentRunId: 'agent-1', sessionId: 'session-1', workflowRef }],
+      assets: [{ linkId: 'result-link', linkedAt: instant, reference: readable ? reference : null,
+        state: readable ? 'AVAILABLE' : 'UNAVAILABLE' }] }),
+    customResponse: async ({ pathname }) => {
+      if (pathname === '/api/v12/workflow-runs/run-1') return json(run);
+      if (pathname === '/api/v12/workflow-runs/run-1/publication') {
+        return json({ workflowRunId: 'run-1', publicationId: 'publication-1', state: 'PUBLISHED' });
+      }
+      if (pathname === '/api/v12/agent-runs/agent-1/trace') return json({ agentRunId: 'agent-1', traceId: 'trace-1', trace: null, spans: [] });
+      if (pathname.startsWith('/api/v12/data/versions/version-1') && !readable) return json({ code: 'DATA_VERSION_NOT_FOUND' }, 404);
+      if (pathname === '/api/v12/data/versions/version-1') return json(dataDetail());
+      if (pathname === '/api/v12/data/versions/version-1/objects/object-1/content') return json({ monitoringHighlights: 4 });
+      return undefined;
+    },
+  });
+  open('#/work-items/work-1');
+  render(<App />);
+  const center = await screen.findByRole('region', { name: '成果中心' });
+  expect(within(center).queryByText('预览来源与范围')).not.toBeInTheDocument();
+  fireEvent.click(await within(center).findByRole('button', { name: '查看成果 · result summary' }));
+  expect(await within(center).findByRole('region', { name: '预览来源与范围' })).toBeVisible();
+  expect(within(center).getByLabelText('复用目标会话')).toHaveValue('');
+  readable = false;
+  act(() => window.dispatchEvent(new Event('focus')));
+  expect(await within(center).findByText('成果不可用或当前身份无权读取。')).toBeVisible();
+  expect(within(center).queryByRole('region', { name: '预览来源与范围' })).not.toBeInTheDocument();
+  expect(within(center).queryByLabelText('复用目标会话')).not.toBeInTheDocument();
+});
+
+it('replays the same WorkItem acceptance after an uncertain receipt and a page reload', async () => {
+  const token = `sha256:${'c'.repeat(64)}`;
+  const reviewSnapshot: typeof snapshot = { ...snapshot, state: 'WAITING_REVIEW', reason: 'DELIVERY_REVIEW_REQUIRED',
+    tracks: [{ ...snapshot.tracks[0], state: 'WAITING_REVIEW', review: { token, resultLinkIds: [] } }] };
+  let accepted = false;
+  const sendReview = vi.fn().mockRejectedValueOnce(new TypeError('Lost receipt')).mockImplementationOnce(async () => {
+    accepted = true;
+    return json({ workItemId: 'work-1', revision: 3, changed: true, linkId: null });
+  });
+  fixture({ onReview: sendReview, readSnapshot: () => accepted ? { ...reviewSnapshot, revision: 3, state: 'COMPLETED',
+    eventCursor: 6, tracks: [{ ...reviewSnapshot.tracks[0], acceptedAt: instant, state: 'COMPLETED', review: null }] } : reviewSnapshot,
+  readDetail: () => ({ ...detail, workItem: accepted ? { ...summary, revision: 3 } : summary }) });
+  open('#/work-items/work-1');
+  const first = render(<App />);
+  const candidate = await screen.findByRole('button', { name: '验收 · 水位资料核对' });
+  await waitFor(() => expect(candidate).toBeEnabled());
+  fireEvent.click(candidate);
+  fireEvent.click(screen.getByRole('button', { name: '确认验收' }));
+  await screen.findByRole('button', { name: '重试验收' });
+  first.unmount();
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: '重试验收' }));
+  expect(await screen.findByText('已验收', { exact: true })).toBeVisible();
+  expect(sendReview).toHaveBeenCalledTimes(2);
+  expect(sendReview.mock.calls[0][0]).toMatchObject({ sessionId: 'session-1', expectedRevision: 2, reviewToken: token });
+  expect(sendReview.mock.calls[1][0]).toEqual(sendReview.mock.calls[0][0]);
 });
 
 it('replays a lost linked-session receipt and opens the verified work background without importing old messages', async () => {

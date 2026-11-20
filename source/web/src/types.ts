@@ -340,6 +340,7 @@ export interface ResourceItem extends ResourceReference {
   familyId: string; name: string; descriptionPreview?: string | null;
   descriptionTruncated?: boolean;
   format: string; mediaType: string; sizeBytes: number;
+  resultProvenance?: { workItemId: string; sourceSessionId: string; runId: string; outputName: string; publicationId: string };
 }
 export interface ResourceDetail {
   versionId: string; datasetId: string; publicationId: string; semanticId: string; currentVersion?: string; project?: string; tags?: string[]; title: string; createdAt?: string; inputVersions: string[];

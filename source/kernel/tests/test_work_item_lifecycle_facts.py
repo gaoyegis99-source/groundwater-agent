@@ -262,6 +262,13 @@ def test_pre_agent_stop_needs_targeted_durable_completion_and_business_context(c
     connection.execute("UPDATE sessions SET pending_agent_run_id=NULL")
     assert _facts(connection).stopped_before_start
     _unstarted_request(connection, "consult", 2, business=False)
+    connection.execute(
+        "UPDATE message_requests SET requested_mode='AUTO',routing_source='MODEL' WHERE agent_run_id='consult'",
+    )
+    connection.execute(
+        "INSERT INTO message_workflow_selections VALUES (?, ?)",
+        ("consult", '{"model_id":"candidate","business_capability":{}}'),
+    )
     _stop(connection, "consult", "stop-consult")
     connection.execute("UPDATE run_controls SET status='COMPLETE' WHERE agent_run_id='consult'")
     connection.execute("UPDATE message_requests SET routing_status='FAILED',error_code='AGENT_STOPPED' WHERE agent_run_id='consult'")

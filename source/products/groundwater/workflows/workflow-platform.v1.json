@@ -92,6 +92,94 @@
           "comparisonStart"
         ]
       ]
+    },
+    {
+      "schemaVersion": "workflow-profile.v1",
+      "id": "groundwater.flow-field.same-time-darcy",
+      "version": "1.0.0",
+      "label": "同一时刻的二维达西流场估算",
+      "workflowRef": {
+        "id": "groundwater.flow-field",
+        "version": "1.1.0",
+        "checksum": "sha256:bda102fc7492dccae5e2fe60a9e56cc1d5a1028ed382fdf28ede10a673e8ff6b"
+      },
+      "modelRef": {
+        "id": "groundwater.flow-field",
+        "version": "3.1.0",
+        "checksum": "sha256:54dba957a1445a2af1e563db7ee861cfdf241a71e7b3fc2996dfc5966833d5df"
+      },
+      "resultContractRef": {
+        "id": "groundwater.flow-field.results",
+        "version": "1.0.0",
+        "checksum": "sha256:48206265292dad37c6a7d4acbb1789ad35f0f2823d81927acd0038fb240bf272"
+      },
+      "inputRoles": {
+        "observations": {
+          "meaning": "一个包含井号、井点坐标、观测时间、参考面高程和埋深的精确 Data 版本。",
+          "preconditions": [
+            "提供六个数据字段的列名。观测时间字段可采用 Data 版本已声明的字段。",
+            "所选参考面高程与从该面向下量取的埋深均以米记录，Data 版本须声明字段含义、参考面和统一垂向基准。",
+            "Data 版本须声明坐标系、观测时间字段和覆盖区间。显式给出源 EPSG 坐标系及目标米制投影 EPSG 坐标系。",
+            "观测时间字段须为时间戳类型且 Data 版本须声明 UTC 时区。原始字符串时间须规范为 UTC 时间戳后发布为 Parquet 或 Arrow 数据版本。",
+            "同井、同一时刻最多一条观测。目标时刻使用 UTC，须以 Z 或 +00:00 结尾。缺少匹配观测的井见时点选择诊断。",
+            "输入表须留出 hydraulic_head_m 列名用于计算水头。应结合井点空间覆盖、格网大小和诊断判断结果。",
+            "使用者须提供目标时刻、格网大小（米）、渗透系数（米/天）和有效孔隙率（0 到 1 之间的小数，含 1）。"
+          ]
+        }
+      },
+      "parameters": {
+        "fixed": {
+          "selection": "exact",
+          "maxAgeDays": 0,
+          "referenceElevationUnit": "m",
+          "depthToWaterUnit": "m",
+          "valueField": "hydraulic_head_m",
+          "power": 2.0,
+          "neighborCount": 5
+        },
+        "adjustable": [
+          "wellField",
+          "timeField",
+          "xField",
+          "yField",
+          "referenceElevationField",
+          "depthToWaterField",
+          "targetTime",
+          "sourceCrs",
+          "targetCrs",
+          "pixelSize",
+          "hydraulicConductivityMetersPerDay",
+          "effectivePorosity"
+        ],
+        "defaultSource": "PINNED_EXECUTABLE_MODEL"
+      },
+      "applicability": "用于以同一目标时刻的井点观测估算稳态二维水平流向、达西通量和孔隙水流速。",
+      "limitations": [
+        "假设介质均质且各向同性，采用标量渗透系数和空间统一的有效孔隙率。",
+        "模型估算限于稳态二维水平流动，适用于可忽略垂向流动、瞬态储水和密度差异的场景。",
+        "水力梯度和流向继承水头插值误差。解读时应检查井点分布、格网分辨率、边缘效应和时点选择诊断。",
+        "输出属于推导估算。合成案例验证了技术链路，场地适用性和业务验收需独立验证。"
+      ],
+      "validationEvidence": {
+        "kind": "SYNTHETIC_WORKFLOW_GOLDEN",
+        "caseId": "flow-field",
+        "cases": {
+          "path": "development/workflow-golden-cases.v2.json",
+          "checksum": "sha256:406cd3b3bb493e3a087af30ab8496661a8d28e51efd2e9dc38f62eb4d978573b"
+        },
+        "receipt": {
+          "path": "development/workflow-goldens/flow-field.json",
+          "checksum": "sha256:730d0dbdb930f60233fd623e6f9bdbfd424d4cf2cea9247de7a707e778725f49"
+        },
+        "scope": {
+          "path": "workflows/evidence/flow-field-golden-scope.v1.json",
+          "checksum": "sha256:6a433344662bcee246e73ac170cf3419fc55f5de5a569fe12b784ab4fed5e851"
+        }
+      },
+      "visibleRoles": [
+        "admin",
+        "researcher"
+      ]
     }
   ],
   "resultContracts": [
@@ -548,6 +636,197 @@
               "status",
               "eventCount",
               "thresholdValue"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "schemaVersion": "workflow-result-contract.v1",
+      "id": "groundwater.flow-field.results",
+      "version": "1.0.0",
+      "workflowRef": {
+        "id": "groundwater.flow-field",
+        "version": "1.1.0",
+        "checksum": "sha256:bda102fc7492dccae5e2fe60a9e56cc1d5a1028ed382fdf28ede10a673e8ff6b"
+      },
+      "outputs": [
+        {
+          "name": "snapshot",
+          "role": "DIAGNOSTIC",
+          "kind": "artifact",
+          "mediaType": "application/vnd.apache.parquet",
+          "format": "parquet",
+          "meaning": "记录各入选监测井及由参考面高程减去向下埋深所得的水头。逐井入选状态和观测覆盖见时点选择诊断。",
+          "viewers": [
+            "table",
+            "download"
+          ],
+          "unit": "计算水头以米计，坐标沿用输入数据版本的坐标系。",
+          "spatialScope": "输入数据版本坐标系下的监测井。",
+          "temporalScope": "使用者指定的同一观测时刻。",
+          "qualitySource": {
+            "outputName": "summary",
+            "fields": [
+              "resultKind"
+            ]
+          }
+        },
+        {
+          "name": "snapshot-diagnostics",
+          "role": "DIAGNOSTIC",
+          "kind": "artifact",
+          "mediaType": "application/vnd.apache.parquet",
+          "format": "parquet",
+          "meaning": "逐井记录目标时刻、实际观测时刻、入选状态和观测时间差。目标时刻缺少观测的井记为 NO_MATCH。",
+          "viewers": [
+            "table",
+            "download"
+          ],
+          "unit": "观测时间差以天计，状态为分类值。",
+          "spatialScope": "输入数据版本坐标系下的监测井。",
+          "temporalScope": "使用者指定的同一观测时刻。",
+          "qualitySource": {
+            "outputName": "summary",
+            "fields": [
+              "validCellCount",
+              "resultKind"
+            ]
+          }
+        },
+        {
+          "name": "head-raster",
+          "role": "PRIMARY_RESULT",
+          "kind": "artifact",
+          "mediaType": "image/tiff",
+          "format": "geotiff",
+          "meaning": "在目标格网上通过反距离权重插值得到的水头高程，沿用输入参考面高程的垂向基准。",
+          "viewers": [
+            "map",
+            "download"
+          ],
+          "unit": "m",
+          "spatialScope": "用户明确指定的米制投影坐标系及井点范围内的计算格网。",
+          "temporalScope": "使用者指定的同一观测时刻。",
+          "qualitySource": {
+            "outputName": "summary",
+            "fields": [
+              "horizontalCrs",
+              "validCellCount",
+              "limitations"
+            ]
+          }
+        },
+        {
+          "name": "gradient",
+          "role": "DIAGNOSTIC",
+          "kind": "artifact",
+          "mediaType": "image/tiff",
+          "format": "geotiff",
+          "meaning": "由水头栅格计算的二维水平水力梯度大小。",
+          "viewers": [
+            "map",
+            "download"
+          ],
+          "unit": "无量纲",
+          "spatialScope": "用户明确指定的米制投影坐标系及井点范围内的计算格网。",
+          "temporalScope": "使用者指定的同一观测时刻。",
+          "qualitySource": {
+            "outputName": "summary",
+            "fields": [
+              "validCellCount",
+              "limitations"
+            ]
+          }
+        },
+        {
+          "name": "flow-direction",
+          "role": "PRIMARY_RESULT",
+          "kind": "artifact",
+          "mediaType": "image/tiff",
+          "format": "geotiff",
+          "meaning": "从格网北顺时针量取、指向水头降低方向的推导方位角。平坦或无值格网缺少可解释的流向。",
+          "viewers": [
+            "map",
+            "download"
+          ],
+          "unit": "度",
+          "spatialScope": "用户明确指定的米制投影坐标系及井点范围内的计算格网。",
+          "temporalScope": "使用者指定的同一观测时刻。",
+          "qualitySource": {
+            "outputName": "summary",
+            "fields": [
+              "directionConvention",
+              "validCellCount"
+            ]
+          }
+        },
+        {
+          "name": "darcy-flux",
+          "role": "PRIMARY_RESULT",
+          "kind": "artifact",
+          "mediaType": "image/tiff",
+          "format": "geotiff",
+          "meaning": "以渗透系数乘以水平水力梯度得到的达西通量大小，表示单位总截面积上的比流量。",
+          "viewers": [
+            "map",
+            "download"
+          ],
+          "unit": "m/day",
+          "spatialScope": "用户明确指定的米制投影坐标系及井点范围内的计算格网。",
+          "temporalScope": "使用者指定的同一观测时刻。",
+          "qualitySource": {
+            "outputName": "summary",
+            "fields": [
+              "darcyFluxFormula",
+              "hydraulicConductivityMetersPerDay",
+              "validCellCount"
+            ]
+          }
+        },
+        {
+          "name": "seepage-velocity",
+          "role": "PRIMARY_RESULT",
+          "kind": "artifact",
+          "mediaType": "image/tiff",
+          "format": "geotiff",
+          "meaning": "以达西通量除以有效孔隙率得到的孔隙水流速估算值。",
+          "viewers": [
+            "map",
+            "download"
+          ],
+          "unit": "m/day",
+          "spatialScope": "用户明确指定的米制投影坐标系及井点范围内的计算格网。",
+          "temporalScope": "使用者指定的同一观测时刻。",
+          "qualitySource": {
+            "outputName": "summary",
+            "fields": [
+              "seepageVelocityFormula",
+              "effectivePorosity",
+              "resultKind"
+            ]
+          }
+        },
+        {
+          "name": "summary",
+          "role": "SUMMARY",
+          "kind": "value",
+          "mediaType": "application/json",
+          "format": "json",
+          "meaning": "记录有效流场格网数、计算公式、坐标系、介质参数、单位和解释限制。",
+          "viewers": [
+            "json",
+            "download"
+          ],
+          "unit": "渗透系数、达西通量与孔隙水流速以 m/day 计，有效孔隙率为无量纲小数。",
+          "spatialScope": "用户明确指定的米制投影坐标系及井点范围内的计算格网。",
+          "temporalScope": "使用者指定的同一观测时刻。",
+          "qualitySource": {
+            "outputName": "summary",
+            "fields": [
+              "validCellCount",
+              "resultKind",
+              "limitations"
             ]
           }
         }

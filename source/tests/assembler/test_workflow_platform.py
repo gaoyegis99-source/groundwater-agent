@@ -24,6 +24,8 @@ from scripts.development.workflow_profile import (  # noqa: E402
 
 
 PRODUCT = ROOT / "products/groundwater"
+TREND_PROFILE = "groundwater.monitoring-trend.seasonal-and-threshold"
+FLOW_PROFILE = "groundwater.flow-field.same-time-darcy"
 PARAMETERS = {
     "groupField": "station",
     "timeField": "time",
@@ -46,6 +48,10 @@ def read(path):
     return json.loads(path.read_bytes())
 
 
+def by_id(items, identity):
+    return next(item for item in items if item.get("ref", item)["id"] == identity)
+
+
 def data_ref(**values):
     return {
         "kind": "data_version", "service": "data-primary", "datasetId": "dataset",
@@ -65,14 +71,15 @@ def platform_bundle(tmp_path_factory):
             ROOT, PRODUCT / "product-manifest.json", executor_profile=ExecutorOperationalProfile(),
         )
     platform = read(bundle / "workflow-platform.json")
-    return bundle, platform, platform["profiles"][0]["ref"]
+    return bundle, platform, by_id(platform["profiles"], TREND_PROFILE)["ref"]
 
 
 def test_assembly_links_all_presets_to_exact_implementations_and_product_entries(platform_bundle):
     bundle, platform, ref = platform_bundle
-    profile = platform["profiles"][0]
+    profile = by_id(platform["profiles"], TREND_PROFILE)
     lock = read(bundle / "assembly-lock.json")
-    assert lock["workflowPlatform"]["profiles"] == [ref]
+    assert {item["id"] for item in lock["workflowPlatform"]["profiles"]} == {TREND_PROFILE, FLOW_PROFILE}
+    assert ref in lock["workflowPlatform"]["profiles"]
     assert (
         lock["workflowPlatform"]["checksum"]
         == "sha256:" + hashlib.sha256((bundle / "workflow-platform.json").read_bytes()).hexdigest()
@@ -96,10 +103,11 @@ def test_profile_produces_a_reproducible_pinned_v12_selection(platform_bundle):
     second = select_workflow_profile(bundle, ref, role="admin", inputs=inputs, parameters=dict(reversed(list(PARAMETERS.items()))))
     assert first == second
     selected = first["workflowSelection"]
+    profile = by_id(platform["profiles"], TREND_PROFILE)
     assert first["inputReferences"] == [inputs["observations"]]
     assert selected["inputBindings"] == {"versionId": 0}
-    assert selected["modelChecksum"] == platform["profiles"][0]["modelRef"]["checksum"]
-    assert selected["workflowChecksum"] == platform["profiles"][0]["workflowRef"]["checksum"]
+    assert selected["modelChecksum"] == profile["modelRef"]["checksum"]
+    assert selected["workflowChecksum"] == profile["workflowRef"]["checksum"]
     assert selected["parameters"] == {
         **PARAMETERS, "seasonalTrendEnabled": True, "thresholdEventsEnabled": True,
         "alpha": 0.05, "threshold": 3.5,
@@ -108,7 +116,7 @@ def test_profile_produces_a_reproducible_pinned_v12_selection(platform_bundle):
 
 def test_profile_keeps_preset_operator_outside_dynamic_composition(platform_bundle):
     bundle, platform, _ = platform_bundle
-    workflow_ref = platform["profiles"][0]["workflowRef"]
+    workflow_ref = by_id(platform["profiles"], TREND_PROFILE)["workflowRef"]
     trend = next(item for item in platform["workflows"] if item["workflowRef"] == workflow_ref)
     assert "timeseries.aggregate@1.0.0" in trend["compositionUnsupported"]
     executor = read(bundle / "executor-config.json")
@@ -152,7 +160,7 @@ def test_tampered_assembly_catalog_is_rejected(platform_bundle, tmp_path):
     bundle, platform, ref = platform_bundle
     (tmp_path / "assembly-lock.json").write_bytes((bundle / "assembly-lock.json").read_bytes())
     tampered = deepcopy(platform)
-    tampered["profiles"][0]["fixedParameters"]["thresholdEventsEnabled"] = False
+    by_id(tampered["profiles"], TREND_PROFILE)["fixedParameters"]["thresholdEventsEnabled"] = False
     (tmp_path / "workflow-platform.json").write_text(json.dumps(tampered))
     with pytest.raises(ValueError, match="WORKFLOW_PLATFORM_BUNDLE_INVALID"):
         select_workflow_profile(
@@ -160,15 +168,18 @@ def test_tampered_assembly_catalog_is_rejected(platform_bundle, tmp_path):
         )
 
 
-@pytest.mark.parametrize("collection", ["profiles", "resultContracts"])
-def test_released_identity_requires_a_new_version_for_new_content(platform_bundle, collection):
+@pytest.mark.parametrize(("collection", "identity"), [
+    ("profiles", TREND_PROFILE), ("resultContracts", "groundwater.monitoring-trend.results"),
+])
+def test_released_identity_requires_a_new_version_for_new_content(platform_bundle, collection, identity):
     bundle, _, _ = platform_bundle
     previous = read(bundle / "assembly-lock.json")
     candidate = deepcopy(previous["workflowPlatform"])
-    candidate[collection][0]["checksum"] = "sha256:" + "0" * 64
+    reference = by_id(candidate[collection], identity)
+    reference["checksum"] = "sha256:" + "0" * 64
     with pytest.raises(ValueError, match="WORKFLOW_PLATFORM_IDENTITY_MUTATED"):
         require_immutable_platform_refs(previous, candidate)
-    candidate[collection][0]["version"] = "1.1.0"
+    reference["version"] = "1.1.0"
     require_immutable_platform_refs(previous, candidate)
 
 
@@ -176,7 +187,7 @@ def test_result_requires_publication_and_complete_exact_inventory(platform_bundl
     bundle, platform, ref = platform_bundle
     launch = select_workflow_profile(bundle, ref, role="researcher", inputs={"observations": data_ref()}, parameters=PARAMETERS)
     selection = launch["workflowSelection"]
-    contract = platform["resultContracts"][0]
+    contract = by_id(platform["resultContracts"], "groundwater.monitoring-trend.results")
     run = {
         **{key: value for key, value in selection.items() if key != "inputBindings" and key != "parameters"},
         "runId": "run", "status": "SUCCEEDED", "arguments": {**selection["parameters"], "versionId": "version"},
@@ -198,7 +209,8 @@ def test_result_requires_publication_and_complete_exact_inventory(platform_bundl
     with pytest.raises(ValueError, match="WORKFLOW_PROFILE_RUN_MISMATCH"):
         describe_workflow_result(bundle, ref, {**run, "arguments": {}}, publication)
     with pytest.raises(ValueError, match="WORKFLOW_PROFILE_RUN_MISMATCH"):
-        describe_workflow_result(bundle, ref, {**run, "arguments": platform["profiles"][0]["fixedParameters"]}, publication)
+        profile = by_id(platform["profiles"], TREND_PROFILE)
+        describe_workflow_result(bundle, ref, {**run, "arguments": profile["fixedParameters"]}, publication)
     with pytest.raises(ValueError, match="WORKFLOW_PROFILE_RUN_MISMATCH"):
         describe_workflow_result(bundle, ref, run, {**publication, "workflowRunId": "other"})
     with pytest.raises(ValueError, match="WORKFLOW_RESULT_OUTPUT_INVALID"):
@@ -216,6 +228,7 @@ def test_result_requires_publication_and_complete_exact_inventory(platform_bundl
     ("evidenceFixture", "WORKFLOW_PROFILE_EVIDENCE_INVALID"),
     ("evidenceCatalog", "WORKFLOW_PROFILE_EVIDENCE_INVALID"),
     ("evidenceOperator", "WORKFLOW_PROFILE_EVIDENCE_INVALID"),
+    ("flowEvidenceOperator", "WORKFLOW_PROFILE_EVIDENCE_INVALID"),
     ("evidenceResult", "WORKFLOW_PROFILE_EVIDENCE_INVALID"),
     ("outputs", "WORKFLOW_RESULT_CONTRACT_INVALID"),
 ])
@@ -225,10 +238,10 @@ def test_assembler_rejects_drift_even_if_product_refreshes_the_file_digest(
     bundle, _, _ = platform_bundle
     manifest = read(PRODUCT / "product-manifest.json")
     document = read(PRODUCT / manifest["workflowPlatform"]["path"])
-    profiles = document["profiles"]
-    changed = deepcopy(profiles[0])
+    identity = FLOW_PROFILE if field == "flowEvidenceOperator" else TREND_PROFILE
+    changed = by_id(document["profiles"], identity)
     if field == "outputs":
-        document["resultContracts"][0]["outputs"].pop()
+        by_id(document["resultContracts"], "groundwater.monitoring-trend.results")["outputs"].pop()
     elif field == "evidence":
         changed["validationEvidence"]["caseId"] = "other-case"
     elif field == "evidenceFixture":
@@ -244,24 +257,30 @@ def test_assembler_rejects_drift_even_if_product_refreshes_the_file_digest(
         else:
             receipt["outputs"]["gap-runs"] = None
         receipt_ref["content"] = receipt
-    elif field == "evidenceOperator":
+    elif field in {"evidenceOperator", "flowEvidenceOperator"}:
         scope_ref = changed["validationEvidence"]["scope"]
         scope = read(PRODUCT / scope_ref["path"])
-        scope["operatorsByNode"]["aggregate"]["implementationRevision"] = "sha256:" + "a" * 64
+        node = "velocity" if field == "flowEvidenceOperator" else "aggregate"
+        scope["operatorsByNode"][node]["implementationRevision"] = "sha256:" + "a" * 64
         scope_ref["content"] = scope
     else:
         changed[field]["checksum"] = "sha256:" + "a" * 64
-    profiles[0] = changed
     source = tmp_path / "workflow-platform.json"
-    for kind in ("cases", "receipt", "scope"):
-        evidence = changed["validationEvidence"][kind]
-        copied = tmp_path / evidence["path"]
-        copied.parent.mkdir(parents=True, exist_ok=True)
-        if "content" in evidence:
-            copied.write_text(json.dumps(evidence.pop("content")))
-            evidence["checksum"] = "sha256:" + hashlib.sha256(copied.read_bytes()).hexdigest()
-        else:
-            copy2(PRODUCT / evidence["path"], copied)
+    changed_evidence = {
+        reference["path"]: reference.pop("content")
+        for kind, reference in changed["validationEvidence"].items()
+        if kind in {"cases", "receipt", "scope"} and "content" in reference
+    }
+    for profile in document["profiles"]:
+        for kind in ("cases", "receipt", "scope"):
+            evidence = profile["validationEvidence"][kind]
+            copied = tmp_path / evidence["path"]
+            copied.parent.mkdir(parents=True, exist_ok=True)
+            if evidence["path"] in changed_evidence:
+                copied.write_text(json.dumps(changed_evidence[evidence["path"]]))
+                evidence["checksum"] = "sha256:" + hashlib.sha256(copied.read_bytes()).hexdigest()
+            else:
+                copy2(PRODUCT / evidence["path"], copied)
     source.write_text(json.dumps(document))
     executor = read(bundle / "executor-config.json")
     workflows = {

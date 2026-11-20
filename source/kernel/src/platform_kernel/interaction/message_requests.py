@@ -7,7 +7,11 @@ from pathlib import Path
 from uuid import uuid4
 
 from ..application.task_api import preparation_in_connection
-from ..business_capabilities import continue_business_capability, select_business_capability
+from ..business_capabilities import (
+    business_capability_candidates,
+    business_workflow_selection,
+    continue_business_capability,
+)
 from ..database import append_event, connect_database, utc_now
 from ..errors import ConfirmationConflictError, ResourceNotFoundError
 from ..workflow_selection import bind_workflow_selection, selected_model
@@ -58,7 +62,9 @@ def create_message_request(
                 (existing["agent_run_id"],),
             ).fetchone()
             recorded = json.loads(row[0]) if row is not None else None
-            if recorded is not None and recorded.get("business_capability") is not None:
+            if recorded is not None and (
+                "business_capability" in recorded or "business_capability_options" in recorded
+            ):
                 recorded = None
             if recorded is not None:
                 recorded.pop("inputs")
@@ -106,12 +112,21 @@ def create_message_request(
             )
             return receipt_from_row(row, corrects_agent_run_id), None
         business_selection = None
+        business_options = None
         if requested_mode == "AUTO" and business_capabilities:
             effective_references = list(normalized_references)
-            business_selection = select_business_capability(
-                business_capabilities, message, actor_roles, effective_references,
-            )
-            if business_selection is None:
+            candidates = business_capability_candidates(business_capabilities, message, actor_roles)
+            if len(candidates) > 1:
+                business_options = {"business_capability_options": [
+                    {
+                        "title": capability["title"],
+                        "profile": option["profileRef"]["id"] + "@" + option["profileRef"]["version"],
+                    }
+                    for capability, option in candidates
+                ]}
+            elif candidates:
+                business_selection = business_workflow_selection(*candidates[0], message, effective_references)
+            else:
                 continuation = _continue_blocked_preparation(
                     connection, session, business_capabilities, message, actor_roles, effective_references,
                 )
@@ -174,7 +189,7 @@ def create_message_request(
                 created_at,
             ),
         )
-        stored_selection = workflow_selection if workflow_selection is not None else business_selection
+        stored_selection = workflow_selection or business_selection or business_options
         if stored_selection is not None:
             connection.execute(
                 "INSERT INTO message_workflow_selections VALUES (?,?)",
@@ -224,7 +239,8 @@ def _continue_blocked_preparation(connection, session, registry, message, actor_
         """SELECT w.selection_json FROM message_requests AS m
            JOIN message_workflow_selections AS w USING (agent_run_id)
            WHERE m.session_id=? AND m.goal_revision=?
-             AND m.intent_decision='DIALOGUE' AND m.dialogue_policy='EXECUTION_PROPOSAL'""",
+             AND m.intent_decision='DIALOGUE' AND m.dialogue_policy='EXECUTION_PROPOSAL'
+             AND m.semantic_intent='EXECUTE_ON_DATA'""",
         (session["session_id"], goal_revision),
     ).fetchone()
     if row is None:
@@ -253,14 +269,17 @@ def _continue_blocked_preparation(connection, session, registry, message, actor_
 def saved_business_selection(database: Path, agent_run_id: str, *, routing: bool = False) -> dict | None:
     with connect_database(database) as connection:
         row = connection.execute(
-            """SELECT w.selection_json,m.intent_decision,m.semantic_intent,m.routing_status
+            """SELECT w.selection_json,m.intent_decision,m.semantic_intent,m.dialogue_policy,m.routing_status
                FROM message_workflow_selections AS w JOIN message_requests AS m USING (agent_run_id)
                WHERE w.agent_run_id=?""",
             (agent_run_id,),
         ).fetchone()
     if row is None:
         return None
-    active = row["intent_decision"] == "DIALOGUE" and row["semantic_intent"] in {"EXECUTE_ON_DATA", "CONSULT"}
+    active = (
+        row["intent_decision"] == "DIALOGUE" and row["semantic_intent"] == "EXECUTE_ON_DATA"
+        and row["dialogue_policy"] == "EXECUTION_PROPOSAL"
+    )
     if not active and not (routing and row["routing_status"] == "ROUTING_RUNNING"):
         return None
     selection = json.loads(row["selection_json"])

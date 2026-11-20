@@ -7,6 +7,7 @@ export interface QueuedMessage {
   workflow?: WorkflowSelection;
   id: string; text: string; attachments: ResourceItem[]; createdAt: string;
   requestId?: string; correctsAgentRunId?: string;
+  resultCheckBlocked?: true;
 }
 export function readQueue(scope: string, session: string): QueuedMessage[] {
   const key = scopedStorageKey(scope, 'message-queue', session);

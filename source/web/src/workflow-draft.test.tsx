@@ -268,6 +268,26 @@ it('dispatches known preparation blockers and leaves an unknown blocker read-onl
   expect(unknown.parentElement?.querySelector('button')).toBeNull();
 });
 
+it('explains the required UTC timestamps and opens the exact observation version', () => {
+  const reference = dataRef();
+  const onVersion = vi.fn();
+  const history = historyFixture({ preparation: {
+    schemaVersion: 'task-preparation.v1', preparationId: 'flow-prep', revision: 1,
+    sessionId: 'session-1', agentRunId: 'agent-1', goalRevision: 1,
+    taskId: null, baseTaskRevision: null, status: 'BLOCKED', freshForCurrentTurn: true, disposition: 'ACTIVE',
+    entries: [{ targetKind: 'EXECUTABLE_MODEL', targetId: 'groundwater.flow-field', targetVersion: '3.1.0',
+      selectionPolicy: 'PINNED', status: 'BLOCKED', inputs: { versionId: reference }, knowledgeRefs: [],
+      parameters: {}, parameterSources: {}, blockingReasons: ['CAPABILITY_DATA_CHECK_REQUIRED'],
+      checks: [{ kind: 'UTC_TIME_FIELD', input: 'versionId', fieldName: 'time', status: 'FAIL', timezone: 'Asia/Shanghai' }],
+    }],
+  } });
+  render(<PreparationDetails history={history} onData={vi.fn()} onVersion={onVersion} onParameter={vi.fn()} />);
+  expect(screen.getByText(/UTC 观测时间/)).toBeVisible();
+  expect(screen.getByText('请核对 UTC 类型的时间戳和资料的 UTC 时区声明。')).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: '核对时间字段和时区' }));
+  expect(onVersion).toHaveBeenCalledExactlyOnceWith(reference.versionId, reference);
+});
+
 it('shows semantic preflight facts and routes unknown metadata to the exact version', () => {
   const onVersion = vi.fn();
   const input = dataRef({ versionId: 'semantic-version' });

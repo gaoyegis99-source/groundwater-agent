@@ -31,7 +31,7 @@ from tests.e2e.test_composed_workflow import (
     _bridge,
     _monitoring_trend_steps,
     _publish_monitoring_observations,
-    _run_monitoring_trend_worker,
+    _run_native_workflow_worker,
     _wait_for_session,
     assembly as assembly,
     native_site as native_site,
@@ -48,10 +48,11 @@ def _new_session(api):
     return response["sessionId"]
 
 
-def _dialogue(api, session_id, request_id, message, *, requested_mode="DIALOGUE"):
+def _dialogue(api, session_id, request_id, message, *, requested_mode="DIALOGUE", input_references=()):
     path = f"/api/v12/sessions/{session_id}"
     api.post(path + "/messages", json={
         "requestId": request_id, "requestedMode": requested_mode, "message": message,
+        **({"inputReferences": list(input_references)} if input_references else {}),
     }).raise_for_status()
     return _wait_for_session(api, path, "COMPLETE")
 
@@ -146,6 +147,7 @@ def _task_steps(arguments, input_ref, workflow_result):
         ModelStep.respond(link_result),
         ModelStep(output=[submit_reply("已将已发布的摘要登记为任务证据。", call_id="recorded")]),
         ModelStep(output=[submit_reply("含水层能够储存并传导地下水。", call_id="consulted")]),
+        ModelStep(output=[submit_reply("已收到用于后续分析的阈值摘要。", call_id="reused-delivery")]),
         ModelStep(output=[submit_reply("含水层的补给可来自降水入渗。", call_id="consulted-separately")]),
     ]
 
@@ -248,13 +250,19 @@ def test_monitoring_work_item_preserves_linked_sessions_and_published_data(
             executing = _snapshot(api, work)
             assert executing["state"] == _track(executing, old_session)["state"] == "EXECUTING"
             assert executing["eventCursor"] > waiting["eventCursor"]
-            workflow_result.update(asyncio.run(_run_monitoring_trend_worker(executor_http, data_worker, api, run_path, capacity)))
+            workflow_result.update(asyncio.run(_run_native_workflow_worker(executor_http, data_worker, api, run_path, capacity)))
             _wait_for_session(api, session_path, "COMPLETE")
             publication = api.get(run_path + "/publication", params=PROJECT).raise_for_status().json()
             assert publication["state"] == "PUBLISHED"
             assert len(workflow_result["outputs"]) == 21
             result = next(item for item in workflow_result["outputs"] if item["outputName"] == RESULT_NAME)
             assert json.loads(_exact_content(data, result)) == golden["keyValues"][RESULT_NAME]
+            evidence = api.get(session_path + "/messages", params={"goalRevision": pending["goalRevision"]}).raise_for_status().json()
+            turn, = [item for item in evidence["turns"] if item["agentRunId"] == workflow_result["agentRunId"]]
+            dispatch, = [item for item in turn["executionTasks"] if item["workflowRunId"] == run_id]
+            frozen, = [item for item in turn["confirmations"] if item["confirmationId"] == dispatch["confirmationId"]]
+            assert frozen["status"] == "CONFIRMED"
+            assert frozen["actions"][0]["inputReferences"] == {"versionId": input_ref}
 
             workflow_link = _command(api, work, "assets", "link-run", 5, reference={"kind": "WORKFLOW", "runId": run_id})
             result_link = _command(api, work, "assets", "link-threshold-summary", 6, reference={
@@ -302,6 +310,13 @@ def test_monitoring_work_item_preserves_linked_sessions_and_published_data(
             assert after_consultation["eventCursor"] > reviewing["eventCursor"]
 
             review_arguments = {"sessionId": old_session, "reviewToken": review["token"]}
+            for revision, token in ((6, review["token"]), (7, "sha256:" + "0" * 64)):
+                rejected = api.post(work + "/review", json={
+                    **PROJECT, "requestId": f"reject-stale-delivery-{revision}", "expectedRevision": revision,
+                    "sessionId": old_session, "reviewToken": token,
+                })
+                assert rejected.status_code == 409, rejected.text
+            assert _snapshot(api, work) == after_consultation
             acceptance = _command(api, work, "review", "accept-monitoring-result", 7, **review_arguments)
             completed = _snapshot(api, work)
             completed_track = _track(completed, old_session)
@@ -321,11 +336,29 @@ def test_monitoring_work_item_preserves_linked_sessions_and_published_data(
             assert _command(api, work, "review", "accept-monitoring-result", 7, **review_arguments) == acceptance
             assert _activity_after(api, work, completed["eventCursor"])["entries"] == []
 
+            destination = f"/api/v12/sessions/{new_session}"
+            destination_context = _detail(api, destination + "/work-item")["context"]
+            assert destination_context["workItem"]["workItemId"] == result_link["workItemId"]
+            exact_delivery, = [asset["reference"] for asset in destination_context["assets"] if asset["linkId"] == result_link["linkId"]]
+            assert exact_delivery["runId"] == run_id
+            assert exact_delivery["publicationId"] == publication["publicationId"]
+            assert exact_delivery["outputName"] == RESULT_NAME and exact_delivery["dataRef"] == result
+            reused_message = "请读取我附加的已发布阈值摘要，为后续分析核对可用资料。"
+            _dialogue(api, new_session, "reuse-accepted-delivery", reused_message, input_references=[exact_delivery["dataRef"]])
+            destination_history = _detail(api, destination + "/messages")
+            reused, = [item for item in destination_history["items"] if item["content"] == reused_message]
+            assert reused["inputReferences"] == [result]
+            assert api.get(destination + "/task").raise_for_status().json()["task"] is None
+            after_reuse = _snapshot(api, work)
+            assert after_reuse["state"] == "COMPLETED"
+            assert _track(after_reuse, old_session) == completed_track
+            assert after_reuse["eventCursor"] > completed["eventCursor"]
+
             consult = _new_session(api)
             _dialogue(api, consult, "ordinary-consultation", "含水层如何获得补给？")
             assert _model_context(model.calls[-1]) == []
             assert api.get(f"/api/v12/sessions/{consult}/task").raise_for_status().json()["task"] is None
-            assert _snapshot(api, work) == completed
+            assert _snapshot(api, work) == after_reuse
             items = api.get("/api/v12/work-items", params=PROJECT).raise_for_status().json()["items"]
             assert [item["workItemId"] for item in items] == [result_link["workItemId"]]
 
@@ -336,7 +369,7 @@ def test_monitoring_work_item_preserves_linked_sessions_and_published_data(
             assert active["workItem"]["revision"] == 8
             active_snapshot = _snapshot(api, work)
             assert active_snapshot["state"] == "COMPLETED"
-            assert active_snapshot["eventCursor"] == completed["eventCursor"] + 1
+            assert active_snapshot["eventCursor"] == after_reuse["eventCursor"] + 1
             sessions = {item["sessionId"]: item for item in active["sessions"]}
             assert set(sessions) == {old_session, new_session}
             assert sessions[old_session]["archivedAt"] is not None and sessions[new_session]["archivedAt"] is None

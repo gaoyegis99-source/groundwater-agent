@@ -80,15 +80,21 @@ it.each(['workflow.timed_out', 'job.timed_out', 'workflow.retry_queued', 'workfl
 
 it('ignores a late stop failure after another session has its own stop in flight', async () => {
   const firstStop = delayed(), secondStop = delayed();
+  const stopRequests: string[] = [];
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
-    if (init?.method === 'POST' && url.endsWith('/stop')) return url.includes('/session-1/') ? firstStop.promise : secondStop.promise;
+    if (init?.method === 'POST' && url.endsWith('/stop')) {
+      stopRequests.push(url);
+      return url.includes('/session-1/') ? firstStop.promise : secondStop.promise;
+    }
     if (url.endsWith('/messages')) return json(snapshot({ sessionId: url.includes('/session-1/') ? 'session-1' : 'session-2', turns: [{ status: 'RUNNING' }] }));
     return basics(url);
   }));
   render(<App />);
   fireEvent.click(await screen.findByRole('button', { name: '停止当前处理' }));
+  await waitFor(() => expect(stopRequests).toEqual(['/api/v12/sessions/session-1/stop']));
   await navigate('session-2');
   fireEvent.click(await screen.findByRole('button', { name: '停止当前处理' }));
+  await waitFor(() => expect(stopRequests).toEqual(['/api/v12/sessions/session-1/stop', '/api/v12/sessions/session-2/stop']));
   expect(screen.getByRole('button', { name: '正在请求停止…' })).toBeDisabled();
   await act(async () => firstStop.finish(new Response(JSON.stringify({ code: 'STOP_OLD_SESSION_FAILED' }), { status: 503 })));
   expect(screen.getByRole('button', { name: '正在请求停止…' })).toBeDisabled();

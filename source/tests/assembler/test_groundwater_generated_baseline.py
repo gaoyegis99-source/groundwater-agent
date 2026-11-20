@@ -10,14 +10,14 @@ from assembler import compile_product  # noqa: E402
 
 # Groundwater assembly with exact Workflow and Business Capability selections.
 GENERATED_ARTIFACT_DIGESTS = {
-    "kernel-config.json": "07d0bb52ba259194ff6801a47fcae26481843bf9b63009c3a92ebac492406ec0",
+    "kernel-config.json": "cf1273702cb8061a4f5c46bac8bffa79e847e0f1f77af8c4ac5e28a96f6c4111",
     "executor-config.json": "48ee106cf00009cd7c742bddc8f1283aaa26657109ceb8f35691c6bc13bf15b1",
     "compose.json": "78fd01ffab2246c88f238b91ce2b18bc06c5d3814b72784b2424e1d79bdfd052",
     "nginx.conf": "67eb04ebe6d61d377e7995a0abe181bdb199d7b865ba8a9af4a19a721418bd09",
-    "product-ui.json": "92454edef391daad83c74cbddb4e6b894218fc0b0c015b66bd0545177e43e96a",
+    "product-ui.json": "4e1eff274ec9662f0f0398d48c2335630b54fd01f4cd78d03134dd74e18c2250",
     "product-icon.svg": "e484a9befc9ff8ccabff776babccdcb0f0c8cf6adebc6da25bb64fccf5a0dfab",
-    "assembly-lock.json": "e438923ee2c454fd9d8f5814fcab6e919367ce23f13837271c264e497521817f",
-    "workflow-platform.json": "342a2c020ce8b612370ef3a991b903b0445e0f7d503da538371a74416b57fff6",
+    "assembly-lock.json": "a5a7d344e673615b528f0890612c87d367a2734f2053683b099bc82ce9918e07",
+    "workflow-platform.json": "9f986fca88a8f8da70cae7db9c9ac8e4e5ad4cc23c40eee5bc1b8b8bc1de4ffc",
 }
 
 
