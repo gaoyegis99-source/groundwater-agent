@@ -428,22 +428,35 @@ flowchart LR
 
 `plans/README.md` 和 `source/scripts/checks/check_worktree_hygiene.py` 纳入 V2.1 计划，`source/scripts/maintenance/check_internal_layout.py` 将文档引用检查限定为实际维护的文档。`source/scripts/maintenance/gw.py` 在缓存文件消失或清理规划拒绝检查缓存时返回具体诊断和未知计数。文档引用与环境检查新增相应回归。公开 API 和数据库结构沿用现有合同。
 
+Compose 固定 Provider 原先把显式任务创建当成普通咨询，随后请求了 Kernel 未下发的 `update_task`。`source/tests/e2e/compose-stub/stub_server.py` 让意图分类与工具夹具使用同一套创建、修订和评审动作。`source/tests/contracts/test_fixed_provider_wire.py` 覆盖这三种动作在 Responses 和 Chat 两种格式下的分类。Kernel 的工具授权沿用原有合同。
+
+任务协作复验还发现，本轮意图请求入队后，Session 的排队状态盖住了上一轮已到达的 `WAITING_REVIEW`。Kernel 仅为当前已认领的路由请求读取前一修订的 Agent 与准备状态，同时仍检查待确认和执行中的工作流。公开任务投影仍使用当前状态。`source/kernel/tests/test_agent_work_item_context.py` 通过公开 API 验证待评审任务可以录入与用户原话一致的验收证据，计算工具继续不可用。该改动未涉及 API Schema 或数据库结构。
+
+用现有生成器刷新 `source/docs/development/current-capability-inventory.md`，核对当前 Product manifest、编译的产品界面和两项业务能力的身份。
+
 ### 本地验收证据
 
 | 范围 | 结果 |
 | --- | --- |
 | `pytest tests/e2e/test_monitoring_work_item.py tests/e2e/test_composed_workflow.py::test_monitoring_trend_capability_requires_user_threshold` | 隔离的原生 PostgreSQL 16.10 下 3 项通过。主旅程使用合成监测资料和脚本 Provider，真实 Kernel、Data、Executor 和原生 Worker。确认前执行作业为 0，发布 21 项成果，跨会话精确复用 1 项。执行、发布和业务验收分别核对。 |
-| `../bin/dev workflow-golden --case monitoring-trend` | 监测 Golden 的 21 项产出比对无差异。流场的阶段 6 锁定回归有通过记录，本阶段容器探针未通过，尚无新的流场 Golden 结果。 |
+| `../bin/dev workflow-golden --case monitoring-trend` 和 `--case flow-field` | 监测 Golden 的 21 项产出比对无差异。流场在关闭网络的锁定 GDAL 3.8.4 容器重跑，`groundwater.flow-field@1.1.0` 的 8 项产出比对无差异。 |
 | PostgreSQL、Executor 和控制面回归 | Data 与 Knowledge 切片 115 项通过、5 项未选，Executor、Worker 和迁移关键切片 11 项通过。覆盖权限撤销、并发修订、过期验收、SSE 恢复、丢失 Worker、超时和取消。局部故障验证覆盖服务不可用、上传断开后的原请求重试、以及发布待定、失败或不可核验时不生成验收令牌。 |
 | 权限与执行边界 | 覆盖跨项目访问拒绝、私有数据与知识权限、工作与会话归属、伪造精确引用、旧确认、提示词要求跳过确认和归档写入限制。固定项目 Gateway 的切换请求被拒绝，界面内多项目切换尚未验收。 |
 | 离线发布材料单项检查 | Native 171 项、Foundation 167 项、Knowledge 100 项、Executor 174 项、干净 XDG 装配根下的合同 191 项通过。13 个 wheel 离线构建和安装校验通过。 |
-| 生产构建浏览器诊断 | 隔离 Chromium 跑通登录、工作内会话、权威资料选择、补参、确认、原生执行、发布和成果列表。按名称打开目标成果的定位超时，浏览器内的后续验收与复用未完成。服务级用例独立覆盖这些操作。 |
-| 完整发布入口 `test_full_project` | 两次确定性装配和 15 项静态预检通过。运行期间源码指纹变化，最终报告为 `VALIDATION_SOURCE_CHANGED`。该次运行的 Data 与 Knowledge 联合、wheel 和最终 Compose 阶段为 `NOT_RUN`。隔离容器的后续检查遇到容器启动和 AppArmor 环境限制，暂无完整发布通过记录。 |
+| 生产构建浏览器主旅程 | 隔离 Chromium、PostgreSQL 16.10、真实服务及固定 Provider 跑通登录、创建工作及会话、选择权威资料、补参、确认、原生执行和精确发布。通过成果列表分页查看目标摘要，完成验收与跨会话复用，重新登录并通过活动分页找到验收和归档记录。浏览器使用的 226 个资源与生产构建逐文件一致。 |
+| 完整发布入口 `test_full_project` | 干净的 `15c0ee8` 源码指纹通过。确定性装配与 15 项静态预检通过。Foundation 167、Kernel 1,030、Data 102、Knowledge 100、Executor 174、合同 191 项通过。平台与产品切片 770 项通过、3 项失败、5 项跳过，后续联合、wheel 和最终 Compose 阶段在该次运行中为 `NOT_RUN`。 |
+| 独立 Compose 验收 | 六个装配模型完成执行及发布，包括流场。固定 Provider 合同文件 31 项通过。修正 Kernel 路由快照后，独立 `--tasks-only` 退出码为 0，任务协作 9 项通过，覆盖创建、修订、幂等重放、重启、用户评审证据和纯状态操作零计算。完整 Compose 复验仍待完成。 |
+| Kernel 意图、任务和工作生命周期回归 | 真实 HTTP 用例先复现 `TASK_CONFLICT`。修正路由快照后，WorkItem 上下文、意图路由、Task 和工作生命周期 110 项通过。全量 Kernel 复验 1,031 项通过。 |
+| 独立 Data 与 Knowledge 联合验收 | 最近一次通过 Data 后端 104 项、Knowledge 后端 100 项、Data Vitest 28 项及浏览器 10 项、Knowledge Vitest 18 项。Knowledge 浏览器 10 项通过、1 项因临时共享存储不足而未完成。联合运行报告为失败。 |
+| 生成的能力参考清单 | 原基线在 `test_checked_in_capability_reference_matches_current_sources` 返回 `CAPABILITY_INVENTORY_OUT_OF_DATE`。重新生成后，`capability-inventory --product groundwater --verify` 与 5 项清单测试通过。 |
+| 平台与产品切片复现 | 原基线另外两项失败分别为隔离运行的特权用户仍可读权限为 000 的目录、流场进程没有找到 GDAL 工具。保留生产测试断言，去除隔离测试进程的 DAC 特权后目录权限用例通过。带独立数据库和 GDAL 的一次切片复跑因回环网络及数据库探针设置失败，未形成通过记录。 |
 
 主旅程计时为单个合成监测样本。创建工作到首个会话为 0.072 秒，分析请求到澄清为 0.455 秒，补参到冻结确认 0.800 秒，确认到观察到运行成功 27.482 秒。Data 发布提交区间 2.677 秒，与执行区间重叠。观察到发布至业务验收为 1.270 秒，重新登录至恢复快照 0.237 秒，从首次登录至读取归档证据 32.763 秒。
+
+生产构建浏览器样本从登录到查阅归档记录为 57.001 秒，连接故障到 SSE 恢复为 3.050 秒，确认到发布为 39.462 秒，提交业务验收到状态更新为 0.598 秒。该轮发布 21 项成果、接受 1 次交付、精确复用 1 项并归档 1 个工作。
 
 ### 风险与退出结论
 
 默认装配缓存曾记录同版 `groundwater.flow-field@1.0.0` 的不同摘要，触发历史身份保护。干净 XDG 装配根下合同通过，正在运行的 Kernel 装配锁未登记该能力。保留缓存及历史身份检查，发布前需核对缓存来源和版本记录。
 
-阶段 8 已获得监测主旅程的服务级证据。完整发布门禁、全链路浏览器旅程、多项目切换、真实业务数据与专家验收仍待完成。本阶段尚未达到正式发布退出条件。
+阶段 8 已获得监测主旅程的服务级与浏览器证据。完整发布门禁、多项目切换以及真实业务数据与专家验收仍待完成。固定项目 Gateway 已核对项目边界，多项目切换需要先明确多项目部署与成员授权合同。

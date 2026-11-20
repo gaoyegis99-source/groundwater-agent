@@ -826,6 +826,16 @@ _WATER_LEVEL_DEPTH_REPLY = "这列是从井口向下量的埋深，请先说明�
 _WATER_LEVEL_ELEVATION_REPLY = "这列是基于统一基准的水位高程，请先说明比较方法。"
 
 
+def _task_collaboration_action(text: str) -> str | None:
+    if "资料评审工作说明" in text:
+        return "CREATE"
+    if "保留原有交付和评审条件" in text:
+        return "REVISE"
+    if text.startswith("确认完成：是否可用"):
+        return "REVIEW"
+    return None
+
+
 def _intent_router_action(body, *, chat):
     if body.get("model") != "test-router-model":
         return None
@@ -841,6 +851,9 @@ def _intent_router_action(body, *, chat):
         )
     else:
         text = str(content)
+    if task_action := _task_collaboration_action(text):
+        intent = "REVIEW_RESULT" if task_action == "REVIEW" else "DESIGN"
+        return None, f"{intent}|{task_action}|NONE"
     if any(
         term in text
         for term in (
@@ -1072,11 +1085,8 @@ def provider_action(body, *, chat):
             },
             items,
         )
-    if isinstance(user_text, str) and (
-        "资料评审工作说明" in user_text
-        or "保留原有交付和评审条件" in user_text
-        or user_text.startswith("确认完成：是否可用")
-    ):
+    task_action = _task_collaboration_action(user_text) if isinstance(user_text, str) else None
+    if task_action:
         recent = items[
             next(
                 i for i in reversed(range(len(items))) if items[i].get("role") == "user"
@@ -1092,7 +1102,7 @@ def provider_action(body, *, chat):
                 },
                 items,
             )
-        if "资料评审工作说明" in user_text:
+        if task_action == "CREATE":
             return "update_task", {
                 "expected_revision": 0,
                 "objective_quote": user_text,
@@ -1112,7 +1122,7 @@ def provider_action(body, *, chat):
                 ],
                 "evidence": [{"criterion_id": "reply"}],
             }
-        if "保留原有交付和评审条件" in user_text:
+        if task_action == "REVISE":
             return "update_task", {
                 "expected_revision": 1,
                 "constraints": [

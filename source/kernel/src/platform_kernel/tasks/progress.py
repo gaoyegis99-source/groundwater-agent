@@ -19,7 +19,8 @@ _BLOCKING_CONTINUATION_REASONS = {
 
 @dataclass(frozen=True)
 class _RuntimeFacts:
-    current: Any
+    goal_revision: int
+    pending_agent_run: bool
     latest: Any
     pending_confirmation: Any
     running_workflow: Any
@@ -29,9 +30,9 @@ class _RuntimeFacts:
     blocked_execution_entries: list[dict[str, object]]
 
 
-def derive_task_progress(connection, spec, evidence):
+def derive_task_progress(connection, spec, evidence, *, routing_run_id: str | None = None):
     checks, outputs = _criterion_progress(connection, spec, evidence)
-    facts = _runtime_facts(connection, spec)
+    facts = _runtime_facts(connection, spec, routing_run_id=routing_run_id)
     state = _task_state(spec, checks, facts)
     steps = _step_progress(spec, checks)
     if state == "COMPLETE" and any(not step["complete"] for step in steps):
@@ -122,14 +123,33 @@ def _result_progress(connection, criterion, proof):
     return satisfied, resources if satisfied else []
 
 
-def _runtime_facts(connection, spec) -> _RuntimeFacts:
+def _runtime_facts(connection, spec, *, routing_run_id: str | None = None) -> _RuntimeFacts:
     current = connection.execute(
         "SELECT * FROM sessions WHERE session_id=?", (spec["session_id"],)
     ).fetchone()
-    latest = connection.execute(
-        "SELECT status,error FROM agent_runs WHERE agent_run_id=?",
-        (current["agent_run_id"],),
-    ).fetchone()
+    goal_revision = current["goal_revision"]
+    pending_agent_run = current["pending_agent_run_id"]
+    routing_current_turn = (
+        routing_run_id is not None
+        and pending_agent_run == routing_run_id
+        and current["agent_start_state"] == "ROUTING_RUNNING"
+    )
+    if routing_current_turn:
+        # Reserving this turn advances the session revision and clears its
+        # active run. Route the message using the task state it was answering.
+        goal_revision -= 1
+        latest = connection.execute(
+            """SELECT agent_run_id,status,error FROM agent_runs
+               WHERE session_id=? AND goal_revision=?
+               ORDER BY rowid DESC LIMIT 1""",
+            (spec["session_id"], goal_revision),
+        ).fetchone()
+    else:
+        latest = connection.execute(
+            "SELECT agent_run_id,status,error FROM agent_runs WHERE agent_run_id=?",
+            (current["agent_run_id"],),
+        ).fetchone()
+    latest_run_id = latest["agent_run_id"] if latest is not None else None
     pending = connection.execute(
         "SELECT 1 FROM confirmations WHERE session_id=? AND status='PENDING'",
         (spec["session_id"],),
@@ -144,15 +164,15 @@ def _runtime_facts(connection, spec) -> _RuntimeFacts:
            FROM session_events WHERE session_id=? AND event_type='agent.complete'
            AND json_extract(payload_json,'$.agent_run_id')=?
            ORDER BY event_id DESC LIMIT 1""",
-        (spec["session_id"], current["agent_run_id"]),
+        (spec["session_id"], latest_run_id),
     ).fetchone()
     rejected = connection.execute(
         """SELECT 1 FROM confirmations
            WHERE agent_run_id=? AND status='REJECTED'""",
-        (current["agent_run_id"],),
+        (latest_run_id,),
     ).fetchone()
     preparation = preparation_in_connection(
-        connection, spec["session_id"], current_goal_revision=current["goal_revision"],
+        connection, spec["session_id"], current_goal_revision=goal_revision,
     )
     if preparation is not None and preparation["task_id"] != spec["task_id"]:
         preparation = None
@@ -167,7 +187,8 @@ def _runtime_facts(connection, spec) -> _RuntimeFacts:
         ]
     )
     return _RuntimeFacts(
-        current=current,
+        goal_revision=goal_revision,
+        pending_agent_run=pending_agent_run is not None and not routing_current_turn,
         latest=latest,
         pending_confirmation=pending,
         running_workflow=running,
@@ -180,8 +201,7 @@ def _runtime_facts(connection, spec) -> _RuntimeFacts:
 
 def _task_state(spec, checks, facts: _RuntimeFacts) -> str:
     latest = facts.latest
-    current = facts.current
-    if current["pending_agent_run_id"] or (
+    if facts.pending_agent_run or (
         latest and latest["status"] == "RUNNING"
     ):
         return "ANALYZING"
@@ -212,7 +232,7 @@ def _task_state(spec, checks, facts: _RuntimeFacts) -> str:
 def _current_blocked_preparation(facts: _RuntimeFacts) -> bool:
     return bool(
         facts.blocked_execution_entries
-        and facts.preparation["goal_revision"] == facts.current["goal_revision"]
+        and facts.preparation["goal_revision"] == facts.goal_revision
     )
 
 

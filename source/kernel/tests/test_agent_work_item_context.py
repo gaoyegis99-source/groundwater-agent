@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 from agents import Agent, ModelBehaviorError, RunConfig
 from agents.run_config import CallModelData, ModelInputData
-from agents.testing import ModelStep, ScriptedModel, function_call
+from agents.testing import ModelStep, ScriptedModel, assistant_message, function_call
 from fastapi.testclient import TestClient
 import httpx
 import pytest
@@ -127,6 +127,47 @@ def test_linked_work_is_background_with_its_own_trace_and_no_write_tools(kernel_
     ]
     assert 0 < metrics["input_bytes"] <= context_filter.MAX_BYTES
     assert 0 < metrics["input_tokens"] <= context_filter.MAX_TOKENS
+
+
+def test_task_review_is_routed_from_the_state_before_the_review_turn(kernel_settings):
+    goal = "请整理监测资料并请我评审是否业务可用。"
+    review = "确认完成：业务可用"
+    app, model = _application(
+        kernel_settings, 0,
+        steps=[
+            ModelStep(output=[function_call("update_task", {
+                "expected_revision": 0, "objective_quote": goal,
+                "criteria": [{
+                    "id": "review", "kind": "USER_REVIEW",
+                    "text": "业务可用", "source_quote": "业务可用",
+                }],
+            }, call_id="create-review-task")]),
+            ModelStep(output=[_final("请评审。")]),
+            ModelStep(output=[function_call("update_task", {
+                "expected_revision": 1,
+                "evidence": [{"criterion_id": "review", "review_quote": review}],
+            }, call_id="record-review-evidence")]),
+            ModelStep(output=[_final("已记录评审。")]),
+        ],
+        router=ScriptedModel([
+            ModelStep(output=[assistant_message("DESIGN|CREATE|NONE")]),
+            ModelStep(output=[assistant_message("REVIEW_RESULT|REVIEW|NONE")]),
+        ]),
+    )
+    with TestClient(create_app(application=app)) as client:
+        work = _create(client)
+        session = _command(client, work + "/sessions/create", "link", 1).json()["linkId"]
+        task_path = f"/api/v12/sessions/{session}/task"
+        _run(client, session, "create-review", goal, mode="AUTO")
+        assert client.get(task_path).json()["task"]["progress"]["state"] == "WAITING_REVIEW"
+
+        _run(client, session, "submit-review", review, mode="AUTO")
+        task = client.get(task_path).raise_for_status().json()["task"]
+        assert task["progress"]["state"] == "COMPLETE"
+        criterion, = task["progress"]["criteria"]
+        assert criterion["satisfied"] and criterion["evidence"]["reviewQuote"] == review
+    assert "update_task" in {tool.name for tool in model.calls[2].tools}
+    assert all(not any(tool.name.startswith("run_") for tool in call.tools) for call in model.calls)
 
 
 def test_only_requested_history_from_active_sibling_sessions_is_summarized(kernel_settings):

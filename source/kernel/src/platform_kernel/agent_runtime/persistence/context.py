@@ -39,6 +39,7 @@ def load_route_context_sources(
     *,
     session_id: str,
     before_goal_revision: int,
+    routing_run_id: str,
 ) -> RouteContextSources:
     """Load Router history, memory and task from one SQLite read snapshot."""
     with connect_database(database) as connection:
@@ -60,7 +61,7 @@ def load_route_context_sources(
                 session_id, before_goal_revision,
             ),
         ).fetchall()
-        task = task_in_connection(connection, session_id)
+        task = task_in_connection(connection, session_id, routing_run_id=routing_run_id)
     return RouteContextSources(
         history=tuple(
             (row["goal_revision"], row["role"], row["content"])

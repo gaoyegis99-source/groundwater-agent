@@ -352,14 +352,14 @@ def get_task(database, session_id, project_id):
         ).model_dump()
 
 
-def task_in_connection(connection, session_id):
+def task_in_connection(connection, session_id, *, routing_run_id: str | None = None):
     value = _spec(connection, session_id)
     if value is None:
         return None
     spec, evidence = value
     return TaskContextV1(
         spec=TaskSpecV1.model_validate(spec),
-        progress=derive_task_progress(connection, spec, evidence),
+        progress=derive_task_progress(connection, spec, evidence, routing_run_id=routing_run_id),
     ).model_dump()
 
 

@@ -279,6 +279,7 @@ class KernelRuntime:
             self.agent_runtime.database,
             session_id=route.session_id,
             before_goal_revision=route.goal_revision,
+            routing_run_id=route.agent_run_id,
         )
         memory = sources.memory
         task = sources.task_context

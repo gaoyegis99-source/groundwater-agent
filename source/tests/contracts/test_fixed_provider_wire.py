@@ -19,6 +19,7 @@ from platform_kernel.agent_runtime.models import SubmittedReplyV6
 from platform_kernel.agent_runtime.tooling.replies import validate_clarification_reply
 from platform_kernel.tasks.models import TaskUpdate
 from scripts.checks.deepseek_data_knowledge_live import _disable_sdk_trace_export
+from scripts.evaluation.evaluate_task_collaboration import AMENDMENT, GOAL
 
 
 def test_live_provider_smoke_installs_no_export_trace_provider() -> None:
@@ -79,6 +80,29 @@ def test_fixed_deepseek_router_uses_v11_semantic_literal(
             "tools": [],
         },
         chat=False,
+    )
+    assert action == (None, expected)
+
+
+@pytest.mark.parametrize("chat", [False, True], ids=["responses", "chat"])
+@pytest.mark.parametrize(
+    "message,expected",
+    [
+        (GOAL, "DESIGN|CREATE|NONE"),
+        (AMENDMENT, "DESIGN|REVISE|NONE"),
+        ("确认完成：是否可用\n确认完成：仅使用公开资料", "REVIEW_RESULT|REVIEW|NONE"),
+    ],
+    ids=["create", "revise", "review"],
+)
+def test_fixed_router_preserves_task_collaboration_actions(fixed_provider, chat, message, expected):
+    conversation = "messages" if chat else "input"
+    action = fixed_provider.provider_action(
+        {
+            "model": "test-router-model",
+            conversation: [{"role": "user", "content": message}],
+            "tools": [],
+        },
+        chat=chat,
     )
     assert action == (None, expected)
 
