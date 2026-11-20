@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import json
 from pathlib import Path
+from sqlite3 import Connection
 
 from ..application.agent_api import agent_run_blocks_turn
 from ..database import append_event, connect_database
@@ -66,24 +67,30 @@ def create_session(
 ) -> None:
     with connect_database(database) as connection:
         connection.execute("BEGIN IMMEDIATE")
-        connection.execute(
-            """INSERT INTO sessions(
-                   session_id, project_id, owner_subject, title, archived_at,
-                   goal_revision, agent_run_id,
-                   pending_agent_run_id, agent_start_state
-               ) VALUES (?, ?, ?, NULL, NULL, 0, NULL, NULL, NULL)""",
-            (session_id, project_id, owner_subject),
-        )
-        append_event(
-            connection,
-            session_id,
-            "session.created",
-            {
-                "session_id": session_id,
-                "project_id": project_id,
-                "owner_subject": owner_subject,
-            },
-        )
+        insert_session(connection, session_id, project_id, owner_subject)
+
+
+def insert_session(
+    connection: Connection, session_id: str, project_id: str, owner_subject: str,
+) -> None:
+    connection.execute(
+        """INSERT INTO sessions(
+               session_id, project_id, owner_subject, title, archived_at,
+               goal_revision, agent_run_id,
+               pending_agent_run_id, agent_start_state
+           ) VALUES (?, ?, ?, NULL, NULL, 0, NULL, NULL, NULL)""",
+        (session_id, project_id, owner_subject),
+    )
+    append_event(
+        connection,
+        session_id,
+        "session.created",
+        {
+            "session_id": session_id,
+            "project_id": project_id,
+            "owner_subject": owner_subject,
+        },
+    )
 
 
 def get_session(database: Path, session_id: str) -> SessionRecord:

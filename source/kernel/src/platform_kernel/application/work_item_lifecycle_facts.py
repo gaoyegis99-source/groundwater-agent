@@ -7,6 +7,7 @@ import json
 from sqlite3 import Connection, Row
 
 from .task_api import preparation_in_connection, task_in_connection
+from .work_item_links import OWNED_LINKED_SESSIONS_SQL
 
 
 @dataclass(frozen=True)
@@ -267,3 +268,47 @@ def _unstarted_control(connection: Connection, scope: dict, session: Row) -> Row
             "pending_agent_run_id": session["pending_agent_run_id"], "session_goal_revision": session["goal_revision"],
         },
     ).fetchone()
+
+
+def handoff_task_rows(
+    connection: Connection, work_item_id: str, project_id: str,
+    subject: str, current_session_id: str,
+) -> list[Row]:
+    return connection.execute(
+        OWNED_LINKED_SESSIONS_SQL + """
+        SELECT s.session_id, s.title AS session_title, t.task_id, t.revision,
+               r.created_at AS updated_at
+        FROM linked_sessions s
+        JOIN tasks t ON t.session_id=s.session_id AND t.lifecycle='ACTIVE'
+        JOIN task_revisions r ON r.task_id=t.task_id AND r.revision=t.revision
+        WHERE s.session_id<>? AND s.archived_at IS NULL
+        ORDER BY r.created_at DESC, s.session_id LIMIT 8""",
+        (work_item_id, project_id, subject, current_session_id),
+    ).fetchall()
+
+
+def handoff_approval_rows(
+    connection: Connection, work_item_id: str, project_id: str,
+    subject: str, current_session_id: str,
+) -> list[Row]:
+    return connection.execute(
+        OWNED_LINKED_SESSIONS_SQL + """
+        SELECT s.session_id, s.title AS session_title, e.event_id, e.created_at AS approved_at,
+               c.goal_revision, c.revision AS decision_revision,
+               a.position, a.model_id, a.model_version, a.model_checksum, a.workflow_checksum,
+               a.arguments_json, a.input_references_json
+        FROM linked_sessions s
+        JOIN confirmations c ON c.session_id=s.session_id AND c.goal_revision=s.goal_revision
+        JOIN confirmation_actions a ON a.confirmation_id=c.confirmation_id
+        JOIN session_events e ON e.session_id=s.session_id AND e.event_type='confirmation.confirmed'
+             AND json_extract(e.payload_json, '$.confirmation_id')=c.confirmation_id
+        WHERE s.session_id<>? AND s.archived_at IS NULL
+          AND c.status='CONFIRMED' AND c.decision='CONFIRM' AND c.decision_subject=?
+          AND json_extract(e.payload_json, '$.decision_subject')=c.decision_subject
+          AND NOT EXISTS (
+              SELECT 1 FROM confirmations newer WHERE newer.session_id=c.session_id
+                AND newer.goal_revision=c.goal_revision AND newer.revision>c.revision
+          )
+        ORDER BY e.event_id DESC, a.position LIMIT 8""",
+        (work_item_id, project_id, subject, current_session_id, subject),
+    ).fetchall()

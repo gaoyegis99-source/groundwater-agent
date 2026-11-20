@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from dataclasses import dataclass
 import json
 from pathlib import Path
@@ -16,9 +17,16 @@ from ..application.work_item_links import (
     require_session_link_scope,
     session_projections,
 )
-from ..application.work_item_lifecycle_facts import SessionFacts, collect_session_facts
+from ..application.work_item_lifecycle_facts import (
+    SessionFacts,
+    collect_session_facts,
+    handoff_approval_rows,
+    handoff_task_rows,
+)
 from ..database import begin_immediate, connect_database, notify_on_commit, utc_now
 from ..errors import ResourceNotFoundError, WorkItemConflictError
+from ..settings import ExecutableModelDefinition
+from .handoff import approved_actions
 from .lifecycle import (
     PublicationState,
     ResultLink,
@@ -32,7 +40,7 @@ from .lifecycle import (
 from .references import ReferenceAuthority
 
 
-CommandKind = Literal["CREATE", "LINK_SESSION", "LINK_OBJECT", "LINK_ASSET", "ARCHIVE", "UPDATE", "REVIEW"]
+CommandKind = Literal["CREATE", "CREATE_SESSION", "LINK_SESSION", "LINK_OBJECT", "LINK_ASSET", "ARCHIVE", "UPDATE", "REVIEW"]
 
 
 @dataclass(frozen=True)
@@ -90,10 +98,15 @@ def _activity_entry(row: Row) -> dict:
 
 
 class WorkItemOwner:
-    def __init__(self, database: Path, project_id: str, references: ReferenceAuthority) -> None:
+    def __init__(
+        self, database: Path, project_id: str, references: ReferenceAuthority,
+        create_session: Callable[[Connection, str], str], models: tuple[ExecutableModelDefinition, ...],
+    ) -> None:
         self.database = database
         self.project_id = project_id
         self.references = references
+        self._create_session = create_session
+        self._models = models
 
     def list_items(
         self, actor: RequestIdentity, include_archived: bool, after: str, limit: int
@@ -281,6 +294,12 @@ class WorkItemOwner:
 
     async def detail(self, work_item_id: str, actor: RequestIdentity) -> dict:
         detail, stored = await asyncio.to_thread(self._snapshot, work_item_id, actor)
+        await self._project_references(detail, stored, actor)
+        return detail
+
+    async def _project_references(
+        self, detail: dict, stored: list[Row], actor: RequestIdentity, *, visible_only: bool = False,
+    ) -> None:
         upstream_slots = asyncio.Semaphore(8)
 
         async def project(row: Row) -> dict:
@@ -296,8 +315,8 @@ class WorkItemOwner:
 
         references = await asyncio.gather(*(project(row) for row in stored))
         for row, reference in zip(stored, references, strict=True):
-            detail["objects" if row["kind"] == "OBJECT" else "assets"].append(reference)
-        return detail
+            if not visible_only or reference["state"] == "AVAILABLE":
+                detail["objects" if row["kind"] == "OBJECT" else "assets"].append(reference)
 
     def _snapshot(self, work_item_id: str, actor: RequestIdentity) -> tuple[dict, list[Row]]:
         with connect_database(self.database) as connection:
@@ -310,6 +329,46 @@ class WorkItemOwner:
                 (work_item_id,),
             ).fetchall()
         return {"work_item": _view(item), **links, "objects": [], "assets": []}, references
+
+    async def session_context(self, session_id: str, actor: RequestIdentity) -> dict | None:
+        context, stored, approvals = await asyncio.to_thread(self._read_session_context, session_id, actor)
+        if context is None:
+            return None
+        await self._project_references(context, stored, actor, visible_only=True)
+        context["approved_actions"] = approved_actions(approvals, context["assets"], self._models)
+        return context
+
+    def _read_session_context(
+        self, session_id: str, actor: RequestIdentity,
+    ) -> tuple[dict | None, list[Row], list[Row]]:
+        with connect_database(self.database) as connection:
+            connection.execute("BEGIN")
+            if not require_session_link_scope(connection, session_id, self.project_id, actor.subject):
+                raise ResourceNotFoundError("SESSION_NOT_FOUND")
+            linked = connection.execute(
+                """SELECT work_item_id, linked_at FROM work_item_sessions WHERE session_id=?""",
+                (session_id,),
+            ).fetchone()
+            if linked is None:
+                return None, [], []
+            work_item_id = linked["work_item_id"]
+            item = self._owned(connection, work_item_id, actor)
+            context = {
+                "session_id": session_id, "linked_at": linked["linked_at"], "work_item": _view(item),
+                "objects": [], "assets": [], "open_tasks": [], "approved_actions": [],
+            }
+            if item["archived_at"] is not None:
+                return context, [], []
+            stored = connection.execute(
+                """SELECT kind, link_id, reference_json, linked_at FROM work_item_references
+                   WHERE work_item_id = ? AND kind IN ('OBJECT','DATA','KNOWLEDGE','RESULT')
+                   ORDER BY linked_at DESC, link_id LIMIT 24""",
+                (work_item_id,),
+            ).fetchall()
+            scope = (work_item_id, self.project_id, actor.subject, session_id)
+            context["open_tasks"] = [dict(row) for row in handoff_task_rows(connection, *scope)]
+            approvals = handoff_approval_rows(connection, *scope)
+        return context, stored, approvals
 
     async def attach_reference(self, change: Change, actor: RequestIdentity) -> dict:
         previous, linked_runs = await asyncio.to_thread(self._reference_preflight, change, actor)
@@ -361,8 +420,11 @@ class WorkItemOwner:
                 work_item_id, revision = item["work_item_id"], item["revision"]
                 archived_at = item["archived_at"]
                 title, description = item["title"], item["description"]
-                if change.kind == "LINK_SESSION":
-                    link_id = change.payload["sessionId"]
+                if change.kind in {"LINK_SESSION", "CREATE_SESSION"}:
+                    link_id = (
+                        self._create_session(connection, actor.subject)
+                        if change.kind == "CREATE_SESSION" else change.payload["sessionId"]
+                    )
                     changed = self._link_session(connection, work_item_id, actor, link_id, now)
                 elif change.kind == "ARCHIVE":
                     changed, link_id, archived_at = archived_at is None, None, archived_at or now
@@ -402,7 +464,8 @@ class WorkItemOwner:
                     fingerprint, revision, changed, link_id, created_at, review_session_id, review_token)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                    RETURNING work_item_id, revision, changed, link_id""",
-                (sequence, self.project_id, actor.subject, change.request_id, work_item_id, change.kind,
+                (sequence, self.project_id, actor.subject, change.request_id, work_item_id,
+                 "LINK_SESSION" if change.kind == "CREATE_SESSION" else change.kind,
                  change.fingerprint(), revision, changed, link_id, now, review_session_id, review_token),
             ).fetchone()
             notify_on_commit(connection)

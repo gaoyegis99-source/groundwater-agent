@@ -4,6 +4,12 @@ import type { components as PublicApiComponents, operations as PublicApiOperatio
 export type PublicApiPath = keyof PublicApiPaths;
 export type ConfirmationRevisionAction = PublicApiComponents['schemas']['kernel__ConfirmationRevisionAction'];
 export type WorkItemDetail = PublicApiComponents['schemas']['kernel__WorkItemDetail'];
+export type WorkItemSummary = WorkItemDetail['workItem'];
+export type WorkItemReceipt = PublicApiComponents['schemas']['kernel__WorkItemReceipt'];
+export type WorkItemCreateCommand = PublicApiComponents['schemas']['kernel__WorkItemCreate'];
+export type WorkItemChangeCommand = PublicApiComponents['schemas']['kernel__WorkItemChange'];
+export type WorkItemSessionAttach = PublicApiComponents['schemas']['kernel__WorkItemSessionAttach'];
+export type WorkItemSessionContext = PublicApiComponents['schemas']['kernel__WorkItemSessionContext'];
 export type BusinessObjectReference = PublicApiComponents['schemas']['kernel__BusinessObjectReference'];
 export type BusinessAssetReference = NonNullable<WorkItemDetail['assets'][number]['reference']>;
 export type WorkItemLifecycleSnapshot = PublicApiComponents['schemas']['kernel__WorkItemLifecycleSnapshot'];

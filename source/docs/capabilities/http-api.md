@@ -173,6 +173,8 @@ with GroundwaterClient(
 | GET | `/api/v12/work-items/{workItemId}` | 查看详情、关联会话、任务及运行、对象与资产。 |
 | GET | `/api/v12/work-items/{workItemId}/audit` | 按序读取已接受的操作及关联 ID。 |
 | POST | `/api/v12/work-items/{workItemId}/sessions` | 使用 `sessionId` 显式关联会话。 |
+| POST | `/api/v12/work-items/{workItemId}/sessions/create` | 在同一事务里创建并关联新会话。回执的 `linkId` 为新会话 ID。 |
+| GET | `/api/v12/sessions/{sessionId}/work-item` | 读取此会话所属业务工作及已核实的续作背景。独立会话返回 `context: null`。 |
 | POST | `/api/v12/work-items/{workItemId}/objects` | 按精确 Data 版本、语义和字段绑定区域、监测井或含水层的来源键。 |
 | POST | `/api/v12/work-items/{workItemId}/assets` | 绑定精确 Data、Knowledge 版本、所关联的 WorkflowRun 或其具名发布成果。 |
 | POST | `/api/v12/work-items/{workItemId}/archive` | 归档 WorkItem，保留已有 Session、Task、运行和引用。 |
@@ -189,6 +191,10 @@ with GroundwaterClient(
 `/snapshot` 提供 `state` 和可机器判定的 `reason`，以及按 Session 和 Task 当前修订划分的 `tracks`。等待确认期间保持 `WAITING_CONFIRMATION`。执行停止申请受理时可返回 `stopPending=true`，终态由关联运行或控制事实决定。已核实发布进入 `RESULT_REVIEW`，验收命令重新核对当前 Task 修订、精确输出及资源访问权限。过期令牌返回 `409 WORK_ITEM_REVIEW_STALE`。已验收的历史持久保留。旧列表、详情和审计的响应模型保持兼容。
 
 订阅时先读取快照，随后用它的 `eventCursor` 作为 `afterEventId`。自动重连的 `Last-Event-ID` 优先。持久帧 `work_item.activity` 的 `id` 对应活动序号，帧数据与 `/activity` 中的条目结构一致。新活动提示客户端按权威快照重读，重复或较旧的活动可忽略。`work_item.refresh` 提示重核发布和访问状态。恢复备份造成游标超前时，`work_item.reset` 提示丢弃旧游标并先取新快照。快照、活动和事件流均使用 `Cache-Control: no-store`。
+
+新建并关联的请求包含 `projectId`、`requestId`、`expectedRevision`。同一主体在同一项目重放完全相同的命令会收到原会话 ID，包括回执丢失或工作已在其后归档的情况。归档或并发冲突回滚整个新建操作。关联已有会话时，跨工作归属返回 `409 SESSION_ALREADY_LINKED`，用户可改选或新建会话。
+
+会话续作背景按服务端会话的项目、主体和关联读取，并用 `Cache-Control: no-store` 返回。资料由 Data 或 Knowledge 重新验证，响应最多投影 24 条已关联引用及各 8 条近期的任务与已确认动作证据。每条保留发生时间和版本，获准动作还需当前精确模型、冻结输入和真实确认事件相符。可展示的参数限于数值、布尔值及合同枚举。归档工作仅返回关联和元数据，旧消息、旧确认载荷及执行权限仍归原会话。
 
 ## Agent 与 WorkflowRun
 

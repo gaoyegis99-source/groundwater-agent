@@ -4,6 +4,7 @@ import type { ResourceReference } from './types';
 import { scopedStorageKey } from './browser-scope';
 import { readJsonCache } from './browser-cache';
 import { isResourceReference } from './resource-item';
+import { sessionFromWorkItem, workItemReturnId } from './work-item-route';
 
 type WorkspaceFocus = { tab: WorkspaceTab; nonce: number } | null;
 export type ConfirmationFocus = { field: string; value?: string } | null;
@@ -15,7 +16,7 @@ function readResourceSelection(key: string) {
 }
 
 function readWorkspaceRoute(): WorkspaceTab | null {
-  const route = /^#\/sessions\/[a-zA-Z0-9-]+\/workbench\/(inputs|draft|parameters|tasks|results)$/.exec(window.location.hash);
+  const route = /^#\/sessions\/[a-zA-Z0-9-]+\/workbench\/(inputs|draft|parameters|tasks|results)$/.exec(window.location.hash.split('?')[0]);
   return route ? route[1] as WorkspaceTab : null;
 }
 
@@ -45,13 +46,13 @@ export function useWorkspaceController(activeSessionId: string, storageScope: st
 
   const returnToConversation = useCallback(() => {
     if (activeSessionId) {
-      window.location.hash = `#/sessions/${activeSessionId}`;
+      window.location.hash = sessionFromWorkItem(`#/sessions/${activeSessionId}`, workItemReturnId(window.location.hash));
       setRouteTab(null);
     } else setHomePanel(panel => panel === 'open' ? 'collapsed' : panel);
   }, [activeSessionId]);
   const focus = useCallback((tab: WorkspaceTab) => {
     if (activeSessionId) {
-      window.location.hash = `#/sessions/${activeSessionId}/workbench/${tab}`;
+      window.location.hash = sessionFromWorkItem(`#/sessions/${activeSessionId}/workbench/${tab}`, workItemReturnId(window.location.hash));
       setRouteTab(tab);
       return;
     }

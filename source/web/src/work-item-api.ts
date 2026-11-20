@@ -1,9 +1,81 @@
 import { ApiError, callApi, projectQuery } from './api';
 import { loadResponseValidator } from './generated/public-api-v12.validators.lazy.js';
-import type { WorkItemActivityEntry, WorkItemActivityPage, WorkItemLifecycleSnapshot, WorkItemReviewCommand, WorkItemUpdateCommand } from './types';
+import type {
+  WorkItemActivityEntry, WorkItemActivityPage, WorkItemChangeCommand, WorkItemCreateCommand,
+  WorkItemDetail, WorkItemLifecycleSnapshot, WorkItemReceipt, WorkItemReviewCommand,
+  WorkItemSessionAttach, WorkItemSessionContext, WorkItemSummary, WorkItemUpdateCommand,
+} from './types';
+
+type WorkItemScope = { project: string; subject: string };
+
+function requireScope(item: WorkItemSummary, { project, subject }: WorkItemScope) {
+  if (item.projectId !== project || item.ownerSubject !== subject) {
+    throw new TypeError('API_RESPONSE_INVALID');
+  }
+}
 
 export function workItemPath(workItemId: string) {
   return `/work-items/${encodeURIComponent(workItemId)}`;
+}
+
+export function listWorkItems(
+  scope: WorkItemScope,
+  { after, includeArchived, signal }: { after?: string; includeArchived: boolean; signal: AbortSignal },
+) {
+  const query = projectQuery(scope.project, { after: after ?? null, includeArchived: String(includeArchived), limit: 12 });
+  return callApi('kernel_list_work_items', `/work-items?${query}`, undefined, signal, value => {
+    const page = value as { items: WorkItemSummary[]; nextAfter: string | null };
+    page.items.forEach(item => requireScope(item, scope));
+    return page;
+  });
+}
+
+export function createWorkItem(command: WorkItemCreateCommand, signal?: AbortSignal) {
+  return callApi('kernel_create_work_item', '/work-items', command, signal);
+}
+
+export function readWorkItem(workItemId: string, scope: WorkItemScope, signal?: AbortSignal) {
+  return callApi('kernel_get_work_item', `${workItemPath(workItemId)}?${projectQuery(scope.project)}`, undefined, signal, value => {
+    const detail = value as WorkItemDetail;
+    requireScope(detail.workItem, scope);
+    if (detail.workItem.workItemId !== workItemId) throw new TypeError('API_RESPONSE_INVALID');
+    return detail;
+  });
+}
+
+function itemReceipt(workItemId: string, value: unknown): WorkItemReceipt {
+  const receipt = value as WorkItemReceipt;
+  if (receipt.workItemId !== workItemId) throw new TypeError('API_RESPONSE_INVALID');
+  return receipt;
+}
+
+export function archiveWorkItem(workItemId: string, command: WorkItemChangeCommand, signal?: AbortSignal) {
+  return callApi('kernel_archive_work_item', `${workItemPath(workItemId)}/archive`, command, signal, value => itemReceipt(workItemId, value));
+}
+
+export function createWorkItemSession(workItemId: string, command: WorkItemChangeCommand, signal: AbortSignal) {
+  return callApi('kernel_create_work_item_session', `${workItemPath(workItemId)}/sessions/create`, command, signal,
+    value => itemReceipt(workItemId, value));
+}
+
+export function linkWorkItemSession(workItemId: string, command: WorkItemSessionAttach, signal: AbortSignal) {
+  return callApi('kernel_link_work_item_session', `${workItemPath(workItemId)}/sessions`, command, signal, value => {
+    const receipt = itemReceipt(workItemId, value);
+    if (receipt.linkId !== command.sessionId) throw new TypeError('API_RESPONSE_INVALID');
+    return receipt;
+  });
+}
+
+export function readWorkItemSessionContext(sessionId: string, scope: WorkItemScope, signal: AbortSignal) {
+  const path = `/sessions/${encodeURIComponent(sessionId)}/work-item?${projectQuery(scope.project)}`;
+  return callApi('kernel_get_session_work_item', path, undefined, signal, value => {
+    const { context } = value as { context: WorkItemSessionContext | null };
+    if (context !== null) {
+      requireScope(context.workItem, scope);
+      if (context.sessionId !== sessionId) throw new TypeError('API_RESPONSE_INVALID');
+    }
+    return context;
+  });
 }
 
 export function readWorkItemSnapshot(workItemId: string, project: string, signal?: AbortSignal): Promise<WorkItemLifecycleSnapshot> {
@@ -22,11 +94,11 @@ export function listWorkItemActivity(workItemId: string, project: string, option
 }
 
 export function updateWorkItem(workItemId: string, command: WorkItemUpdateCommand, signal?: AbortSignal) {
-  return callApi('kernel_update_work_item', `${workItemPath(workItemId)}/update`, command, signal);
+  return callApi('kernel_update_work_item', `${workItemPath(workItemId)}/update`, command, signal, value => itemReceipt(workItemId, value));
 }
 
 export function reviewWorkItem(workItemId: string, command: WorkItemReviewCommand, signal?: AbortSignal) {
-  return callApi('kernel_review_work_item', `${workItemPath(workItemId)}/review`, command, signal);
+  return callApi('kernel_review_work_item', `${workItemPath(workItemId)}/review`, command, signal, value => itemReceipt(workItemId, value));
 }
 
 export async function decodeWorkItemActivity(data: string): Promise<WorkItemActivityEntry> {

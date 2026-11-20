@@ -1563,6 +1563,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v12/sessions/{sessionId}/work-item": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Session Work Item */
+        get: operations["kernel_get_session_work_item"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v12/sessions/{sessionId}/workflow-drafts/{draftId}": {
         parameters: {
             query?: never;
@@ -1779,6 +1796,23 @@ export interface paths {
         put?: never;
         /** Link Work Item Session */
         post: operations["kernel_link_work_item_session"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v12/work-items/{workItemId}/sessions/create": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Work Item Session */
+        post: operations["kernel_create_work_item_session"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4497,6 +4531,33 @@ export interface components {
             /** Sessionid */
             sessionId: string;
         };
+        /** WorkItemApprovedAction */
+        kernel__WorkItemApprovedAction: {
+            /** Approvedat */
+            approvedAt: string;
+            /** Decisionrevision */
+            decisionRevision: number;
+            /** Eventid */
+            eventId: number;
+            /** Goalrevision */
+            goalRevision: number;
+            /** Label */
+            label: string;
+            /** Modelid */
+            modelId: string;
+            /** Modelversion */
+            modelVersion: string;
+            /** Parameters */
+            parameters: {
+                [key: string]: string | boolean | number;
+            };
+            /** Position */
+            position: number;
+            /** Sessionid */
+            sessionId: string;
+            /** Sessiontitle */
+            sessionTitle: string | null;
+        };
         /** WorkItemAssetAttach */
         kernel__WorkItemAssetAttach: {
             /** Expectedrevision */
@@ -4726,6 +4787,19 @@ export interface components {
              */
             state: "AVAILABLE" | "UNAVAILABLE";
         };
+        /** WorkItemOpenTask */
+        kernel__WorkItemOpenTask: {
+            /** Revision */
+            revision: number;
+            /** Sessionid */
+            sessionId: string;
+            /** Sessiontitle */
+            sessionTitle: string | null;
+            /** Taskid */
+            taskId: string;
+            /** Updatedat */
+            updatedAt: string;
+        };
         /** WorkItemPage */
         kernel__WorkItemPage: {
             /** Items */
@@ -4832,6 +4906,26 @@ export interface components {
             /** Sessionid */
             sessionId: string;
         };
+        /** WorkItemSessionContext */
+        kernel__WorkItemSessionContext: {
+            /** Approvedactions */
+            approvedActions: components["schemas"]["kernel__WorkItemApprovedAction"][];
+            /** Assets */
+            assets: components["schemas"]["kernel__WorkItemAssetLink"][];
+            /** Linkedat */
+            linkedAt: string;
+            /** Objects */
+            objects: components["schemas"]["kernel__WorkItemObjectLink"][];
+            /** Opentasks */
+            openTasks: components["schemas"]["kernel__WorkItemOpenTask"][];
+            /** Sessionid */
+            sessionId: string;
+            workItem: components["schemas"]["kernel__WorkItemSummary"];
+        };
+        /** WorkItemSessionContextResponse */
+        kernel__WorkItemSessionContextResponse: {
+            context: components["schemas"]["kernel__WorkItemSessionContext"] | null;
+        };
         /** WorkItemSessionLink */
         kernel__WorkItemSessionLink: {
             /** Archivedat */
@@ -4842,6 +4936,17 @@ export interface components {
             sessionId: string;
             /** Title */
             title: string | null;
+        };
+        /** WorkItemSessionReceipt */
+        kernel__WorkItemSessionReceipt: {
+            /** Changed */
+            changed: boolean;
+            /** Linkid */
+            linkId: string;
+            /** Revision */
+            revision: number;
+            /** Workitemid */
+            workItemId: string;
         };
         /** WorkItemSummary */
         kernel__WorkItemSummary: {
@@ -15849,6 +15954,91 @@ export interface operations {
             };
         };
     };
+    kernel_get_session_work_item: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["kernel__WorkItemSessionContextResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["kernel__ProblemDetailsV11"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["kernel__ProblemDetailsV11"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["kernel__ProblemDetailsV11"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["kernel__ProblemDetailsV11"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["kernel__ProblemDetailsV11"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["kernel__ProblemDetailsV11"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["kernel__ProblemDetailsV11"];
+                };
+            };
+        };
+    };
     kernel_get_workflow_draft: {
         parameters: {
             query?: never;
@@ -16934,6 +17124,86 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["kernel__WorkItemReceipt"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["kernel__ProblemDetailsV11"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["kernel__ProblemDetailsV11"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["kernel__ProblemDetailsV11"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["kernel__ProblemDetailsV11"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["kernel__ProblemDetailsV11"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["kernel__ProblemDetailsV11"];
+                };
+            };
+        };
+    };
+    kernel_create_work_item_session: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workItemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["kernel__WorkItemChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["kernel__WorkItemSessionReceipt"];
                 };
             };
             /** @description Unauthorized */

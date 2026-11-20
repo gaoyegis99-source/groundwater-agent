@@ -190,10 +190,6 @@ class PlatformApplication:
             trace_id_resolver=partial(trace_id_for_run, self.database),
             composition=self.settings.workflow_composition,
         )
-        self.work_items = WorkItemOwner(
-            self.database, self.settings.project_id,
-            ReferenceAuthority(self.client, self.settings, self.workflow_execution, self.database),
-        )
         self.agent_projection = AgentProjectionAdapter(self.settings.models, self.settings.published_output_steps)
         self.agent_runtime = AgentRuntimeOwner(
             self.database,
@@ -244,6 +240,12 @@ class PlatformApplication:
             max_pending_agent_turns=(
                 self.settings.agent_concurrency + self.settings.agent_queue_capacity
             ),
+        )
+        self.work_items = WorkItemOwner(
+            self.database, self.settings.project_id,
+            ReferenceAuthority(self.client, self.settings, self.workflow_execution, self.database),
+            self.interaction.create_session_in_transaction,
+            self.settings.models,
         )
         self.trace_processor = SQLiteTraceProcessor(self.database)
         self.runtime = KernelRuntime(

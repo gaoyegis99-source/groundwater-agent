@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from collections.abc import Callable
+from sqlite3 import Connection
 from uuid import uuid4
 import httpx
 
@@ -35,6 +36,7 @@ from .persistence import (
     events_after,
     get_session,
     history,
+    insert_session,
     recover_agent_starts,
     requested_agent_starts,
     reserve_turn,
@@ -96,6 +98,11 @@ class InteractionOwner:
         session_id = str(uuid4())
         create_session(self.database, session_id, self.project_id, self._actor(owner_subject))
         return self.get(session_id)
+
+    def create_session_in_transaction(self, connection: Connection, owner_subject: str) -> str:
+        session_id = str(uuid4())
+        insert_session(connection, session_id, self.project_id, owner_subject)
+        return session_id
 
     def list_sessions(
         self,

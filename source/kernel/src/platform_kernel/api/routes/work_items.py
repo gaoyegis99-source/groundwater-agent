@@ -24,6 +24,7 @@ from ..work_item_schemas import (
     WorkItemReceipt,
     WorkItemReview,
     WorkItemSessionAttach,
+    WorkItemSessionReceipt,
 )
 from .work_item_stream import WORK_ITEM_EVENT_RESPONSES, events_response
 
@@ -106,6 +107,18 @@ def link_work_item_session(
     require_project(application, request.project_id)
     command = Change("LINK_SESSION", request.request_id, {"sessionId": request.session_id},
                      work_item_id, request.expected_revision)
+    return to_wire(application.work_items.apply(command, actor))
+
+
+@router.post(
+    "/{workItemId}/sessions/create", response_model=WorkItemSessionReceipt,
+    operation_id="kernel_create_work_item_session",
+)
+def create_work_item_session(
+    work_item_id: ItemId, request: WorkItemChange, application: Application, actor: Actor,
+):
+    require_project(application, request.project_id)
+    command = Change("CREATE_SESSION", request.request_id, {}, work_item_id, request.expected_revision)
     return to_wire(application.work_items.apply(command, actor))
 
 

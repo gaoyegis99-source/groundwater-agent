@@ -622,6 +622,12 @@ KERNEL_GET_TASK = Operation(
     media_type='application/json', side_effecting=False,
 )
 
+KERNEL_GET_SESSION_WORK_ITEM = Operation(
+    operation_id='kernel_get_session_work_item', method='GET', path='/sessions/{sessionId}/work-item',
+    response_model=models.KernelWorkItemSessionContextResponse, success_statuses=frozenset([200]),
+    media_type='application/json', side_effecting=False,
+)
+
 KERNEL_GET_WORKFLOW_DRAFT = Operation(
     operation_id='kernel_get_workflow_draft', method='GET', path='/sessions/{sessionId}/workflow-drafts/{draftId}',
     response_model=models.KernelWorkflowDraftResponse, success_statuses=frozenset([200]),
@@ -703,6 +709,12 @@ KERNEL_REVIEW_WORK_ITEM = Operation(
 KERNEL_LINK_WORK_ITEM_SESSION = Operation(
     operation_id='kernel_link_work_item_session', method='POST', path='/work-items/{workItemId}/sessions',
     response_model=models.KernelWorkItemReceipt, success_statuses=frozenset([200]),
+    media_type='application/json', side_effecting=True,
+)
+
+KERNEL_CREATE_WORK_ITEM_SESSION = Operation(
+    operation_id='kernel_create_work_item_session', method='POST', path='/work-items/{workItemId}/sessions/create',
+    response_model=models.KernelWorkItemSessionReceipt, success_statuses=frozenset([200]),
     media_type='application/json', side_effecting=True,
 )
 
@@ -846,6 +858,7 @@ OPERATIONS = {
     KERNEL_GET_SESSION_RESULTS.operation_id: KERNEL_GET_SESSION_RESULTS,
     KERNEL_STOP_RUN.operation_id: KERNEL_STOP_RUN,
     KERNEL_GET_TASK.operation_id: KERNEL_GET_TASK,
+    KERNEL_GET_SESSION_WORK_ITEM.operation_id: KERNEL_GET_SESSION_WORK_ITEM,
     KERNEL_GET_WORKFLOW_DRAFT.operation_id: KERNEL_GET_WORKFLOW_DRAFT,
     KERNEL_EXPORT_WORKFLOW_DRAFT.operation_id: KERNEL_EXPORT_WORKFLOW_DRAFT,
     KERNEL_RECOVER_WORKFLOW.operation_id: KERNEL_RECOVER_WORKFLOW,
@@ -860,6 +873,7 @@ OPERATIONS = {
     KERNEL_LINK_WORK_ITEM_OBJECT.operation_id: KERNEL_LINK_WORK_ITEM_OBJECT,
     KERNEL_REVIEW_WORK_ITEM.operation_id: KERNEL_REVIEW_WORK_ITEM,
     KERNEL_LINK_WORK_ITEM_SESSION.operation_id: KERNEL_LINK_WORK_ITEM_SESSION,
+    KERNEL_CREATE_WORK_ITEM_SESSION.operation_id: KERNEL_CREATE_WORK_ITEM_SESSION,
     KERNEL_GET_WORK_ITEM_SNAPSHOT.operation_id: KERNEL_GET_WORK_ITEM_SNAPSHOT,
     KERNEL_UPDATE_WORK_ITEM.operation_id: KERNEL_UPDATE_WORK_ITEM,
     KERNEL_GET_WORKFLOW_RUN.operation_id: KERNEL_GET_WORKFLOW_RUN,

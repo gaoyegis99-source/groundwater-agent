@@ -1991,6 +1991,31 @@ class KernelWorkItemAgentRunLink(BaseModel):
     )
 
 
+class KernelWorkItemApprovedAction(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    approved_at: str = Field(..., alias='approvedAt', title='Approvedat')
+    decision_revision: int = Field(
+        ..., alias='decisionRevision', ge=1, strict=True, title='Decisionrevision'
+    )
+    event_id: int = Field(..., alias='eventId', title='Eventid')
+    goal_revision: int = Field(..., alias='goalRevision', title='Goalrevision')
+    label: str = Field(..., title='Label')
+    model_id: str = Field(
+        ..., alias='modelId', max_length=256, min_length=1, title='Modelid'
+    )
+    model_version: str = Field(
+        ..., alias='modelVersion', max_length=256, min_length=1, title='Modelversion'
+    )
+    parameters: dict[str, str | bool | int | float] = Field(..., title='Parameters')
+    position: int = Field(..., title='Position')
+    session_id: str = Field(
+        ..., alias='sessionId', max_length=256, min_length=1, title='Sessionid'
+    )
+    session_title: str | None = Field(..., alias='sessionTitle', title='Sessiontitle')
+
+
 class State4(Enum):
     available = 'AVAILABLE'
     unavailable = 'UNAVAILABLE'
@@ -2169,6 +2194,21 @@ class State7(Enum):
     unavailable = 'UNAVAILABLE'
 
 
+class KernelWorkItemOpenTask(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    revision: int = Field(..., ge=1, strict=True, title='Revision')
+    session_id: str = Field(
+        ..., alias='sessionId', max_length=256, min_length=1, title='Sessionid'
+    )
+    session_title: str | None = Field(..., alias='sessionTitle', title='Sessiontitle')
+    task_id: str = Field(
+        ..., alias='taskId', max_length=256, min_length=1, title='Taskid'
+    )
+    updated_at: str = Field(..., alias='updatedAt', title='Updatedat')
+
+
 class NextAfter1(RootModel[str]):
     root: str = Field(..., max_length=256, min_length=1, title='Nextafter')
 
@@ -2295,6 +2335,20 @@ class KernelWorkItemSessionLink(BaseModel):
         ..., alias='sessionId', max_length=256, min_length=1, title='Sessionid'
     )
     title: str | None = Field(..., title='Title')
+
+
+class KernelWorkItemSessionReceipt(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    changed: bool = Field(..., title='Changed')
+    link_id: str = Field(
+        ..., alias='linkId', max_length=256, min_length=1, title='Linkid'
+    )
+    revision: int = Field(..., ge=1, strict=True, title='Revision')
+    work_item_id: str = Field(
+        ..., alias='workItemId', max_length=256, min_length=1, title='Workitemid'
+    )
 
 
 class Status6(Enum):
@@ -4158,6 +4212,32 @@ class KernelWorkItemLifecycleSnapshot(BaseModel):
     work_item_id: str = Field(
         ..., alias='workItemId', max_length=256, min_length=1, title='Workitemid'
     )
+
+
+class KernelWorkItemSessionContext(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    approved_actions: list[KernelWorkItemApprovedAction] = Field(
+        ..., alias='approvedActions', title='Approvedactions'
+    )
+    assets: list[KernelWorkItemAssetLink] = Field(..., title='Assets')
+    linked_at: str = Field(..., alias='linkedAt', title='Linkedat')
+    objects: list[KernelWorkItemObjectLink] = Field(..., title='Objects')
+    open_tasks: list[KernelWorkItemOpenTask] = Field(
+        ..., alias='openTasks', title='Opentasks'
+    )
+    session_id: str = Field(
+        ..., alias='sessionId', max_length=256, min_length=1, title='Sessionid'
+    )
+    work_item: KernelWorkItemSummary = Field(..., alias='workItem')
+
+
+class KernelWorkItemSessionContextResponse(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    context: KernelWorkItemSessionContext | None = None
 
 
 class KnowledgeNextEvidenceBundleV1(BaseModel):

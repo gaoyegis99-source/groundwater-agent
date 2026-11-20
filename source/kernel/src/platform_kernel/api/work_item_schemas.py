@@ -141,6 +141,10 @@ class WorkItemReceipt(CamelModel):
     link_id: _Id | None
 
 
+class WorkItemSessionReceipt(WorkItemReceipt):
+    link_id: _Id
+
+
 class WorkItemSummary(CamelModel):
     work_item_id: _Id
     project_id: _Id
@@ -218,6 +222,42 @@ class WorkItemDetail(CamelModel):
     workflow_runs: list[WorkItemWorkflowRunLink]
     objects: list[WorkItemObjectLink]
     assets: list[WorkItemAssetLink]
+
+
+class WorkItemOpenTask(CamelModel):
+    session_id: _Id
+    session_title: str | None
+    task_id: _Id
+    revision: _Revision
+    updated_at: str
+
+
+class WorkItemApprovedAction(CamelModel):
+    session_id: _Id
+    session_title: str | None
+    event_id: int
+    approved_at: str
+    goal_revision: int
+    decision_revision: _Revision
+    position: int
+    model_id: _Id
+    model_version: _Id
+    label: str
+    parameters: dict[str, str | bool | int | float]
+
+
+class WorkItemSessionContext(CamelModel):
+    session_id: _Id
+    linked_at: str
+    work_item: WorkItemSummary
+    objects: list[WorkItemObjectLink]
+    assets: list[WorkItemAssetLink]
+    open_tasks: list[WorkItemOpenTask]
+    approved_actions: list[WorkItemApprovedAction]
+
+
+class WorkItemSessionContextResponse(CamelModel):
+    context: WorkItemSessionContext | None
 
 
 class WorkItemAuditEntry(CamelModel):

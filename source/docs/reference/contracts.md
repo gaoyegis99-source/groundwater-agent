@@ -90,6 +90,8 @@ Intent Router 只判断语义与任务动作；Kernel 负责模式、控制权�
 
 WorkItem 关联同一项目与所有者下的多个 Session。Task 保持原 Session 的持久化边界，交付继续由 Task 的条件、证据与审阅决定。WorkItem 详情中的 Task、TaskRun、AgentRun 和 WorkflowRun 是既有记录的关系投影。业务快照按当前 Task 修订与关联运行计算，显示精确发布与显式业务验收。WorkItem 保存业务元数据、关系、命令和验收回执、活动游标及精确资源引用。活动提供持久恢复和重读通知，查询快照负责生命周期。查看引用仍须取得资源所有者的当前授权。接口与归档规则见[WorkItem](../capabilities/http-api.md#workitem)。
 
+从 WorkItem 新建会话时，Interaction 在 WorkItem 的写事务内插入 Session 和 `session.created` 事件。WorkItem 在同一事务写入唯一关联、修订和 `LINK_SESSION` 回执。新建和显式关联使用不同的请求指纹，存量关联记录可原样读取。续作背景通过拥有的会话关联实时投影，保留来源与版本，不创建第二份 Task、确认或历史消息。
+
 工具处理进度采用三方声明协议。Agent 每次调用受管工具时必须提供
 `AgentProgressIntent(capability, objective, template_key)`，只声明本次要完成的具体目标，不能声明
 成功或失败，也不携带业务参数。Data、Knowledge 和 Kernel 内置工具各自拥有

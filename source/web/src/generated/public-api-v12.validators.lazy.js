@@ -47,6 +47,7 @@ const requestLoaders = {
   "kernel_link_work_item_object": () => import('./public-api-v12.validators/request_kernel_link_work_item_object.js').then(module => module.request_kernel_link_work_item_object),
   "kernel_review_work_item": () => import('./public-api-v12.validators/request_kernel_review_work_item.js').then(module => module.request_kernel_review_work_item),
   "kernel_link_work_item_session": () => import('./public-api-v12.validators/request_kernel_link_work_item_session.js').then(module => module.request_kernel_link_work_item_session),
+  "kernel_create_work_item_session": () => import('./public-api-v12.validators/request_kernel_create_work_item_session.js').then(module => module.request_kernel_create_work_item_session),
   "kernel_update_work_item": () => import('./public-api-v12.validators/request_kernel_update_work_item.js').then(module => module.request_kernel_update_work_item),
 };
 const responseLoaders = {
@@ -147,6 +148,7 @@ const responseLoaders = {
   "kernel_get_session_results": () => import('./public-api-v12.validators/response_kernel_get_session_results.js').then(module => module.response_kernel_get_session_results),
   "kernel_stop_run": () => import('./public-api-v12.validators/response_kernel_stop_run.js').then(module => module.response_kernel_stop_run),
   "kernel_get_task": () => import('./public-api-v12.validators/response_kernel_get_task.js').then(module => module.response_kernel_get_task),
+  "kernel_get_session_work_item": () => import('./public-api-v12.validators/response_kernel_get_session_work_item.js').then(module => module.response_kernel_get_session_work_item),
   "kernel_get_workflow_draft": () => import('./public-api-v12.validators/response_kernel_get_workflow_draft.js').then(module => module.response_kernel_get_workflow_draft),
   "kernel_export_workflow_draft": () => import('./public-api-v12.validators/response_kernel_export_workflow_draft.js').then(module => module.response_kernel_export_workflow_draft),
   "kernel_recover_workflow": () => import('./public-api-v12.validators/response_kernel_recover_workflow.js').then(module => module.response_kernel_recover_workflow),
@@ -160,6 +162,7 @@ const responseLoaders = {
   "kernel_link_work_item_object": () => import('./public-api-v12.validators/response_kernel_link_work_item_object.js').then(module => module.response_kernel_link_work_item_object),
   "kernel_review_work_item": () => import('./public-api-v12.validators/response_kernel_review_work_item.js').then(module => module.response_kernel_review_work_item),
   "kernel_link_work_item_session": () => import('./public-api-v12.validators/response_kernel_link_work_item_session.js').then(module => module.response_kernel_link_work_item_session),
+  "kernel_create_work_item_session": () => import('./public-api-v12.validators/response_kernel_create_work_item_session.js').then(module => module.response_kernel_create_work_item_session),
   "kernel_get_work_item_snapshot": () => import('./public-api-v12.validators/response_kernel_get_work_item_snapshot.js').then(module => module.response_kernel_get_work_item_snapshot),
   "kernel_update_work_item": () => import('./public-api-v12.validators/response_kernel_update_work_item.js').then(module => module.response_kernel_update_work_item),
   "kernel_get_workflow_run": () => import('./public-api-v12.validators/response_kernel_get_workflow_run.js').then(module => module.response_kernel_get_workflow_run),

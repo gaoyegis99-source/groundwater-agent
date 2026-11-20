@@ -30,8 +30,11 @@ import { identityStorageScope } from './browser-scope';
 import './conversation-polish.css';
 import './conversation-tasks.css';
 import { ProjectTaskHistory } from './ProjectTaskHistory';
+import { readWorkItemRoute, sessionFromWorkItem, useWorkItemHash, workItemHref, workItemReturnId } from './work-item-route';
 
 const WorkspacePanel = lazy(() => import('./WorkspacePanel').then(module => ({ default: module.WorkspacePanel })));
+const WorkItemWorkspace = lazy(() => import('./WorkItemWorkspace').then(module => ({ default: module.WorkItemWorkspace })));
+const SessionWorkContext = lazy(() => import('./SessionWorkContext').then(module => ({ default: module.SessionWorkContext })));
 const DatabaseWorkbench = lazy(() => import('./DatabaseWorkbench').then(module => ({ default: module.DatabaseWorkbench })));
 const KnowledgeDrawer = lazy(() => import('./Drawers').then(module => ({ default: module.KnowledgeDrawer })));
 const CapabilityDrawer = lazy(() => import('./ProductDrawers').then(module => ({ default: module.CapabilityDrawer })));
@@ -56,6 +59,11 @@ export default function App() {
   const canResearch = capabilities?.currentUser.roles.some(
     role => role === 'admin' || role === 'researcher',
   ) ?? false;
+  const hash = useWorkItemHash();
+  const researchWorkspace = ui.workspaceLayout === 'research';
+  const workRoute = researchWorkspace ? readWorkItemRoute(hash) : null;
+  const showWorkItems = researchWorkspace && !!storageScope && canResearch && !capabilityError;
+  const returnWorkItem = showWorkItems ? workItemReturnId(hash) : null;
   const configuredServices = new Set(capabilities?.services ?? []);
   const businessCapabilities = visibleBusinessCapabilities(ui, capabilityError ? null : capabilities);
   const featuredCapabilities = businessCapabilities.filter(item => item.tier === 'CORE' && item.defaultVisible);
@@ -78,7 +86,6 @@ export default function App() {
   const businessDetailUnavailable = drawer?.kind === 'business-capability' && !businessDetail;
   useEffect(() => { if (businessDetailUnavailable) closeDrawer(); }, [businessDetailUnavailable, closeDrawer]);
   const drawerShadeVisible = drawer?.kind === 'database' || drawer?.kind === 'knowledge';
-  const researchWorkspace = ui.workspaceLayout === 'research';
   const compactConversation = researchWorkspace && !!activeId;
   const workspace = useWorkspaceController(activeId, storageScope);
   const hideCollapsedHomeWorkspace = !activeId && researchWorkspace;
@@ -604,6 +611,11 @@ export default function App() {
   const projectTitle = project ? `项目：${project}` : '正在连接项目…';
   const signOut = capabilities?.authenticationRequired !== false &&
     <button className="text-button" onClick={() => void logoutResearch().finally(() => window.location.reload())}>退出</button>;
+  if (workRoute) return <Suspense fallback={<main aria-busy="true"><Loading>正在打开业务工作…</Loading></main>}>
+    <WorkItemWorkspace route={workRoute} scope={storageScope} project={project} subject={capabilities?.currentUser.subject ?? ''}
+      mark={mark} brand={ui.brand.productName} signOut={signOut} permitted={showWorkItems} identityError={!!capabilityError}
+      retryIdentity={() => void connectProject()} onSessionsChange={() => void loadSessions()} />
+  </Suspense>;
   const sessionContext = activeId && <div className="session-context">
     <h1 className="sr-only">{activeSummary?.title ? localizedSessionTitle(activeSummary.title) : '研究对话'}</h1>
     <nav className="session-detail-nav" aria-label="会话详情" onClick={event => {
@@ -613,11 +625,11 @@ export default function App() {
         if (target) workspaceOpener.current = target;
       }
     }}>
-      <a href={`#/sessions/${activeId}/workbench/inputs`}>数据</a>
-      <a href={`#/sessions/${activeId}/workbench/draft`}>草稿</a>
-      <a href={`#/sessions/${activeId}/workbench/parameters`}>参数</a>
-      <a href={`#/sessions/${activeId}/workbench/tasks`}>运行</a>
-      <a href={`#/sessions/${activeId}/workbench/results`}>成果</a>
+      <a href={sessionFromWorkItem(`#/sessions/${activeId}/workbench/inputs`, returnWorkItem)}>数据</a>
+      <a href={sessionFromWorkItem(`#/sessions/${activeId}/workbench/draft`, returnWorkItem)}>草稿</a>
+      <a href={sessionFromWorkItem(`#/sessions/${activeId}/workbench/parameters`, returnWorkItem)}>参数</a>
+      <a href={sessionFromWorkItem(`#/sessions/${activeId}/workbench/tasks`, returnWorkItem)}>运行</a>
+      <a href={sessionFromWorkItem(`#/sessions/${activeId}/workbench/results`, returnWorkItem)}>成果</a>
       <button type="button" ref={historyButton} className="session-history-entry" aria-label="任务历史" title="任务历史"
         aria-expanded={historyPanelOpen} aria-controls="project-task-history" disabled={!storageScope}
         onClick={() => setHistoryPanelKey(historyPanelOpen ? '' : `${storageScope}/${activeId}`)}>
@@ -667,6 +679,7 @@ export default function App() {
         </div>
         {compactConversation && sessionContext}
         <div className="topbar-actions">
+          {showWorkItems && !activeId && <a className="secondary work-items-entry" href={workItemHref()}>业务工作</a>}
           <button type="button" className="connection-state" data-testid="connection-status" aria-label={`服务状态 · ${connectionLabel}`}
             title={compactConversation ? projectTitle : connectionLabel} aria-haspopup="dialog" onClick={openReadiness}>
             <span className={`status-dot ${project && (!activeId || connected) ? 'online' : ''}`} aria-hidden="true" />
@@ -679,6 +692,11 @@ export default function App() {
         </div>
       </header>
       {!compactConversation && sessionContext}
+      {showWorkItems && activeId && <Suspense fallback={null}>
+        <SessionWorkContext key={`${storageScope}/${activeId}/${returnWorkItem ?? ''}`} sessionId={activeId}
+          project={project} subject={capabilities?.currentUser.subject ?? ''} openOnEntry={!!returnWorkItem}
+          onOpenData={reference => openInputResource(reference.versionId, reference)} />
+      </Suspense>}
       {activeHistory && connection === 'disconnected' && <div className="conversation-offline" role="status">
         <span>连接中断，显示最近快照 <time dateTime={activeHistory.snapshotAt}>{new Date(activeHistory.snapshotAt).toLocaleString('zh-CN', { dateStyle: 'short', timeStyle: 'short' })}</time></span>
         <button type="button" className="text-button" disabled={loading} onClick={() => void refresh(activeId)}>刷新会话</button>

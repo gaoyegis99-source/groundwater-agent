@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, Depends, Path, Query, Response
 
+from ...access import require_role
 from ...composition import PlatformApplication
 from ...tasks import get_preparation, get_task
 from ...interaction.api_projection import session_response
@@ -21,6 +22,7 @@ from ..schemas import (
     TaskResponse,
 )
 from ..wire import to_wire
+from ..work_item_schemas import WorkItemSessionContextResponse
 from .session_contracts import PROBLEM_RESPONSES
 
 
@@ -88,6 +90,23 @@ def get_session(
         application.database, session_id, application.settings.project_id
     )
     return to_wire(response)
+
+
+@router.get(
+    "/api/v12/sessions/{sessionId}/work-item",
+    response_model=WorkItemSessionContextResponse,
+    operation_id="kernel_get_session_work_item",
+)
+async def get_session_work_item(
+    session_id: Annotated[str, Path(alias="sessionId")],
+    application: Annotated[PlatformApplication, Depends(platform_application)],
+    identity: Annotated[RequestIdentity, Depends(current_identity)],
+    response: Response,
+):
+    require_role(identity, "researcher")
+    context = await application.work_items.session_context(session_id, identity)
+    response.headers["Cache-Control"] = "no-store"
+    return to_wire({"context": context})
 
 
 @router.get(
