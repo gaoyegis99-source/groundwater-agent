@@ -1,0 +1,481 @@
+from __future__ import annotations
+
+import asyncio
+from dataclasses import dataclass
+import json
+from pathlib import Path
+from sqlite3 import Connection, Row
+from typing import Literal, cast
+from uuid import uuid4
+
+from platform_protocol_contracts import canonical_json, sha256_bytes
+
+from ..access import RequestIdentity
+from ..application.work_item_links import (
+    linked_workflow_run,
+    require_session_link_scope,
+    session_projections,
+)
+from ..application.work_item_lifecycle_facts import SessionFacts, collect_session_facts
+from ..database import begin_immediate, connect_database, notify_on_commit, utc_now
+from ..errors import ResourceNotFoundError, WorkItemConflictError
+from .lifecycle import (
+    PublicationState,
+    ResultLink,
+    ReviewCandidate,
+    Track,
+    delivery_workflows,
+    derive_track,
+    publication_for,
+    summarize_tracks,
+)
+from .references import ReferenceAuthority
+
+
+CommandKind = Literal["CREATE", "LINK_SESSION", "LINK_OBJECT", "LINK_ASSET", "ARCHIVE", "UPDATE", "REVIEW"]
+
+
+@dataclass(frozen=True)
+class Change:
+    kind: CommandKind
+    request_id: str
+    payload: dict
+    work_item_id: str | None = None
+    expected_revision: int | None = None
+
+    def fingerprint(self) -> str:
+        return sha256_bytes(canonical_json({
+            "command": self.kind,
+            "workItemId": self.work_item_id,
+            "expectedRevision": self.expected_revision,
+            "payload": self.payload,
+        }))
+
+
+def _view(row: Row) -> dict:
+    return dict(row) | {"status": "ACTIVE" if row["archived_at"] is None else "ARCHIVED"}
+
+
+def _receipt(row: Row) -> dict:
+    return {
+        "work_item_id": row["work_item_id"],
+        "revision": row["revision"],
+        "changed": bool(row["changed"]),
+        "link_id": row["link_id"],
+    }
+
+
+@dataclass(frozen=True)
+class _LifecycleRead:
+    item: Row
+    cursor: int
+    sessions: tuple[SessionFacts, ...]
+    results: tuple[ResultLink, ...]
+    approvals: dict[tuple[str, str], str]
+
+
+def _activity_entry(row: Row) -> dict:
+    shared = {"sequence": row["sequence"], "kind": row["kind"], "created_at": row["created_at"]}
+    if row["kind"] == "SESSION":
+        return shared | {"session_id": row["session_id"], "event_type": row["event_type"]}
+    return shared | {
+        "command": row["command"],
+        "request_id": row["request_id"],
+        "actor_subject": row["owner_subject"],
+        "revision": row["revision"],
+        "changed": bool(row["changed"]),
+        "link_id": row["link_id"],
+        "review_session_id": row["review_session_id"],
+    }
+
+
+class WorkItemOwner:
+    def __init__(self, database: Path, project_id: str, references: ReferenceAuthority) -> None:
+        self.database = database
+        self.project_id = project_id
+        self.references = references
+
+    def list_items(
+        self, actor: RequestIdentity, include_archived: bool, after: str, limit: int
+    ) -> dict:
+        with connect_database(self.database) as connection:
+            rows = connection.execute(
+                """SELECT * FROM work_items
+                   WHERE project_id = ? AND owner_subject = ? AND work_item_id > ?
+                     AND (? OR archived_at IS NULL)
+                   ORDER BY work_item_id LIMIT ?""",
+                (self.project_id, actor.subject, after, include_archived, limit + 1),
+            ).fetchall()
+        return {
+            "items": [_view(row) for row in rows[:limit]],
+            "next_after": rows[limit - 1]["work_item_id"] if len(rows) > limit else None,
+        }
+
+    def audit(self, work_item_id: str, actor: RequestIdentity, after: int, limit: int) -> dict:
+        with connect_database(self.database) as connection:
+            self._owned(connection, work_item_id, actor)
+            rows = connection.execute(
+                """SELECT sequence, request_id, owner_subject AS actor_subject,
+                          command, revision, changed, link_id, created_at
+                   FROM work_item_commands
+                   WHERE work_item_id = ? AND sequence > ?
+                     AND command IN ('CREATE','LINK_SESSION','LINK_OBJECT','LINK_ASSET','ARCHIVE')
+                   ORDER BY sequence LIMIT ?""",
+                (work_item_id, after, limit + 1),
+            ).fetchall()
+        return {
+            "entries": [dict(row) | {"changed": bool(row["changed"])} for row in rows[:limit]],
+            "next_after": rows[limit - 1]["sequence"] if len(rows) > limit else None,
+        }
+
+    def activity_batch(
+        self, work_item_id: str, actor: RequestIdentity, after: int, limit: int,
+    ) -> tuple[int, list[dict]]:
+        with connect_database(self.database) as connection:
+            connection.execute("BEGIN")
+            self._owned(connection, work_item_id, actor)
+            head = self._activity_head(connection, work_item_id)
+            rows = connection.execute(
+                """SELECT a.sequence, a.kind, a.session_id, a.event_type, a.created_at,
+                          c.command, c.request_id, c.owner_subject, c.revision, c.changed,
+                          c.link_id, c.review_session_id
+                   FROM work_item_activity a
+                   LEFT JOIN work_item_commands c ON c.work_item_id=a.work_item_id
+                       AND c.sequence=a.command_sequence
+                   WHERE a.work_item_id=? AND a.sequence>? ORDER BY a.sequence LIMIT ?""",
+                (work_item_id, after, limit),
+            ).fetchall()
+        return head, [_activity_entry(row) for row in rows]
+
+    @staticmethod
+    def _activity_head(connection: Connection, work_item_id: str) -> int:
+        return connection.execute(
+            "SELECT COALESCE(MAX(sequence),0) FROM work_item_activity WHERE work_item_id=?",
+            (work_item_id,),
+        ).fetchone()[0]
+
+    async def lifecycle(self, work_item_id: str, actor: RequestIdentity) -> dict:
+        saved = await asyncio.to_thread(self._read_lifecycle, work_item_id, actor)
+        archived = saved.item["archived_at"] is not None
+        slots = asyncio.Semaphore(8)
+        runs = {run.run_id: run for facts in saved.sessions for run in delivery_workflows(facts)}
+
+        async def publication(run_id: str) -> PublicationState:
+            async with slots:
+                return await self.references.publication_state(run_id, actor)
+
+        async def readable(link: ResultLink) -> bool:
+            async with slots:
+                return await self.references.is_visible("RESULT", link.reference, actor)
+
+        to_observe = [
+            run_id for run_id, run in runs.items()
+            if run.output_names and publication_for(run, saved.results, {}) != "PUBLISHED"
+        ]
+        observed = dict(zip(to_observe, await asyncio.gather(*(publication(key) for key in to_observe)), strict=True))
+        choices = [(facts, derive_track(work_item_id, facts, saved.results, observed)) for facts in saved.sessions]
+        selected = {
+            link.link_id: link
+            for facts, track in choices
+            if track.review and not archived and (facts.session_id, track.review.token) not in saved.approvals
+            for link in track.review.links
+        }
+        available = dict(zip(selected, await asyncio.gather(*(readable(link) for link in selected.values())), strict=True))
+        tracks = []
+        states = []
+        for facts, track in choices:
+            review = track.review
+            accepted_at = saved.approvals.get((facts.session_id, review.token)) if review else None
+            preview = None
+            if accepted_at:
+                track = Track("COMPLETED", "DELIVERY_ACCEPTED")
+            elif review and not archived:
+                if all(available[link.link_id] for link in review.links):
+                    preview = {"token": review.token, "result_link_ids": [link.link_id for link in review.links]}
+                else:
+                    track = Track(track.state, "RESULT_UNAVAILABLE")
+            task_spec = {} if facts.task is None else facts.task["spec"]
+            tracks.append({
+                "session_id": facts.session_id,
+                "task_id": task_spec.get("task_id"),
+                "task_revision": task_spec.get("revision"),
+                "state": track.state,
+                "reason": track.reason,
+                "confirmation_id": facts.confirmation_id,
+                "stop_pending": facts.stop_pending,
+                "publications": [
+                    {"run_id": run.run_id, "state": publication_for(run, saved.results, observed)}
+                    for run in delivery_workflows(facts)
+                ],
+                "review": preview,
+                "accepted_at": accepted_at,
+            })
+            states.append(track)
+        state, reason = summarize_tracks(states, archived=archived)
+        return {
+            "work_item_id": work_item_id,
+            "revision": saved.item["revision"],
+            "event_cursor": saved.cursor,
+            "state": state,
+            "reason": reason,
+            "tracks": tracks,
+        }
+
+    def _read_lifecycle(self, work_item_id: str, actor: RequestIdentity) -> _LifecycleRead:
+        with connect_database(self.database) as connection:
+            connection.execute("BEGIN")
+            item = self._owned(connection, work_item_id, actor)
+            cursor = self._activity_head(connection, work_item_id)
+            sessions = collect_session_facts(connection, work_item_id, self.project_id, actor.subject)
+            results = self._result_links(connection, work_item_id)
+            approvals = {
+                (row["review_session_id"], row["review_token"]): row["created_at"]
+                for row in connection.execute(
+                    """SELECT review_session_id, review_token, created_at FROM work_item_commands
+                       WHERE work_item_id=? AND command='REVIEW' AND changed=1 ORDER BY sequence""",
+                    (work_item_id,),
+                )
+            }
+        return _LifecycleRead(item, cursor, sessions, results, approvals)
+
+    @staticmethod
+    def _result_links(connection: Connection, work_item_id: str) -> tuple[ResultLink, ...]:
+        return tuple(
+            ResultLink(row["link_id"], json.loads(row["reference_json"]))
+            for row in connection.execute(
+                """SELECT link_id, reference_json FROM work_item_references
+                   WHERE work_item_id=? AND kind='RESULT'""",
+                (work_item_id,),
+            )
+        )
+
+    async def review(self, change: Change, actor: RequestIdentity) -> dict:
+        previous, candidate = await asyncio.to_thread(self._review_preflight, change, actor)
+        if previous is not None:
+            return _receipt(previous)
+        assert candidate is not None
+        for link in candidate.links:
+            await self.references.require_result(link.reference, actor)
+        return await asyncio.to_thread(self.apply, change, actor, reviewed_token=candidate.token)
+
+    def _review_preflight(
+        self, change: Change, actor: RequestIdentity,
+    ) -> tuple[Row | None, ReviewCandidate | None]:
+        with connect_database(self.database) as connection:
+            connection.execute("BEGIN")
+            _, previous = self._validate(connection, change, actor)
+            if previous is not None:
+                return previous, None
+            return None, self._review_candidate(connection, change, actor)
+
+    def _review_candidate(self, connection: Connection, change: Change, actor: RequestIdentity) -> ReviewCandidate:
+        work_item_id = cast(str, change.work_item_id)
+        sessions = collect_session_facts(connection, work_item_id, self.project_id, actor.subject)
+        facts = next((facts for facts in sessions if facts.session_id == change.payload["sessionId"]), None)
+        if facts is None:
+            raise ResourceNotFoundError("WORK_ITEM_SESSION_NOT_FOUND")
+        track = derive_track(work_item_id, facts, self._result_links(connection, work_item_id), {})
+        if track.review is None or track.review.token != change.payload["reviewToken"]:
+            raise WorkItemConflictError("WORK_ITEM_REVIEW_STALE")
+        return track.review
+
+    async def detail(self, work_item_id: str, actor: RequestIdentity) -> dict:
+        detail, stored = await asyncio.to_thread(self._snapshot, work_item_id, actor)
+        upstream_slots = asyncio.Semaphore(8)
+
+        async def project(row: Row) -> dict:
+            reference = json.loads(row["reference_json"])
+            async with upstream_slots:
+                visible = await self.references.is_visible(row["kind"], reference, actor)
+            return {
+                "link_id": row["link_id"],
+                "linked_at": row["linked_at"],
+                "state": "AVAILABLE" if visible else "UNAVAILABLE",
+                "reference": reference if visible else None,
+            }
+
+        references = await asyncio.gather(*(project(row) for row in stored))
+        for row, reference in zip(stored, references, strict=True):
+            detail["objects" if row["kind"] == "OBJECT" else "assets"].append(reference)
+        return detail
+
+    def _snapshot(self, work_item_id: str, actor: RequestIdentity) -> tuple[dict, list[Row]]:
+        with connect_database(self.database) as connection:
+            connection.execute("BEGIN")
+            item = self._owned(connection, work_item_id, actor)
+            links = session_projections(connection, work_item_id, self.project_id, actor.subject)
+            references = connection.execute(
+                """SELECT kind, link_id, reference_json, linked_at FROM work_item_references
+                   WHERE work_item_id = ? ORDER BY linked_at, link_id""",
+                (work_item_id,),
+            ).fetchall()
+        return {"work_item": _view(item), **links, "objects": [], "assets": []}, references
+
+    async def attach_reference(self, change: Change, actor: RequestIdentity) -> dict:
+        previous, linked_runs = await asyncio.to_thread(self._reference_preflight, change, actor)
+        if previous is not None:
+            return _receipt(previous)
+        if change.kind == "LINK_OBJECT":
+            exact = await self.references.resolve_object(change.payload, actor)
+        else:
+            exact = await self.references.resolve_asset(change.payload, actor, linked_runs)
+        return await asyncio.to_thread(self.apply, change, actor, exact)
+
+    def _reference_preflight(
+        self, change: Change, actor: RequestIdentity
+    ) -> tuple[Row | None, frozenset[str]]:
+        with connect_database(self.database) as connection:
+            connection.execute("BEGIN")
+            _, previous = self._validate(connection, change, actor)
+            if previous is not None or change.payload.get("kind") not in {"WORKFLOW", "RESULT"}:
+                return previous, frozenset()
+            run_id = change.payload["runId"]
+            linked = linked_workflow_run(
+                connection, cast(str, change.work_item_id), self.project_id, actor.subject, run_id,
+            )
+            return None, frozenset({run_id}) if linked else frozenset()
+
+    def apply(
+        self, change: Change, actor: RequestIdentity, reference: dict | None = None, *,
+        reviewed_token: str | None = None,
+    ) -> dict:
+        with connect_database(self.database) as connection:
+            begin_immediate(connection)
+            item, previous = self._validate(connection, change, actor)
+            if previous is not None:
+                return _receipt(previous)
+            now = utc_now()
+            review_session_id = None
+            review_token = None
+            if item is None:
+                work_item_id, revision, changed, link_id = uuid4().hex, 1, True, None
+                connection.execute(
+                    """INSERT INTO work_items
+                       (work_item_id, project_id, owner_subject, title, description, revision,
+                        created_at, updated_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (work_item_id, self.project_id, actor.subject, change.payload["title"],
+                     change.payload["description"], revision, now, now),
+                )
+            else:
+                work_item_id, revision = item["work_item_id"], item["revision"]
+                archived_at = item["archived_at"]
+                title, description = item["title"], item["description"]
+                if change.kind == "LINK_SESSION":
+                    link_id = change.payload["sessionId"]
+                    changed = self._link_session(connection, work_item_id, actor, link_id, now)
+                elif change.kind == "ARCHIVE":
+                    changed, link_id, archived_at = archived_at is None, None, archived_at or now
+                elif change.kind == "UPDATE":
+                    title = change.payload.get("title", title)
+                    description = change.payload.get("description", description)
+                    changed, link_id = (title, description) != (item["title"], item["description"]), None
+                elif change.kind == "REVIEW":
+                    review_token = self._review_candidate(connection, change, actor).token
+                    if review_token != reviewed_token:
+                        raise WorkItemConflictError("WORK_ITEM_REVIEW_STALE")
+                    review_session_id, link_id = change.payload["sessionId"], None
+                    changed = connection.execute(
+                        """SELECT 1 FROM work_item_commands
+                           WHERE work_item_id=? AND review_session_id=? AND review_token=? AND changed=1""",
+                        (work_item_id, review_session_id, review_token),
+                    ).fetchone() is None
+                else:
+                    assert reference is not None
+                    kind = "OBJECT" if change.kind == "LINK_OBJECT" else reference["kind"]
+                    changed, link_id = self._link_reference(connection, work_item_id, kind, reference, now)
+                if changed:
+                    revision += 1
+                    connection.execute(
+                        """UPDATE work_items SET revision=?, updated_at=?, archived_at=?, title=?, description=?
+                           WHERE work_item_id = ?""",
+                        (revision, now, archived_at, title, description, work_item_id),
+                    )
+            sequence = connection.execute(
+                """SELECT COALESCE(MAX(sequence), 0) + 1 FROM work_item_commands
+                   WHERE work_item_id = ?""",
+                (work_item_id,),
+            ).fetchone()[0]
+            row = connection.execute(
+                """INSERT INTO work_item_commands
+                   (sequence, project_id, owner_subject, request_id, work_item_id, command,
+                    fingerprint, revision, changed, link_id, created_at, review_session_id, review_token)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                   RETURNING work_item_id, revision, changed, link_id""",
+                (sequence, self.project_id, actor.subject, change.request_id, work_item_id, change.kind,
+                 change.fingerprint(), revision, changed, link_id, now, review_session_id, review_token),
+            ).fetchone()
+            notify_on_commit(connection)
+            return _receipt(row)
+
+    def _owned(self, connection: Connection, work_item_id: str, actor: RequestIdentity) -> Row:
+        row = connection.execute(
+            """SELECT * FROM work_items
+               WHERE work_item_id = ? AND project_id = ? AND owner_subject = ?""",
+            (work_item_id, self.project_id, actor.subject),
+        ).fetchone()
+        if row is None:
+            raise ResourceNotFoundError("WORK_ITEM_NOT_FOUND")
+        return row
+
+    def _validate(
+        self, connection: Connection, change: Change, actor: RequestIdentity
+    ) -> tuple[Row | None, Row | None]:
+        item = self._owned(connection, change.work_item_id, actor) if change.work_item_id else None
+        previous = connection.execute(
+            """SELECT work_item_id, fingerprint, revision, changed, link_id FROM work_item_commands
+               WHERE project_id = ? AND owner_subject = ? AND request_id = ?""",
+            (self.project_id, actor.subject, change.request_id),
+        ).fetchone()
+        if previous is not None:
+            if previous["fingerprint"] != change.fingerprint():
+                raise WorkItemConflictError("WORK_ITEM_REQUEST_ID_REUSED")
+            return item, previous
+        if item is not None:
+            if item["revision"] != change.expected_revision:
+                raise WorkItemConflictError("WORK_ITEM_REVISION_CONFLICT")
+            if change.kind != "ARCHIVE" and item["archived_at"] is not None:
+                raise WorkItemConflictError("WORK_ITEM_ARCHIVED")
+        return item, None
+
+    def _link_session(
+        self, connection: Connection, work_item_id: str, actor: RequestIdentity,
+        session_id: str, now: str,
+    ) -> bool:
+        if not require_session_link_scope(connection, session_id, self.project_id, actor.subject):
+            raise ResourceNotFoundError("SESSION_NOT_FOUND")
+        row = connection.execute(
+            "SELECT work_item_id FROM work_item_sessions WHERE session_id = ?", (session_id,)
+        ).fetchone()
+        if row is not None:
+            if row["work_item_id"] != work_item_id:
+                raise WorkItemConflictError("SESSION_ALREADY_LINKED")
+            return False
+        connection.execute(
+            """INSERT INTO work_item_sessions (work_item_id, session_id, linked_at)
+               VALUES (?, ?, ?)""",
+            (work_item_id, session_id, now),
+        )
+        return True
+
+    @staticmethod
+    def _link_reference(
+        connection: Connection, work_item_id: str, kind: str, reference: dict, now: str
+    ) -> tuple[bool, str]:
+        encoded = canonical_json(reference)
+        key = sha256_bytes(encoded)
+        row = connection.execute(
+            """SELECT link_id FROM work_item_references
+               WHERE work_item_id = ? AND kind = ? AND reference_key = ?""",
+            (work_item_id, kind, key),
+        ).fetchone()
+        if row is not None:
+            return False, row["link_id"]
+        link_id = uuid4().hex
+        connection.execute(
+            """INSERT INTO work_item_references
+               (work_item_id, kind, reference_key, reference_json, link_id, linked_at)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (work_item_id, kind, key, encoded.decode("utf-8"), link_id, now),
+        )
+        return True, link_id

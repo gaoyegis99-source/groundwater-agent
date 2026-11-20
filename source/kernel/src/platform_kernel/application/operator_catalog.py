@@ -3,22 +3,22 @@
 
 def operator_metadata(operator: dict, settings) -> dict:
     key = f"{operator['id']}@{operator['version']}"
-    evidence = settings.operator_validation.get(key)
+    evidence = settings.operator_validation.get(key, {})
+    revision = operator["implementationRevision"]
+    technical_revision = evidence.get("implementationRevision")
+    review_revision = evidence.get("scientificReviewImplementationRevision", technical_revision)
     status = "NOT_RECORDED"
-    if evidence is not None:
-        status = (
-            "PASSED" if evidence["implementationRevision"] == operator["implementationRevision"]
-            else "STALE"
-        )
-    scientific_review = evidence.get("scientificReview") if status == "PASSED" else None
+    if technical_revision is not None:
+        status = "PASSED" if technical_revision == revision else "STALE"
+    scientific_review = evidence.get("scientificReview") if review_revision == revision else None
     return {
         "workflow_uses": settings.operator_uses.get(key, []),
         "validation": {
             "status": status,
-            "coverage": evidence["coverage"] if evidence else None,
-            "checked_on": evidence["checkedOn"] if evidence else None,
-            "report_checksum": evidence["reportChecksum"] if evidence else None,
-            "implementation_revision": evidence["implementationRevision"] if evidence else None,
+            "coverage": evidence.get("coverage"),
+            "checked_on": evidence.get("checkedOn"),
+            "report_checksum": evidence.get("reportChecksum"),
+            "implementation_revision": technical_revision,
         },
         "scientific_status": "REVIEW_EVIDENCE_ATTACHED" if scientific_review else "REQUIRES_CASE_AND_REVIEW",
         "scientific_review": scientific_review,

@@ -11,7 +11,7 @@ from pathlib import Path
 import sqlite3
 
 
-SUPPORTED_SCHEMA_VERSIONS = {34, 35, 36}
+SUPPORTED_SCHEMA_VERSIONS = {34, 35, 36, 37, 38}
 DISCOVERY_TOOLS = {
     "get_data_inventory",
     "discover_datasets",

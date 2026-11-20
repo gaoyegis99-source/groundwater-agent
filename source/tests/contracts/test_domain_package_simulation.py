@@ -132,6 +132,8 @@ def assembly_root(tmp_path, monkeypatch):
     product = _read(root / "products/groundwater/product-manifest.json")
     product["productId"] = "air-quality"
     product.pop("operatorValidation", None)
+    product.pop("workflowPlatform", None)
+    product.pop("businessCapabilities", None)
     product["services"] = ["data", "executor"]
     product["publicRoutes"] = [
         route

@@ -63,18 +63,20 @@ def resolve_mode_capabilities(
             return AgentModeCapabilities(
                 mode, (), False, False, False, False, True
             )
-        if dialogue_policy == "READ_ONLY":
-            return AgentModeCapabilities(
-                mode, installed_models, False, False, catalog_available or composition_available, True, False
-            )
-        if dialogue_policy != "EXECUTION_PROPOSAL":
-            raise ModeResolutionError("AGENT_REQUEST_MODE_INVALID")
         selection = request_context.get("workflow_selection") if request_context else None
-        if selection is not None:
+        business_scope = selection is not None and selection.get("business_capability") is not None
+        if selection is not None and (dialogue_policy == "EXECUTION_PROPOSAL" or business_scope):
             try:
                 installed_models = (selected_model(selection, installed_models),)
             except ConfirmationConflictError as error:
                 raise ModeResolutionError(str(error)) from error
+        if dialogue_policy == "READ_ONLY":
+            return AgentModeCapabilities(
+                mode, installed_models, False, False,
+                not business_scope and (catalog_available or composition_available), True, False,
+            )
+        if dialogue_policy != "EXECUTION_PROPOSAL":
+            raise ModeResolutionError("AGENT_REQUEST_MODE_INVALID")
         return AgentModeCapabilities(
             mode, installed_models, True, True,
             composition_available and allows_operator_proposal(request_context), True, False,

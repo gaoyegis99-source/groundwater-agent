@@ -1297,6 +1297,12 @@ class KernelAuditEventPage(BaseModel):
     next_cursor: int | None = Field(..., alias='nextCursor', title='Nextcursor')
 
 
+class ObjectKind(Enum):
+    region = 'REGION'
+    well = 'WELL'
+    aquifer = 'AQUIFER'
+
+
 class KernelConfirmationRequest(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -1338,6 +1344,34 @@ class KernelIdentityResponse(BaseModel):
 
 class KernelJsonValue(RootModel[Any]):
     root: Any
+
+
+class KernelKnowledgeAssetReferenceInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    checksum: str = Field(..., title='Checksum')
+    document_id: str = Field(
+        ..., alias='documentId', max_length=256, min_length=1, title='Documentid'
+    )
+    kind: Literal['KNOWLEDGE'] = Field(..., title='Kind')
+    version_id: str = Field(
+        ..., alias='versionId', max_length=256, min_length=1, title='Versionid'
+    )
+
+
+class KernelKnowledgeAssetReferenceOutput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    checksum: str = Field(..., pattern='^sha256:[0-9a-f]{64}$', title='Checksum')
+    document_id: str = Field(
+        ..., alias='documentId', max_length=256, min_length=1, title='Documentid'
+    )
+    kind: Literal['KNOWLEDGE'] = Field(..., title='Kind')
+    version_id: str = Field(
+        ..., alias='versionId', max_length=256, min_length=1, title='Versionid'
+    )
 
 
 class KernelLoginRequest(BaseModel):
@@ -1690,6 +1724,17 @@ class KernelRejectionRequest(BaseModel):
     reason: str = Field(..., min_length=1, title='Reason')
 
 
+class KernelResultAssetSelection(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    kind: Literal['RESULT'] = Field(..., title='Kind')
+    output_name: str = Field(
+        ..., alias='outputName', max_length=256, min_length=1, title='Outputname'
+    )
+    run_id: str = Field(..., alias='runId', max_length=256, min_length=1, title='Runid')
+
+
 class KernelSessionCreate(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -1927,6 +1972,400 @@ class KernelValidationIssue(BaseModel):
     pointer: str = Field(..., title='Pointer')
 
 
+class NextAfter(RootModel[int]):
+    root: int = Field(..., ge=1, le=9007199254740991, title='Nextafter')
+
+
+class KernelWorkItemAgentRunLink(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    agent_run_id: str = Field(
+        ..., alias='agentRunId', max_length=256, min_length=1, title='Agentrunid'
+    )
+    goal_revision: int = Field(
+        ..., alias='goalRevision', ge=1, strict=True, title='Goalrevision'
+    )
+    session_id: str = Field(
+        ..., alias='sessionId', max_length=256, min_length=1, title='Sessionid'
+    )
+
+
+class State4(Enum):
+    available = 'AVAILABLE'
+    unavailable = 'UNAVAILABLE'
+
+
+class Command(Enum):
+    create = 'CREATE'
+    link_session = 'LINK_SESSION'
+    link_object = 'LINK_OBJECT'
+    link_asset = 'LINK_ASSET'
+    archive = 'ARCHIVE'
+
+
+class LinkId(RootModel[str]):
+    root: str = Field(..., max_length=256, min_length=1, title='Linkid')
+
+
+class KernelWorkItemAuditEntry(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    actor_subject: str = Field(
+        ..., alias='actorSubject', max_length=256, min_length=1, title='Actorsubject'
+    )
+    changed: bool = Field(..., title='Changed')
+    command: Command = Field(..., title='Command')
+    created_at: str = Field(..., alias='createdAt', title='Createdat')
+    link_id: LinkId | None = Field(..., alias='linkId', title='Linkid')
+    request_id: str = Field(
+        ..., alias='requestId', max_length=256, min_length=1, title='Requestid'
+    )
+    revision: int = Field(..., ge=1, strict=True, title='Revision')
+    sequence: int = Field(..., title='Sequence')
+
+
+class KernelWorkItemAuditPage(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    entries: list[KernelWorkItemAuditEntry] = Field(..., title='Entries')
+    next_after: int | None = Field(..., alias='nextAfter', title='Nextafter')
+
+
+class KernelWorkItemChange(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    expected_revision: int = Field(
+        ..., alias='expectedRevision', ge=1, strict=True, title='Expectedrevision'
+    )
+    project_id: str = Field(
+        ..., alias='projectId', max_length=256, min_length=1, title='Projectid'
+    )
+    request_id: str = Field(
+        ..., alias='requestId', max_length=256, min_length=1, title='Requestid'
+    )
+
+
+class Command1(Enum):
+    create = 'CREATE'
+    link_session = 'LINK_SESSION'
+    link_object = 'LINK_OBJECT'
+    link_asset = 'LINK_ASSET'
+    archive = 'ARCHIVE'
+    update = 'UPDATE'
+    review = 'REVIEW'
+
+
+class ReviewSessionId(RootModel[str]):
+    root: str = Field(..., max_length=256, min_length=1, title='Reviewsessionid')
+
+
+class KernelWorkItemCommandActivity(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    actor_subject: str = Field(
+        ..., alias='actorSubject', max_length=256, min_length=1, title='Actorsubject'
+    )
+    changed: bool = Field(..., title='Changed')
+    command: Command1 = Field(..., title='Command')
+    created_at: str = Field(..., alias='createdAt', title='Createdat')
+    kind: Literal['COMMAND'] = Field(..., title='Kind')
+    link_id: LinkId | None = Field(..., alias='linkId', title='Linkid')
+    request_id: str = Field(
+        ..., alias='requestId', max_length=256, min_length=1, title='Requestid'
+    )
+    review_session_id: ReviewSessionId | None = Field(
+        ..., alias='reviewSessionId', title='Reviewsessionid'
+    )
+    revision: int = Field(..., ge=1, strict=True, title='Revision')
+    sequence: int = Field(..., ge=1, le=9007199254740991, title='Sequence')
+
+
+class Description(RootModel[str]):
+    root: str = Field(..., max_length=2000, title='Description')
+
+
+class KernelWorkItemCreate(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    description: Description | None = Field(None, title='Description')
+    project_id: str = Field(
+        ..., alias='projectId', max_length=256, min_length=1, title='Projectid'
+    )
+    request_id: str = Field(
+        ..., alias='requestId', max_length=256, min_length=1, title='Requestid'
+    )
+    title: str = Field(..., max_length=120, min_length=1, title='Title')
+
+
+class KernelWorkItemDataReference(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    checksum: str = Field(..., pattern='^sha256:[0-9a-f]{64}$', title='Checksum')
+    dataset_id: str = Field(..., alias='datasetId', min_length=1, title='Datasetid')
+    format: str = Field(..., min_length=1, title='Format')
+    kind: Literal['data_version'] = Field(..., title='Kind')
+    media_type: str = Field(..., alias='mediaType', min_length=1, title='Mediatype')
+    object_id: str = Field(..., alias='objectId', min_length=1, title='Objectid')
+    semantic_id: str = Field(..., alias='semanticId', min_length=1, title='Semanticid')
+    service: Literal['data-primary'] = Field(..., title='Service')
+    size_bytes: int = Field(
+        ..., alias='sizeBytes', ge=0, strict=True, title='Sizebytes'
+    )
+    version_id: str = Field(..., alias='versionId', min_length=1, title='Versionid')
+
+
+class State5(Enum):
+    draft = 'DRAFT'
+    ready = 'READY'
+    waiting_input = 'WAITING_INPUT'
+    waiting_review = 'WAITING_REVIEW'
+    waiting_confirmation = 'WAITING_CONFIRMATION'
+    executing = 'EXECUTING'
+    result_review = 'RESULT_REVIEW'
+    blocked = 'BLOCKED'
+    completed = 'COMPLETED'
+    cancelled = 'CANCELLED'
+    archived = 'ARCHIVED'
+
+
+class ConfirmationId(RootModel[str]):
+    root: str = Field(..., max_length=256, min_length=1, title='Confirmationid')
+
+
+class TaskId(RootModel[str]):
+    root: str = Field(..., max_length=256, min_length=1, title='Taskid')
+
+
+class TaskRevision(RootModel[int]):
+    root: int = Field(..., ge=1, title='Taskrevision')
+
+
+class KernelWorkItemMetadataUpdate(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    description: Description | None = Field(None, title='Description')
+    expected_revision: int = Field(
+        ..., alias='expectedRevision', ge=1, strict=True, title='Expectedrevision'
+    )
+    project_id: str = Field(
+        ..., alias='projectId', max_length=256, min_length=1, title='Projectid'
+    )
+    request_id: str = Field(
+        ..., alias='requestId', max_length=256, min_length=1, title='Requestid'
+    )
+    title: str | None = Field(None, max_length=120, min_length=1, title='Title')
+
+
+class State7(Enum):
+    available = 'AVAILABLE'
+    unavailable = 'UNAVAILABLE'
+
+
+class NextAfter1(RootModel[str]):
+    root: str = Field(..., max_length=256, min_length=1, title='Nextafter')
+
+
+class State8(Enum):
+    pending = 'PENDING'
+    published = 'PUBLISHED'
+    failed = 'FAILED'
+    unavailable = 'UNAVAILABLE'
+
+
+class KernelWorkItemPublication(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    run_id: str = Field(..., alias='runId', max_length=256, min_length=1, title='Runid')
+    state: State8 = Field(..., title='State')
+
+
+class KernelWorkItemReceipt(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    changed: bool = Field(..., title='Changed')
+    link_id: LinkId | None = Field(..., alias='linkId', title='Linkid')
+    revision: int = Field(..., ge=1, strict=True, title='Revision')
+    work_item_id: str = Field(
+        ..., alias='workItemId', max_length=256, min_length=1, title='Workitemid'
+    )
+
+
+class KernelWorkItemResultDataReference(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    checksum: str = Field(..., pattern='^sha256:[0-9a-f]{64}$', title='Checksum')
+    dataset_id: str = Field(..., alias='datasetId', min_length=1, title='Datasetid')
+    format: str = Field(..., min_length=1, title='Format')
+    kind: Literal['data_version'] = Field(..., title='Kind')
+    media_type: str = Field(..., alias='mediaType', min_length=1, title='Mediatype')
+    object_id: str = Field(..., alias='objectId', min_length=1, title='Objectid')
+    output_name: str = Field(
+        ..., alias='outputName', max_length=256, min_length=1, title='Outputname'
+    )
+    semantic_id: str = Field(..., alias='semanticId', min_length=1, title='Semanticid')
+    service: Literal['data-primary'] = Field(..., title='Service')
+    size_bytes: int = Field(
+        ..., alias='sizeBytes', ge=0, strict=True, title='Sizebytes'
+    )
+    version_id: str = Field(..., alias='versionId', min_length=1, title='Versionid')
+
+
+class KernelWorkItemReview(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    expected_revision: int = Field(
+        ..., alias='expectedRevision', ge=1, strict=True, title='Expectedrevision'
+    )
+    project_id: str = Field(
+        ..., alias='projectId', max_length=256, min_length=1, title='Projectid'
+    )
+    request_id: str = Field(
+        ..., alias='requestId', max_length=256, min_length=1, title='Requestid'
+    )
+    review_token: str = Field(..., alias='reviewToken', title='Reviewtoken')
+    session_id: str = Field(
+        ..., alias='sessionId', max_length=256, min_length=1, title='Sessionid'
+    )
+
+
+class ResultLinkId(RootModel[str]):
+    root: str = Field(..., max_length=256, min_length=1)
+
+
+class KernelWorkItemReviewPreview(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    result_link_ids: list[ResultLinkId] = Field(
+        ..., alias='resultLinkIds', title='Resultlinkids'
+    )
+    token: str = Field(..., pattern='^sha256:[0-9a-f]{64}$', title='Token')
+
+
+class KernelWorkItemSessionActivity(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    created_at: str = Field(..., alias='createdAt', title='Createdat')
+    event_type: str = Field(..., alias='eventType', title='Eventtype')
+    kind: Literal['SESSION'] = Field(..., title='Kind')
+    sequence: int = Field(..., ge=1, le=9007199254740991, title='Sequence')
+    session_id: str = Field(
+        ..., alias='sessionId', max_length=256, min_length=1, title='Sessionid'
+    )
+
+
+class KernelWorkItemSessionAttach(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    expected_revision: int = Field(
+        ..., alias='expectedRevision', ge=1, strict=True, title='Expectedrevision'
+    )
+    project_id: str = Field(
+        ..., alias='projectId', max_length=256, min_length=1, title='Projectid'
+    )
+    request_id: str = Field(
+        ..., alias='requestId', max_length=256, min_length=1, title='Requestid'
+    )
+    session_id: str = Field(
+        ..., alias='sessionId', max_length=256, min_length=1, title='Sessionid'
+    )
+
+
+class KernelWorkItemSessionLink(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    archived_at: str | None = Field(..., alias='archivedAt', title='Archivedat')
+    linked_at: str = Field(..., alias='linkedAt', title='Linkedat')
+    session_id: str = Field(
+        ..., alias='sessionId', max_length=256, min_length=1, title='Sessionid'
+    )
+    title: str | None = Field(..., title='Title')
+
+
+class Status6(Enum):
+    active = 'ACTIVE'
+    archived = 'ARCHIVED'
+
+
+class KernelWorkItemSummary(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    archived_at: str | None = Field(..., alias='archivedAt', title='Archivedat')
+    created_at: str = Field(..., alias='createdAt', title='Createdat')
+    description: str | None = Field(..., title='Description')
+    owner_subject: str = Field(
+        ..., alias='ownerSubject', max_length=256, min_length=1, title='Ownersubject'
+    )
+    project_id: str = Field(
+        ..., alias='projectId', max_length=256, min_length=1, title='Projectid'
+    )
+    revision: int = Field(..., ge=1, strict=True, title='Revision')
+    status: Status6 = Field(..., title='Status')
+    title: str = Field(..., title='Title')
+    updated_at: str = Field(..., alias='updatedAt', title='Updatedat')
+    work_item_id: str = Field(
+        ..., alias='workItemId', max_length=256, min_length=1, title='Workitemid'
+    )
+
+
+class Status7(Enum):
+    active = 'ACTIVE'
+    complete = 'COMPLETE'
+
+
+class KernelWorkItemTaskLink(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    revision: int = Field(..., ge=1, strict=True, title='Revision')
+    session_id: str = Field(
+        ..., alias='sessionId', max_length=256, min_length=1, title='Sessionid'
+    )
+    status: Status7 = Field(..., title='Status')
+    task_id: str = Field(
+        ..., alias='taskId', max_length=256, min_length=1, title='Taskid'
+    )
+
+
+class KernelWorkItemTaskRunLink(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    agent_run_id: str = Field(
+        ..., alias='agentRunId', max_length=256, min_length=1, title='Agentrunid'
+    )
+    task_id: str = Field(
+        ..., alias='taskId', max_length=256, min_length=1, title='Taskid'
+    )
+    task_revision: int = Field(
+        ..., alias='taskRevision', ge=1, strict=True, title='Taskrevision'
+    )
+
+
+class KernelWorkflowAssetSelection(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    kind: Literal['WORKFLOW'] = Field(..., title='Kind')
+    run_id: str = Field(..., alias='runId', max_length=256, min_length=1, title='Runid')
+
+
 class KernelWorkflowDraftResponse(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -1967,6 +2406,15 @@ class KernelWorkflowGraphResponse(BaseModel):
     workflow_run_id: str = Field(..., alias='workflowRunId', title='Workflowrunid')
 
 
+class KernelWorkflowIdentity(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    checksum: str = Field(..., pattern='^sha256:[0-9a-f]{64}$', title='Checksum')
+    id: str = Field(..., max_length=256, min_length=1, title='Id')
+    version: str = Field(..., max_length=256, min_length=1, title='Version')
+
+
 class AttemptCount(RootModel[int]):
     root: int = Field(..., ge=0, title='Attemptcount')
 
@@ -1975,7 +2423,7 @@ class ErrorCode(RootModel[str]):
     root: str = Field(..., pattern='^[A-Z][A-Z0-9_]{0,95}$', title='Errorcode')
 
 
-class Status6(Enum):
+class Status8(Enum):
     waiting = 'WAITING'
     ready = 'READY'
     leased = 'LEASED'
@@ -2005,7 +2453,7 @@ class KernelWorkflowNodeDiagnostic(BaseModel):
     )
     runtime: Runtime = Field(..., title='Runtime')
     started_at: AwareDatetime | None = Field(..., alias='startedAt', title='Startedat')
-    status: Status6 = Field(..., title='Status')
+    status: Status8 = Field(..., title='Status')
 
 
 class KernelWorkflowNodeDiagnosticsResponse(BaseModel):
@@ -2017,7 +2465,7 @@ class KernelWorkflowNodeDiagnosticsResponse(BaseModel):
     workflow_run_id: str = Field(..., alias='workflowRunId', title='Workflowrunid')
 
 
-class State4(Enum):
+class State9(Enum):
     open = 'OPEN'
     preparing = 'PREPARING'
     ready = 'READY'
@@ -2033,7 +2481,7 @@ class KernelWorkflowPublicationResponse(BaseModel):
     publication_id: str | None = Field(
         ..., alias='publicationId', title='Publicationid'
     )
-    state: State4 | None = Field(..., title='State')
+    state: State9 | None = Field(..., title='State')
     workflow_run_id: str = Field(..., alias='workflowRunId', title='Workflowrunid')
 
 
@@ -2242,7 +2690,7 @@ class KnowledgeNextDocumentSummary(BaseModel):
     valid_through: date | None = Field(None, alias='validThrough', title='Validthrough')
 
 
-class Status7(Enum):
+class Status9(Enum):
     ok = 'OK'
     no_match = 'NO_MATCH'
     partial = 'PARTIAL'
@@ -2268,7 +2716,7 @@ class Scope(Enum):
     data_bound = 'DATA_BOUND'
 
 
-class Status8(Enum):
+class Status10(Enum):
     ok = 'OK'
     stale = 'STALE'
     withdrawn = 'WITHDRAWN'
@@ -2426,7 +2874,7 @@ class KnowledgeNextLifecycleBatchDiff(BaseModel):
     version_id: str = Field(..., alias='versionId', title='Versionid')
 
 
-class Status9(Enum):
+class Status11(Enum):
     active = 'ACTIVE'
     withdrawn = 'WITHDRAWN'
 
@@ -2448,7 +2896,7 @@ class KnowledgeNextLifecycleBatchItem(BaseModel):
     )
     reason: str = Field(..., max_length=1000, min_length=1, title='Reason')
     review_after: date = Field(..., alias='reviewAfter', title='Reviewafter')
-    status: Status9 = Field(..., title='Status')
+    status: Status11 = Field(..., title='Status')
     valid_through: date | None = Field(None, alias='validThrough', title='Validthrough')
     version_id: str = Field(
         ...,
@@ -2475,7 +2923,7 @@ class KnowledgeNextLifecycleBatchPreflightRequest(BaseModel):
     )
     reason: str = Field(..., max_length=1000, min_length=1, title='Reason')
     review_after: date = Field(..., alias='reviewAfter', title='Reviewafter')
-    status: Status9 = Field(..., title='Status')
+    status: Status11 = Field(..., title='Status')
     valid_through: date | None = Field(None, alias='validThrough', title='Validthrough')
 
 
@@ -2520,7 +2968,7 @@ class KnowledgeNextLifecycleUpdateRequest(BaseModel):
     )
     reason: str = Field(..., max_length=1000, min_length=1, title='Reason')
     review_after: date = Field(..., alias='reviewAfter', title='Reviewafter')
-    status: Status9 = Field(..., title='Status')
+    status: Status11 = Field(..., title='Status')
     valid_through: date | None = Field(None, alias='validThrough', title='Validthrough')
 
 
@@ -2570,7 +3018,7 @@ class KnowledgeNextOperatorActivityPage(BaseModel):
     items: list[KnowledgeNextOperatorActivityItem] = Field(..., title='Items')
 
 
-class State5(Enum):
+class State10(Enum):
     passed = 'PASSED'
     failed = 'FAILED'
     pending = 'PENDING'
@@ -2582,7 +3030,7 @@ class KnowledgeNextPreflightCheck(BaseModel):
     )
     detail: str = Field(..., title='Detail')
     name: str = Field(..., title='Name')
-    state: State5 = Field(..., title='State')
+    state: State10 = Field(..., title='State')
 
 
 class KnowledgeNextReadinessResponse(BaseModel):
@@ -3106,6 +3554,20 @@ class DataVersionResponse(BaseModel):
     version_id: str = Field(..., alias='versionId', title='Versionid')
 
 
+class KernelBusinessObjectReference(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    external_id: str = Field(
+        ..., alias='externalId', max_length=256, min_length=1, title='Externalid'
+    )
+    field_id: str = Field(
+        ..., alias='fieldId', max_length=256, min_length=1, title='Fieldid'
+    )
+    object_kind: ObjectKind = Field(..., alias='objectKind', title='Objectkind')
+    source: KernelWorkItemDataReference
+
+
 class KernelConfirmationRevisionAction(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -3131,6 +3593,14 @@ class KernelConfirmationRevisionRequest(BaseModel):
         ..., alias='expectedGoalRevision', ge=0, title='Expectedgoalrevision'
     )
     request_id: str = Field(..., alias='requestId', min_length=1, title='Requestid')
+
+
+class KernelDataAssetReference(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    data_ref: KernelWorkItemDataReference = Field(..., alias='dataRef')
+    kind: Literal['DATA'] = Field(..., title='Kind')
 
 
 class KernelHTTPValidationError(BaseModel):
@@ -3202,6 +3672,21 @@ class KernelProblemDetailsV11(BaseModel):
     type: str = Field(..., title='Type')
 
 
+class KernelResultAssetReference(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    data_ref: KernelWorkItemResultDataReference = Field(..., alias='dataRef')
+    kind: Literal['RESULT'] = Field(..., title='Kind')
+    output_name: str = Field(
+        ..., alias='outputName', max_length=256, min_length=1, title='Outputname'
+    )
+    publication_id: str = Field(
+        ..., alias='publicationId', max_length=256, min_length=1, title='Publicationid'
+    )
+    run_id: str = Field(..., alias='runId', max_length=256, min_length=1, title='Runid')
+
+
 class KernelSessionPage(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -3222,6 +3707,122 @@ class KernelUserPage(BaseModel):
         extra='forbid',
     )
     items: list[KernelUserResponse] = Field(..., title='Items')
+
+
+class Entries(RootModel[KernelWorkItemCommandActivity | KernelWorkItemSessionActivity]):
+    root: KernelWorkItemCommandActivity | KernelWorkItemSessionActivity = Field(
+        ..., discriminator='kind'
+    )
+
+
+class KernelWorkItemActivityPage(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    entries: list[Entries] = Field(..., title='Entries')
+    next_after: NextAfter | None = Field(..., alias='nextAfter', title='Nextafter')
+
+
+class KernelWorkItemAssetAttach(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    expected_revision: int = Field(
+        ..., alias='expectedRevision', ge=1, strict=True, title='Expectedrevision'
+    )
+    project_id: str = Field(
+        ..., alias='projectId', max_length=256, min_length=1, title='Projectid'
+    )
+    reference: (
+        KernelDataAssetReference
+        | KernelKnowledgeAssetReferenceInput
+        | KernelWorkflowAssetSelection
+        | KernelResultAssetSelection
+    ) = Field(..., discriminator='kind', title='Reference')
+    request_id: str = Field(
+        ..., alias='requestId', max_length=256, min_length=1, title='Requestid'
+    )
+
+
+class KernelWorkItemLifecycleTrack(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    accepted_at: str | None = Field(..., alias='acceptedAt', title='Acceptedat')
+    confirmation_id: ConfirmationId | None = Field(
+        ..., alias='confirmationId', title='Confirmationid'
+    )
+    publications: list[KernelWorkItemPublication] = Field(..., title='Publications')
+    reason: str = Field(..., title='Reason')
+    review: KernelWorkItemReviewPreview | None = None
+    session_id: str = Field(
+        ..., alias='sessionId', max_length=256, min_length=1, title='Sessionid'
+    )
+    state: State5 = Field(..., title='State')
+    stop_pending: bool = Field(..., alias='stopPending', title='Stoppending')
+    task_id: TaskId | None = Field(..., alias='taskId', title='Taskid')
+    task_revision: TaskRevision | None = Field(
+        ..., alias='taskRevision', title='Taskrevision'
+    )
+
+
+class KernelWorkItemObjectAttach(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    expected_revision: int = Field(
+        ..., alias='expectedRevision', ge=1, strict=True, title='Expectedrevision'
+    )
+    project_id: str = Field(
+        ..., alias='projectId', max_length=256, min_length=1, title='Projectid'
+    )
+    reference: KernelBusinessObjectReference
+    request_id: str = Field(
+        ..., alias='requestId', max_length=256, min_length=1, title='Requestid'
+    )
+
+
+class KernelWorkItemObjectLink(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    link_id: str = Field(
+        ..., alias='linkId', max_length=256, min_length=1, title='Linkid'
+    )
+    linked_at: str = Field(..., alias='linkedAt', title='Linkedat')
+    reference: KernelBusinessObjectReference | None = None
+    state: State7 = Field(..., title='State')
+
+
+class KernelWorkItemPage(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    items: list[KernelWorkItemSummary] = Field(..., title='Items')
+    next_after: NextAfter1 | None = Field(..., alias='nextAfter', title='Nextafter')
+
+
+class KernelWorkItemWorkflowRunLink(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    agent_run_id: str = Field(
+        ..., alias='agentRunId', max_length=256, min_length=1, title='Agentrunid'
+    )
+    run_id: str = Field(..., alias='runId', max_length=256, min_length=1, title='Runid')
+    session_id: str = Field(
+        ..., alias='sessionId', max_length=256, min_length=1, title='Sessionid'
+    )
+    workflow_ref: KernelWorkflowIdentity = Field(..., alias='workflowRef')
+
+
+class KernelWorkflowAssetReference(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    kind: Literal['WORKFLOW'] = Field(..., title='Kind')
+    run_id: str = Field(..., alias='runId', max_length=256, min_length=1, title='Runid')
+    workflow_ref: KernelWorkflowIdentity = Field(..., alias='workflowRef')
 
 
 class KnowledgeNextCapabilitiesResponse(BaseModel):
@@ -3340,7 +3941,7 @@ class KnowledgeNextEvidenceItem(BaseModel):
     review_due: bool | None = Field(None, alias='reviewDue', title='Reviewdue')
     scope: Scope | None = Field(None, title='Scope')
     sources: list[KnowledgeNextSource] | None = Field(None, title='Sources')
-    status: Status8 = Field(..., title='Status')
+    status: Status10 = Field(..., title='Status')
     unit_id: str = Field(..., alias='unitId', title='Unitid')
     version_id: str = Field(..., alias='versionId', title='Versionid')
 
@@ -3505,6 +4106,60 @@ class KernelCapabilitiesResponse(BaseModel):
     services: list[str] | None = Field(None, title='Services')
 
 
+class KernelWorkItemAssetLink(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    link_id: str = Field(
+        ..., alias='linkId', max_length=256, min_length=1, title='Linkid'
+    )
+    linked_at: str = Field(..., alias='linkedAt', title='Linkedat')
+    reference: (
+        KernelDataAssetReference
+        | KernelKnowledgeAssetReferenceOutput
+        | KernelWorkflowAssetReference
+        | KernelResultAssetReference
+        | None
+    ) = Field(..., title='Reference')
+    state: State4 = Field(..., title='State')
+
+
+class KernelWorkItemDetail(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    agent_runs: list[KernelWorkItemAgentRunLink] = Field(
+        ..., alias='agentRuns', title='Agentruns'
+    )
+    assets: list[KernelWorkItemAssetLink] = Field(..., title='Assets')
+    objects: list[KernelWorkItemObjectLink] = Field(..., title='Objects')
+    sessions: list[KernelWorkItemSessionLink] = Field(..., title='Sessions')
+    task_runs: list[KernelWorkItemTaskRunLink] = Field(
+        ..., alias='taskRuns', title='Taskruns'
+    )
+    tasks: list[KernelWorkItemTaskLink] = Field(..., title='Tasks')
+    work_item: KernelWorkItemSummary = Field(..., alias='workItem')
+    workflow_runs: list[KernelWorkItemWorkflowRunLink] = Field(
+        ..., alias='workflowRuns', title='Workflowruns'
+    )
+
+
+class KernelWorkItemLifecycleSnapshot(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    event_cursor: int = Field(
+        ..., alias='eventCursor', ge=0, le=9007199254740991, title='Eventcursor'
+    )
+    reason: str = Field(..., title='Reason')
+    revision: int = Field(..., ge=1, strict=True, title='Revision')
+    state: State5 = Field(..., title='State')
+    tracks: list[KernelWorkItemLifecycleTrack] = Field(..., title='Tracks')
+    work_item_id: str = Field(
+        ..., alias='workItemId', max_length=256, min_length=1, title='Workitemid'
+    )
+
+
 class KnowledgeNextEvidenceBundleV1(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -3521,7 +4176,7 @@ class KnowledgeNextEvidenceBundleV1(BaseModel):
     schema_version: Literal['evidence-bundle.v1'] = Field(
         'evidence-bundle.v1', alias='schemaVersion', title='Schemaversion'
     )
-    status: Status7 = Field(..., title='Status')
+    status: Status9 = Field(..., title='Status')
     timings_ms: dict[str, float] = Field(..., alias='timingsMs', title='Timingsms')
 
 

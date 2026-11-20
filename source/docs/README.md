@@ -1,6 +1,6 @@
 # Groundwater V12 文档入口
 
-当前主线是面向可信单机和小型实验室的科研运行平台：Public API v12、Kernel SQLite v36、Data v8、Knowledge v7、实例清单 v4。
+当前主线是面向可信单机和小型实验室的科研运行平台：Public API v12、Kernel SQLite v38、Data v8、Knowledge v7、实例清单 v4。
 
 按任务读取相关文档：
 

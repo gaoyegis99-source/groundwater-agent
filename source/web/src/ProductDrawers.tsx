@@ -3,7 +3,7 @@ import { ApiError, readReadiness, type ReadinessSnapshot } from './api';
 import { ErrorNotice } from './ErrorNotice';
 import { Icon } from './Icon';
 import { modelName, outputName, parameterPresentation } from './card-presentation';
-import { productUi } from './product-ui';
+import { productUi, type BusinessCapability, type BusinessCapabilityProfile, type ProductUiProfile } from './product-ui';
 import type { Capabilities, OperatorCapability } from './types';
 import { modelIdentity, type WorkflowModel } from './workflow-selection';
 import { Button } from './ui/Button';
@@ -83,8 +83,11 @@ function OperatorDirectory({ operators }: { operators: readonly OperatorCapabili
   </>;
 }
 
-export function CapabilityDrawer({ capabilities, onExample, onWorkflow, onClose }: {
+export function CapabilityDrawer({ capabilities, businessCapabilities, examples, onBusinessCapability, onExample, onWorkflow, onClose }: {
   capabilities: Capabilities;
+  businessCapabilities: BusinessCapability[];
+  examples: ProductUiProfile['examples'];
+  onBusinessCapability: (id: string, version: string) => void;
   onExample: (prompt: string) => void;
   onWorkflow?: (model: WorkflowModel) => void;
   onClose: () => void;
@@ -98,6 +101,7 @@ export function CapabilityDrawer({ capabilities, onExample, onWorkflow, onClose 
     const { displayName, description } = ui.models[modelId];
     return `${displayName} ${description}`.toLocaleLowerCase().includes(term);
   });
+  const scenarios = businessCapabilities.filter(item => `${item.title} ${item.description} ${item.scenario}`.toLocaleLowerCase().includes(term));
   return <Drawer title="能力目录" isOpen dismissOnOutsidePress onOpenChange={open => { if (!open) onClose(); }}>
     {!!capabilities.operators?.length && <div className="capability-search" role="group" aria-label="能力目录类型">
       <button type="button" aria-pressed={!showOperators} onClick={() => setShowOperators(false)}>工作流</button>
@@ -107,8 +111,11 @@ export function CapabilityDrawer({ capabilities, onExample, onWorkflow, onClose 
     <div className="capability-search">
       <Input ref={search} label="搜索工作流" type="search" value={query} onChange={event => setQuery(event.target.value)} />
     </div>
-    {models.length === 0 && <EmptyState description="没有匹配的工作流。" action={term &&
+    {models.length === 0 && scenarios.length === 0 && <EmptyState description="没有匹配的工作流。" action={term &&
       <Button variant="text" onPress={() => { setQuery(''); search.current?.focus(); }}>清除关键词</Button>} />}
+    {scenarios.length > 0 && <section className="capability-item"><h3>业务场景</h3><div className="capability-examples">
+      {scenarios.map(({ ref, title }) => <button type="button" key={`${ref.id}@${ref.version}`} aria-haspopup="dialog" onClick={() => onBusinessCapability(ref.id, ref.version)}>{title}<Icon name="arrow-right" /></button>)}
+    </div></section>}
     {models.map(model => {
       const presentation = ui.models[model.modelId];
       const name = modelName(model.modelId);
@@ -132,13 +139,69 @@ export function CapabilityDrawer({ capabilities, onExample, onWorkflow, onClose 
     })}
     {!term && <>
       {Object.keys(ui.cases).length > 0 && <section><h3>案例与执行档位</h3><dl className="argument-list">{Object.entries(ui.cases).map(([id, item]) => <div key={id}><dt>{item.label}</dt><dd>{Object.values(item.profiles).join(' · ')}</dd></div>)}</dl></section>}
-      <section><h3>推荐问题</h3><div className="capability-examples">{ui.examples.map(example => <button type="button" key={example.id} onClick={() => onExample(example.prompt)}>{example.title}<Icon name="arrow-up-right" /></button>)}</div></section>
+      {examples.length > 0 && <section><h3>推荐问题</h3><div className="capability-examples">{examples.map(example => <button type="button" key={example.id} onClick={() => onExample(example.prompt)}>{example.title}<Icon name="arrow-up-right" /></button>)}</div></section>}
     </>}
     </>}
   </Drawer>;
 }
 
 const labels: Record<string, string> = { kernel: '核心编排', data: '数据服务', 'knowledge-next': '知识服务', executor: '执行服务', 'agent-provider': '对话模型', 'intent-router-provider': '意图路由模型', embedding: '向量检索' };
+const capabilityTiers: Record<BusinessCapability['tier'], string> = {
+  CORE: '核心', SPECIALIZED: '专项', ADVANCED: '高级', EXPERIMENTAL: '实验',
+};
+
+function CapabilityOutputPreview({ outputs }: { outputs: BusinessCapabilityProfile['outputs'] }) {
+  return <dl className="argument-list">
+    {outputs.map(output => <div key={output.name}>
+      <dt>{outputName(output.name)}</dt><dd>{output.meaning}<small>{output.format}</small></dd>
+    </div>)}
+  </dl>;
+}
+
+function CapabilityProfilePreview({ profile }: { profile: BusinessCapabilityProfile }) {
+  const primaryOutputs = profile.outputs.filter(output => output.role === 'PRIMARY_RESULT' || output.role === 'VISUALIZATION');
+  const additionalOutputs = profile.outputs.filter(output => output.role === 'SUMMARY' || output.role === 'DIAGNOSTIC');
+  return <section className="capability-item">
+    <h3>{profile.label}</h3>
+    <h4>所需资料</h4>
+    <dl className="argument-list">
+      {profile.inputs.map((input, index) => <div key={`${input.label}-${index}`}>
+        <dt>{input.label}</dt><dd>{input.meaning}<small>{input.formats.join(' / ')}</small>
+          {input.preconditions.length > 0 && <ul>{input.preconditions.map(condition => <li key={condition}>{condition}</li>)}</ul>}
+        </dd>
+      </div>)}
+    </dl>
+    {profile.limitations.length > 0 && <><h4>使用限制</h4><ul>{profile.limitations.map(limitation => <li key={limitation}>{limitation}</li>)}</ul></>}
+    <h4>成果预览</h4>
+    <CapabilityOutputPreview outputs={primaryOutputs.length ? primaryOutputs : additionalOutputs} />
+    {primaryOutputs.length > 0 && additionalOutputs.length > 0 && <details>
+      <summary>查看摘要与诊断</summary>
+      <CapabilityOutputPreview outputs={additionalOutputs} />
+    </details>}
+    <details><summary>查看方案版本</summary><dl className="argument-list">
+      <div><dt>方案版本</dt><dd>{profile.profileRef.version}</dd></div>
+      <div><dt>模型版本</dt><dd>{profile.modelRef.version}</dd></div>
+      <div><dt>工作流版本</dt><dd>{profile.workflowRef.version}</dd></div>
+    </dl></details>
+  </section>;
+}
+
+export function BusinessCapabilityDrawer({ capability, onUse, onClose }: {
+  capability: BusinessCapability;
+  onUse?: () => void;
+  onClose: () => void;
+}) {
+  return <Drawer title={capability.title} description={capability.description} isOpen dismissOnOutsidePress
+    onOpenChange={open => { if (!open) onClose(); }}>
+    <p>{capability.scenario}</p>
+    {onUse && <Button variant="primary" onPress={onUse}>填入对话</Button>}
+    <dl className="argument-list">
+      <div><dt>验证状态</dt><dd>{capabilityTiers[capability.tier]} · {capability.validationStatus === 'TECHNICALLY_VALIDATED' ? '已通过技术验证' : '待验证'}</dd></div>
+      {capability.requiredServices.length > 0 && <div><dt>依赖服务</dt><dd>{capability.requiredServices.map(name => labels[name] ?? name).join(' · ')}</dd></div>}
+    </dl>
+    {capability.profiles.map(profile => <CapabilityProfilePreview key={`${profile.profileRef.id}@${profile.profileRef.version}`} profile={profile} />)}
+  </Drawer>;
+}
 
 function readinessTone(status?: string): BadgeTone {
   switch (status) {

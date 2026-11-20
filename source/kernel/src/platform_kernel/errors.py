@@ -11,6 +11,10 @@ class ConfirmationConflictError(ValueError):
     pass
 
 
+class WorkItemConflictError(ValueError):
+    pass
+
+
 class UpstreamServiceError(RuntimeError):
     def __init__(self, code: str, agent_run_id: str | None = None, *,
                  diagnostics: dict[str, object] | None = None) -> None:

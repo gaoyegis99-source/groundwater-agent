@@ -52,7 +52,7 @@ def test_context_report_aggregates_only_numeric_manifest_data(kernel_settings):
 
     report = build_report(application.database)
 
-    assert report["database_schema_version"] == 36
+    assert report["database_schema_version"] == 38
     assert report["view_count"] == 1
     assert report["groups"][0]["statuses"] == {"REJECTED": 1}
     assert report["blocks"][0]["tokens"] >= 0

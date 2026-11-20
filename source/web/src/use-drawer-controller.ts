@@ -5,6 +5,7 @@ export type Drawer =
   | { kind: 'database'; id?: string; reference?: ResourceReference; compare?: boolean; formats?: string[] }
   | { kind: 'knowledge'; reference?: KnowledgeReference }
   | { kind: 'capabilities' }
+  | { kind: 'business-capability'; id: string; version: string }
   | { kind: 'readiness' }
   | null;
 
@@ -34,6 +35,7 @@ export function useDrawerController() {
     [open],
   );
   const openCapabilities = useCallback(() => open({ kind: 'capabilities' }), [open]);
+  const openBusinessCapability = useCallback((id: string, version: string) => open({ kind: 'business-capability', id, version }), [open]);
   const openReadiness = useCallback(() => open({ kind: 'readiness' }), [open]);
   return {
     drawer,
@@ -41,6 +43,7 @@ export function useDrawerController() {
     openDatabase,
     openKnowledge,
     openCapabilities,
+    openBusinessCapability,
     openReadiness,
   };
 }

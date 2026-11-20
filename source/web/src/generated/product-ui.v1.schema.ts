@@ -65,6 +65,11 @@ export default {
         }
       }
     },
+    "businessCapabilities": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/businessCapability"}
+    },
     "models": {
       "type": "object",
       "minProperties": 1,
@@ -95,6 +100,80 @@ export default {
   "$defs": {
     "text": {"type": "string", "minLength": 1, "maxLength": 1000, "pattern": "\\S"},
     "checksum": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "businessName": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]*$"},
+    "businessRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "checksum"],
+      "properties": {
+        "id": {"$ref": "#/$defs/businessName"},
+        "version": {"type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"},
+        "checksum": {"$ref": "#/$defs/checksum"}
+      }
+    },
+    "businessRoles": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "enum": ["admin", "researcher", "viewer"]}
+    },
+    "businessCapability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref", "title", "description", "scenario", "tier", "defaultVisible", "roles", "prompt", "requiredServices", "validationStatus", "profiles"],
+      "properties": {
+        "ref": {"$ref": "#/$defs/businessRef"},
+        "title": {"$ref": "#/$defs/text"},
+        "description": {"$ref": "#/$defs/text"},
+        "scenario": {"$ref": "#/$defs/text"},
+        "tier": {"enum": ["CORE", "SPECIALIZED", "ADVANCED", "EXPERIMENTAL"]},
+        "defaultVisible": {"type": "boolean"},
+        "roles": {"$ref": "#/$defs/businessRoles"},
+        "exampleId": {"$ref": "#/$defs/text"},
+        "prompt": {"$ref": "#/$defs/text"},
+        "requiredServices": {"type": "array", "items": {"$ref": "#/$defs/businessName"}},
+        "validationStatus": {"enum": ["TECHNICALLY_VALIDATED", "UNVERIFIED"]},
+        "profiles": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/businessProfile"}}
+      }
+    },
+    "businessProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profileRef", "modelRef", "workflowRef", "resultContractRef", "label", "roles", "inputs", "outputs", "limitations"],
+      "properties": {
+        "profileRef": {"$ref": "#/$defs/businessRef"},
+        "modelRef": {"$ref": "#/$defs/businessRef"},
+        "workflowRef": {"$ref": "#/$defs/businessRef"},
+        "resultContractRef": {"$ref": "#/$defs/businessRef"},
+        "label": {"$ref": "#/$defs/text"},
+        "roles": {"$ref": "#/$defs/businessRoles"},
+        "inputs": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/businessInput"}},
+        "outputs": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/businessOutput"}},
+        "limitations": {"type": "array", "items": {"$ref": "#/$defs/text"}}
+      }
+    },
+    "businessInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "meaning", "formats", "preconditions"],
+      "properties": {
+        "label": {"$ref": "#/$defs/text"},
+        "meaning": {"$ref": "#/$defs/text"},
+        "formats": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/text"}},
+        "preconditions": {"type": "array", "items": {"$ref": "#/$defs/text"}}
+      }
+    },
+    "businessOutput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "role", "meaning", "format"],
+      "properties": {
+        "name": {"$ref": "#/$defs/businessName"},
+        "role": {"enum": ["PRIMARY_RESULT", "DIAGNOSTIC", "VISUALIZATION", "SUMMARY"]},
+        "meaning": {"$ref": "#/$defs/text"},
+        "format": {"$ref": "#/$defs/text"}
+      }
+    },
     "stringMap": {
       "type": "object",
       "additionalProperties": {"$ref": "#/$defs/text"}

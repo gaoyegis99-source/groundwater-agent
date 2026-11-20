@@ -73,6 +73,7 @@ V6_PYTEST_SLICES: tuple[V6PytestSlice, ...] = (
             "tests/assembler",
             "tests/cli",
             "tests/e2e/test_composed_workflow.py",
+            "tests/e2e/test_monitoring_work_item.py",
             "tests/persistence",
             "tests/test_v6_state_layout_experiment.py",
             "products/groundwater/tests",

@@ -20,6 +20,7 @@ from fastapi.testclient import TestClient
 import httpx
 import numpy as np
 import pyarrow as pa
+import pyarrow.compute as pc
 import pyarrow.parquet as parquet
 import pytest
 from rasterio.io import MemoryFile
@@ -27,6 +28,7 @@ from rasterio.transform import from_bounds, from_origin
 from rasterio.warp import transform
 
 from kernel.tests.conftest import kernel_settings as kernel_settings  # noqa: F401
+from kernel.tests.reply_testing import submit_reply
 from kernel.tests.test_workflow_drafts import _operator, _reply
 from platform_data_service.api.app import create_app as data_app
 from platform_data_service.operations.worker import Worker as DataWorker
@@ -42,6 +44,7 @@ from platform_kernel.agent_runtime.evidence import _data_reference
 from platform_kernel.api import create_app as kernel_app
 from platform_kernel.composition import PlatformApplication
 from platform_kernel.settings import KernelSettings
+from platform_protocol_contracts import DataVersionRefV2
 from platform_workflow_compiler.composition import definition_digest
 from services.data.tests.conftest import postgres as postgres, settings as data_settings  # noqa: F401
 from services.data.tests.test_service import ready, start, upload
@@ -550,6 +553,411 @@ def native_site():
         yield next(native_python.parent.parent.glob("lib/python*/site-packages"))
 
 
+def _assembled_kernel_settings(assembly, original):
+    return KernelSettings.from_config(
+        assembly / "kernel-config.json",
+        data_root=original.data_root, project_id="p",
+        agent_provider=original.agent_provider, agent_protocol=original.agent_protocol,
+        agent_base_url=original.agent_base_url, agent_model=original.agent_model,
+        agent_api_key=original.agent_api_key,
+        agent_context_window_tokens=original.agent_context_window_tokens,
+        agent_max_output_tokens=original.agent_max_output_tokens,
+        agent_request_timeout_seconds=original.agent_request_timeout_seconds,
+        agent_segment_timeout_seconds=original.agent_segment_timeout_seconds,
+        intent_router=original.intent_router,
+    )
+
+
+_MONITORING_TREND_REQUEST = (
+    "请对附件运行监测趋势，分析季节趋势和阈值事件。"
+    "分组字段=station，时间字段=time，数值字段=value，频率=月，季节周期=月，期间统计=平均值，"
+    "基准期=2020-01-01 至 2022-12-31，对比期=2023-01-01 至 2025-12-31，"
+)
+
+
+def _publish_monitoring_observations(data, worker, *, typed_time=False):
+    path = ROOT / "packages/operator-pack/catalog/fixtures/data/monitoring-timeseries.parquet"
+    content = path.read_bytes()
+    if typed_time:
+        # The golden fixture uses ISO strings. The same observations with a
+        # typed UTC time column can satisfy the capability's Data precondition.
+        table = parquet.read_table(io.BytesIO(content))
+        times = pc.cast(table["time"], pa.timestamp("ms", tz="UTC"))
+        table = table.set_column(table.schema.get_field_index("time"), "time", times)
+        encoded = io.BytesIO()
+        parquet.write_table(table, encoded)
+        content = encoded.getvalue()
+    reference = _upload(data, worker, "合成监测序列", "parquet", content)
+    version_path = f"/data/v3/versions/{reference['version_id']}"
+    version = data.get(version_path).raise_for_status().json()
+    value_field = next(field["fieldId"] for field in version["descriptor"]["fields"] if field["name"] == "value")
+    revision = data.post(version_path + "/semantics", json={
+        "expectedSemanticId": reference["semantic_id"],
+        "semantics": {
+            "fields": {value_field: {"unit": "m", "meaning": "groundwater monitoring level"}},
+            "timeRange": "2020-01-01/2025-12-31", "timezone": "UTC",
+        },
+    }).raise_for_status().json()
+    reference["semantic_id"] = revision["semanticId"]
+    return DataVersionRefV2.from_storage_dict(reference).as_dict()
+
+
+def _monitoring_preparation_result(call, call_id="prepare"):
+    return literal_eval(next(
+        item["output"] for item in call.input
+        if item.get("type") == "function_call_output" and item.get("call_id") == call_id
+    ))
+
+
+def _assert_monitoring_capability_tools(agent, settings):
+    model_tools = {model.tool_name for model in settings.models}
+    exposed = [{tool.name for tool in call.tools} for call in agent.calls]
+    assert exposed[0] & model_tools == {"run_monitoring_trend"}
+    assert all(not names & {"list_operators", "get_operator", "validate_workflow"} for names in exposed)
+    assert all(names & model_tools <= {"run_monitoring_trend"} for names in exposed)
+
+
+def _monitoring_trend_steps(arguments, reference, *, selected_by_capability=False, preparation_call_id="prepare"):
+    def plan(call):
+        prepared = _monitoring_preparation_result(call, preparation_call_id)
+        assert prepared["status"] == "READY", prepared
+        assert prepared["selection_policy"] == "PINNED"
+        exact = DataVersionRefV2.from_storage_dict(prepared["data_references"]["versionId"])
+        assert exact.as_dict() == reference
+        assert prepared["parameters"] == {key: value for key, value in arguments.items() if key != "versionId"}
+        assert [check["status"] for check in prepared["checks"] if check["kind"] == "FIELD_UNIT"] == ["PASS"]
+        assert [check["status"] for check in prepared["checks"] if check["kind"] == "TIME_RANGE"] == ["PASS"] * 3
+        if selected_by_capability:
+            sources = prepared["parameter_sources"]
+            assert sources["expectedStart"] == sources["expectedEnd"] == "DATA"
+            assert sources["eventThreshold"] == "USER"
+            assert sources["seasonalTrendEnabled"] == "WORKFLOW_PROFILE"
+            assert sources["alpha"] == "MODEL_DEFAULT"
+        return [function_call("record_plan", {
+            "goal": "分析监测序列",
+            "steps": [{"step_id": "trend", "tool": "run_monitoring_trend", "purpose": "计算趋势和诊断"}],
+            "reason": "输入版本和计算参数已确定",
+        }, call_id="plan")]
+
+    def reply(call):
+        result = json.loads(next(
+            item["output"] for item in call.input
+            if item.get("type") == "function_call_output" and item.get("call_id") == "trend"
+        ))
+        assert result["status"] == "COMPLETE", result
+        return [submit_reply("监测趋势计算已完成。", refs=[result["workflow_run_id"]], status=True)]
+
+    return [
+        ModelStep(output=[function_call("prepare_task_inputs", {
+            "target_tool": "run_monitoring_trend", "arguments": {} if selected_by_capability else arguments,
+            "selection_policy": "PINNED",
+        }, call_id=preparation_call_id)]),
+        ModelStep.respond(plan),
+        ModelStep(output=[function_call("run_monitoring_trend", arguments, call_id="trend")]),
+        ModelStep.respond(reply),
+    ]
+
+
+def _wait_for_session(api, session_path, expected):
+    for _ in range(300):
+        session = api.get(session_path).raise_for_status().json()
+        states = session["agentSteps"]
+        if expected in states or "FAILED" in states:
+            assert states[-1] == expected, session
+            return session
+        time.sleep(0.05)
+    raise AssertionError(session)
+
+
+async def _run_monitoring_trend_worker(executor_http, data_worker, kernel_http, run_path, capacity):
+    worker = ExecutorWorker("native", capacity["slots"], capacity["memoryBytes"])
+    await worker.client.aclose()
+    worker.client = httpx.AsyncClient(transport=httpx.MockTransport(lambda req: _bridge(executor_http, req)))
+    try:
+        (await worker.client.post("http://executor/internal/workers/v3/heartbeat", json=worker.identity)).raise_for_status()
+        for _ in range(600):
+            response = await worker.client.post("http://executor/internal/workers/v3/nodes:claim", json=worker.identity)
+            lease = response.raise_for_status().json()["lease"]
+            if lease is not None:
+                await worker._execute(lease)
+            data_worker.once()
+            run = kernel_http.get(run_path, params={"projectId": "p"}).raise_for_status().json()
+            if run["status"] in {"SUCCEEDED", "FAILED"}:
+                assert run["status"] == "SUCCEEDED", run
+                return run
+            await asyncio.sleep(0.025)
+        raise AssertionError(run)
+    finally:
+        await worker.client.aclose()
+
+
+@pytest.mark.parametrize("route_kind", ["profile", "unprofiled", "capability"])
+def test_monitoring_trend_publishes_exact_results(
+    assembly, kernel_settings, request, tmp_path, monkeypatch, route_kind,
+):
+    selected_profile = route_kind != "unprofiled"
+    if selected_profile:
+        from scripts.development.workflow_profile import describe_workflow_result, select_workflow_profile
+
+        platform = json.loads((assembly / "workflow-platform.json").read_text())
+        profile = platform["profiles"][0]
+        profile_ref = profile["ref"]
+        assert profile_ref["id"] == "groundwater.monitoring-trend.seasonal-and-threshold"
+        assert profile_ref["version"] == "1.0.0"
+    else:
+        historical_model = json.loads((
+            ROOT / "domains/groundwater/6.1.0/models/monitoring-trend.model.json"
+        ).read_text())
+    development = ROOT / "products/groundwater/development"
+    golden = json.loads((development / "workflow-goldens/monitoring-trend.json").read_text())
+    parameters = json.loads((development / "workflow-golden-cases.v2.json").read_text())["cases"]["monitoring-trend"]["parameters"]
+    data_config = replace(request.getfixturevalue("data_settings"), project="p")
+    data_worker = DataWorker(data_config)
+    executor_config = assembly / "executor-config.json"
+    native_site = request.getfixturevalue("native_site")
+    monkeypatch.setenv("EXECUTOR_CONFIG_PATH", str(executor_config))
+    monkeypatch.setenv("EXECUTOR_CONTROL_URL", "http://executor")
+    monkeypatch.setenv("PYTHONDONTWRITEBYTECODE", "1")
+    monkeypatch.setenv("PYTHONPATH", os.pathsep.join((
+        str(ROOT / "packages/operator-pack/src"), str(ROOT / "services/executor/src"),
+        str(ROOT / "packages/protocol-contracts/src"), str(native_site),
+    )))
+    for key in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS"):
+        monkeypatch.setenv(key, "1")
+
+    with ExitStack() as stack:
+        data = stack.enter_context(TestClient(data_app(data_config)))
+        input_ref = _publish_monitoring_observations(data, data_worker, typed_time=route_kind == "capability")
+        arguments = {**parameters, "versionId": input_ref["versionId"]}
+        if route_kind == "profile":
+            user_parameters = {
+                key: value for key, value in parameters.items()
+                if key not in {"alpha", "threshold", "seasonalTrendEnabled", "thresholdEventsEnabled"}
+            }
+            selection = select_workflow_profile(
+                assembly, profile_ref, role="researcher", inputs={"observations": input_ref}, parameters=user_parameters,
+            )
+            assert selection == select_workflow_profile(
+                assembly, profile_ref, role="researcher", inputs={"observations": input_ref}, parameters=user_parameters,
+            )
+            assert selection["inputReferences"] == [input_ref]
+            assert selection["workflowSelection"]["inputBindings"] == {"versionId": 0}
+            assert selection["workflowSelection"]["parameters"] == parameters
+            expected_workflow_checksum = selection["workflowSelection"]["workflowChecksum"]
+            message = {
+                "requestedMode": "DIALOGUE", "message": "请准备此监测趋势档位，等我确认后运行。", **selection,
+            }
+        elif route_kind == "capability":
+            expected_workflow_checksum = profile["workflowRef"]["checksum"]
+            message = {
+                "requestedMode": "AUTO", "inputReferences": [input_ref],
+                "message": _MONITORING_TREND_REQUEST + "识别高于 10 m 的阈值事件。",
+            }
+        else:
+            expected_workflow_checksum = historical_model["workflowRef"]["checksum"]
+            execution = json.dumps({"tool": "run_monitoring_trend", "arguments": arguments})
+            message = {
+                "requestedMode": "AUTO",
+                "message": f"请使用工具 run_monitoring_trend，等我确认后运行。[Model execution] {execution}",
+            }
+        data_transport = stack.enter_context(httpx.Client(transport=httpx.MockTransport(lambda req: _bridge(data, req))))
+        executor = ExecutorApplication(
+            executor_config, tmp_path / "executor", tmp_path / "objects", tmp_path / "work", "http://data", "p",
+            client=data_transport,
+        )
+        executor_http = stack.enter_context(TestClient(executor_app(executor)))
+        capacity = executor.control.config["workerRuntimes"]["native"]
+        settings = _assembled_kernel_settings(assembly, kernel_settings())
+        assert executor.definition_set_digest == settings.definition_set_digest
+
+        def route(request):
+            if request.url.host == "executor-control":
+                return _bridge(executor_http, request)
+            if request.url.host == "data-service":
+                return _bridge(data, request)
+            raise AssertionError(f"Unexpected request {request.url}")
+
+        def application(agent):
+            router = ScriptedModel([ModelStep(output=[assistant_message("EXECUTE_ON_DATA|NONE|NONE")])])
+            return PlatformApplication(
+                settings=settings, model=agent, intent_router_model=router,
+                client=httpx.AsyncClient(transport=httpx.MockTransport(route)),
+            )
+
+        agent = ScriptedModel(_monitoring_trend_steps(
+            arguments, input_ref, selected_by_capability=route_kind == "capability",
+        ))
+        with TestClient(kernel_app(application=application(agent))) as api:
+            session_id = api.post("/api/v12/sessions", json={"projectId": "p"}).raise_for_status().json()["sessionId"]
+            session_path = f"/api/v12/sessions/{session_id}"
+            request_body = {"requestId": "monitoring-trend", **message}
+            response = api.post(session_path + "/messages", json=request_body)
+            assert response.status_code == 202, response.text
+            waiting = _wait_for_session(api, session_path, "WAITING_CONFIRMATION")
+            confirmation = waiting["confirmation"]
+            assert confirmation["status"] == "PENDING"
+            action, = confirmation["actions"]
+            assert action["workflowChecksum"] == expected_workflow_checksum
+            assert action["arguments"] == arguments
+            assert not waiting["workflowRunIds"]
+            if route_kind == "capability":
+                assert action["modelChecksum"] == profile["modelRef"]["checksum"]
+                assert action["inputReferences"] == {"versionId": input_ref}
+                _assert_monitoring_capability_tools(agent, settings)
+                call_count = len(agent.calls)
+                same_turn = api.post(session_path + "/messages", json=request_body).raise_for_status().json()
+                assert same_turn["agentRunId"] == response.json()["agentRunId"]
+                assert same_turn["goalRevision"] == response.json()["goalRevision"]
+                assert api.get(session_path).raise_for_status().json()["confirmation"] == confirmation
+                assert len(agent.calls) == call_count
+                trace_path = f"/api/v12/agent-runs/{same_turn['agentRunId']}/trace"
+                trace = api.get(trace_path, params={"projectId": "p"}).raise_for_status().json()["trace"]
+                capability = trace["businessCapability"]
+                capability_ref = capability["capabilityRef"]
+                assert capability_ref["id"] == "groundwater.monitoring-trend"
+                assert capability_ref["version"] == "1.0.0"
+                installed = json.loads((assembly / "kernel-config.json").read_text())["businessCapabilities"]
+                assert capability_ref in [item["ref"] for item in installed]
+                assert capability["profileRef"] == profile_ref
+                assert capability["modelRef"] == profile["modelRef"]
+                assert capability["workflowRef"] == profile["workflowRef"]
+                assert capability["resultContractRef"] == profile["resultContractRef"]
+                changed = api.post(session_path + f"/confirmations/{confirmation['confirmationId']}/revisions", json={
+                    "requestId": "alter-threshold", "expectedGoalRevision": waiting["goalRevision"],
+                    "actions": [{"toolCallId": action["toolCallId"], "arguments": {**arguments, "eventThreshold": 11.0}}],
+                })
+                assert changed.status_code == 409, changed.text
+                assert changed.json()["code"] == "BUSINESS_CAPABILITY_REPREPARATION_REQUIRED"
+                assert api.get(session_path).raise_for_status().json()["confirmation"] == confirmation
+            with executor_database(executor.database) as connection:
+                assert connection.execute("SELECT COUNT(*) FROM executor_jobs").fetchone()[0] == 0
+
+            accepted = api.post(session_path + "/confirm", json={"confirmationId": confirmation["confirmationId"]})
+            assert accepted.status_code == 202, accepted.text
+            run_id, = api.get(session_path).raise_for_status().json()["workflowRunIds"]
+            run_path = f"/api/v12/workflow-runs/{run_id}"
+            run = asyncio.run(_run_monitoring_trend_worker(executor_http, data_worker, api, run_path, capacity))
+            _wait_for_session(api, session_path, "COMPLETE")
+            if route_kind == "capability":
+                _assert_monitoring_capability_tools(agent, settings)
+            nodes = api.get(run_path + "/nodes", params={"projectId": "p"}).raise_for_status().json()
+            assert nodes["availability"] == "AVAILABLE" and len(nodes["nodes"]) == 10
+            assert {node["status"] for node in nodes["nodes"]} == {"SUCCEEDED"}
+
+        with TestClient(kernel_app(application=application(ScriptedModel([])))) as restarted:
+            assert restarted.get(run_path, params={"projectId": "p"}).raise_for_status().json() == run
+            publication = restarted.get(run_path + "/publication", params={"projectId": "p"}).raise_for_status().json()
+            if route_kind == "capability":
+                trace = restarted.get(trace_path, params={"projectId": "p"}).raise_for_status().json()["trace"]
+                assert trace["businessCapability"] == capability
+        assert publication["state"] == "PUBLISHED"
+        publication_id = publication["publicationId"]
+        receipt = data.get(f"/data/v3/publications/{publication_id}").raise_for_status().json()
+        assert receipt["manifest"]["inputVersions"] == [input_ref["versionId"]]
+        provenance = receipt["manifest"]["provenance"]
+        assert provenance["workflow_checksum"] == expected_workflow_checksum
+        assert provenance["model_checksum"] == run["modelChecksum"]
+        by_name = {output["outputName"]: output for output in run["outputs"]}
+        if selected_profile:
+            result = describe_workflow_result(assembly, profile_ref, run, publication)
+            assert result["runId"] == run_id
+            assert result["profileRef"] == profile_ref
+            assert result["contractRef"] == profile["resultContractRef"]
+            assert result["executionStatus"] == "SUCCEEDED"
+            assert result["publicationState"] == "PUBLISHED"
+            assert result["resultStatus"] == "COMPLETE"
+            assert result["businessAcceptance"] == "NOT_ASSESSED"
+            assert by_name == {output["name"]: output["dataRef"] for output in result["outputs"]}
+            assert len(by_name) == len(result["outputs"])
+            assert {output["role"] for output in result["outputs"]} == {"PRIMARY_RESULT", "DIAGNOSTIC", "SUMMARY"}
+        else:
+            assert run["modelVersion"] == historical_model["version"]
+            assert run["workflowVersion"] == historical_model["workflowRef"]["version"]
+            assert run["workflowChecksum"] == expected_workflow_checksum
+        assert len(by_name) == len(run["outputs"]) == 21
+        assert set(by_name) == set(golden["outputs"])
+        for name, ref in by_name.items():
+            content = data.get(f"/data/v3/versions/{ref['versionId']}/objects/{ref['objectId']}/content").raise_for_status().content
+            assert len(content) == ref["sizeBytes"]
+            assert "sha256:" + sha256(content).hexdigest() == ref["checksum"]
+            if name in golden["keyValues"]:
+                assert json.loads(content) == golden["keyValues"][name]
+
+
+def test_monitoring_trend_capability_requires_user_threshold(assembly, kernel_settings, request):
+    data_config = replace(request.getfixturevalue("data_settings"), project="p")
+    settings = _assembled_kernel_settings(assembly, kernel_settings())
+    cases = ROOT / "products/groundwater/development/workflow-golden-cases.v2.json"
+    parameters = json.loads(cases.read_text())["cases"]["monitoring-trend"]["parameters"]
+
+    def clarify(call):
+        prepared = _monitoring_preparation_result(call)
+        assert prepared["status"] == "BLOCKED", prepared
+        assert "eventThreshold" not in prepared["parameters"]
+        return [submit_reply(
+            "需要用户给定的阈值才能识别事件。",
+            unresolved=[("您要使用多少米作为阈值？", ())],
+        )]
+
+    router = ScriptedModel([ModelStep(output=[assistant_message("EXECUTE_ON_DATA|NONE|NONE")]) for _ in range(2)])
+    with TestClient(data_app(data_config)) as data:
+        input_ref = _publish_monitoring_observations(data, DataWorker(data_config), typed_time=True)
+        arguments = {**parameters, "versionId": input_ref["versionId"]}
+        agent = ScriptedModel([
+            ModelStep(output=[function_call("prepare_task_inputs", {
+                "target_tool": "run_monitoring_trend",
+                "arguments": arguments, "selection_policy": "PINNED",
+            }, call_id="prepare")]),
+            ModelStep.respond(clarify),
+            *_monitoring_trend_steps(
+                arguments, input_ref, selected_by_capability=True, preparation_call_id="follow-up-preparation",
+            )[:3],
+        ])
+
+        def observe(request):
+            assert request.url.host == "data-service", f"Unexpected request {request.url}"
+            return _bridge(data, request)
+
+        kernel = PlatformApplication(
+            settings=settings, model=agent, intent_router_model=router,
+            client=httpx.AsyncClient(transport=httpx.MockTransport(observe)),
+        )
+        with TestClient(kernel_app(application=kernel)) as api:
+            session_id = api.post("/api/v12/sessions", json={"projectId": "p"}).raise_for_status().json()["sessionId"]
+            path = f"/api/v12/sessions/{session_id}"
+            api.post(path + "/messages", json={
+                "requestId": "monitoring-trend-missing-threshold", "requestedMode": "AUTO", "inputReferences": [input_ref],
+                "message": _MONITORING_TREND_REQUEST + "阈值比较=高于，识别超过该阈值的事件。",
+            }).raise_for_status()
+            session = _wait_for_session(api, path, "COMPLETE")
+            preparation = api.get(path + "/preparation").raise_for_status().json()
+            assert preparation["status"] == "BLOCKED"
+            entry, = preparation["entries"]
+            assert "eventThreshold" not in entry["parameters"]
+            issue = entry["blockingIssues"][0]
+            assert (issue["code"], issue["kind"], issue["parameter"]) == (
+                "CAPABILITY_PARAMETER_REQUIRED", "MISSING_PARAMETER", "eventThreshold",
+            )
+            assert "阈值" in session["agentOutput"]["message"]
+            assert session["confirmation"] is None
+            assert session["workflowRunIds"] == []
+
+            api.post(path + "/messages", json={
+                "requestId": "monitoring-trend-threshold-supplied", "requestedMode": "AUTO",
+                "message": "高于 10 m",
+            }).raise_for_status()
+            waiting = _wait_for_session(api, path, "WAITING_CONFIRMATION")
+            assert waiting["goalRevision"] == session["goalRevision"] + 1
+            assert waiting["workflowRunIds"] == []
+            confirmation = waiting["confirmation"]
+            assert confirmation["status"] == "PENDING"
+            action, = confirmation["actions"]
+            assert action["arguments"] == arguments
+            assert action["inputReferences"] == {"versionId": input_ref}
+            assert api.get(path + "/preparation").raise_for_status().json()["status"] == "READY"
+    _assert_monitoring_capability_tools(agent, settings)
+
+
 @pytest.mark.parametrize("scenario", [
     "table", "join", "hydrology", "raster", "crs", "grid", "nodata", "missing-crs", "reference-grid",
     *sorted(TABLE_QUALITY_SCENARIOS), *CATALOG_SCENARIOS,
@@ -706,18 +1114,7 @@ def test_agent_composes_confirms_executes_and_publishes(
                     original, **{f"agent_{key}": value for key, value in endpoint.items()},
                     intent_router=replace(original.intent_router, **(endpoint | {"model": "deepseek-flash"})),
                 )
-            settings = KernelSettings.from_config(
-                assembly / "kernel-config.json",
-                data_root=original.data_root, project_id="p",
-                agent_provider=original.agent_provider, agent_protocol=original.agent_protocol,
-                agent_base_url=original.agent_base_url, agent_model=original.agent_model,
-                agent_api_key=original.agent_api_key,
-                agent_context_window_tokens=original.agent_context_window_tokens,
-                agent_max_output_tokens=original.agent_max_output_tokens,
-                agent_request_timeout_seconds=original.agent_request_timeout_seconds,
-                agent_segment_timeout_seconds=original.agent_segment_timeout_seconds,
-                intent_router=original.intent_router,
-            )
+            settings = _assembled_kernel_settings(assembly, original)
             assert executor.definition_set_digest == settings.definition_set_digest
             inspect = next(tool for tool in settings.observation_tools if tool.name == "inspect_data_version")
             assert inspect.progress is not None

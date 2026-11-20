@@ -1,0 +1,159 @@
+{
+  "schemaVersion": "operator-validation.v2",
+  "legacyTechnicalEvidence": {
+    "path": "operator-validation.v1.json",
+    "checksum": "sha256:7e45c110ee146c237b962e9f01651db39b327418d37a9057db022ad1c0d792dc"
+  },
+  "operators": {
+    "groundwater.porous.pest_calibrate@1.0.0": {
+      "technicalVerification": {
+        "implementationRevision": "sha256:06576b0c4b42006be964edc88b8c953a590d81e34e4bb8e73f1a2171ee63bc5b",
+        "manifestDigest": "sha256:058d3908b2133a88cc60762bc1a844f67ee372aceace4743d6420fe7cb3bec8f",
+        "runtime": "remote_http",
+        "smokeDigest": "sha256:1e8046948b49e215fac939568cab63b5246198964059d30ba42f3adab067d309",
+        "checks": {
+          "SCHEMA_CONTRACT": {
+            "status": "PASSED",
+            "checkedOn": "2026-11-20",
+            "scope": "Manifest、Smoke 声明、端口、参数与实现锁，含 Remote Worker 镜像中的声明端口检查",
+            "artifact": {
+              "path": "operator-evidence/phase-1-offline.v1.json",
+              "checksum": "sha256:3b3dcf1b38e270bc336a291de4422d7e11c40b3571b91caca3e4be9ff1ddf924"
+            }
+          },
+          "SMOKE": {
+            "status": "NOT_ASSESSED",
+            "reason": "远程计算需要服务执行回执。本轮仅验证声明端口。"
+          }
+        }
+      },
+      "scientificReview": {
+        "status": "NOT_ASSESSED",
+        "reason": "待独立数值基准与地下水专业复核。"
+      }
+    },
+    "groundwater.porous.pest_calibrate@1.1.0": {
+      "technicalVerification": {
+        "implementationRevision": "sha256:38fd68d8f63a93e39a5b1b6c18a3844969b1316bdb7a3ff1d0a052b6539f5462",
+        "manifestDigest": "sha256:34f1225760b11a1ae4a661f3bb798270e644cca335b520c87b91603510dca029",
+        "runtime": "remote_http",
+        "smokeDigest": "sha256:d7607cdf54a2c14a1871533add03cd65f81402e0497380f14b3e97b971d366dd",
+        "checks": {
+          "SCHEMA_CONTRACT": {
+            "status": "PASSED",
+            "checkedOn": "2026-11-20",
+            "scope": "Manifest、Smoke 声明、端口、参数与实现锁，含 Remote Worker 镜像中的声明端口检查",
+            "artifact": {
+              "path": "operator-evidence/phase-1-offline.v1.json",
+              "checksum": "sha256:3b3dcf1b38e270bc336a291de4422d7e11c40b3571b91caca3e4be9ff1ddf924"
+            }
+          },
+          "SMOKE": {
+            "status": "NOT_ASSESSED",
+            "reason": "远程计算需要服务执行回执。本轮仅验证声明端口。"
+          }
+        }
+      },
+      "scientificReview": {
+        "status": "NOT_ASSESSED",
+        "reason": "待独立数值基准与地下水专业复核。"
+      }
+    },
+    "raster.reproject@1.0.0": {
+      "technicalVerification": {
+        "implementationRevision": "sha256:ece9a2e74a171e0bf3ff24e19d38a5c79b04a7f750eff1314912252ff60ff2b7",
+        "manifestDigest": "sha256:f11262159a7c7810960adf50597f3fcecde7cfba75b8a5e1853d07fbc902c248",
+        "runtime": "native",
+        "smokeDigest": "sha256:97ce95704606928e59c1debe314bcfb864adfa9005935404692856097257118c",
+        "checks": {
+          "SCHEMA_CONTRACT": {
+            "status": "PASSED",
+            "checkedOn": "2026-11-20",
+            "scope": "Manifest、Smoke 声明、端口、参数与实现锁",
+            "artifact": {
+              "path": "operator-evidence/phase-1-offline.v1.json",
+              "checksum": "sha256:3b3dcf1b38e270bc336a291de4422d7e11c40b3571b91caca3e4be9ff1ddf924"
+            }
+          },
+          "SMOKE": {
+            "status": "PASSED",
+            "checkedOn": "2026-11-20",
+            "scope": "缓存 Worker 镜像运行当前仓库的精确算子和签入合成夹具，经任务子进程校验输出",
+            "artifact": {
+              "path": "operator-evidence/phase-1-offline.v1.json",
+              "checksum": "sha256:3b3dcf1b38e270bc336a291de4422d7e11c40b3571b91caca3e4be9ff1ddf924"
+            }
+          }
+        }
+      },
+      "scientificReview": {
+        "status": "NOT_ASSESSED",
+        "reason": "待独立数值基准与地下水专业复核。"
+      }
+    },
+    "raster.reproject@1.1.0": {
+      "technicalVerification": {
+        "implementationRevision": "sha256:68ac2e817fbf28c1878863c5af3869875e623985db0ef9bfa967f71049f3b0df",
+        "manifestDigest": "sha256:7b2f7004e5481bc1d3816db2ff08adbf0b422f0ce1157495906fce072936f3d9",
+        "runtime": "native",
+        "smokeDigest": "sha256:5ce251c9f0799983752fd142aad86e7ccf2a31430aeb71c97279fd70aaca74dc",
+        "checks": {
+          "SCHEMA_CONTRACT": {
+            "status": "PASSED",
+            "checkedOn": "2026-11-20",
+            "scope": "Manifest、Smoke 声明、端口、参数与实现锁",
+            "artifact": {
+              "path": "operator-evidence/phase-1-offline.v1.json",
+              "checksum": "sha256:3b3dcf1b38e270bc336a291de4422d7e11c40b3571b91caca3e4be9ff1ddf924"
+            }
+          },
+          "SMOKE": {
+            "status": "PASSED",
+            "checkedOn": "2026-11-20",
+            "scope": "缓存 Worker 镜像运行当前仓库的精确算子和签入合成夹具，经任务子进程校验输出",
+            "artifact": {
+              "path": "operator-evidence/phase-1-offline.v1.json",
+              "checksum": "sha256:3b3dcf1b38e270bc336a291de4422d7e11c40b3571b91caca3e4be9ff1ddf924"
+            }
+          }
+        }
+      },
+      "scientificReview": {
+        "status": "NOT_ASSESSED",
+        "reason": "待独立数值基准与地下水专业复核。"
+      }
+    },
+    "vector.spatial_join@1.0.0": {
+      "technicalVerification": {
+        "implementationRevision": "sha256:86a52e83dd51bd341aeaa80e05c53733de119f0dc373cc7da22c8e10be592e3b",
+        "manifestDigest": "sha256:68e2534e428efe8be60b2a1bf3a764bf28b0c9d9cd4662e586dbe1d652ffc0e3",
+        "runtime": "qgis",
+        "smokeDigest": "sha256:01b3a0ebb6e302753d012326a25507df239c16360044d3e0ac378b0c1ebfdf96",
+        "checks": {
+          "SCHEMA_CONTRACT": {
+            "status": "PASSED",
+            "checkedOn": "2026-11-20",
+            "scope": "Manifest、Smoke 声明、端口、参数与实现锁",
+            "artifact": {
+              "path": "operator-evidence/phase-1-offline.v1.json",
+              "checksum": "sha256:3b3dcf1b38e270bc336a291de4422d7e11c40b3571b91caca3e4be9ff1ddf924"
+            }
+          },
+          "SMOKE": {
+            "status": "PASSED",
+            "checkedOn": "2026-11-20",
+            "scope": "缓存 Worker 镜像运行当前仓库的精确算子和签入合成夹具，经任务子进程校验输出",
+            "artifact": {
+              "path": "operator-evidence/phase-1-offline.v1.json",
+              "checksum": "sha256:3b3dcf1b38e270bc336a291de4422d7e11c40b3571b91caca3e4be9ff1ddf924"
+            }
+          }
+        }
+      },
+      "scientificReview": {
+        "status": "NOT_ASSESSED",
+        "reason": "待独立数值基准与地下水专业复核。"
+      }
+    }
+  }
+}

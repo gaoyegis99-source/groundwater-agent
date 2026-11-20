@@ -90,6 +90,20 @@ def test_assembler_packaging_declares_every_top_level_runtime_module() -> None:
     assert declared == sources
 
 
+def test_assembler_wheel_audit_matches_packaged_runtime_schemas() -> None:
+    project = ROOT / "platform" / "assembler"
+    configuration = tomllib.loads((project / "pyproject.toml").read_text(encoding="utf-8"))
+    declared = set(configuration["tool"]["setuptools"]["data-files"]["share/platform-assembler"])
+    audited = {
+        path.name for name, path in MODULE._source_files("platform-assembler").items()
+        if "/share/platform-assembler/" in name
+    }
+    assert "operator-validation.v2.schema.json" in declared
+    assert "workflow-platform.v1.schema.json" in declared
+    assert "business-capabilities.v1.schema.json" in declared
+    assert audited == declared
+
+
 @pytest.mark.parametrize("distribution", sorted(MODULE.DISTRIBUTIONS))
 def test_wheel_checker_accepts_exact_distribution_source(
     tmp_path: Path, distribution: str

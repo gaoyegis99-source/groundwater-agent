@@ -16,7 +16,7 @@ Task、人工确认和 WorkflowRun 组织为可恢复、可审计的持久状态
 | Python distribution | `platform-kernel-services` 7.0.0 |
 | Public HTTP | v11 |
 | Kernel Config | v8 |
-| Kernel SQLite | v33 |
+| Kernel SQLite | v38 |
 
 Module version、distribution version、HTTP、Config 和 SQLite 是独立兼容轴，不能合并为
 一个“Kernel 版本”。可执行事实见 [`module.yaml`](module.yaml)。
@@ -52,7 +52,7 @@ Kernel 可以保存 Data/Knowledge 的精确身份、checksum 和本轮检查事
 | `workflow_execution` | WorkflowRun、Executor 提交、轮询、取消和恢复 | `WorkflowExecutionOwner` |
 | `settings` | Kernel Config 和环境变量的严格校验 | `KernelSettings.from_environment` |
 | `readiness` | 下游服务、Worker、Provider 和定义摘要聚合 | `PlatformReadiness.check` |
-| `schema` / `database` | SQLite v33、事务、事件和 owner DDL | `connect_database`、`initialize_database` |
+| `schema` / `database` | SQLite v38、事务、事件和 owner DDL | `connect_database`、`initialize_database` |
 
 三个业务 owner 通过 `application/ports.py` 和窄 facade 协作。它们共享一个 SQLite，以便
 Session、Agent、Task、Confirmation 和 WorkflowRun 的关联变更与事件可以原子提交；表写入
@@ -145,10 +145,13 @@ WORKFLOW_DRAFT 中的 `update_task` 只保存用户目标、要求、`DRAFT` 完
 
 ## 持久化、恢复与并发
 
-- 唯一持久文件是 `/data/kernel.sqlite3`，当前 Schema 为 v33。
-- 新空库按 v33 初始化。仅签名精确匹配的 v29/v30/v31/v32 数据库可以在生成内容校验冷备后，
-  按 v29→v30→v31→v32→v33 的适用后缀逐步事务升级；其他版本或结构不完全匹配时启动失败并返回
-  `SCHEMA_VERSION_UNSUPPORTED`。
+- Kernel 数据库位于 `/data/kernel.sqlite3`，当前 Schema 为 v38。新空库按 v38 初始化。
+- 已有数据库在启动时必须匹配 v38 的完整结构。签名精确匹配的 v29 至 v37 数据库可在 Kernel 停止后，
+  使用新版本的 `migrate-kernel` 开发命令显式升级。每一步都生成按内容寻址的升级前备份。
+  旧版本或结构不匹配时，正常启动返回 `SCHEMA_VERSION_UNSUPPORTED`。
+- v36 到 v37 新增 WorkItem、Session 关联、精确引用和命令审计表。v37 到 v38 保留原命令回执，增加验收范围并以原命令填充 WorkItem 活动。
+  新活动仅保存类型、关联标识和时间。迁移事务核对最终结构和外键，保留历史 Session、Task、Run 与已有结果。
+  升级演练可在停止服务后的独立 SQLite 副本上进行。恢复旧版本时使用对应的升级前备份。
 - 启动恢复覆盖 Workflow dispatch、Confirmation decision、control proposal、Intent route、
   Agent start、运行中的 AgentRun 和等待执行结果的 continuation。
 - Intent Router、Agent compute segment 和 Workflow dispatch 共用默认八槽计算门禁；

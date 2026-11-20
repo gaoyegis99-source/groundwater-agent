@@ -80,8 +80,11 @@ def _instance(tmp_path: Path):
     return paths, instance_id, data, state
 
 
-def test_snapshot_verifies_and_restore_is_plan_apply(tmp_path: Path) -> None:
+@pytest.mark.parametrize("kernel_version", [34, 37, 38])
+def test_snapshot_verifies_and_restore_is_plan_apply(tmp_path: Path, kernel_version: int) -> None:
     paths, instance_id, data, _state = _instance(tmp_path)
+    with sqlite3.connect(data / "kernel/kernel.sqlite3") as connection:
+        connection.execute("UPDATE schema_version SET version=?", (kernel_version,))
     result = create_snapshot(paths, instance_id)
     snapshot = Path(result["snapshot"])
     assert verify(snapshot, "research-snapshot.v1")["status"] == "PASS"
@@ -89,7 +92,7 @@ def test_snapshot_verifies_and_restore_is_plan_apply(tmp_path: Path) -> None:
         manifest = json.loads(packed.extractfile("manifest.json").read())
     assert manifest["schemaVersions"] == {
         "publicApi": "v12",
-        "kernel": 34,
+        "kernel": kernel_version,
         "data": 8,
         "knowledge": 7,
         "manifest": 4,
@@ -111,6 +114,8 @@ def test_experiment_archive_has_no_runtime_secret_and_benchmark_needs_gates(
 ) -> None:
     paths, instance_id, _data, state = _instance(tmp_path)
     (state / "instance.env").write_text("SECRET=must-not-archive\n")
+    platform = b'{"schemaVersion":"assembled-workflow-platform.v1"}\n'
+    (state / "workflow-platform.json").write_bytes(platform)
 
     result = create_archive(
         paths, ROOT, instance_id, "failed-experiment", "experiment", None
@@ -124,6 +129,7 @@ def test_experiment_archive_has_no_runtime_secret_and_benchmark_needs_gates(
         assert "dirty.patch" in names
         assert "environment-summary.json" in names
         assert "run-evidence.json" in names
+        assert packed.extractfile("workflow-platform.json").read() == platform
 
     with pytest.raises(ResearchArtifactError, match="BENCHMARK_ASSESSMENT_REQUIRED"):
         create_archive(paths, ROOT, instance_id, "benchmark", "benchmark", None)

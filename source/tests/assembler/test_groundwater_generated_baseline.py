@@ -8,15 +8,16 @@ sys.path.insert(0, str(ROOT / "platform" / "assembler"))
 from assembler import compile_product  # noqa: E402
 
 
-# Groundwater product assembly with the composition capability catalog.
+# Groundwater assembly with exact Workflow and Business Capability selections.
 GENERATED_ARTIFACT_DIGESTS = {
-    "kernel-config.json": "1390999416df7c11875126202910aefcac92d601955314d8064849a92b8c597a",
+    "kernel-config.json": "07d0bb52ba259194ff6801a47fcae26481843bf9b63009c3a92ebac492406ec0",
     "executor-config.json": "48ee106cf00009cd7c742bddc8f1283aaa26657109ceb8f35691c6bc13bf15b1",
     "compose.json": "78fd01ffab2246c88f238b91ce2b18bc06c5d3814b72784b2424e1d79bdfd052",
-    "nginx.conf": "c81e59fd7defcb52d99c9879c0a844abb0048167281f3278fcf802de63f51ecf",
-    "product-ui.json": "a5424dfafd27d95e6e5d4c63e00074aed24ebfd8e05c47bbe7dd3a19d6b97bfd",
+    "nginx.conf": "67eb04ebe6d61d377e7995a0abe181bdb199d7b865ba8a9af4a19a721418bd09",
+    "product-ui.json": "92454edef391daad83c74cbddb4e6b894218fc0b0c015b66bd0545177e43e96a",
     "product-icon.svg": "e484a9befc9ff8ccabff776babccdcb0f0c8cf6adebc6da25bb64fccf5a0dfab",
-    "assembly-lock.json": "b4394051bd0e39dd54590aadb3003f46d2bc36b3d419358728ce5d4942057331"
+    "assembly-lock.json": "e438923ee2c454fd9d8f5814fcab6e919367ce23f13837271c264e497521817f",
+    "workflow-platform.json": "342a2c020ce8b612370ef3a991b903b0445e0f7d503da538371a74416b57fff6",
 }
 
 

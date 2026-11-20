@@ -1,0 +1,403 @@
+{
+  "schemaVersion": "operator-evidence-receipt.v1",
+  "checkedOn": "2026-11-20",
+  "sourceCommit": "bd5d58ab63e16b2f5a59ceabcc7faf1c4c71f411",
+  "catalogIndexDigest": "sha256:3881423fa69deae67a4d31bbab2c202541b8c7ccaf7c1182497da74a67b672ab",
+  "executionCatalogDigest": "sha256:47eb493ad355de2062110e459c5d69368fd6de457d5debabc9f2f8c2363f4494",
+  "schemaContract": {
+    "status": "PASSED",
+    "manifestAndSmokePairs": 113,
+    "manifestSchemaSha256": "sha256:dec7dd1d7a667edd47c9c21efeb10b2bc811ffc32543d8351f2fb2c826c070a6",
+    "smokeSchemaSha256": "sha256:b070532dbec7a4f460d1529d9fda3f55e55a50356894c7f11aea6a6e7bc1432a",
+    "contractScope": "Manifest and smoke schema, exact declared ports, smoke parameters and implementation lock"
+  },
+  "workerSmokes": {
+    "native": {
+      "scope": "LOCAL_OPERATOR_CHILD",
+      "environment": {
+        "imageId": "sha256:437c75bffc4139dfce6d98f4d9b48c0a36aa75e8d6790b26622925ac2d78c65f",
+        "network": "none",
+        "python": "3.12.3"
+      },
+      "identities": [
+        "cartography.render-png@1.0.0",
+        "crs.reproject@1.0.0",
+        "data.convert@1.0.0",
+        "data.inspect@1.0.0",
+        "document.chunk@1.0.0",
+        "document.text_extract@1.0.0",
+        "groundwater.darcy_velocity@1.0.0",
+        "groundwater.drastic.evaluate@1.0.0",
+        "groundwater.drawdown.calculate@1.0.0",
+        "groundwater.head.calculate@1.0.0",
+        "groundwater.hydraulic_gradient@1.0.0",
+        "groundwater.source_sustainability.prepare@1.0.0",
+        "hydrology.basins@1.0.0",
+        "hydrology.flow_accumulation@1.0.0",
+        "hydrology.flow_direction@1.0.0",
+        "hydrology.snap_pour_points@1.0.0",
+        "hydrology.stream_extract@1.0.0",
+        "hydrology.stream_order@1.0.0",
+        "hydrology.watershed@1.0.0",
+        "ml.gru_attention_finetune@1.0.0",
+        "ml.gru_attention_predict@1.0.0",
+        "ml.gru_attention_pretrain@1.0.0",
+        "points.interpolate.idw@1.0.0",
+        "points.interpolate.kriging@1.0.0",
+        "preprocessing.standard_scaler_fit@1.0.0",
+        "preprocessing.standard_scaler_inverse@1.0.0",
+        "preprocessing.standard_scaler_transform@1.0.0",
+        "raster.algebra@1.0.0",
+        "raster.align_grid@1.0.0",
+        "raster.aspect@1.0.0",
+        "raster.cell_statistics@1.0.0",
+        "raster.clip@1.0.0",
+        "raster.contour@1.0.0",
+        "raster.fill_nodata@1.0.0",
+        "raster.hillshade@1.0.0",
+        "raster.mosaic@1.0.0",
+        "raster.polygonize@1.0.0",
+        "raster.proximity@1.0.0",
+        "raster.rasterize@1.0.0",
+        "raster.reclassify@1.0.0",
+        "raster.reproject@1.0.0",
+        "raster.reproject@1.1.0",
+        "raster.resample@1.0.0",
+        "raster.sample_points@1.0.0",
+        "raster.slope@1.0.0",
+        "raster.statistics@1.0.0",
+        "raster.window@1.0.0",
+        "raster.zonal_statistics@1.0.0",
+        "spreadsheet.extract_table@1.0.0",
+        "statistics.describe@1.0.0",
+        "statistics.linear_trend@1.0.0",
+        "statistics.mad_outliers@1.0.0",
+        "statistics.mann_kendall@1.0.0",
+        "statistics.pettitt_change_point@1.0.0",
+        "statistics.regression_metrics@1.0.0",
+        "statistics.seasonal_mann_kendall@1.0.0",
+        "table.classify@1.0.0",
+        "table.deduplicate@1.0.0",
+        "table.filter@1.0.0",
+        "table.join@1.0.0",
+        "table.profile@1.0.0",
+        "table.project@1.0.0",
+        "table.sort@1.0.0",
+        "table.timeseries_unpivot@1.0.0",
+        "table.validate@1.0.0",
+        "timeseries.aggregate@1.0.0",
+        "timeseries.autocorrelation@1.0.0",
+        "timeseries.baseline_anomaly@1.0.0",
+        "timeseries.chronological_split@1.0.0",
+        "timeseries.completeness@1.0.0",
+        "timeseries.cross_correlation@1.0.0",
+        "timeseries.empirical_percentile@1.0.0",
+        "timeseries.gap_runs@1.0.0",
+        "timeseries.lag_change@1.0.0",
+        "timeseries.period_change@1.0.0",
+        "timeseries.rate_of_change@1.0.0",
+        "timeseries.regularize@1.0.0",
+        "timeseries.rolling_statistics@1.0.0",
+        "timeseries.seasonal_anomaly@1.0.0",
+        "timeseries.snapshot@1.0.0",
+        "timeseries.supervised_windows@1.0.0",
+        "timeseries.threshold_events@1.0.0",
+        "vector.buffer@1.0.0",
+        "vector.envelope@1.0.0",
+        "vector.from_xy@1.0.0",
+        "vector.tag_membership@1.0.0"
+      ],
+      "pilot": {
+        "raster.reproject@1.0.0": {
+          "catalogDigest": "sha256:3881423fa69deae67a4d31bbab2c202541b8c7ccaf7c1182497da74a67b672ab",
+          "fixtures": {
+            "raster": [
+              {
+                "fixtureId": "raster",
+                "format": "geotiff",
+                "mediaType": "image/tiff",
+                "sha256": "sha256:7d18cf2666922a5d71f74c980d2c7adca72dd00149f37fc4c42dbcb4bd3eaaa4",
+                "sizeBytes": 446
+              }
+            ]
+          },
+          "invocationSha256": "sha256:ca28b0f4639f6ec54306c8ab6cb164fa1e3b8af0161ca24a847543106824c6be",
+          "manifestDigest": "sha256:f11262159a7c7810960adf50597f3fcecde7cfba75b8a5e1853d07fbc902c248",
+          "operator": {
+            "id": "raster.reproject",
+            "implementationRevision": "sha256:ece9a2e74a171e0bf3ff24e19d38a5c79b04a7f750eff1314912252ff60ff2b7",
+            "runtime": "native",
+            "version": "1.0.0"
+          },
+          "outputs": {
+            "raster": {
+              "fileName": "reprojected.tif",
+              "format": "geotiff",
+              "kind": "artifact",
+              "mediaType": "image/tiff",
+              "path": "reprojected.tif",
+              "sha256": "sha256:b834b7fa16a013c23dd7fc87233b8f594cce4590e5ba3b916a49e9a5036b3f13",
+              "sizeBytes": 448
+            }
+          },
+          "parameters": {
+            "resampling": "nearest",
+            "targetCrs": "EPSG:4326"
+          },
+          "runtime": {
+            "imageId": "sha256:437c75bffc4139dfce6d98f4d9b48c0a36aa75e8d6790b26622925ac2d78c65f",
+            "network": "none",
+            "python": "3.12.3"
+          },
+          "schemaVersion": "operator-smoke-run.v1",
+          "smokeDigest": "sha256:97ce95704606928e59c1debe314bcfb864adfa9005935404692856097257118c",
+          "status": "PASS"
+        },
+        "raster.reproject@1.1.0": {
+          "catalogDigest": "sha256:3881423fa69deae67a4d31bbab2c202541b8c7ccaf7c1182497da74a67b672ab",
+          "fixtures": {
+            "raster": [
+              {
+                "fixtureId": "monitoring.raster.left",
+                "format": "geotiff",
+                "mediaType": "image/tiff",
+                "sha256": "sha256:226734d9d03c49a317c9107d5610028cab60798170a18b34f5030ed6b2a0e9f6",
+                "sizeBytes": 418
+              }
+            ],
+            "reference": [
+              {
+                "fixtureId": "monitoring.raster.right",
+                "format": "geotiff",
+                "mediaType": "image/tiff",
+                "sha256": "sha256:5c96b4e314a42141ec43a80cae1c73c4a2d5bea6bc41ab55865cfbf0b654aaf7",
+                "sizeBytes": 418
+              }
+            ]
+          },
+          "invocationSha256": "sha256:b74370325df56dade19b2fd52ee0493bb70acf8b5de07a23c58429579111b0af",
+          "manifestDigest": "sha256:7b2f7004e5481bc1d3816db2ff08adbf0b422f0ce1157495906fce072936f3d9",
+          "operator": {
+            "id": "raster.reproject",
+            "implementationRevision": "sha256:68ac2e817fbf28c1878863c5af3869875e623985db0ef9bfa967f71049f3b0df",
+            "runtime": "native",
+            "version": "1.1.0"
+          },
+          "outputs": {
+            "raster": {
+              "fileName": "reference-grid.tif",
+              "format": "geotiff",
+              "kind": "artifact",
+              "mediaType": "image/tiff",
+              "path": "reference-grid.tif",
+              "sha256": "sha256:3bddabe409b3d5a51495827bc57a2997a4be51efbd59dbe03f746337b9bb47fc",
+              "sizeBytes": 982
+            }
+          },
+          "parameters": {
+            "band": 1,
+            "resampling": "nearest"
+          },
+          "runtime": {
+            "imageId": "sha256:437c75bffc4139dfce6d98f4d9b48c0a36aa75e8d6790b26622925ac2d78c65f",
+            "network": "none",
+            "python": "3.12.3"
+          },
+          "schemaVersion": "operator-smoke-run.v1",
+          "smokeDigest": "sha256:5ce251c9f0799983752fd142aad86e7ccf2a31430aeb71c97279fd70aaca74dc",
+          "status": "PASS"
+        }
+      }
+    },
+    "qgis": {
+      "scope": "LOCAL_OPERATOR_CHILD",
+      "environment": {
+        "imageId": "sha256:98b6fb79b7c12a1cf048a43d5ddcddcf7342b85892d4bd1101c4ceb7e660b917",
+        "network": "none",
+        "python": "3.12.3"
+      },
+      "identities": [
+        "geometry.repair@1.0.0",
+        "geometry.validate@1.0.0",
+        "hydrology.fill_sinks@1.0.0",
+        "vector.centroid@1.0.0",
+        "vector.clip@1.0.0",
+        "vector.convex_hull@1.0.0",
+        "vector.dissolve@1.0.0",
+        "vector.extract_by_extent@1.0.0",
+        "vector.merge@1.0.0",
+        "vector.multipart_to_singleparts@1.0.0",
+        "vector.nearest_join@1.0.0",
+        "vector.overlay@1.0.0",
+        "vector.point_on_surface@1.0.0",
+        "vector.simplify@1.0.0",
+        "vector.spatial_join@1.0.0"
+      ],
+      "pilot": {
+        "vector.spatial_join@1.0.0": {
+          "catalogDigest": "sha256:3881423fa69deae67a4d31bbab2c202541b8c7ccaf7c1182497da74a67b672ab",
+          "fixtures": {
+            "join": [
+              {
+                "fixtureId": "join.source",
+                "format": "geopackage",
+                "mediaType": "application/geopackage+sqlite3",
+                "sha256": "sha256:a860eb065d35bdfcaa505c11ae51e73a217a53594666699efa32370efd12d38d",
+                "sizeBytes": 98304
+              }
+            ],
+            "target": [
+              {
+                "fixtureId": "join.target",
+                "format": "geopackage",
+                "mediaType": "application/geopackage+sqlite3",
+                "sha256": "sha256:5c1f34863bf65ca2b8fde45960284d6a07b78ea7816160f0057909d1d4ffb1ff",
+                "sizeBytes": 98304
+              }
+            ]
+          },
+          "invocationSha256": "sha256:975da298bd8149d5a22b1255df32240999e027f8eb5daadce7338b537267ed0d",
+          "manifestDigest": "sha256:68e2534e428efe8be60b2a1bf3a764bf28b0c9d9cd4662e586dbe1d652ffc0e3",
+          "operator": {
+            "id": "vector.spatial_join",
+            "implementationRevision": "sha256:86a52e83dd51bd341aeaa80e05c53733de119f0dc373cc7da22c8e10be592e3b",
+            "runtime": "qgis",
+            "version": "1.0.0"
+          },
+          "outputs": {
+            "vector": {
+              "fileName": "spatial-join.gpkg",
+              "format": "geopackage",
+              "kind": "artifact",
+              "mediaType": "application/geopackage+sqlite3",
+              "path": "spatial-join.gpkg",
+              "sha256": "sha256:79dbff98ff463bb354d958f9c7fb1a8dd2ceba1274b5ef2e9e35319e1c0c5dce",
+              "sizeBytes": 98304
+            }
+          },
+          "parameters": {
+            "discardNonMatching": false,
+            "joinLayer": "join_source",
+            "mode": "oneToMany",
+            "predicate": "intersects",
+            "prefix": "j_",
+            "targetLayer": "target"
+          },
+          "runtime": {
+            "imageId": "sha256:98b6fb79b7c12a1cf048a43d5ddcddcf7342b85892d4bd1101c4ceb7e660b917",
+            "network": "none",
+            "python": "3.12.3"
+          },
+          "schemaVersion": "operator-smoke-run.v1",
+          "smokeDigest": "sha256:01b3a0ebb6e302753d012326a25507df239c16360044d3e0ac378b0c1ebfdf96",
+          "status": "PASS"
+        }
+      }
+    },
+    "remote_http": {
+      "scope": "DECLARATION_PORT_CHECK",
+      "environment": {
+        "imageId": "sha256:af574d73be1c63838d88f9347e6764f44d6fac0409b66df042f91fe2da395e1d",
+        "network": "none",
+        "python": "3.12.8"
+      },
+      "identities": [
+        "groundwater.porous.agri_invert@1.0.0",
+        "groundwater.porous.flow_transport_simulate@1.0.0",
+        "groundwater.porous.inversion_sample@1.0.0",
+        "groundwater.porous.inversion_train@1.0.0",
+        "groundwater.porous.map_prepare@1.0.0",
+        "groundwater.porous.model_compile@1.0.0",
+        "groundwater.porous.pest_calibrate@1.0.0",
+        "groundwater.porous.pest_calibrate@1.1.0",
+        "groundwater.porous.result_analyze@1.0.0",
+        "groundwater.porous.result_render@1.0.0",
+        "groundwater.porous.scenario_compare@1.0.0",
+        "groundwater.source_sustainability.evaluate@1.0.0"
+      ],
+      "pilot": {}
+    }
+  },
+  "technicalChecks": {
+    "groundwater.porous.pest_calibrate@1.0.0": {
+      "implementationRevision": "sha256:06576b0c4b42006be964edc88b8c953a590d81e34e4bb8e73f1a2171ee63bc5b",
+      "manifestDigest": "sha256:058d3908b2133a88cc60762bc1a844f67ee372aceace4743d6420fe7cb3bec8f",
+      "runtime": "remote_http",
+      "smokeDigest": "sha256:1e8046948b49e215fac939568cab63b5246198964059d30ba42f3adab067d309",
+      "results": {
+        "SCHEMA_CONTRACT": {
+          "status": "PASSED",
+          "checkedOn": "2026-11-20",
+          "scope": "Manifest、Smoke 声明、端口、参数与实现锁，含 Remote Worker 镜像中的声明端口检查"
+        }
+      }
+    },
+    "groundwater.porous.pest_calibrate@1.1.0": {
+      "implementationRevision": "sha256:38fd68d8f63a93e39a5b1b6c18a3844969b1316bdb7a3ff1d0a052b6539f5462",
+      "manifestDigest": "sha256:34f1225760b11a1ae4a661f3bb798270e644cca335b520c87b91603510dca029",
+      "runtime": "remote_http",
+      "smokeDigest": "sha256:d7607cdf54a2c14a1871533add03cd65f81402e0497380f14b3e97b971d366dd",
+      "results": {
+        "SCHEMA_CONTRACT": {
+          "status": "PASSED",
+          "checkedOn": "2026-11-20",
+          "scope": "Manifest、Smoke 声明、端口、参数与实现锁，含 Remote Worker 镜像中的声明端口检查"
+        }
+      }
+    },
+    "raster.reproject@1.0.0": {
+      "implementationRevision": "sha256:ece9a2e74a171e0bf3ff24e19d38a5c79b04a7f750eff1314912252ff60ff2b7",
+      "manifestDigest": "sha256:f11262159a7c7810960adf50597f3fcecde7cfba75b8a5e1853d07fbc902c248",
+      "runtime": "native",
+      "smokeDigest": "sha256:97ce95704606928e59c1debe314bcfb864adfa9005935404692856097257118c",
+      "results": {
+        "SCHEMA_CONTRACT": {
+          "status": "PASSED",
+          "checkedOn": "2026-11-20",
+          "scope": "Manifest、Smoke 声明、端口、参数与实现锁"
+        },
+        "SMOKE": {
+          "status": "PASSED",
+          "checkedOn": "2026-11-20",
+          "scope": "缓存 Worker 镜像运行当前仓库的精确算子和签入合成夹具，经任务子进程校验输出"
+        }
+      }
+    },
+    "raster.reproject@1.1.0": {
+      "implementationRevision": "sha256:68ac2e817fbf28c1878863c5af3869875e623985db0ef9bfa967f71049f3b0df",
+      "manifestDigest": "sha256:7b2f7004e5481bc1d3816db2ff08adbf0b422f0ce1157495906fce072936f3d9",
+      "runtime": "native",
+      "smokeDigest": "sha256:5ce251c9f0799983752fd142aad86e7ccf2a31430aeb71c97279fd70aaca74dc",
+      "results": {
+        "SCHEMA_CONTRACT": {
+          "status": "PASSED",
+          "checkedOn": "2026-11-20",
+          "scope": "Manifest、Smoke 声明、端口、参数与实现锁"
+        },
+        "SMOKE": {
+          "status": "PASSED",
+          "checkedOn": "2026-11-20",
+          "scope": "缓存 Worker 镜像运行当前仓库的精确算子和签入合成夹具，经任务子进程校验输出"
+        }
+      }
+    },
+    "vector.spatial_join@1.0.0": {
+      "implementationRevision": "sha256:86a52e83dd51bd341aeaa80e05c53733de119f0dc373cc7da22c8e10be592e3b",
+      "manifestDigest": "sha256:68e2534e428efe8be60b2a1bf3a764bf28b0c9d9cd4662e586dbe1d652ffc0e3",
+      "runtime": "qgis",
+      "smokeDigest": "sha256:01b3a0ebb6e302753d012326a25507df239c16360044d3e0ac378b0c1ebfdf96",
+      "results": {
+        "SCHEMA_CONTRACT": {
+          "status": "PASSED",
+          "checkedOn": "2026-11-20",
+          "scope": "Manifest、Smoke 声明、端口、参数与实现锁"
+        },
+        "SMOKE": {
+          "status": "PASSED",
+          "checkedOn": "2026-11-20",
+          "scope": "缓存 Worker 镜像运行当前仓库的精确算子和签入合成夹具，经任务子进程校验输出"
+        }
+      }
+    }
+  }
+}

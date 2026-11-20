@@ -29,6 +29,13 @@ class MigrationError(RuntimeError):
     pass
 
 
+MIGRATION_TARGETS = {
+    "publicApi": "v12",
+    "kernel": 38,
+    "data": 8,
+    "knowledge": 7,
+    "manifest": 4,
+}
 DATA_RETAINED_TABLES = (
     "publications", "uploads", "datasets", "versions", "objects",
     "semantic_revisions", "lineage", "metrics", "operations",
@@ -301,13 +308,7 @@ def create_plan(
                 "data": data_version,
                 "knowledge": knowledge_version,
             },
-            "targets": {
-                "publicApi": "v12",
-                "kernel": 36,
-                "data": 8,
-                "knowledge": 7,
-                "manifest": 4,
-            },
+            "targets": dict(MIGRATION_TARGETS),
         }
         plan = body | {"confirmationDigest": sha256_digest(canonical_bytes(body))}
         destination = owned_path(
@@ -670,6 +671,8 @@ def apply_plan(
     expected = sha256_digest(canonical_bytes(body))
     if plan.get("confirmationDigest") != expected or confirmation != expected:
         raise MigrationError("MIGRATION_CONFIRMATION_MISMATCH")
+    if plan.get("targets") != MIGRATION_TARGETS:
+        raise MigrationError("MIGRATION_TARGET_SCHEMA_CHANGED")
     _manifest_path, instance = read_manifest(paths, plan["instanceId"])
     if instance["status"] != "stopped" or instance["schemaVersion"] != "instance-manifest.v3":
         raise MigrationError("MIGRATION_SOURCE_CHANGED")
@@ -713,6 +716,8 @@ def apply_plan(
         raise MigrationError("MIGRATION_SOURCE_SCHEMA_CHANGED")
     kernel_counts = _sqlite_counts(kernel_path)
     migrate_database(kernel_path)
+    if _kernel_schema_version(kernel_path) != MIGRATION_TARGETS["kernel"]:
+        raise MigrationError("MIGRATION_TARGET_SCHEMA_MISMATCH")
     if kernel_counts != _sqlite_counts(kernel_path, tuple(kernel_counts)):
         raise MigrationError("KERNEL_RECORD_COUNT_MISMATCH")
 
@@ -806,6 +811,7 @@ def apply_plan(
             "assembly-lock.json",
             "product-ui.json",
             "product-icon.svg",
+            "workflow-platform.json",
         ):
             source = bundle / name
             if not source.is_file():

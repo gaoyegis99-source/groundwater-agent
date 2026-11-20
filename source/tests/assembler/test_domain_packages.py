@@ -102,6 +102,8 @@ def test_two_products_reuse_one_package_without_copying_definitions(source):
     product = json.loads(original.read_text())
     product["productId"] = "second-product"
     product.pop("operatorValidation", None)
+    product.pop("workflowPlatform", None)
+    product.pop("businessCapabilities", None)
     target = source / "products/second-product"
     shutil.copytree(source / "products/groundwater/ui", target / "ui")
     ui_path = target / product["uiProfile"]["path"]
@@ -471,6 +473,8 @@ def test_native_only_declarations_select_only_required_services(source):
     product_path = source / "products/groundwater/product-manifest.json"
     product = json.loads(product_path.read_text())
     product.pop("compositionOperators", None)
+    product.pop("workflowPlatform", None)
+    product.pop("businessCapabilities", None)
     product["services"] = ["data", "executor"]
     product["publicRoutes"] = [
         route

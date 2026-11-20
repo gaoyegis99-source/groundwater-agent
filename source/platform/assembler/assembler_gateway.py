@@ -130,7 +130,7 @@ def _nginx_config(
             "        location /api/v12/ {"
             " proxy_pass $upstream_kernel; proxy_read_timeout 1h;"
             f"{forwarded_headers}{kernel_auth_headers} }}",
-            "        location ~ ^/api/v12/sessions/.*/events$ {"
+            "        location ~ ^/api/v12/(sessions/.*/events$|work-items/[^/]+/events$) {"
             " proxy_pass $upstream_kernel;"
             " proxy_buffering off; proxy_cache off; proxy_read_timeout 1h;"
             f"{forwarded_headers}{kernel_auth_headers} }}",

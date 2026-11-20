@@ -98,6 +98,9 @@ def load_initial_context_sources(
                       w.selection_json workflow_selection_json
                FROM agent_requests a LEFT JOIN message_requests m ON m.agent_run_id=a.agent_run_id
                LEFT JOIN message_workflow_selections w ON w.agent_run_id=a.agent_run_id
+                 AND a.mode='DIALOGUE' AND COALESCE(m.clarification_required, 0)=0
+                 AND (COALESCE(m.requested_mode, 'DIALOGUE')!='AUTO'
+                      OR m.semantic_intent IN ('EXECUTE_ON_DATA','CONSULT'))
                WHERE a.agent_run_id=?""",
             (agent_run_id,),
         ).fetchone()

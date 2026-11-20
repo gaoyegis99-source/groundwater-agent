@@ -21,7 +21,9 @@ for _source_directory in (
     if str(_source_directory) not in sys.path:
         sys.path.insert(0, str(_source_directory))
 
+from assembler_business_capabilities import load_business_capabilities  # noqa: E402
 from assembler_domain import (  # noqa: E402
+    _catalog_root,
     _compile_domain,
     _compile_services,
     _load_operator_catalog,
@@ -31,7 +33,9 @@ from assembler_manifests import (  # noqa: E402
     _load_modules,
     _selected_domain,
 )
-from assembler_ui import load_product_ui  # noqa: E402
+from assembler_ui import load_product_ui, project_business_capabilities  # noqa: E402
+from assembler_workflow_platform import load_workflow_platform  # noqa: E402
+from executor_profile import ExecutorOperationalProfile  # noqa: E402
 from moperators.catalog import OperatorCatalog  # noqa: E402
 
 
@@ -218,6 +222,22 @@ def _assembler_sources(
             domain.execution_cases,
         )
         product_ui = json.loads(product_ui_text)
+        if "businessCapabilities" in product:
+            runtimes = {node["runtime"] for workflow in workflows for node in workflow["nodes"]}
+            platform = load_workflow_platform(
+                product_path.parent, product["workflowPlatform"], workflows=workflows, models=models, ui=product_ui,
+                worker_runtimes=ExecutorOperationalProfile().worker_runtimes(runtimes),
+                composition=set(product.get("compositionOperators", [])), catalog_digest=execution_catalog_digest,
+                fixtures_directory=_catalog_root(repository) / "fixtures",
+            ) if "workflowPlatform" in product else None
+            _, presentation = load_business_capabilities(
+                product_path.parent, product["businessCapabilities"], platform=platform,
+                models=models, ui=product_ui, service_names=set(services),
+            )
+            product_ui_text, product_ui_identity = project_business_capabilities(
+                product_ui_text, product_ui_identity, presentation,
+            )
+            product_ui = json.loads(product_ui_text)
     except (OSError, TypeError, ValueError, json.JSONDecodeError) as error:
         raise CapabilityInventoryRefusal(
             "CAPABILITY_INVENTORY_PRODUCT_INVALID", str(error)
@@ -421,6 +441,10 @@ def build_capability_inventory(
                 "sha256": _sha256_file(product_ui_path),
                 "compiledChecksum": product_ui_identity["profileOutputChecksum"],
             },
+            **({"businessCapabilities": {
+                "path": _relative(repository, product_path.parent / product["businessCapabilities"]["path"]),
+                "sha256": product["businessCapabilities"]["checksum"],
+            }} if "businessCapabilities" in product else {}),
         },
         "summary": {
             "modelCount": len(model_rows),
@@ -428,6 +452,8 @@ def build_capability_inventory(
             "operatorCount": len(operator_rows),
             "workflowOperatorCount": used_operator_count,
             "uiModelCount": len(ui_models),
+            **({"businessCapabilityCount": len(product_ui["businessCapabilities"])}
+               if "businessCapabilities" in product_ui else {}),
             "exampleCount": len(examples),
             "featuredExampleCount": sum(item["featured"] for item in examples),
             "observationToolCount": len(domain.manifest["observationTools"]),
@@ -497,6 +523,10 @@ def render_capability_inventory(inventory: dict[str, Any]) -> str:
             f"source {_code(sources['productUi']['sha256'])}<br>"
             f"compiled {_code(sources['productUi']['compiledChecksum'])} |"
         ),
+        *([
+            f"| Business Capability | {_code(sources['businessCapabilities']['path'])} | "
+            f"{_code(sources['businessCapabilities']['sha256'])} |"
+        ] if "businessCapabilities" in sources else []),
         "",
         "## 摘要",
         "",
@@ -507,6 +537,7 @@ def render_capability_inventory(inventory: dict[str, Any]) -> str:
         f"| Catalog 算子 | {summary['operatorCount']} |",
         f"| 被当前工作流引用的唯一算子 | {summary['workflowOperatorCount']} |",
         f"| UI 模型配置 | {summary['uiModelCount']} |",
+        *([f"| 业务能力 | {summary['businessCapabilityCount']} |"] if "businessCapabilityCount" in summary else []),
         f"| UI 示例 / featured | {summary['exampleCount']} / {summary['featuredExampleCount']} |",
         f"| Agent observation tools | {summary['observationToolCount']} |",
         f"| Knowledge documents | {summary['knowledgeDocumentCount']} |",

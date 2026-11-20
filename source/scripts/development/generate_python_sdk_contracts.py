@@ -158,6 +158,8 @@ def _generate_target(contract: Path, output: Path, prefix: str) -> dict[str, byt
                 "--use-standard-collections",
                 "--use-union-operator",
                 "--field-constraints",
+                "--field-extra-keys-without-x-prefix",
+                "x-strict",
                 "--snake-case-field",
                 "--extra-fields",
                 "forbid",

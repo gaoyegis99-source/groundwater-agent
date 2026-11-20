@@ -27,6 +27,7 @@ from ..errors import (
     KernelUnavailableError,
     ResourceNotFoundError,
     UpstreamServiceError,
+    WorkItemConflictError,
 )
 from .problems import (
     authentication_problem,
@@ -39,6 +40,7 @@ from .problems import (
     request_validation_problem,
     resource_not_found_problem,
     upstream_problem,
+    work_item_conflict_problem,
 )
 from .dependencies import (
     require_agent_boundary,
@@ -53,6 +55,7 @@ from .routes import (
     system_router,
     workflow_runs_router,
     auth_router,
+    work_items_router,
 )
 
 
@@ -126,6 +129,7 @@ def create_app(
     app.add_exception_handler(StarletteHTTPException, http_problem)
     app.add_exception_handler(ResourceNotFoundError, resource_not_found_problem)
     app.add_exception_handler(ConfirmationConflictError, confirmation_problem)
+    app.add_exception_handler(WorkItemConflictError, work_item_conflict_problem)
     app.add_exception_handler(UpstreamServiceError, upstream_problem)
     app.add_exception_handler(AgentRunError, agent_run_problem)
     app.add_exception_handler(KernelUnavailableError, kernel_unavailable_problem)
@@ -136,6 +140,7 @@ def create_app(
     app.include_router(auth_router)
     app.include_router(system_router, dependencies=project_boundary)
     app.include_router(audit_router, dependencies=project_boundary)
+    app.include_router(work_items_router, dependencies=project_boundary)
     app.include_router(
         sessions_router,
         dependencies=project_boundary + [Depends(require_session_boundary)],

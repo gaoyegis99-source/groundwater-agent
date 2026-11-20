@@ -1,0 +1,75 @@
+{
+  "schemaVersion": "workflow-profile-golden-scope.v1",
+  "status": "PASS",
+  "caseId": "monitoring-trend",
+  "workflow": {
+    "definitionChecksum": "sha256:156c558d24d5495124cb1735d9b1c2ba0baffafa42a2dc296425891150a5b07e",
+    "id": "groundwater.monitoring-trend",
+    "sourceSha256": "sha256:156c558d24d5495124cb1735d9b1c2ba0baffafa42a2dc296425891150a5b07e",
+    "version": "1.1.0"
+  },
+  "operatorCatalogDigest": "sha256:3881423fa69deae67a4d31bbab2c202541b8c7ccaf7c1182497da74a67b672ab",
+  "baselineSha256": "sha256:25c273b48e52f5a6240f3decb23199a80be24e973099227d176ebb430ddd24c6",
+  "operatorsByNode": {
+    "aggregate": {
+      "id": "timeseries.aggregate",
+      "implementationRevision": "sha256:1606082b776142f429a9a0bf4bd93834f3898486e14a6de7715866487549857c",
+      "runtime": "native",
+      "version": "1.0.0"
+    },
+    "change-point": {
+      "id": "statistics.pettitt_change_point",
+      "implementationRevision": "sha256:39ffa9b0addb2f52c3b4d88bc03e9c66b99b809e94ceb48cd986c9fffd52a3f9",
+      "runtime": "native",
+      "version": "1.0.0"
+    },
+    "completeness": {
+      "id": "timeseries.completeness",
+      "implementationRevision": "sha256:492696d286dfb4f45ac08406ba04190b87119f716fc3003880cff2bbbab078f7",
+      "runtime": "native",
+      "version": "1.0.0"
+    },
+    "gap-runs": {
+      "id": "timeseries.gap_runs",
+      "implementationRevision": "sha256:2150fbb4dffdc38e6ba1e5f24fe25736fa77130358eb31031bbd6459e85b2264",
+      "runtime": "native",
+      "version": "1.0.0"
+    },
+    "linear-trend": {
+      "id": "statistics.linear_trend",
+      "implementationRevision": "sha256:1ef5cc783fc656301aca0d076c2776926de5d15236095160f9339de376674fd0",
+      "runtime": "native",
+      "version": "1.0.0"
+    },
+    "mad-outliers": {
+      "id": "statistics.mad_outliers",
+      "implementationRevision": "sha256:e425e05c87082211533f7208e16aa028e5706ff36612afdbcc5f50c5700c8b3c",
+      "runtime": "native",
+      "version": "1.0.0"
+    },
+    "mann-kendall": {
+      "id": "statistics.mann_kendall",
+      "implementationRevision": "sha256:0ca0b3f637b2ac9402e5152ac4b9af736125bb0bb7133ab3ee26601d95995c03",
+      "runtime": "native",
+      "version": "1.0.0"
+    },
+    "period-change": {
+      "id": "timeseries.period_change",
+      "implementationRevision": "sha256:7b5ac62e1a03658c4c880e8190feba25cf7f8d68a42aad30ded928f776fe2cce",
+      "runtime": "native",
+      "version": "1.0.0"
+    },
+    "seasonal-trend": {
+      "id": "statistics.seasonal_mann_kendall",
+      "implementationRevision": "sha256:aeca2bb8a85749af2601dee42c3d655beaa28193570c71eee90f0feb425cceb1",
+      "runtime": "native",
+      "version": "1.0.0"
+    },
+    "threshold-events": {
+      "id": "timeseries.threshold_events",
+      "implementationRevision": "sha256:1097a9ee6b749eca1ca42096e47741fd2d2f167e353ce08a2398f2078fdbc139",
+      "runtime": "native",
+      "version": "1.0.0"
+    }
+  }
+}

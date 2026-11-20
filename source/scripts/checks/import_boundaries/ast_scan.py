@@ -137,6 +137,15 @@ def declared_schema_tables(path: Path) -> set[str]:
 
 
 READ_ONLY_TABLES = {
+    "platform_kernel.application.work_item_lifecycle_facts": frozenset({
+        "work_items", "work_item_sessions", "sessions", "tasks", "task_revisions", "task_runs",
+        "task_preparations", "agent_runs", "confirmations", "confirmation_tasks", "confirmation_actions",
+        "workflow_runs", "run_controls", "message_requests", "message_workflow_selections",
+        "control_proposals", "session_events",
+    }),
+    "platform_kernel.application.work_item_links": frozenset(
+        {"work_item_sessions", "sessions", "tasks", "task_runs", "agent_runs", "workflow_runs"}
+    ),
     "platform_kernel.interaction.task_history": frozenset({"agent_runs", "workflow_runs", "task_preparations"}),
     "platform_kernel.agent_runtime.persistence.run_lifecycle": frozenset(
         {"run_controls"}

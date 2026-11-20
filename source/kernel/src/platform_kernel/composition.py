@@ -58,6 +58,8 @@ from .workflow_execution.metrics import (
     reconciliation_required_count,
     workflow_status_counts,
 )
+from .work_items.owner import WorkItemOwner
+from .work_items.references import ReferenceAuthority
 
 
 class KernelMetricSnapshot(TypedDict):
@@ -187,6 +189,10 @@ class PlatformApplication:
             dispatch_concurrency=self.settings.workflow_dispatch_concurrency,
             trace_id_resolver=partial(trace_id_for_run, self.database),
             composition=self.settings.workflow_composition,
+        )
+        self.work_items = WorkItemOwner(
+            self.database, self.settings.project_id,
+            ReferenceAuthority(self.client, self.settings, self.workflow_execution, self.database),
         )
         self.agent_projection = AgentProjectionAdapter(self.settings.models, self.settings.published_output_steps)
         self.agent_runtime = AgentRuntimeOwner(

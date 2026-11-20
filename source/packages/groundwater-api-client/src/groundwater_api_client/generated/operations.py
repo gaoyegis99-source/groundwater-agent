@@ -640,6 +640,84 @@ KERNEL_RECOVER_WORKFLOW = Operation(
     media_type='application/json', side_effecting=True,
 )
 
+KERNEL_LIST_WORK_ITEMS = Operation(
+    operation_id='kernel_list_work_items', method='GET', path='/work-items',
+    response_model=models.KernelWorkItemPage, success_statuses=frozenset([200]),
+    media_type='application/json', side_effecting=False,
+)
+
+KERNEL_CREATE_WORK_ITEM = Operation(
+    operation_id='kernel_create_work_item', method='POST', path='/work-items',
+    response_model=models.KernelWorkItemReceipt, success_statuses=frozenset([200]),
+    media_type='application/json', side_effecting=True,
+)
+
+KERNEL_GET_WORK_ITEM = Operation(
+    operation_id='kernel_get_work_item', method='GET', path='/work-items/{workItemId}',
+    response_model=models.KernelWorkItemDetail, success_statuses=frozenset([200]),
+    media_type='application/json', side_effecting=False,
+)
+
+KERNEL_LIST_WORK_ITEM_ACTIVITY = Operation(
+    operation_id='kernel_list_work_item_activity', method='GET', path='/work-items/{workItemId}/activity',
+    response_model=models.KernelWorkItemActivityPage, success_statuses=frozenset([200]),
+    media_type='application/json', side_effecting=False,
+)
+
+KERNEL_ARCHIVE_WORK_ITEM = Operation(
+    operation_id='kernel_archive_work_item', method='POST', path='/work-items/{workItemId}/archive',
+    response_model=models.KernelWorkItemReceipt, success_statuses=frozenset([200]),
+    media_type='application/json', side_effecting=True,
+)
+
+KERNEL_LINK_WORK_ITEM_ASSET = Operation(
+    operation_id='kernel_link_work_item_asset', method='POST', path='/work-items/{workItemId}/assets',
+    response_model=models.KernelWorkItemReceipt, success_statuses=frozenset([200]),
+    media_type='application/json', side_effecting=True,
+)
+
+KERNEL_LIST_WORK_ITEM_AUDIT = Operation(
+    operation_id='kernel_list_work_item_audit', method='GET', path='/work-items/{workItemId}/audit',
+    response_model=models.KernelWorkItemAuditPage, success_statuses=frozenset([200]),
+    media_type='application/json', side_effecting=False,
+)
+
+KERNEL_STREAM_WORK_ITEM_EVENTS = Operation(
+    operation_id='kernel_stream_work_item_events', method='GET', path='/work-items/{workItemId}/events',
+    response_model=None, success_statuses=frozenset([200]),
+    media_type='text/event-stream', side_effecting=False,
+)
+
+KERNEL_LINK_WORK_ITEM_OBJECT = Operation(
+    operation_id='kernel_link_work_item_object', method='POST', path='/work-items/{workItemId}/objects',
+    response_model=models.KernelWorkItemReceipt, success_statuses=frozenset([200]),
+    media_type='application/json', side_effecting=True,
+)
+
+KERNEL_REVIEW_WORK_ITEM = Operation(
+    operation_id='kernel_review_work_item', method='POST', path='/work-items/{workItemId}/review',
+    response_model=models.KernelWorkItemReceipt, success_statuses=frozenset([200]),
+    media_type='application/json', side_effecting=True,
+)
+
+KERNEL_LINK_WORK_ITEM_SESSION = Operation(
+    operation_id='kernel_link_work_item_session', method='POST', path='/work-items/{workItemId}/sessions',
+    response_model=models.KernelWorkItemReceipt, success_statuses=frozenset([200]),
+    media_type='application/json', side_effecting=True,
+)
+
+KERNEL_GET_WORK_ITEM_SNAPSHOT = Operation(
+    operation_id='kernel_get_work_item_snapshot', method='GET', path='/work-items/{workItemId}/snapshot',
+    response_model=models.KernelWorkItemLifecycleSnapshot, success_statuses=frozenset([200]),
+    media_type='application/json', side_effecting=False,
+)
+
+KERNEL_UPDATE_WORK_ITEM = Operation(
+    operation_id='kernel_update_work_item', method='POST', path='/work-items/{workItemId}/update',
+    response_model=models.KernelWorkItemReceipt, success_statuses=frozenset([200]),
+    media_type='application/json', side_effecting=True,
+)
+
 KERNEL_GET_WORKFLOW_RUN = Operation(
     operation_id='kernel_get_workflow_run', method='GET', path='/workflow-runs/{runId}',
     response_model=models.KernelWorkflowRunResponse, success_statuses=frozenset([200]),
@@ -771,6 +849,19 @@ OPERATIONS = {
     KERNEL_GET_WORKFLOW_DRAFT.operation_id: KERNEL_GET_WORKFLOW_DRAFT,
     KERNEL_EXPORT_WORKFLOW_DRAFT.operation_id: KERNEL_EXPORT_WORKFLOW_DRAFT,
     KERNEL_RECOVER_WORKFLOW.operation_id: KERNEL_RECOVER_WORKFLOW,
+    KERNEL_LIST_WORK_ITEMS.operation_id: KERNEL_LIST_WORK_ITEMS,
+    KERNEL_CREATE_WORK_ITEM.operation_id: KERNEL_CREATE_WORK_ITEM,
+    KERNEL_GET_WORK_ITEM.operation_id: KERNEL_GET_WORK_ITEM,
+    KERNEL_LIST_WORK_ITEM_ACTIVITY.operation_id: KERNEL_LIST_WORK_ITEM_ACTIVITY,
+    KERNEL_ARCHIVE_WORK_ITEM.operation_id: KERNEL_ARCHIVE_WORK_ITEM,
+    KERNEL_LINK_WORK_ITEM_ASSET.operation_id: KERNEL_LINK_WORK_ITEM_ASSET,
+    KERNEL_LIST_WORK_ITEM_AUDIT.operation_id: KERNEL_LIST_WORK_ITEM_AUDIT,
+    KERNEL_STREAM_WORK_ITEM_EVENTS.operation_id: KERNEL_STREAM_WORK_ITEM_EVENTS,
+    KERNEL_LINK_WORK_ITEM_OBJECT.operation_id: KERNEL_LINK_WORK_ITEM_OBJECT,
+    KERNEL_REVIEW_WORK_ITEM.operation_id: KERNEL_REVIEW_WORK_ITEM,
+    KERNEL_LINK_WORK_ITEM_SESSION.operation_id: KERNEL_LINK_WORK_ITEM_SESSION,
+    KERNEL_GET_WORK_ITEM_SNAPSHOT.operation_id: KERNEL_GET_WORK_ITEM_SNAPSHOT,
+    KERNEL_UPDATE_WORK_ITEM.operation_id: KERNEL_UPDATE_WORK_ITEM,
     KERNEL_GET_WORKFLOW_RUN.operation_id: KERNEL_GET_WORKFLOW_RUN,
     KERNEL_GET_WORKFLOW_RUN_GRAPH.operation_id: KERNEL_GET_WORKFLOW_RUN_GRAPH,
     KERNEL_GET_WORKFLOW_RUN_NODES.operation_id: KERNEL_GET_WORKFLOW_RUN_NODES,

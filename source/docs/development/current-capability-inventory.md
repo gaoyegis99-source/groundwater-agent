@@ -7,10 +7,11 @@
 
 | 来源 | 路径 | 身份 |
 |---|---|---|
-| Product manifest | `products/groundwater/product-manifest.json` | `sha256:5c1e12f9ef6ac5f57652dd6c6b7a4102ae83bfbad62788b53f92bd52042f6c80` |
+| Product manifest | `products/groundwater/product-manifest.json` | `sha256:fee8639aa807512e5241cbdeb71549b8e97bcffd7b84177e592a3f1e364df161` |
 | Domain manifest | `domains/groundwater/6.2.0/domain-manifest.json` | package `sha256:9862f88dd7cce5bcdcf58dd008edb6465bcfde031d97548785a66eb3e14c5fc3` |
 | Operator Catalog index | `packages/operator-pack/catalog/index.json` | manifest `sha256:3881423fa69deae67a4d31bbab2c202541b8c7ccaf7c1182497da74a67b672ab`<br>execution `sha256:47eb493ad355de2062110e459c5d69368fd6de457d5debabc9f2f8c2363f4494` |
-| Product UI | `products/groundwater/ui/product-ui-porous.v1.json` | source `sha256:7b6554c54e4d57a6392ea427de8ec937464dddbbd3a5c1d6c885a3ee8b572091`<br>compiled `sha256:a5424dfafd27d95e6e5d4c63e00074aed24ebfd8e05c47bbe7dd3a19d6b97bfd` |
+| Product UI | `products/groundwater/ui/product-ui-porous.v1.json` | source `sha256:7b6554c54e4d57a6392ea427de8ec937464dddbbd3a5c1d6c885a3ee8b572091`<br>compiled `sha256:92454edef391daad83c74cbddb4e6b894218fc0b0c015b66bd0545177e43e96a` |
+| Business Capability | `products/groundwater/capabilities/business-capabilities.v1.json` | `sha256:e2783550ede2734785da81da7e72876796b5f001ffc0060ce675e36d711e7d90` |
 
 ## 摘要
 
@@ -21,6 +22,7 @@
 | Catalog 算子 | 113 |
 | 被当前工作流引用的唯一算子 | 54 |
 | UI 模型配置 | 18 |
+| 业务能力 | 1 |
 | UI 示例 / featured | 11 / 7 |
 | Agent observation tools | 7 |
 | Knowledge documents | 9 |

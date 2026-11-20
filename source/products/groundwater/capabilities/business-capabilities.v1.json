@@ -1,0 +1,389 @@
+{
+  "schemaVersion": "business-capabilities.v1",
+  "capabilities": [
+    {
+      "schemaVersion": "business-capability.v1",
+      "id": "groundwater.monitoring-trend",
+      "version": "1.0.0",
+      "title": "地下水监测趋势",
+      "description": "对比不同时段的监测变化，并检查季节趋势和用户指定的阈值事件。",
+      "scenario": "拥有长期水位监测资料，需要同时研判总体变化、季节变化和阈值事件。",
+      "tier": "CORE",
+      "defaultVisible": true,
+      "roles": [
+        "admin",
+        "researcher"
+      ],
+      "exampleId": "trend",
+      "prompt": "请分析监测趋势，并检查季节趋势和阈值事件。",
+      "requiredServices": [
+        "data",
+        "executor"
+      ],
+      "validationStatus": "TECHNICALLY_VALIDATED",
+      "limitations": [
+        "阈值及比较方向须由使用者给定。合成数据已验证技术链路，场地适用性需要业务证据。"
+      ],
+      "matchTerms": [
+        [
+          "监测趋势",
+          "水位趋势",
+          "水位变化趋势",
+          "monitoring trend",
+          "water level trend",
+          "water-level trend"
+        ]
+      ],
+      "excludeTerms": [
+        "自定义工作流",
+        "组合算子",
+        "自定义算子",
+        "compose a workflow",
+        "custom workflow",
+        "[model execution]",
+        "不做季节",
+        "不做阈值",
+        "不需要季节",
+        "不需要阈值",
+        "不要季节",
+        "不要阈值",
+        "不分析季节",
+        "不分析阈值",
+        "without seasonal",
+        "without threshold",
+        "不要设置事件阈值",
+        "不设阈值",
+        "无需季节",
+        "无需阈值"
+      ],
+      "profiles": [
+        {
+          "profileRef": {
+            "id": "groundwater.monitoring-trend.seasonal-and-threshold",
+            "version": "1.0.0",
+            "checksum": "sha256:5e75f667edf48f4c1ac19823480463d70841c4791b838aa2ef17d40f2611bbed"
+          },
+          "matchTerms": [
+            [
+              "季节趋势",
+              "季节变化",
+              "seasonal trend"
+            ],
+            [
+              "阈值事件",
+              "阈值超限",
+              "threshold event"
+            ]
+          ],
+          "thresholdParameter": "eventThreshold",
+          "textParameters": [
+            {
+              "name": "eventThreshold",
+              "label": "事件阈值",
+              "patterns": [
+                {
+                  "pattern": "(?:^|[，,。.;；!！?？\\n])\\s*(?:补充参数\\s+)?(?:事件阈值|eventThreshold)\\s*[:=：]\\s*(?P<value>[+-]?(?:[0-9]+(?:\\.[0-9]+)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?)(?![0-9eE]|[.,，][0-9])(?:\\s*(?P<unit>毫米|厘米|分米|千米|英尺|英寸|米|尺|无量纲|[a-zA-Zµμ°%][a-zA-Z0-9µμ°%/·^_-]{0,19}))?(?=$|\\s*(?:[，,。.;；!！?？）)\\]\\n]|的|时|阈值事件))"
+                },
+                {
+                  "pattern": "(?:^|[，,。.;；!！?？\\n])\\s*(?:补充参数\\s+)?(?:请\\s*)?(?:识别|找出|筛查|提取|统计|检查)\\s*(?:不低于|不小于|大于等于|至少|不高于|不超过|小于等于|至多|高于|超过|大于|低于|小于)\\s*(?P<value>[+-]?(?:[0-9]+(?:\\.[0-9]+)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?)(?![0-9eE]|[.,，][0-9])(?:\\s*(?P<unit>毫米|厘米|分米|千米|英尺|英寸|米|尺|无量纲|[a-zA-Zµμ°%][a-zA-Z0-9µμ°%/·^_-]{0,19}))?\\s*(?:的\\s*)?(?:阈值\\s*)?事件(?=$|\\s|[，,。.;；!！?？）)\\]\\n])"
+                }
+              ],
+              "replyPatterns": [
+                {
+                  "pattern": "^\\s*(?:不低于|不小于|大于等于|至少|不高于|不超过|小于等于|至多|高于|超过|大于|低于|小于)?\\s*(?P<value>[+-]?(?:[0-9]+(?:\\.[0-9]+)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?)(?![0-9eE]|[.,，][0-9])(?:\\s*(?P<unit>毫米|厘米|分米|千米|英尺|英寸|米|尺|无量纲|[a-zA-Zµμ°%][a-zA-Z0-9µμ°%/·^_-]{0,19}))?\\s*[。.!！]?\\s*$"
+                }
+              ],
+              "unresolvedPatterns": [
+                "本次\\s*(?:事件)?阈值\\s*(?:尚未|仍未|未(?:确定|选定)|待(?:定|确认|选择)|还没)",
+                "(?:暂不|不要|别)\\s*(?:用|采用|设置|按)\\s*(?:历史|旧的)?\\s*(?:事件阈值|阈值|高于|超过|低于)"
+              ]
+            },
+            {
+              "name": "eventComparison",
+              "label": "阈值比较方向",
+              "patterns": [
+                {
+                  "pattern": "(?:^|[，,。.;；!！?？\\n])\\s*(?:补充参数\\s+)?(?:阈值比较|eventComparison)\\s*[:=：]\\s*(?P<value>atOrAbove|atOrBelow|above|below|大于等于|小于等于|不低于|不小于|不超过|不高于|低于|大于|小于|至多|至少|超过|高于)(?=$|\\s*(?:[，,。.;；!！?？）)\\]\\n]|的|时|阈值事件))",
+                  "values": {
+                    "不低于": "atOrAbove",
+                    "不小于": "atOrAbove",
+                    "大于等于": "atOrAbove",
+                    "至少": "atOrAbove",
+                    "不高于": "atOrBelow",
+                    "不超过": "atOrBelow",
+                    "小于等于": "atOrBelow",
+                    "至多": "atOrBelow",
+                    "高于": "above",
+                    "超过": "above",
+                    "大于": "above",
+                    "低于": "below",
+                    "小于": "below",
+                    "above": "above",
+                    "atOrAbove": "atOrAbove",
+                    "atOrBelow": "atOrBelow",
+                    "below": "below"
+                  }
+                },
+                {
+                  "pattern": "(?:^|[，,。.;；!！?？\\n])\\s*(?:补充参数\\s+)?(?:请\\s*)?(?:识别|找出|筛查|提取|统计|检查)\\s*(?P<value>不低于|不小于|大于等于|至少|不高于|不超过|小于等于|至多|高于|超过|大于|低于|小于)\\s*[+-]?(?:[0-9]+(?:\\.[0-9]+)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?(?![0-9eE]|[.,，][0-9])(?:\\s*(?:毫米|厘米|分米|千米|英尺|英寸|米|尺|无量纲|[a-zA-Zµμ°%][a-zA-Z0-9µμ°%/·^_-]{0,19}))?\\s*(?:的\\s*)?(?:阈值\\s*)?事件(?=$|\\s|[，,。.;；!！?？）)\\]\\n])",
+                  "values": {
+                    "不低于": "atOrAbove",
+                    "不小于": "atOrAbove",
+                    "大于等于": "atOrAbove",
+                    "至少": "atOrAbove",
+                    "不高于": "atOrBelow",
+                    "不超过": "atOrBelow",
+                    "小于等于": "atOrBelow",
+                    "至多": "atOrBelow",
+                    "高于": "above",
+                    "超过": "above",
+                    "大于": "above",
+                    "低于": "below",
+                    "小于": "below"
+                  }
+                }
+              ],
+              "replyPatterns": [
+                {
+                  "pattern": "^\\s*(?P<value>不低于|不小于|大于等于|至少|不高于|不超过|小于等于|至多|高于|超过|大于|低于|小于)\\s*(?:[+-]?(?:[0-9]+(?:\\.[0-9]+)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?(?![0-9eE]|[.,，][0-9])(?:\\s*(?:毫米|厘米|分米|千米|英尺|英寸|米|尺|无量纲|[a-zA-Zµμ°%][a-zA-Z0-9µμ°%/·^_-]{0,19}))?)?\\s*[。.!！]?\\s*$",
+                  "values": {
+                    "不低于": "atOrAbove",
+                    "不小于": "atOrAbove",
+                    "大于等于": "atOrAbove",
+                    "至少": "atOrAbove",
+                    "不高于": "atOrBelow",
+                    "不超过": "atOrBelow",
+                    "小于等于": "atOrBelow",
+                    "至多": "atOrBelow",
+                    "高于": "above",
+                    "超过": "above",
+                    "大于": "above",
+                    "低于": "below",
+                    "小于": "below"
+                  }
+                }
+              ],
+              "unresolvedPatterns": [
+                "本次\\s*(?:事件)?阈值\\s*(?:尚未|仍未|未(?:确定|选定)|待(?:定|确认|选择)|还没)",
+                "(?:暂不|不要|别)\\s*(?:用|采用|设置|按)\\s*(?:历史|旧的)?\\s*(?:事件阈值|阈值|高于|超过|低于)"
+              ]
+            },
+            {
+              "name": "frequency",
+              "label": "统计周期",
+              "patterns": [
+                {
+                  "pattern": "(?:统计周期|分析频率|(?<!季节)频率)\\s*[:=：]\\s*(?P<value>季度|月度|年度|日|月|季|年)",
+                  "values": {
+                    "日": "day",
+                    "月": "month",
+                    "月度": "month",
+                    "季": "quarter",
+                    "季度": "quarter",
+                    "年": "year",
+                    "年度": "year"
+                  }
+                },
+                {
+                  "pattern": "按(?P<value>日|月|季|年)(?=分析|统计|聚合)",
+                  "values": {
+                    "日": "day",
+                    "月": "month",
+                    "季": "quarter",
+                    "年": "year"
+                  }
+                },
+                {
+                  "pattern": "\\bfrequency\\s*[:=：]\\s*(?P<value>quarter|month|year|day)\\b",
+                  "values": {
+                    "day": "day",
+                    "month": "month",
+                    "quarter": "quarter",
+                    "year": "year"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "seasonFrequency",
+              "label": "季节周期",
+              "patterns": [
+                {
+                  "pattern": "(?:季节周期|季节频率)\\s*[:=：]\\s*(?P<value>月度|季度|月|季)",
+                  "values": {
+                    "月": "month",
+                    "月度": "month",
+                    "季": "quarter",
+                    "季度": "quarter"
+                  }
+                },
+                {
+                  "pattern": "\\bseasonFrequency\\s*[:=：]\\s*(?P<value>quarter|month)\\b",
+                  "values": {
+                    "month": "month",
+                    "quarter": "quarter"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "aggregation",
+              "label": "期间统计方法",
+              "patterns": [
+                {
+                  "pattern": "(?:期间统计|聚合方法)\\s*[:=：]\\s*(?P<value>平均值|中位数|最小值|最大值|均值)",
+                  "values": {
+                    "平均值": "mean",
+                    "均值": "mean",
+                    "中位数": "median",
+                    "最小值": "min",
+                    "最大值": "max"
+                  }
+                },
+                {
+                  "pattern": "\\baggregation\\s*[:=：]\\s*(?P<value>median|mean|max|min)\\b",
+                  "values": {
+                    "max": "max",
+                    "mean": "mean",
+                    "median": "median",
+                    "min": "min"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "baselineStart",
+              "label": "基准期起始日期",
+              "patterns": [
+                {
+                  "pattern": "基准期(?:\\s*[:=：]\\s*|\\s+)(?P<value>[0-9]{4}-[0-9]{2}-[0-9]{2})(?:\\s*(?:至|到|/|~|～|–|—)\\s*)[0-9]{4}-[0-9]{2}-[0-9]{2}"
+                },
+                {
+                  "pattern": "\\bbaselineStart\\s*[:=：]\\s*(?P<value>[0-9]{4}-[0-9]{2}-[0-9]{2})\\b"
+                }
+              ]
+            },
+            {
+              "name": "baselineEnd",
+              "label": "基准期结束日期",
+              "patterns": [
+                {
+                  "pattern": "基准期(?:\\s*[:=：]\\s*|\\s+)[0-9]{4}-[0-9]{2}-[0-9]{2}(?:\\s*(?:至|到|/|~|～|–|—)\\s*)(?P<value>[0-9]{4}-[0-9]{2}-[0-9]{2})"
+                },
+                {
+                  "pattern": "\\bbaselineEnd\\s*[:=：]\\s*(?P<value>[0-9]{4}-[0-9]{2}-[0-9]{2})\\b"
+                }
+              ]
+            },
+            {
+              "name": "comparisonStart",
+              "label": "对比期起始日期",
+              "patterns": [
+                {
+                  "pattern": "对比期(?:\\s*[:=：]\\s*|\\s+)(?P<value>[0-9]{4}-[0-9]{2}-[0-9]{2})(?:\\s*(?:至|到|/|~|～|–|—)\\s*)[0-9]{4}-[0-9]{2}-[0-9]{2}"
+                },
+                {
+                  "pattern": "\\bcomparisonStart\\s*[:=：]\\s*(?P<value>[0-9]{4}-[0-9]{2}-[0-9]{2})\\b"
+                }
+              ]
+            },
+            {
+              "name": "comparisonEnd",
+              "label": "对比期结束日期",
+              "patterns": [
+                {
+                  "pattern": "对比期(?:\\s*[:=：]\\s*|\\s+)[0-9]{4}-[0-9]{2}-[0-9]{2}(?:\\s*(?:至|到|/|~|～|–|—)\\s*)(?P<value>[0-9]{4}-[0-9]{2}-[0-9]{2})"
+                },
+                {
+                  "pattern": "\\bcomparisonEnd\\s*[:=：]\\s*(?P<value>[0-9]{4}-[0-9]{2}-[0-9]{2})\\b"
+                }
+              ]
+            },
+            {
+              "name": "groupField",
+              "label": "分组字段",
+              "patterns": [
+                {
+                  "pattern": "(?:分组字段|监测对象字段|groupField)\\s*[:=：]\\s*(?P<value>[^\\s,，;；。]+)"
+                }
+              ]
+            },
+            {
+              "name": "timeField",
+              "label": "时间字段",
+              "patterns": [
+                {
+                  "pattern": "(?:时间字段|timeField)\\s*[:=：]\\s*(?P<value>[^\\s,，;；。]+)"
+                }
+              ]
+            },
+            {
+              "name": "valueField",
+              "label": "数值字段",
+              "patterns": [
+                {
+                  "pattern": "(?:数值字段|水位字段|valueField)\\s*[:=：]\\s*(?P<value>[^\\s,，;；。]+)"
+                }
+              ]
+            },
+            {
+              "name": "expectedStart",
+              "label": "分析期起始日期",
+              "patterns": [
+                {
+                  "pattern": "分析期(?:\\s*[:=：]\\s*|\\s+)(?P<value>[0-9]{4}-[0-9]{2}-[0-9]{2})(?:\\s*(?:至|到|/|~|～|–|—)\\s*)[0-9]{4}-[0-9]{2}-[0-9]{2}"
+                },
+                {
+                  "pattern": "\\bexpectedStart\\s*[:=：]\\s*(?P<value>[0-9]{4}-[0-9]{2}-[0-9]{2})\\b"
+                }
+              ]
+            },
+            {
+              "name": "expectedEnd",
+              "label": "分析期结束日期",
+              "patterns": [
+                {
+                  "pattern": "分析期(?:\\s*[:=：]\\s*|\\s+)[0-9]{4}-[0-9]{2}-[0-9]{2}(?:\\s*(?:至|到|/|~|～|–|—)\\s*)(?P<value>[0-9]{4}-[0-9]{2}-[0-9]{2})"
+                },
+                {
+                  "pattern": "\\bexpectedEnd\\s*[:=：]\\s*(?P<value>[0-9]{4}-[0-9]{2}-[0-9]{2})\\b"
+                }
+              ]
+            },
+            {
+              "name": "alpha",
+              "label": "显著性水平",
+              "patterns": [
+                {
+                  "pattern": "(?:显著性水平|alpha)\\s*[:=：]\\s*(?P<value>[+-]?(?:[0-9]+(?:\\.[0-9]+)?|\\.[0-9]+))"
+                }
+              ]
+            },
+            {
+              "name": "threshold",
+              "label": "MAD 异常阈值",
+              "patterns": [
+                {
+                  "pattern": "(?:MAD阈值|MAD 阈值|threshold)\\s*[:=：]\\s*(?P<value>[+-]?(?:[0-9]+(?:\\.[0-9]+)?|\\.[0-9]+))"
+                }
+              ]
+            }
+          ],
+          "metadataParameters": {
+            "groupField": "GROUP_FIELD",
+            "timeField": "TIME_FIELD",
+            "valueField": "UNIT_FIELD",
+            "expectedStart": "TIME_RANGE_START",
+            "expectedEnd": "TIME_RANGE_END"
+          },
+          "requiredChecks": [
+            "FIELD_METADATA",
+            "FIELD_UNIT",
+            "TIME_FIELD",
+            "TIME_RANGE"
+          ]
+        }
+      ]
+    }
+  ]
+}

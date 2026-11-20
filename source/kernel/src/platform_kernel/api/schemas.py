@@ -105,7 +105,7 @@ class MessageCreate(CamelModel):
         return self
 
 
-class MessageInputReference(CamelModel):
+class DataVersionReferenceFields(CamelModel):
     kind: Literal["data_version"] = "data_version"
     service: Literal["data-primary"] = "data-primary"
     dataset_id: _Utf8String = Field(min_length=1)
@@ -116,6 +116,9 @@ class MessageInputReference(CamelModel):
     format: _Utf8String = Field(min_length=1)
     size_bytes: StrictInt = Field(ge=0)
     checksum: _Utf8String = Field(pattern=r"^sha256:[0-9a-f]{64}$")
+
+
+class MessageInputReference(DataVersionReferenceFields):
     output_name: _Utf8String | None = Field(default=None, min_length=1)
 
 

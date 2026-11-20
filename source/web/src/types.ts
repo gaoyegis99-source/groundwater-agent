@@ -1,8 +1,16 @@
 import type { DatasetProfile, FieldProfileFacts } from '@platform/ui-boundary';
-import type { components as PublicApiComponents, paths as PublicApiPaths } from './generated/public-api-v12';
+import type { components as PublicApiComponents, operations as PublicApiOperations, paths as PublicApiPaths } from './generated/public-api-v12';
 
 export type PublicApiPath = keyof PublicApiPaths;
 export type ConfirmationRevisionAction = PublicApiComponents['schemas']['kernel__ConfirmationRevisionAction'];
+export type WorkItemDetail = PublicApiComponents['schemas']['kernel__WorkItemDetail'];
+export type BusinessObjectReference = PublicApiComponents['schemas']['kernel__BusinessObjectReference'];
+export type BusinessAssetReference = NonNullable<WorkItemDetail['assets'][number]['reference']>;
+export type WorkItemLifecycleSnapshot = PublicApiComponents['schemas']['kernel__WorkItemLifecycleSnapshot'];
+export type WorkItemActivityPage = PublicApiComponents['schemas']['kernel__WorkItemActivityPage'];
+export type WorkItemActivityEntry = WorkItemActivityPage['entries'][number];
+export type WorkItemUpdateCommand = PublicApiOperations['kernel_update_work_item']['requestBody']['content']['application/json'];
+export type WorkItemReviewCommand = PublicApiOperations['kernel_review_work_item']['requestBody']['content']['application/json'];
 
 export interface JsonSchemaProperty {
   type?: string | string[];

@@ -104,13 +104,32 @@ plus 2–3 mutually exclusive natural-language interaction_options.
         )
     selection = request_context.get("workflow_selection") if request_context else None
     if selection is not None:
-        mode_instructions += (
-            "\nThis turn selects one installed preset. Prepare only its model tool. "
-            "Preserve the bound parameter values and exact input identities below. "
-            "Find or ask for missing inputs before proposing and do not fabricate a value.\n"
-            + json.dumps({"tool": models[0].tool_name, "inputs": selection["inputs"],
-                          "parameters": selection["parameters"]}, ensure_ascii=False)
-        )
+        business = selection.get("business_capability")
+        if business is not None:
+            mode_instructions += (
+                "\nA Kernel-verified business capability applies to this Turn. Use its title, input needs, "
+                "expected result and material limits. Its version pins are in the authorized trace. "
+                "For an authorized execution proposal, call prepare_task_inputs for the only selected model "
+                "before recording a plan. It uses authoritative Data and pinned user/default values, "
+                "so start with empty arguments. On BLOCKED, explain the first actionable issue and ask for "
+                "the missing choice or attachment. On READY, use exactly the returned arguments and state "
+                "the sources for Data facts, user choices, Profile values and Model defaults. Describe the plan before "
+                "confirmation. Do not invent thresholds, defaults, previous results or acceptance.\n"
+                + json.dumps({
+                    "title": business["title"], "description": business["description"],
+                    "limitations": business["limitations"], "expected_outputs": business["expectedOutputs"],
+                    "tool": models[0].tool_name,
+                    "inputs": selection["inputs"],
+                }, ensure_ascii=False)
+            )
+        else:
+            mode_instructions += (
+                "\nThis turn selects one installed preset. Prepare only its model tool. "
+                "Preserve the bound parameter values and exact input identities below. "
+                "Find or ask for missing inputs before proposing and do not fabricate a value.\n"
+                + json.dumps({"tool": models[0].tool_name, "inputs": selection["inputs"],
+                              "parameters": selection["parameters"]}, ensure_ascii=False)
+            )
     task = None if request_context is None else request_context.get("task_context")
     if task is not None:
         mode_instructions += "\nTaskContextV1 is projected here as TaskActiveContextV1 and preserves current user requirements and incomplete work. Interpretations/suggestions are non-authoritative, never execution approval. Recheck evidence.\n" + json.dumps(task, ensure_ascii=False, sort_keys=True, separators=(",", ":"))

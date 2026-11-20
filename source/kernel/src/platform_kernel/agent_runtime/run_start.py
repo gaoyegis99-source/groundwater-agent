@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 
 from ..database import utc_now
+from ..business_capabilities import require_installed_business_capability
 from .persistence import load_request_context
 from .models import (
     AgentPlanStepV2,
@@ -27,7 +28,7 @@ from .sdk_execution import (
 )
 from .case_resolver import resolve_execution_case
 from .run_dependencies import RunDependencies
-from .run_finalization import raise_execution_failure, record_result
+from .run_finalization import fail_with_usage, raise_execution_failure, record_result
 
 
 async def start_run(
@@ -58,6 +59,16 @@ async def start_run(
             trace_id=trace_id,
             started_at=utc_now(),
         )
+
+    try:
+        require_installed_business_capability(
+            deps.settings.business_capabilities, request_context.get("workflow_selection"),
+        )
+    except ValueError:
+        on_admitted()
+        run = get_run(deps.database, agent_run_id)
+        fail_with_usage(deps, run, "BUSINESS_CAPABILITY_SELECTION_STALE", None)
+        return get_run(deps.database, agent_run_id)
 
     if dialogue_policy == "EXECUTION_PROPOSAL" and not request_context.get("workflow_selection"):
         resolved_case = await resolve_execution_case(

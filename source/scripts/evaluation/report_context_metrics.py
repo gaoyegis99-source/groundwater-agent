@@ -10,7 +10,7 @@ from pathlib import Path
 import sqlite3
 
 
-SUPPORTED_SCHEMA_VERSIONS = {34, 35, 36}
+SUPPORTED_SCHEMA_VERSIONS = {34, 35, 36, 37, 38}
 
 
 def build_report(database: Path) -> dict[str, object]:

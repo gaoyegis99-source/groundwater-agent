@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:platform:schema:business-capabilities.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "capabilities"],
+  "properties": {
+    "schemaVersion": {"const": "business-capabilities.v1"},
+    "capabilities": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/capability"}}
+  },
+  "$defs": {
+    "text": {"type": "string", "pattern": "\\S", "maxLength": 1000},
+    "id": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]*$"},
+    "version": {"type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"},
+    "parameter": {"type": "string", "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$"},
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "checksum"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "version": {"$ref": "#/$defs/version"},
+        "checksum": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+      }
+    },
+    "texts": {
+      "type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/text"}
+    },
+    "matches": {
+      "type": "array", "minItems": 1, "maxItems": 8, "uniqueItems": true,
+      "items": {"$ref": "#/$defs/texts"}
+    },
+    "capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion", "id", "version", "title", "description", "scenario", "tier",
+        "defaultVisible", "roles", "prompt", "requiredServices", "validationStatus",
+        "matchTerms", "profiles", "limitations"
+      ],
+      "properties": {
+        "schemaVersion": {"const": "business-capability.v1"},
+        "id": {"$ref": "#/$defs/id"},
+        "version": {"$ref": "#/$defs/version"},
+        "title": {"$ref": "#/$defs/text"},
+        "description": {"$ref": "#/$defs/text"},
+        "scenario": {"$ref": "#/$defs/text"},
+        "tier": {"enum": ["CORE", "SPECIALIZED", "ADVANCED", "EXPERIMENTAL"]},
+        "defaultVisible": {"type": "boolean"},
+        "roles": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": {"enum": ["admin", "researcher", "viewer"]}
+        },
+        "exampleId": {"$ref": "#/$defs/id"},
+        "prompt": {"$ref": "#/$defs/text"},
+        "requiredServices": {
+          "type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}
+        },
+        "validationStatus": {"enum": ["TECHNICALLY_VALIDATED", "UNVERIFIED"]},
+        "limitations": {"$ref": "#/$defs/texts"},
+        "matchTerms": {"$ref": "#/$defs/matches"},
+        "excludeTerms": {"$ref": "#/$defs/texts"},
+        "profiles": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/profile"}}
+      }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profileRef", "matchTerms", "textParameters", "metadataParameters", "requiredChecks"],
+      "properties": {
+        "profileRef": {"$ref": "#/$defs/reference"},
+        "matchTerms": {"$ref": "#/$defs/matches"},
+        "textParameters": {
+          "type": "array", "minItems": 1,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["name", "label", "patterns"],
+            "properties": {
+              "name": {"$ref": "#/$defs/parameter"},
+              "label": {"$ref": "#/$defs/text"},
+              "patterns": {
+                "type": "array", "minItems": 1, "maxItems": 12, "items": {"$ref": "#/$defs/pattern"}
+              },
+              "replyPatterns": {
+                "type": "array", "minItems": 1, "maxItems": 4, "items": {"$ref": "#/$defs/pattern"}
+              },
+              "unresolvedPatterns": {"$ref": "#/$defs/texts"}
+            }
+          }
+        },
+        "metadataParameters": {
+          "type": "object", "propertyNames": {"$ref": "#/$defs/parameter"},
+          "additionalProperties": {"enum": ["GROUP_FIELD", "TIME_FIELD", "UNIT_FIELD", "TIME_RANGE_START", "TIME_RANGE_END"]}
+        },
+        "requiredChecks": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": {"enum": ["FIELD_METADATA", "FIELD_UNIT", "TIME_FIELD", "TIME_RANGE"]}
+        },
+        "thresholdParameter": {"$ref": "#/$defs/parameter"}
+      }
+    },
+    "pattern": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pattern"],
+      "properties": {
+        "pattern": {"$ref": "#/$defs/text"},
+        "value": {"type": ["string", "number"]},
+        "values": {"type": "object", "minProperties": 1, "additionalProperties": {"type": "string"}}
+      }
+    }
+  }
+}

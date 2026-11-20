@@ -32,6 +32,9 @@ baselines are available from Git history rather than the current source tree.
    partial outputs and transport acknowledgements are not proof of completion.
    Task completion checks declared requirements against these facts; persisted reply
    delivery proves existence, while business adequacy requires explicit user review.
+   A WorkItem organizes owned Sessions and exact resource links. Task, execution and
+   publication ownership remains with the records behind those links. Reading them
+   requires current authorization from their owners.
 6. **Trust boundaries are explicit.** Validate untrusted input at its owning boundary
    and trust validated internal types. Programming errors and impossible states fail
    visibly; they must not become fabricated business success or empty results.

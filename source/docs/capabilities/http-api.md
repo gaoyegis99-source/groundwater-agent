@@ -163,6 +163,33 @@ with GroundwaterClient(
 执行、发布、终态和恢复结果。该字段不包含模型推理、工具参数、观察正文、checksum
 或 Provider 私有信息；旧客户端可以忽略这个附加字段。
 
+## WorkItem
+
+拥有 `researcher` 或 `admin` 角色的用户可组织自己在当前项目中的工作。查询同时按项目和主体隔离。每个 Session 可以独立工作，也可以通过明确的 Session ID 关联到一个 WorkItem。已归档 Session 允许显式关联。Kernel Task 与运行关系按关联 Session 读取。
+
+| Method | Path | 含义 |
+| --- | --- | --- |
+| GET / POST | `/api/v12/work-items` | 分页列出或创建 WorkItem。默认只列出活动项，传入 `includeArchived=true` 查看归档项。 |
+| GET | `/api/v12/work-items/{workItemId}` | 查看详情、关联会话、任务及运行、对象与资产。 |
+| GET | `/api/v12/work-items/{workItemId}/audit` | 按序读取已接受的操作及关联 ID。 |
+| POST | `/api/v12/work-items/{workItemId}/sessions` | 使用 `sessionId` 显式关联会话。 |
+| POST | `/api/v12/work-items/{workItemId}/objects` | 按精确 Data 版本、语义和字段绑定区域、监测井或含水层的来源键。 |
+| POST | `/api/v12/work-items/{workItemId}/assets` | 绑定精确 Data、Knowledge 版本、所关联的 WorkflowRun 或其具名发布成果。 |
+| POST | `/api/v12/work-items/{workItemId}/archive` | 归档 WorkItem，保留已有 Session、Task、运行和引用。 |
+| GET | `/api/v12/work-items/{workItemId}/snapshot` | 获取业务状态、各关联 Session 的当前状态及活动游标。 |
+| POST | `/api/v12/work-items/{workItemId}/update` | 更新标题和说明。省略属性保留现值，说明传空字符串可清除。 |
+| POST | `/api/v12/work-items/{workItemId}/review` | 使用当前快照提供的 `sessionId` 和 `reviewToken` 明确接受当前精确交付。 |
+| GET | `/api/v12/work-items/{workItemId}/activity` | 分页读取命令、验收和关联会话的精简活动，支持 `after` 与 `limit`。 |
+| GET | `/api/v12/work-items/{workItemId}/events` | 使用活动序号恢复 SSE。 |
+
+列表、审计和活动在还有结果时返回 `nextAfter`，供后续查询作为 `after` 使用。审计和活动序号均在各 WorkItem 内分配。旧 `/audit` 投影原有命令种类，完整的命令和关联事件通过 `/activity` 查询。写入请求使用 `projectId` 和 `requestId`，变更请求还需要 `expectedRevision`。同主体、同项目的相同请求重放返回原回执。新请求使用旧修订或以相同键提交其他载荷时返回 409。仅实际变更推进修订。归档保留底层资源。
+
+对象的 `externalId` 由用户按来源填写。Data 校验冻结的版本、对象及语义字段。成果关联要求自有的已关联 WorkflowRun 成功、具名输出发布已提交并且调用者可读取该 Data 版本。详情会重新核验当前权限及精确身份。无权读取、引用失效或上游不可用时，链接仅保留 `UNAVAILABLE` 状态和本地链接元数据。`reference` 为 `null`。执行和交付继续走各自的授权与状态合同。
+
+`/snapshot` 提供 `state` 和可机器判定的 `reason`，以及按 Session 和 Task 当前修订划分的 `tracks`。等待确认期间保持 `WAITING_CONFIRMATION`。执行停止申请受理时可返回 `stopPending=true`，终态由关联运行或控制事实决定。已核实发布进入 `RESULT_REVIEW`，验收命令重新核对当前 Task 修订、精确输出及资源访问权限。过期令牌返回 `409 WORK_ITEM_REVIEW_STALE`。已验收的历史持久保留。旧列表、详情和审计的响应模型保持兼容。
+
+订阅时先读取快照，随后用它的 `eventCursor` 作为 `afterEventId`。自动重连的 `Last-Event-ID` 优先。持久帧 `work_item.activity` 的 `id` 对应活动序号，帧数据与 `/activity` 中的条目结构一致。新活动提示客户端按权威快照重读，重复或较旧的活动可忽略。`work_item.refresh` 提示重核发布和访问状态。恢复备份造成游标超前时，`work_item.reset` 提示丢弃旧游标并先取新快照。快照、活动和事件流均使用 `Cache-Control: no-store`。
+
 ## Agent 与 WorkflowRun
 
 | Method | Path | 含义 |

@@ -4,6 +4,7 @@ from .system import router as system_router
 from .workflow_runs import router as workflow_runs_router
 from .audit import router as audit_router
 from .auth import router as auth_router
+from .work_items import router as work_items_router
 
 __all__ = [
     "agent_runs_router",
@@ -12,4 +13,5 @@ __all__ = [
     "workflow_runs_router",
     "audit_router",
     "auth_router",
+    "work_items_router",
 ]

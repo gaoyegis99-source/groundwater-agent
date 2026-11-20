@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { decodeDataPreviewResponse, decodeDataQueryResponse, parseDataQueryJson } from './api-contract';
+import { loadRequestValidator, loadResponseValidator } from './generated/public-api-v12.validators.lazy.js';
+import type { BusinessAssetReference, WorkItemDetail } from './types';
 
 describe('public API response boundary', () => {
   it('uses the public camelCase contract without a key-mapping compatibility layer', () => {
@@ -83,5 +85,46 @@ describe('public API response boundary', () => {
     expect(decodeDataPreviewResponse(value)).toBe(value);
     expect(() => decodeDataPreviewResponse({ ...value, result: { kind: 'xlsx_table' } }))
       .toThrow('API_RESPONSE_INVALID');
+  });
+
+  it('validates WorkItem result selection, publication identity, and redacted links', async () => {
+    const [validateRequest, validateDetail] = await Promise.all([
+      loadRequestValidator('kernel_link_work_item_asset'),
+      loadResponseValidator('kernel_get_work_item'),
+    ]);
+    if (!validateRequest || !validateDetail) throw new Error('WorkItem contract missing');
+    const selection = { kind: 'RESULT', runId: 'run', outputName: 'aggregate-summary' } as const;
+    const command = { projectId: 'groundwater', requestId: 'request', expectedRevision: 2 };
+    expect(validateRequest({ ...command, reference: selection })).toBe(true);
+    expect(validateRequest({ ...command, expectedRevision: true, reference: selection })).toBe(false);
+    expect(validateRequest({ ...command, reference: { kind: 'RESULT', runId: 'run' } })).toBe(false);
+
+    const checksum = `sha256:${'a'.repeat(64)}`;
+    const reference: BusinessAssetReference = {
+      ...selection, publicationId: 'publication',
+      dataRef: {
+        kind: 'data_version', service: 'data-primary', datasetId: 'datasets', versionId: 'version',
+        semanticId: 'semantics', objectId: 'raw', mediaType: 'application/json', format: 'json',
+        sizeBytes: 1024, checksum, outputName: selection.outputName,
+      },
+    };
+    const linkedAt = '2026-11-20T00:00:00Z';
+    const detail: WorkItemDetail = {
+      workItem: {
+        workItemId: 'work', ownerSubject: 'researcher', title: '监测趋势', projectId: 'groundwater',
+        revision: 3, status: 'ACTIVE', description: null, createdAt: linkedAt,
+        updatedAt: linkedAt, archivedAt: null,
+      },
+      sessions: [], tasks: [], taskRuns: [], agentRuns: [], workflowRuns: [], objects: [],
+      assets: [
+        { linkId: 'visible', state: 'AVAILABLE', linkedAt, reference },
+        { linkId: 'hidden', state: 'UNAVAILABLE', linkedAt, reference: null },
+      ],
+    };
+    expect(validateDetail(detail)).toBe(true);
+    expect(validateDetail({
+      ...detail,
+      assets: [{ ...detail.assets[0], reference: { ...selection, dataRef: reference.dataRef } }],
+    })).toBe(false);
   });
 });

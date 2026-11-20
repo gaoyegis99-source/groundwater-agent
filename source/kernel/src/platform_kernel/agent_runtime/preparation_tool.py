@@ -17,6 +17,7 @@ from pyproj import CRS
 from pyproj.exceptions import CRSError
 
 from ..application.task_api import save_preparation
+from ..contracts import DataVersionRefV2
 from ..errors import AgentRunError, UpstreamServiceError
 from ..settings import (
     ExecutableModelDefinition,
@@ -25,7 +26,7 @@ from ..settings import (
 )
 from .evidence import _data_reference
 from .governance import governance
-from ..workflow_selection import require_selected_arguments
+from ..workflow_selection import require_selected_arguments, selected_model
 from .observation_client import ObservationClient
 from .provider_arguments import normalize_model_arguments, omit_unset_field_arguments
 from .rule_preparation import RULE_REQUEST_SCHEMA, prepare_operator_rules
@@ -55,13 +56,14 @@ def build_preparation_tool(
         None,
     )
     models_by_tool = {item.tool_name: item for item in models}
+    capability = (workflow_selection or {}).get("business_capability")
 
     async def prepare_task_inputs(
         context: ToolContext,
         arguments_json: str,
     ) -> dict[str, object]:
         request: object = {}
-        if composition is not None:
+        if composition is not None and capability is None:
             try:
                 supplied = json.loads(arguments_json)
             except json.JSONDecodeError:
@@ -76,52 +78,42 @@ def build_preparation_tool(
         try:
             request = _parse_request(arguments_json, models_by_tool)
             model = models_by_tool[request["target_tool"]]
-            supplied_request = _explicit_request_arguments(
-                request,
-                explicit_model_tool_request,
-            )
-            supplied = normalize_model_arguments(
-                supplied_request,
-                model.input_schema,
-                provider=provider,
-            )
-            supplied = omit_unset_field_arguments(supplied, model, explicit_model_tool_request)
-            request = {**request, "arguments": supplied}
-            selection_policy = request["selection_policy"]
-            arguments = {**model.default_parameters, **supplied}
-            require_selected_arguments(workflow_selection, arguments)
-            validate(arguments, model.input_schema)
+            if capability is not None:
+                supplied = dict(workflow_selection["parameters"])
+                selection_policy = "PINNED"
+                arguments = dict(supplied)
+                request = {**request, "arguments": supplied, "selection_policy": selection_policy}
+                selected_model(workflow_selection, (model,))
+            else:
+                supplied_request = _explicit_request_arguments(request, explicit_model_tool_request)
+                supplied = normalize_model_arguments(supplied_request, model.input_schema, provider=provider)
+                supplied = omit_unset_field_arguments(supplied, model, explicit_model_tool_request)
+                selection_policy = request["selection_policy"]
+                arguments = {**model.default_parameters, **supplied}
+                request = {**request, "arguments": supplied}
+                require_selected_arguments(workflow_selection, arguments)
+                validate(arguments, model.input_schema)
             if inspect_definition is None:
                 raise ValueError("PREPARATION_INSPECTOR_UNAVAILABLE")
             inspect_service = services_by_name.get(inspect_definition.service)
             if inspect_service is None:
                 raise ValueError("PREPARATION_INSPECTOR_UNAVAILABLE")
-            (
-                references,
-                checks,
-                blocking_reasons,
-                blocking_issues,
-            ) = await _inspect_data_inputs(
-                context=context,
-                model=model,
-                arguments=arguments,
-                selection_policy=selection_policy,
-                inspect_definition=inspect_definition,
-                inspect_service=inspect_service,
-                observation_client=observation_client,
-            )
-            require_selected_arguments(workflow_selection, arguments, references)
-            snapshot = _ready_snapshot(
-                context=context,
-                model=model,
-                supplied=supplied,
-                arguments=arguments,
-                selection_policy=selection_policy,
-                references=references,
-                checks=checks,
-                blocking_reasons=blocking_reasons,
-                blocking_issues=blocking_issues,
-            )
+            inspector = {
+                "context": context, "inspect_definition": inspect_definition,
+                "inspect_service": inspect_service, "observation_client": observation_client,
+            }
+            if capability is not None:
+                snapshot = await _prepare_capability_inputs(model, workflow_selection, arguments, **inspector)
+            else:
+                references, checks, blocking_reasons, blocking_issues = await _inspect_data_inputs(
+                    model=model, arguments=arguments, selection_policy=selection_policy, **inspector,
+                )
+                require_selected_arguments(workflow_selection, arguments, references)
+                snapshot = _ready_snapshot(
+                    context=context, model=model, supplied=supplied, arguments=arguments,
+                    selection_policy=selection_policy, references=references, checks=checks,
+                    blocking_reasons=blocking_reasons, blocking_issues=blocking_issues,
+                )
         except ValidationError as error:
             snapshot = _blocked_snapshot(
                 request,
@@ -161,6 +153,12 @@ def build_preparation_tool(
                 models_by_tool,
                 _error_code(error, "PREPARATION_ARGUMENTS_INVALID"),
             )
+        if capability is not None:
+            pinned_sources = capability["argumentSources"]
+            snapshot["parameter_sources"] = {
+                name: pinned_sources.get(name, source)
+                for name, source in snapshot["parameter_sources"].items()
+            }
         prepared = save_preparation(
             database,
             agent_run_id=context.context["agent_run_id"],
@@ -189,11 +187,18 @@ def build_preparation_tool(
     description = (
         "Validate one installed executable model proposal against its full input "
         "schema and re-read every exact Data version. Call after discovery and "
-        "before record_plan. READY means contractually ready for confirmation; "
-        "UNKNOWN field checks still require domain judgment."
+        "before record_plan. READY means contractually ready for confirmation."
     )
     schema = model_schema
-    if composition is not None:
+    if capability is not None:
+        description += (
+            " For this selected business capability, supply arguments={} and use the exact "
+            "parameters returned here. Kernel uses the pinned user selections, Profile defaults "
+            "and verified Data metadata. A BLOCKED result gives the first issue to resolve."
+        )
+    else:
+        description += " UNKNOWN field checks still require domain judgment."
+    if composition is not None and capability is None:
         description += (
             " For an operator's missing rules file, read its contract and inspect the source "
             "Data first. Provide operator_id, operator_version, rules_port, the rules object "
@@ -270,6 +275,7 @@ async def _inspect_data_inputs(
     inspect_definition: ObservationToolDefinition,
     inspect_service: ServiceBinding,
     observation_client: ObservationClient,
+    inspected: dict[str, tuple[dict[str, object], DataVersionRefV2]] | None = None,
 ) -> tuple[
     dict[str, dict[str, object]],
     list[dict[str, object]],
@@ -300,20 +306,13 @@ async def _inspect_data_inputs(
         version_id = arguments.get(parameter)
         if not isinstance(version_id, str) or not version_id:
             raise _MissingDataInputError(parameter)
-        response = await observation_client.invoke(
-            inspect_definition,
-            inspect_service,
-            call_id=f"prepare:{context.tool_call_id}:{parameter}",
-            project_id=context.context["project_id"],
-            trace_id=context.context["trace_id"],
-            arguments={"version_id": version_id},
-            agent_run_id=context.context["agent_run_id"],
-        )
-        reference = _data_reference(response["data"])
-        if reference.version_id != version_id:
-            raise ValueError("PREPARATION_DATA_IDENTITY_MISMATCH")
+        if inspected is None:
+            detail, reference = await _read_preparation_input(
+                context, inspect_definition, inspect_service, observation_client, parameter, version_id,
+            )
+        else:
+            detail, reference = inspected[parameter]
         references[parameter] = reference.as_storage_dict()
-        detail = response["data"]
         current_version = detail.get("currentVersion")
         version_is_current = not (
             selection_policy == "CURRENT_REQUIRED" and current_version != version_id
@@ -392,6 +391,235 @@ async def _inspect_data_inputs(
                 blocking_issues=blocking_issues,
             )
     return references, checks, blocking_reasons, blocking_issues
+
+
+async def _read_preparation_input(
+    context, inspect_definition, inspect_service, observation_client, parameter, version_id,
+) -> tuple[dict[str, object], DataVersionRefV2]:
+    response = await observation_client.invoke(
+        inspect_definition, inspect_service,
+        call_id=f"prepare:{context.tool_call_id}:{parameter}",
+        project_id=context.context["project_id"], trace_id=context.context["trace_id"],
+        arguments={"version_id": version_id}, agent_run_id=context.context["agent_run_id"],
+    )
+    detail = response["data"]
+    reference = _data_reference(detail)
+    if reference.version_id != version_id:
+        raise ValueError("PREPARATION_DATA_IDENTITY_MISMATCH")
+    return detail, reference
+
+
+async def _prepare_capability_inputs(
+    model: ExecutableModelDefinition,
+    selection: dict,
+    arguments: dict[str, object],
+    *,
+    context: ToolContext,
+    inspect_definition: ObservationToolDefinition,
+    inspect_service: ServiceBinding,
+    observation_client: ObservationClient,
+) -> dict[str, object]:
+    capability = selection["business_capability"]
+    references, checks, derived = {}, [], set()
+    if conflicts := capability.get("parameterConflicts"):
+        issue = _capability_issue("CAPABILITY_PARAMETER_CONFLICT", conflicts[0])
+    else:
+        for name in model.data_input_parameters:
+            if name not in selection["inputs"]:
+                raise _MissingDataInputError(name)
+            arguments[name] = DataVersionRefV2.from_storage_dict(selection["inputs"][name]).version_id
+        inspected = {
+            name: await _read_preparation_input(
+                context, inspect_definition, inspect_service, observation_client, name, arguments[name],
+            )
+            for name in model.data_input_parameters
+        }
+        references = {name: ref.as_storage_dict() for name, (_, ref) in inspected.items()}
+        require_selected_arguments(selection, arguments, references)
+        details = {name: detail for name, (detail, _) in inspected.items()}
+        derived, candidates = _resolve_capability_metadata(model, capability, arguments, details)
+        issue = _missing_capability_parameter(capability, arguments, candidates)
+        if issue is None:
+            validate(arguments, model.input_schema)
+            references, checks, _, issues = await _inspect_data_inputs(
+                context=context, model=model, arguments=arguments, selection_policy="PINNED",
+                inspect_definition=inspect_definition, inspect_service=inspect_service,
+                observation_client=observation_client, inspected=inspected,
+            )
+            issue = issues[0] if issues else _capability_check_issue(capability, checks)
+            if issue is None:
+                issue = _capability_time_issue(model, capability, arguments, details)
+            if issue is None:
+                issue = _capability_threshold_issue(capability, arguments, checks)
+    snapshot = _ready_snapshot(
+        context=context, model=model, supplied=selection["parameters"], arguments=arguments,
+        selection_policy="PINNED", references=references, checks=checks,
+        blocking_reasons=[issue["code"]] if issue else [], blocking_issues=[issue] if issue else [],
+    )
+    snapshot["parameter_sources"].update(dict.fromkeys(derived, "DATA"))
+    return snapshot
+
+
+def _resolve_capability_metadata(model, capability, arguments, details):
+    metadata = capability["metadataParameters"]
+    derived = set()
+    candidates = {}
+    for name, value in metadata.items():
+        if name in arguments or value not in {"TIME_RANGE_START", "TIME_RANGE_END"}:
+            continue
+        for requirement in model.semantic_requirements:
+            parameter = requirement.start_parameter if value == "TIME_RANGE_START" else requirement.end_parameter
+            if requirement.kind == "timeRange" and parameter == name:
+                semantics = _capability_semantics(details[requirement.input_parameter])
+                time_range = semantics.get("timeRange")
+                bounds = [part.strip() for part in time_range.split("/")] if isinstance(time_range, str) else []
+                if len(bounds) != 2:
+                    break
+                parsed = [_parse_iso_value(part, semantics.get("timezone")) for part in bounds]
+                if all(part is not None for part in parsed) and parsed[0] <= parsed[1]:
+                    arguments[name] = bounds[0 if value == "TIME_RANGE_START" else 1]
+                    derived.add(name)
+                break
+    for role in ("TIME_FIELD", "UNIT_FIELD", "GROUP_FIELD"):
+        for requirement in model.field_requirements:
+            parameter = requirement.parameter
+            if metadata.get(parameter) != role or parameter in arguments:
+                continue
+            detail = details[requirement.input_parameter]
+            catalog = _field_catalog(detail.get("descriptor")) or ()
+            semantics = _capability_semantics(detail)
+            identifier = "field_id" if requirement.identifier == "fieldId" else "name"
+            matches = [
+                field for field in catalog
+                if _field_type_matches(field["type"], requirement.allowed_types)
+                and _capability_field_matches(role, field, semantics)
+                and not any(
+                    bound.input_parameter == requirement.input_parameter
+                    and bound.parameter != parameter
+                    and field["field_id" if bound.identifier == "fieldId" else "name"] == arguments.get(bound.parameter)
+                    for bound in model.field_requirements
+                )
+            ]
+            if len(matches) == 1:
+                arguments[parameter] = matches[0][identifier]
+                derived.add(parameter)
+            else:
+                candidates[parameter] = matches[:3]
+    return derived, candidates
+
+
+def _capability_semantics(detail: dict) -> dict:
+    semantics = detail.get("semantics")
+    return semantics if isinstance(semantics, dict) else {}
+
+
+def _capability_field_matches(role: str, field: dict[str, str], semantics: dict) -> bool:
+    temporal = field["type"].strip().lower().startswith(("date", "timestamp"))
+    if role == "TIME_FIELD":
+        return temporal
+    fields = semantics.get("fields")
+    meaning = fields.get(field["field_id"]) if isinstance(fields, dict) else None
+    unit = meaning.get("unit") if isinstance(meaning, dict) else None
+    has_unit = isinstance(unit, str) and bool(unit.strip())
+    return (has_unit if role == "UNIT_FIELD" else not has_unit and not temporal)
+
+
+def _missing_capability_parameter(capability, arguments, candidates):
+    for entry in capability["requiredParameters"]:
+        name = entry["name"]
+        if name in arguments:
+            continue
+        if options := candidates.get(name):
+            return _capability_issue(
+                "CAPABILITY_METADATA_AMBIGUOUS", name, kind="MISSING_PARAMETER", candidates=options,
+            )
+        code = (
+            "CAPABILITY_METADATA_UNAVAILABLE" if name in capability["metadataParameters"]
+            else "CAPABILITY_PARAMETER_REQUIRED"
+        )
+        return _capability_issue(code, name, kind="MISSING_PARAMETER")
+    return None
+
+
+def _capability_check_issue(capability, checks):
+    for requirement in capability["requiredChecks"]:
+        kind = "TIME_FIELD_PARSEABILITY" if requirement == "TIME_FIELD" else requirement
+        matching = [check for check in checks if check["kind"] == kind]
+        blocked = next((check for check in matching if check["status"] != "PASS"), None)
+        if not matching or blocked is not None:
+            problem = blocked or {}
+            return _capability_issue(
+                "CAPABILITY_DATA_CHECK_REQUIRED", problem.get("parameter"), kind="UNKNOWN",
+                input=problem.get("input"), validator=kind,
+            )
+    return None
+
+
+def _capability_time_issue(model, capability, arguments, details):
+    intervals = {
+        requirement.start_parameter: requirement
+        for requirement in model.semantic_requirements if requirement.kind == "timeRange"
+    }
+    for left, right in capability.get("nonOverlappingTimeRanges", []):
+        windows = []
+        for name in (left, right):
+            requirement = intervals[name]
+            semantics = _capability_semantics(details[requirement.input_parameter])
+            timezone_name = semantics.get("timezone")
+            start, end = arguments[name], arguments[requirement.end_parameter]
+            # Do not assume a timezone when comparing local and offset timestamps.
+            if isinstance(timezone_name, str) and timezone_name:
+                windows.append(tuple(_parse_iso_value(value, timezone_name) for value in (start, end)))
+            else:
+                windows.append(tuple(datetime.fromisoformat(value.strip()) for value in (start, end)))
+        (left_start, left_end), (right_start, right_end) = windows
+        try:
+            overlap = not (left_end < right_start or right_end < left_start)
+        except TypeError:
+            return _capability_issue("CAPABILITY_TIME_RANGE_INVALID", right)
+        if overlap:
+            return _capability_issue("CAPABILITY_TIME_RANGES_OVERLAP", right)
+    return None
+
+
+def _capability_threshold_issue(capability, arguments, checks):
+    name = capability.get("thresholdParameter")
+    if name is None or name not in arguments:
+        return None
+    try:
+        finite = math.isfinite(arguments[name])
+    except (OverflowError, TypeError):
+        finite = False
+    if not finite:
+        return _capability_issue("CAPABILITY_THRESHOLD_INVALID", name)
+    expected = capability.get("thresholdUnit")
+    if expected is None:
+        return None
+    units = [check for check in checks if check["kind"] == "FIELD_UNIT" and check["status"] == "PASS"]
+    if len(units) != 1:
+        return _capability_issue("CAPABILITY_DATA_CHECK_REQUIRED", name, kind="UNKNOWN")
+    check = units[0]
+    actual = check["actual_unit"]
+    aliases = {"米": "m", "厘米": "cm", "毫米": "mm"}
+    relationship = _unit_relationship(
+        aliases.get(actual.strip(), actual), aliases.get(expected.strip(), expected),
+    )
+    matches = relationship == "EQUIVALENT"
+    checks.append({
+        "kind": "THRESHOLD_UNIT", "status": "PASS" if matches else "FAIL",
+        "input": check["input"], "parameter": name, "actual_unit": actual,
+        "expected_unit": expected, "relationship": relationship,
+    })
+    if not matches:
+        return _capability_issue("CAPABILITY_THRESHOLD_UNIT_MISMATCH", name, input=check["input"])
+    return None
+
+
+def _capability_issue(code: str, parameter: str | None, *, kind: str = "INVALID_PARAMETER", **details) -> dict:
+    return {
+        "code": code, "kind": kind, **details,
+        **({"parameter": parameter, "path": _parameter_path(parameter)} if parameter else {}),
+    }
 
 
 def _field_catalog(descriptor: object) -> tuple[dict[str, str], ...] | None:

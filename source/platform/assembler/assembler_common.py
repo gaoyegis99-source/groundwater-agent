@@ -72,6 +72,7 @@ EXTERNAL_CAPABILITIES = {"embedding-provider-v1"}
 PROJECT_UPLOAD_BYTES = 1024 ** 3
 KERNEL_ROUTE_PREFIXES = {
     "/api/v12/sessions",
+    "/api/v12/work-items",
     "/api/v12/agent-runs",
     "/api/v12/workflow-runs",
     "/api/v12/health",

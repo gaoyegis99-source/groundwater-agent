@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Product Operator Validation Evidence v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "operators"],
+  "properties": {
+    "schemaVersion": {"const": "operator-validation.v2"},
+    "legacyTechnicalEvidence": {"$ref": "#/$defs/fileReference"},
+    "operators": {
+      "type": "object",
+      "propertyNames": {"pattern": "^[a-z][a-z0-9_.-]*@[0-9]+[.][0-9]+[.][0-9]+$"},
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["scientificReview"],
+        "properties": {
+          "technicalVerification": {"$ref": "#/$defs/technicalVerification"},
+          "scientificReview": {
+            "oneOf": [
+              {"$ref": "#/$defs/notAssessed"},
+              {"$ref": "#/$defs/scientificReview"}
+            ]
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$", "minLength": 71, "maxLength": 71},
+    "date": {"type": "string", "format": "date"},
+    "text": {"type": "string", "pattern": "\\S"},
+    "fileReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "checksum"],
+      "properties": {
+        "path": {"$ref": "#/$defs/text"},
+        "checksum": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "notAssessed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reason"],
+      "properties": {
+        "status": {"const": "NOT_ASSESSED"},
+        "reason": {"$ref": "#/$defs/text"}
+      }
+    },
+    "technicalCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "checkedOn", "scope", "artifact"],
+      "properties": {
+        "status": {"enum": ["PASSED", "FAILED"]},
+        "checkedOn": {"$ref": "#/$defs/date"},
+        "scope": {"$ref": "#/$defs/text"},
+        "artifact": {"$ref": "#/$defs/fileReference"}
+      }
+    },
+    "technicalVerification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["implementationRevision", "manifestDigest", "runtime", "smokeDigest", "checks"],
+      "properties": {
+        "implementationRevision": {"$ref": "#/$defs/digest"},
+        "manifestDigest": {"$ref": "#/$defs/digest"},
+        "runtime": {"enum": ["native", "qgis", "remote_http"]},
+        "smokeDigest": {"$ref": "#/$defs/digest"},
+        "checks": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "enum": ["SCHEMA_CONTRACT", "UNIT", "SMOKE", "INTEGRATION", "DOMAIN_CASE", "REGRESSION"]
+          },
+          "additionalProperties": {
+            "oneOf": [
+              {"$ref": "#/$defs/technicalCheck"},
+              {"$ref": "#/$defs/notAssessed"}
+            ]
+          }
+        }
+      }
+    },
+    "scientificReview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "implementationRevision", "manifestDigest", "checkedOn", "reviewer", "scope", "benchmark", "domainReview"],
+      "properties": {
+        "status": {"const": "REVIEWED"},
+        "implementationRevision": {"$ref": "#/$defs/digest"},
+        "manifestDigest": {"$ref": "#/$defs/digest"},
+        "checkedOn": {"$ref": "#/$defs/date"},
+        "reviewer": {"$ref": "#/$defs/text"},
+        "scope": {"$ref": "#/$defs/text"},
+        "benchmark": {"$ref": "#/$defs/fileReference"},
+        "domainReview": {"$ref": "#/$defs/fileReference"}
+      }
+    }
+  }
+}

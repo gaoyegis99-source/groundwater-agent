@@ -19,6 +19,7 @@ from ..errors import (
     ResourceNotFoundError,
     AgentRunError,
     UpstreamServiceError,
+    WorkItemConflictError,
 )
 PROBLEM_MEDIA_TYPE = "application/problem+json"
 
@@ -130,6 +131,20 @@ async def confirmation_problem(
         "Confirmation conflict",
         409,
         "The confirmation is not current for this session.",
+        str(error),
+        **_identities(request),
+        **_product(request),
+    )
+
+
+async def work_item_conflict_problem(
+    request: Request, error: WorkItemConflictError
+) -> JSONResponse:
+    return problem_response(
+        "work-item-conflict",
+        "WorkItem conflict",
+        409,
+        "The command conflicts with the WorkItem or its references.",
         str(error),
         **_identities(request),
         **_product(request),

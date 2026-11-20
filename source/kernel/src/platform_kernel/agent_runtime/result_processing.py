@@ -192,6 +192,7 @@ def prepare_interruption(
             for target_id, candidates in evidence.prepared_arguments.items()
         }
         explicitly_prepared_targets = set(evidence.prepared_targets)
+        business_scope = workflow_selection is not None and workflow_selection.get("business_capability") is not None
         for index, interruption in enumerate(result.interruptions):
             tool_name = interruption.name
             call_id = interruption.call_id
@@ -214,6 +215,8 @@ def prepare_interruption(
             arguments = {**model.default_parameters, **supplied}
             selection_policy = "PINNED"
             explicitly_prepared = prepared_arguments.get(model.model_id, [])
+            if business_scope and not explicitly_prepared:
+                raise ValueError("TASK_PREPARATION_REQUIRED")
             if model.model_id in explicitly_prepared_targets:
                 match, arguments, selection_policy = _select_prepared_arguments(
                     arguments, explicitly_prepared, provider=provider,

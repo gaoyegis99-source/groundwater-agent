@@ -13,7 +13,7 @@ import sqlite3
 # The report is intentionally read-only.  Databases must have passed the
 # verified Kernel v29 -> v30 -> v31 -> v32 -> v33 -> v34 upgrades before reporting
 # rather than letting analytics accept an obsolete or unfrozen layout.
-SUPPORTED_SCHEMA_VERSIONS = {34, 35, 36}
+SUPPORTED_SCHEMA_VERSIONS = {34, 35, 36, 37, 38}
 DECISIONS = (
     "DIALOGUE",
     "WORKFLOW_DRAFT",

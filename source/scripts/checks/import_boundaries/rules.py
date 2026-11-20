@@ -104,6 +104,7 @@ KERNEL_MODULE_IMPORTS = {
     "": {"platform_kernel.api", "platform_kernel.composition"},
     "agent_runtime": {
         "platform_kernel.application",
+        "platform_kernel.business_capabilities",
         "platform_kernel.tasks",
         "platform_kernel.contracts",
         "platform_kernel.database",
@@ -121,6 +122,8 @@ KERNEL_MODULE_IMPORTS = {
         "platform_kernel.composition",
         "platform_kernel.errors",
         "platform_kernel.interaction.api_projection",
+        "platform_kernel.work_items.lifecycle",
+        "platform_kernel.work_items.owner",
         "platform_kernel.workflow_execution.api_projection",
     },
     "composition": {
@@ -139,6 +142,7 @@ KERNEL_MODULE_IMPORTS = {
         "platform_kernel.runtime",
         "platform_kernel.readiness",
         "platform_kernel.settings",
+        "platform_kernel.work_items",
         "platform_kernel.workflow_execution",
         "platform_kernel.workflow_execution.execution_client",
     },
@@ -153,6 +157,7 @@ KERNEL_MODULE_IMPORTS = {
     "errors": set(),
     "interaction": {
         "platform_kernel.application",
+        "platform_kernel.business_capabilities",
         "platform_kernel.tasks",
         "platform_kernel.agent_runtime",
         "platform_kernel.contracts",
@@ -189,6 +194,7 @@ KERNEL_MODULE_IMPORTS = {
     },
     "schema": set(),
     "settings": {
+        "platform_kernel.business_capabilities",
         "platform_kernel.settings_environment",
         "platform_kernel.settings_manifest",
         "platform_kernel.settings_types",
@@ -203,6 +209,12 @@ KERNEL_MODULE_IMPORTS = {
     "settings_types": set(),
     "settings_values": set(),
     "task_supervisor": set(),
+    "business_capabilities": {
+        "platform_kernel.contracts",
+        "platform_kernel.errors",
+        "platform_kernel.settings_types",
+        "platform_kernel.workflow_selection",
+    },
     "workflow_selection": {"platform_kernel.contracts", "platform_kernel.errors", "platform_kernel.settings_types"},
     # Stateless validation and presentation policy shared by manifest parsing
     # and Agent execution. It owns no persistence or lifecycle state.
@@ -216,6 +228,18 @@ KERNEL_MODULE_IMPORTS = {
         "platform_kernel.database",
         "platform_kernel.errors",
         "platform_kernel.settings",
+    },
+    "work_items": {
+        "platform_kernel.access",
+        "platform_kernel.application.work_item_lifecycle_facts",
+        "platform_kernel.application.work_item_links",
+        "platform_kernel.contracts",
+        "platform_kernel.database",
+        "platform_kernel.errors",
+        "platform_kernel.interaction.access",
+        "platform_kernel.settings",
+        "platform_kernel.workflow_execution.models",
+        "platform_kernel.workflow_execution.owner",
     },
     "application": {
         "platform_kernel.agent_runtime",
@@ -473,6 +497,11 @@ EXCLUSIVE_TABLE_MODULES = {
 TABLE_OWNERS = {
     "platform_kernel": {
         "schema_version": "platform_kernel.database",
+        "work_items": "platform_kernel.work_items.owner",
+        "work_item_sessions": "platform_kernel.work_items.owner",
+        "work_item_references": "platform_kernel.work_items.owner",
+        "work_item_commands": "platform_kernel.work_items.owner",
+        "work_item_activity": "platform_kernel.work_items.owner",
         "research_users": "platform_kernel.access.research_auth",
         "research_project_memberships": "platform_kernel.access.research_auth",
         "research_sessions": "platform_kernel.access.research_auth",

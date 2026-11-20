@@ -169,6 +169,7 @@ async def create_message(
         application.interaction.message,
         session_id, request.request_id, request.message, request.requested_mode,
         input_references=references, workflow_selection=selection, installed_models=application.settings.models,
+        business_capabilities=application.settings.business_capabilities, actor_roles=identity.roles,
         corrects_request_id=request.corrects_request_id, corrects_agent_run_id=request.corrects_agent_run_id,
         owner_subject=identity.subject,
     ))

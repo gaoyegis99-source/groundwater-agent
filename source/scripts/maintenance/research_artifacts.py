@@ -252,7 +252,7 @@ def _snapshot_schema_versions(
         raise ResearchArtifactError("SNAPSHOT_KERNEL_SCHEMA_UNREADABLE")
     kernel_version = row[0]
     manifest_version = instance["schemaVersion"]
-    if manifest_version == "instance-manifest.v4" and kernel_version in {34, 35, 36}:
+    if manifest_version == "instance-manifest.v4" and kernel_version in {34, 35, 36, 37, 38}:
         versions: dict[str, Any] = {
             "publicApi": "v12",
             "kernel": kernel_version,
@@ -435,7 +435,10 @@ def create_archive(
             path = source_root / name
             if path.is_file():
                 shutil.copy2(path, root / name)
-        for name in ("assembly-lock.json", "kernel-config.json", "executor-config.json", "compose.json"):
+        for name in (
+            "assembly-lock.json", "kernel-config.json", "executor-config.json", "compose.json",
+            "workflow-platform.json",
+        ):
             path = Path(instance["stateRoot"]) / name
             if path.is_file():
                 shutil.copy2(path, root / name)

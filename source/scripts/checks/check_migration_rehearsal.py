@@ -124,7 +124,17 @@ def _create_kernel_v33(path: Path) -> None:
 
     initialize_database(path)
     with sqlite3.connect(path) as connection:
+        connection.execute("DROP TRIGGER work_item_session_activity")
+        connection.execute("DROP TRIGGER work_item_command_activity")
         for table in (
+            "work_item_activity",
+            "work_item_commands",
+            "work_item_references",
+            "work_item_sessions",
+            "work_items",
+            "workflow_output_sources",
+            "published_output_steps",
+            "message_workflow_selections",
             "research_api_tokens",
             "research_sessions",
             "research_project_memberships",
@@ -392,7 +402,7 @@ def run(output: Path) -> dict[str, Any]:
                     knowledge, KNOWLEDGE_LINEAGE_QUERIES
                 )
             if (
-                kernel_version != 36
+                kernel_version != 38
                 or previous_kernel_version != 33
                 or previous_owners != {"legacy:alice"}
                 or owners & LEGACY_SUBJECTS

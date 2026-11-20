@@ -163,7 +163,7 @@ def _seed(database: Path) -> None:
     )
 
 
-def test_report_aggregates_v35_without_messages_reasoning_or_currency(
+def test_report_aggregates_current_schema_without_messages_reasoning_or_currency(
     tmp_path: Path, monkeypatch, capsys
 ) -> None:
     database = tmp_path / "kernel.sqlite3"
@@ -187,7 +187,7 @@ def test_report_aggregates_v35_without_messages_reasoning_or_currency(
     assert hashlib.sha256(database.read_bytes()).hexdigest() == before
     report = json.loads(output.read_text(encoding="utf-8"))
     assert report["schemaVersion"] == "intent-routing-operations-report.v2"
-    assert report["database_schema_version"] == 36
+    assert report["database_schema_version"] == 38
     assert report["counts"] == {
         "auto_requests": 7,
         "decided_requests": 5,

@@ -282,7 +282,12 @@ def record_interruption(
         raise AgentRunError(
             str(error), run.agent_run_id, diagnostics=diagnostics,
         ) from error
-    preparation = (f"proposal-boundary:{run.agent_run_id}", prepared.preparations)
+    selection = context.get("workflow_selection")
+    # Retain the capability's authoritative checks and parameter sources.
+    preparation = (
+        None if selection and selection.get("business_capability") is not None
+        else (f"proposal-boundary:{run.agent_run_id}", prepared.preparations)
+    )
     save_waiting_result(
         deps.database,
         run,

@@ -31,7 +31,11 @@ def get_agent_trace(
 ):
     run = application.agent_runtime.get(agent_run_id, project_id)
     items = application.agent_runtime.trace(agent_run_id, project_id)
-    return to_wire(agent_trace_response(run, items))
+    trace = agent_trace_response(run, items)
+    refs = application.interaction.business_capability_refs(agent_run_id)
+    if refs is not None:
+        trace["trace"] = {**(trace["trace"] or {}), "business_capability": refs}
+    return to_wire(trace)
 
 
 @router.get("/api/v12/agent-runs/{agentRunId}/provider-requests", response_model=ProviderRequestPage, operation_id="kernel_get_agent_provider_requests")

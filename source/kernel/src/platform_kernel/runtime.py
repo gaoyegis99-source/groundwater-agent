@@ -316,6 +316,10 @@ class KernelRuntime:
                 )
                 routing_source = "RULE"
             else:
+                capability_hint = (
+                    self.interaction.business_capability_route_hint(route.agent_run_id)
+                    if self.agent_runtime.settings.business_capabilities else None
+                )
                 result = await self.intent_router.route(
                     message=route.message,
                     memory=None if memory is None else memory.summary,
@@ -333,6 +337,7 @@ class KernelRuntime:
                         ),
                         "controls_are_kernel_only": True,
                         "input_references": list(route.input_references),
+                        **({"business_capability": capability_hint} if capability_hint is not None else {}),
                     },
                     request_agent_run_id=route.agent_run_id,
                     session_id=route.session_id,

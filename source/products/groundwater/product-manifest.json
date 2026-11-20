@@ -29,8 +29,8 @@
   ],
   "publicApiVersion": "v12",
   "operatorValidation": {
-    "path": "operator-validation.v1.json",
-    "checksum": "sha256:7e45c110ee146c237b962e9f01651db39b327418d37a9057db022ad1c0d792dc"
+    "path": "operator-validation.v2.json",
+    "checksum": "sha256:38762656be35fdb7e7d7e0b054d1735733ec8a55fbe6061c84197f60a4cd2ab5"
   },
   "compositionOperators": [
     "crs.reproject@1.0.0",
@@ -148,5 +148,13 @@
   "uiProfile": {
     "path": "ui/product-ui-porous.v1.json",
     "checksum": "sha256:7b6554c54e4d57a6392ea427de8ec937464dddbbd3a5c1d6c885a3ee8b572091"
+  },
+  "workflowPlatform": {
+    "path": "workflows/workflow-platform.v1.json",
+    "checksum": "sha256:fe14d9b7280109e0b1d2ec00829a12ffde34577c6db0a610af6ab5726bec79ab"
+  },
+  "businessCapabilities": {
+    "path": "capabilities/business-capabilities.v1.json",
+    "checksum": "sha256:e2783550ede2734785da81da7e72876796b5f001ffc0060ce675e36d711e7d90"
   }
 }

@@ -17,6 +17,7 @@ from .settings_manifest import (
     _parse_services,
     _parse_tools,
 )
+from .business_capabilities import parse_business_capabilities
 from .settings_types import (
     ExecutableModelDefinition,
     ExecutionCaseDefinition,
@@ -239,6 +240,7 @@ class KernelSettings:
     published_output_steps: tuple[dict, ...] = ()
     operator_uses: dict[str, list[dict]] = field(default_factory=dict)
     operator_validation: dict[str, dict] = field(default_factory=dict)
+    business_capabilities: tuple[dict, ...] = ()
 
     @property
     def services_by_name(self) -> dict[str, ServiceBinding]:
@@ -395,7 +397,7 @@ class KernelSettings:
         }
         if (
             not isinstance(raw, dict)
-            or set(raw) - {"workflowContinuations", "publishedOutputSteps"} != required
+            or set(raw) - {"workflowContinuations", "publishedOutputSteps", "businessCapabilities"} != required
             or raw["schemaVersion"] != "kernel-config.v8"
             or raw["publicApiVersion"] != "v12"
         ):
@@ -482,6 +484,9 @@ class KernelSettings:
             operator_catalog=catalog,
             operator_uses=operator_uses,
             operator_validation=operator_validation,
+            business_capabilities=parse_business_capabilities(
+                raw.get("businessCapabilities", []), models, {service.name for service in services},
+            ),
             workflow_composition=composition,
             operator_catalog_digest=authoring["operatorCatalogDigest"],
             manifest_checksum=raw["manifestChecksum"],

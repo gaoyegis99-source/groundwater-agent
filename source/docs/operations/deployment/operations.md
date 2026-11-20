@@ -19,13 +19,15 @@
 `dev clean --dry-run` 列出可清理项。清理保留当前装配和本地容器仍引用的装配，
 包括可以重新启动的容器。无法核验 Docker 挂载时，保留旧装配。
 
-科研开发实例从 Kernel SQLite v34 或 v35 升级到 v36 时，在 `source/` 停止服务后执行显式迁移。迁移前会为原数据库创建内容校验可核对的备份。
+科研开发实例升级到 Kernel SQLite v38 时，在 `source/` 停止服务后执行显式迁移。v37 原库的精确 schema 校验通过后，迁移工具为原数据库创建可核对摘要的备份。升级演练使用 SQLite backup API 生成的离线副本，对比迁移前后的 WorkItem、关联和命令回执，再重复迁移验证结果。v38 迁移失败会回滚本次写事务。
 
 ```bash
 ../bin/gw dev down --product groundwater
 ../bin/gw dev migrate-kernel --product groundwater
 ../bin/gw dev up --product groundwater
 ```
+
+回滚时先停止 Kernel，并保留当前 v38 存储供追溯。核对 `kernel.sqlite3.v37-preupgrade-*.sqlite3` 的摘要、版本和外键，再将备份恢复到独立目录并与相应的 v37 源码或镜像一起验证。恢复点之后的 v38 操作由保留的数据库查证。连接恢复实例时，WorkItem 游标超前的 SSE 请求会收到重新读取快照的信号。
 
 ## 快照与归档
 

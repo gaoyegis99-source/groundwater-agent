@@ -1,6 +1,7 @@
 import type { Capabilities } from './types';
 import type { IconName } from './Icon';
 import validateProductUiSchema from './generated/product-ui.v1.validator.js';
+import { modelIdentity } from './workflow-selection';
 
 export type ViewerKind = 'auto' | 'table' | 'chart' | 'map' | 'image' | 'json' | 'metadata';
 export interface ParameterPresentation { label: string; group: string; unit?: string; values?: Record<string, string> }
@@ -28,12 +29,40 @@ export interface ModelPresentation {
   inputCaseTag?: string;
   publishedOutputStep?: { output: string; targetModel: string; targetInput: string; arguments: Record<string, unknown> };
 }
+interface CapabilityReference { id: string; version: string; checksum: string }
+type ProjectRole = 'admin' | 'researcher' | 'viewer';
+export interface BusinessCapabilityProfile {
+  profileRef: CapabilityReference;
+  modelRef: CapabilityReference;
+  workflowRef: CapabilityReference;
+  resultContractRef: CapabilityReference;
+  label: string;
+  roles: ProjectRole[];
+  inputs: { label: string; meaning: string; formats: string[]; preconditions: string[] }[];
+  outputs: { name: string; role: 'PRIMARY_RESULT' | 'DIAGNOSTIC' | 'VISUALIZATION' | 'SUMMARY'; meaning: string; format: string }[];
+  limitations: string[];
+}
+export interface BusinessCapability {
+  ref: CapabilityReference;
+  title: string;
+  description: string;
+  scenario: string;
+  tier: 'CORE' | 'SPECIALIZED' | 'ADVANCED' | 'EXPERIMENTAL';
+  defaultVisible: boolean;
+  roles: ProjectRole[];
+  exampleId?: string;
+  prompt: string;
+  requiredServices: string[];
+  validationStatus: 'TECHNICALLY_VALIDATED' | 'UNVERIFIED';
+  profiles: BusinessCapabilityProfile[];
+}
 export interface ProductUiProfile {
   schemaVersion: 'product-ui.v1'; productId: string; locale: string;
   workspaceLayout?: 'standard' | 'research';
   theme?: Record<string, string>;
   brand: { productName: string; workspaceName: string; assistantName: string; welcome: string; icon: { path: 'product-icon.svg'; checksum: string; mediaType: 'image/svg+xml' } };
   examples: { id: string; title: string; prompt: string; icon: IconName; featured: boolean }[];
+  businessCapabilities?: BusinessCapability[];
   models: Record<string, ModelPresentation>;
   parameterNames: Record<string, ParameterPresentation>;
   parameterStages: Record<string, { label: string; group: string }>;
@@ -68,7 +97,7 @@ function parameter(value: unknown): ParameterPresentation {
 export function decodeProductUi(value: unknown): ProductUiProfile {
   if (!validateProductUiSchema(value)) throw new TypeError('PRODUCT_UI_INVALID');
   const root = object(value);
-  const optionalFields = ['theme', 'quantityKindLabels', 'workspaceLayout'].filter(key => Object.hasOwn(root, key));
+  const optionalFields = ['theme', 'quantityKindLabels', 'workspaceLayout', 'businessCapabilities'].filter(key => Object.hasOwn(root, key));
   exact(root, ['schemaVersion', 'productId', 'locale', 'brand', 'examples', 'models', 'parameterNames', 'parameterStages', 'outputs', 'cases', ...optionalFields]);
   if (root.schemaVersion !== 'product-ui.v1') throw new TypeError('PRODUCT_UI_INVALID');
   const brand = object(root.brand); exact(brand, ['productName', 'workspaceName', 'assistantName', 'welcome', 'icon']);
@@ -76,6 +105,10 @@ export function decodeProductUi(value: unknown): ProductUiProfile {
   if (icon.path !== 'product-icon.svg' || icon.mediaType !== 'image/svg+xml' || !/^sha256:[0-9a-f]{64}$/.test(text(icon.checksum))) throw new TypeError('PRODUCT_UI_INVALID');
   if (!Array.isArray(root.examples) || root.examples.length < 1 || root.examples.length > 12) throw new TypeError('PRODUCT_UI_INVALID');
   const examples = root.examples.map(raw => { const item = object(raw); exact(item, ['id', 'title', 'prompt', 'icon', 'featured']); if (!iconNames.has(String(item.icon)) || typeof item.featured !== 'boolean') throw new TypeError('PRODUCT_UI_INVALID'); return { id: text(item.id), title: text(item.title), prompt: text(item.prompt), icon: item.icon as IconName, featured: item.featured }; });
+  const businessCapabilities = root.businessCapabilities as ProductUiProfile['businessCapabilities'];
+  if (businessCapabilities && new Set(businessCapabilities.map(({ ref }) => `${ref.id}@${ref.version}`)).size !== businessCapabilities.length) {
+    throw new TypeError('PRODUCT_UI_INVALID');
+  }
   const models = Object.fromEntries(Object.entries(object(root.models)).map(([id, raw]) => {
     const item = object(raw);
     const resultOverview = item.resultOverview as ResultOverview | undefined;
@@ -100,7 +133,7 @@ export function decodeProductUi(value: unknown): ProductUiProfile {
     ? Object.fromEntries(Object.entries(object(root.quantityKindLabels)).map(([kind, label]) => [kind, text(label)]))
     : undefined;
   const workspaceLayout = root.workspaceLayout as ProductUiProfile['workspaceLayout'];
-  return { schemaVersion: 'product-ui.v1', productId: text(root.productId), locale: text(root.locale), brand: { productName: text(brand.productName), workspaceName: text(brand.workspaceName), assistantName: text(brand.assistantName), welcome: text(brand.welcome), icon: { path: 'product-icon.svg', checksum: text(icon.checksum), mediaType: 'image/svg+xml' } }, examples, models, parameterNames, parameterStages, outputs, cases, ...(theme && { theme }), ...(quantityKindLabels && { quantityKindLabels }), ...(workspaceLayout && { workspaceLayout }) };
+  return { schemaVersion: 'product-ui.v1', productId: text(root.productId), locale: text(root.locale), brand: { productName: text(brand.productName), workspaceName: text(brand.workspaceName), assistantName: text(brand.assistantName), welcome: text(brand.welcome), icon: { path: 'product-icon.svg', checksum: text(icon.checksum), mediaType: 'image/svg+xml' } }, examples, models, parameterNames, parameterStages, outputs, cases, ...(theme && { theme }), ...(quantityKindLabels && { quantityKindLabels }), ...(workspaceLayout && { workspaceLayout }), ...(businessCapabilities && { businessCapabilities }) };
 }
 
 export async function loadProductUi(): Promise<ProductUiProfile> {
@@ -127,4 +160,24 @@ export function verifyProductUi(capabilities: Capabilities) {
   const profileModels = Object.keys(profile.models).sort();
   if (capabilities.productId !== profile.productId || capabilityModels.join('\0') !== profileModels.join('\0')) throw new TypeError('PRODUCT_UI_IDENTITY_MISMATCH');
 }
+
+export function visibleBusinessCapabilities(profile: ProductUiProfile, capabilities: Capabilities | null): BusinessCapability[] {
+  if (!profile.businessCapabilities || !capabilities?.projectId || !capabilities.currentUser.subject || capabilities.productId !== profile.productId) return [];
+  const roles = new Set<string>(capabilities.currentUser.roles);
+  const services = new Set(capabilities.services);
+  const models = new Map(capabilities.models.map(model => [model.modelId, modelIdentity(model)]));
+  return profile.businessCapabilities.flatMap(capability => {
+    const allowedRoles = new Set(capability.roles.filter(role => roles.has(role)));
+    if (!allowedRoles.size || !capability.requiredServices.every(service => services.has(service))) return [];
+    const profiles = capability.profiles.filter(option => {
+      const target = models.get(option.modelRef.id);
+      return option.roles.some(role => allowedRoles.has(role))
+        && target?.modelVersion === option.modelRef.version && target.modelChecksum === option.modelRef.checksum
+        && target.workflowId === option.workflowRef.id && target.workflowVersion === option.workflowRef.version
+        && target.workflowChecksum === option.workflowRef.checksum;
+    });
+    return profiles.length ? [{ ...capability, profiles }] : [];
+  });
+}
+
 export function productIconUrl() { return `/${productUi().brand.icon.path}`; }

@@ -10,6 +10,7 @@ from zipfile import ZIP_STORED, ZipFile, ZipInfo
 from platform_workflow_compiler import compile_workflow as _compile_workflow  # noqa: F401
 from platform_workflow_compiler.composition.execution import ArtifactComposition
 
+from assembler_business_capabilities import link_business_capabilities, load_business_capabilities
 from assembler_common import (
     AssemblyIR, CURRENT_MODULE_API_VERSION, DomainPackage, ProductContract,
     _canonical, _checksum,
@@ -32,7 +33,9 @@ from assembler_publication import (
 from assembler_runtime import _compose, _worker_runtime_config
 from executor_profile import ExecutorOperationalProfile
 from operator_metadata import load_operator_validation, operator_uses
-from assembler_ui import load_product_ui
+from assembler_ui import load_product_ui, project_business_capabilities
+from assembler_workflow_platform import ARTIFACT as WORKFLOW_PLATFORM_ARTIFACT
+from assembler_workflow_platform import load_workflow_platform, require_immutable_platform_refs
 
 def compile_product(
     root: Path,
@@ -54,7 +57,7 @@ def compile_product(
     operators, catalog_digest = _load_operator_catalog(root)
     tools, workflows, models = _compile_domain(domain, services, selected_modules, operators)
     validation = load_operator_validation(
-        product_manifest_path.parent, manifest["operatorValidation"],
+        product_manifest_path.parent, manifest["operatorValidation"], operators=operators,
     ) if "operatorValidation" in manifest else {}
     model_checksums = {
         (model["modelId"], model["version"]): model["modelChecksum"] for model in models
@@ -94,7 +97,8 @@ def compile_product(
         models,
         domain.execution_cases,
     )
-    ui_models = json.loads(product_ui)["models"]
+    ui = json.loads(product_ui)
+    ui_models = ui["models"]
     continuation_policies = [
         {"sourceModel": model_id, **{key: value for key, value in ui["continuation"].items() if key != "label"}}
         for model_id, ui in ui_models.items()
@@ -189,6 +193,54 @@ def compile_product(
         ArtifactComposition.from_config(composition)
         kernel_config["workflowAuthoring"]["composition"] = composition
         executor_config["workflowComposition"] = composition
+    platform_output = None
+    platform_identity = None
+    platform = None
+    business_identity = None
+    previous_lock = (
+        json.loads((baseline[1] / "assembly-lock.json").read_bytes())
+        if baseline is not None and ("workflowPlatform" in manifest or "businessCapabilities" in manifest)
+        else {}
+    )
+    if "workflowPlatform" in manifest:
+        reference = manifest["workflowPlatform"]
+        platform = load_workflow_platform(
+            product_manifest_path.parent, reference, workflows=workflows, models=models, ui=ui,
+            worker_runtimes=executor_config["workerRuntimes"],
+            composition=set(composition_operators), catalog_digest=catalog_digest,
+            fixtures_directory=_catalog_root(root) / "fixtures",
+        )
+    if "businessCapabilities" in manifest:
+        runtime_capabilities, capability_ui = load_business_capabilities(
+            product_manifest_path.parent, manifest["businessCapabilities"], platform=platform,
+            models=models, ui=ui, service_names=set(services),
+        )
+        kernel_config["businessCapabilities"] = runtime_capabilities
+        product_ui, product_ui_identity = project_business_capabilities(product_ui, product_ui_identity, capability_ui)
+        link_business_capabilities(platform, runtime_capabilities)
+        refs = [item["ref"] for item in runtime_capabilities]
+        previous_refs = {
+            (item["id"], item["version"]): item["checksum"]
+            for item in previous_lock.get("businessCapabilities", {}).get("refs", [])
+        }
+        if any(
+            previous_refs.get((item["id"], item["version"]), item["checksum"]) != item["checksum"]
+            for item in refs
+        ):
+            raise ValueError("BUSINESS_CAPABILITY_IDENTITY_MUTATED")
+        business_identity = {
+            "source": manifest["businessCapabilities"], "refs": refs,
+            "runtimeChecksum": _checksum(runtime_capabilities),
+        }
+    if platform is not None:
+        platform_output = json.dumps(platform, ensure_ascii=False, indent=2) + "\n"
+        platform_identity = {
+            "source": manifest["workflowPlatform"],
+            "checksum": "sha256:" + hashlib.sha256(platform_output.encode("utf-8")).hexdigest(),
+            "profiles": [row["ref"] for row in platform["profiles"]],
+            "resultContracts": [row["ref"] for row in platform["resultContracts"]],
+        }
+        require_immutable_platform_refs(previous_lock, platform_identity)
     logical_dir = generated / ".releases" / manifest["productId"] / "_CONTENT_"
     compose = _compose(
         root,
@@ -219,6 +271,8 @@ def compile_product(
         },
         "productManifestChecksum": manifest_checksum,
         "productUi": product_ui_identity,
+        **({"workflowPlatform": platform_identity} if platform_identity is not None else {}),
+        **({"businessCapabilities": business_identity} if business_identity is not None else {}),
         "managementGateway": {
             "managementServices": [
                 name
@@ -280,6 +334,8 @@ def compile_product(
         "product-ui.json": product_ui,
         "product-icon.svg": product_icon,
     }
+    if platform_output is not None:
+        outputs[WORKFLOW_PLATFORM_ARTIFACT] = platform_output
     digest = hashlib.sha256(_canonical(outputs)).hexdigest()
     release_dir = generated / ".releases" / product.product_id / digest
     outputs["compose.json"] = json.dumps(

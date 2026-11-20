@@ -15,6 +15,7 @@ platform-domain = "assembler:domain_main"
 [tool.setuptools]
 py-modules = [
   "assembler",
+  "assembler_business_capabilities",
   "assembler_common",
   "assembler_domain",
   "assembler_gateway",
@@ -22,6 +23,7 @@ py-modules = [
   "assembler_publication",
   "assembler_runtime",
   "assembler_ui",
+  "assembler_workflow_platform",
   "base_images",
   "deployment_topology",
   "executor_profile",
@@ -29,4 +31,9 @@ py-modules = [
 ]
 
 [tool.setuptools.data-files]
-"share/platform-assembler" = ["product-ui.v1.schema.json"]
+"share/platform-assembler" = [
+  "business-capabilities.v1.schema.json",
+  "operator-validation.v2.schema.json",
+  "product-ui.v1.schema.json",
+  "workflow-platform.v1.schema.json",
+]

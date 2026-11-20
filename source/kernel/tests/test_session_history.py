@@ -17,7 +17,7 @@ def test_session_directory_and_history_use_v20_without_recommendation_links(kern
     assert "recommendation_id" not in turn
     assert "selection_revision" not in turn
     with connect_database(app.database) as connection:
-        assert connection.execute("SELECT version FROM schema_version").fetchone()[0] == 36
+        assert connection.execute("SELECT version FROM schema_version").fetchone()[0] == 38
 
 
 def test_session_directory_marks_verification_marker_inside_message(kernel_settings):

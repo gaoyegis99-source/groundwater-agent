@@ -194,6 +194,8 @@ def _create_air_quality_product(root: Path) -> Path:
     product = _read(root / "products/groundwater/product-manifest.json")
     product.update(productId="air-quality", projectId="air-demo")
     product.pop("operatorValidation", None)
+    product.pop("workflowPlatform", None)
+    product.pop("businessCapabilities", None)
     product["services"] = ["data", "executor"]
     product["publicRoutes"] = [
         route

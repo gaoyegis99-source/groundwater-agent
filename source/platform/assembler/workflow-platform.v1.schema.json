@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:platform:schema:workflow-platform.v1",
+  "title": "Product Workflow Profiles and Result Contracts",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "profiles", "resultContracts"],
+  "properties": {
+    "schemaVersion": {"const": "workflow-platform.v1"},
+    "profiles": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/profile"}},
+    "resultContracts": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/contract"}}
+  },
+  "$defs": {
+    "text": {"type": "string", "minLength": 1, "pattern": "\\S"},
+    "name": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]*$"},
+    "parameter": {"type": "string", "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$"},
+    "version": {"type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"},
+    "checksum": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "checksum"],
+      "properties": {
+        "id": {"$ref": "#/$defs/name"},
+        "version": {"$ref": "#/$defs/version"},
+        "checksum": {"$ref": "#/$defs/checksum"}
+      }
+    },
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "checksum"],
+      "properties": {
+        "path": {"$ref": "#/$defs/text"},
+        "checksum": {"$ref": "#/$defs/checksum"}
+      }
+    },
+    "textList": {
+      "type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/text"}
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion", "id", "version", "label", "workflowRef", "modelRef",
+        "resultContractRef", "inputRoles", "parameters", "applicability", "limitations",
+        "validationEvidence", "visibleRoles"
+      ],
+      "properties": {
+        "schemaVersion": {"const": "workflow-profile.v1"},
+        "id": {"$ref": "#/$defs/name"},
+        "version": {"$ref": "#/$defs/version"},
+        "label": {"$ref": "#/$defs/text"},
+        "workflowRef": {"$ref": "#/$defs/reference"},
+        "modelRef": {"$ref": "#/$defs/reference"},
+        "resultContractRef": {"$ref": "#/$defs/reference"},
+        "inputRoles": {
+          "type": "object", "minProperties": 1, "propertyNames": {"$ref": "#/$defs/name"},
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["meaning", "preconditions"],
+            "properties": {
+              "meaning": {"$ref": "#/$defs/text"},
+              "preconditions": {"$ref": "#/$defs/textList"}
+            }
+          }
+        },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["fixed", "adjustable", "defaultSource"],
+          "properties": {
+            "fixed": {
+              "type": "object",
+              "propertyNames": {"$ref": "#/$defs/parameter"}
+            },
+            "adjustable": {
+              "type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/parameter"}
+            },
+            "defaultSource": {"const": "PINNED_EXECUTABLE_MODEL"}
+          }
+        },
+        "applicability": {"$ref": "#/$defs/text"},
+        "limitations": {"$ref": "#/$defs/textList"},
+        "nonOverlappingTimeRanges": {
+          "type": "array", "uniqueItems": true,
+          "items": {
+            "type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true,
+            "items": {"$ref": "#/$defs/parameter"}
+          }
+        },
+        "visibleRoles": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": {"enum": ["admin", "researcher"]}
+        },
+        "validationEvidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "caseId", "cases", "receipt", "scope"],
+          "properties": {
+            "kind": {"const": "SYNTHETIC_WORKFLOW_GOLDEN"},
+            "caseId": {"$ref": "#/$defs/name"},
+            "cases": {"$ref": "#/$defs/file"},
+            "receipt": {"$ref": "#/$defs/file"},
+            "scope": {"$ref": "#/$defs/file"}
+          }
+        }
+      }
+    },
+    "contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "id", "version", "workflowRef", "outputs"],
+      "properties": {
+        "schemaVersion": {"const": "workflow-result-contract.v1"},
+        "id": {"$ref": "#/$defs/name"},
+        "version": {"$ref": "#/$defs/version"},
+        "workflowRef": {"$ref": "#/$defs/reference"},
+        "outputs": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/output"}}
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "role", "kind", "mediaType", "format", "meaning", "viewers", "qualitySource"],
+      "properties": {
+        "name": {"$ref": "#/$defs/name"},
+        "role": {"enum": ["PRIMARY_RESULT", "DIAGNOSTIC", "VISUALIZATION", "SUMMARY"]},
+        "kind": {"enum": ["artifact", "value"]},
+        "mediaType": {"$ref": "#/$defs/text"},
+        "format": {"$ref": "#/$defs/name"},
+        "meaning": {"$ref": "#/$defs/text"},
+        "viewers": {
+          "type": "array", "minItems": 1, "maxItems": 4, "uniqueItems": true,
+          "items": {"enum": ["auto", "table", "chart", "map", "image", "json", "metadata", "download"]}
+        },
+        "unit": {"$ref": "#/$defs/text"},
+        "spatialScope": {"$ref": "#/$defs/text"},
+        "temporalScope": {"$ref": "#/$defs/text"},
+        "qualitySource": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["outputName", "fields"],
+          "properties": {
+            "outputName": {"$ref": "#/$defs/name"},
+            "fields": {"$ref": "#/$defs/textList"}
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,557 @@
+{
+  "schemaVersion": "workflow-platform.v1",
+  "profiles": [
+    {
+      "schemaVersion": "workflow-profile.v1",
+      "id": "groundwater.monitoring-trend.seasonal-and-threshold",
+      "version": "1.0.0",
+      "label": "监测趋势、季节变化与阈值事件",
+      "workflowRef": {
+        "id": "groundwater.monitoring-trend",
+        "version": "1.1.0",
+        "checksum": "sha256:156c558d24d5495124cb1735d9b1c2ba0baffafa42a2dc296425891150a5b07e"
+      },
+      "modelRef": {
+        "id": "groundwater.monitoring-trend",
+        "version": "3.1.0",
+        "checksum": "sha256:43566799121f36c726bc0746308095866a79510e5c057a96b8b543f6dd19e259"
+      },
+      "resultContractRef": {
+        "id": "groundwater.monitoring-trend.results",
+        "version": "1.0.0",
+        "checksum": "sha256:bf0cd63ec9bad85390725387c403d6d0adcd400212a0186dc4dfeabc40e7e4bb"
+      },
+      "inputRoles": {
+        "observations": {
+          "meaning": "一个可查询的、包含分组、时间和数值字段的精确监测数据版本。",
+          "preconditions": [
+            "Data 版本声明所选观测值的单位、时间字段及覆盖区间。",
+            "所选字段的类型满足 Model 要求。分析窗、基准期和对比期在声明覆盖区间内，且基准期与对比期不得重叠。",
+            "仅在使用者给出阈值及比较方向后分析事件，阈值沿用所选观测值字段的单位。",
+            "季节节点与事件节点直接读取输入观测。按对象划分后，每个日历频率周期最多一行，每个年份的每个季节也最多一行。",
+            "每条输入记录的时间和数值须可解析，阈值事件要求每条记录具有有限数值。缺测周期可由缺测诊断区分。",
+            "时间端点须使用 ISO 格式。比较端点统一使用无偏移时间，或全部显式附带 UTC 偏移。"
+          ]
+        }
+      },
+      "parameters": {
+        "fixed": {
+          "seasonalTrendEnabled": true,
+          "thresholdEventsEnabled": true
+        },
+        "adjustable": [
+          "groupField",
+          "timeField",
+          "valueField",
+          "frequency",
+          "expectedStart",
+          "expectedEnd",
+          "baselineStart",
+          "baselineEnd",
+          "comparisonStart",
+          "comparisonEnd",
+          "aggregation",
+          "alpha",
+          "threshold",
+          "seasonFrequency",
+          "eventComparison",
+          "eventThreshold"
+        ],
+        "defaultSource": "PINNED_EXECUTABLE_MODEL"
+      },
+      "applicability": "用于按监测对象分析长时序趋势，同时需要季节趋势和指定阈值事件时。季节趋势须有至少两个可比较的季节周期。",
+      "limitations": [
+        "输入缺测会降低趋势检验能力，需结合覆盖率和连续缺测段判断。",
+        "Pettitt 的候选变化点和非参数趋势均不能确定成因。",
+        "用户阈值只适用于本次分析，不能自动解释为监管或合规标准。",
+        "结果合同所列质量来源用于解读可评价性，阶段证据为合成数据技术回归。"
+      ],
+      "validationEvidence": {
+        "kind": "SYNTHETIC_WORKFLOW_GOLDEN",
+        "caseId": "monitoring-trend",
+        "cases": {
+          "path": "development/workflow-golden-cases.v2.json",
+          "checksum": "sha256:406cd3b3bb493e3a087af30ab8496661a8d28e51efd2e9dc38f62eb4d978573b"
+        },
+        "receipt": {
+          "path": "development/workflow-goldens/monitoring-trend.json",
+          "checksum": "sha256:25c273b48e52f5a6240f3decb23199a80be24e973099227d176ebb430ddd24c6"
+        },
+        "scope": {
+          "path": "workflows/evidence/monitoring-trend-golden-scope.v1.json",
+          "checksum": "sha256:07f2289ba536d7569f8e58f95639e0f4e5951ecea2ea19aa3ddf7a683921c3b9"
+        }
+      },
+      "visibleRoles": [
+        "admin",
+        "researcher"
+      ],
+      "nonOverlappingTimeRanges": [
+        [
+          "baselineStart",
+          "comparisonStart"
+        ]
+      ]
+    }
+  ],
+  "resultContracts": [
+    {
+      "schemaVersion": "workflow-result-contract.v1",
+      "id": "groundwater.monitoring-trend.results",
+      "version": "1.0.0",
+      "workflowRef": {
+        "id": "groundwater.monitoring-trend",
+        "version": "1.1.0",
+        "checksum": "sha256:156c558d24d5495124cb1735d9b1c2ba0baffafa42a2dc296425891150a5b07e"
+      },
+      "outputs": [
+        {
+          "name": "aggregated-series",
+          "role": "PRIMARY_RESULT",
+          "kind": "artifact",
+          "mediaType": "application/vnd.apache.parquet",
+          "format": "parquet",
+          "meaning": "按监测对象与时间周期生成的观测聚合序列。",
+          "viewers": [
+            "chart",
+            "download"
+          ],
+          "unit": "所选观测值字段在输入 DataVersion 上声明的单位。",
+          "temporalScope": "观测经过所选频率聚合后的时段。",
+          "qualitySource": {
+            "outputName": "aggregate-summary",
+            "fields": [
+              "groupPeriodCount",
+              "notEvaluableGroupCount"
+            ]
+          }
+        },
+        {
+          "name": "aggregate-summary",
+          "role": "SUMMARY",
+          "kind": "value",
+          "mediaType": "application/json",
+          "format": "json",
+          "meaning": "记录聚合结果的对象周期数及无法计算的对象数。",
+          "viewers": [
+            "table",
+            "download"
+          ],
+          "unit": "计数或比例无量纲，周期计数遵循所选频率。",
+          "temporalScope": "观测经过所选频率聚合后的时段。",
+          "qualitySource": {
+            "outputName": "aggregate-summary",
+            "fields": [
+              "groupPeriodCount",
+              "notEvaluableGroupCount"
+            ]
+          }
+        },
+        {
+          "name": "completeness-profiles",
+          "role": "DIAGNOSTIC",
+          "kind": "artifact",
+          "mediaType": "application/vnd.apache.parquet",
+          "format": "parquet",
+          "meaning": "各监测对象在应有分析窗内的观测覆盖情况。",
+          "viewers": [
+            "table",
+            "download"
+          ],
+          "unit": "计数或比例无量纲，周期计数遵循所选频率。",
+          "temporalScope": "用户指定的分析起止时间及聚合频率。",
+          "qualitySource": {
+            "outputName": "completeness-summary",
+            "fields": [
+              "groupCount"
+            ]
+          }
+        },
+        {
+          "name": "completeness-summary",
+          "role": "SUMMARY",
+          "kind": "value",
+          "mediaType": "application/json",
+          "format": "json",
+          "meaning": "记录纳入覆盖率分析的对象数。",
+          "viewers": [
+            "table",
+            "download"
+          ],
+          "unit": "计数或比例无量纲，周期计数遵循所选频率。",
+          "temporalScope": "用户指定的分析起止时间及聚合频率。",
+          "qualitySource": {
+            "outputName": "completeness-summary",
+            "fields": [
+              "groupCount"
+            ]
+          }
+        },
+        {
+          "name": "linear-trends",
+          "role": "DIAGNOSTIC",
+          "kind": "artifact",
+          "mediaType": "application/vnd.apache.parquet",
+          "format": "parquet",
+          "meaning": "各对象的线性拟合斜率、拟合统计及显著性结果。可评价性依据明细的 status 列，摘要对象数用于提供规模背景。",
+          "viewers": [
+            "chart",
+            "download"
+          ],
+          "unit": "所选观测值字段单位每年，线性趋势明细另含每日斜率。",
+          "temporalScope": "文件内适用于该项检验的有值观测时段。",
+          "qualitySource": {
+            "outputName": "linear-summary",
+            "fields": [
+              "groupCount"
+            ]
+          }
+        },
+        {
+          "name": "linear-summary",
+          "role": "SUMMARY",
+          "kind": "value",
+          "mediaType": "application/json",
+          "format": "json",
+          "meaning": "记录线性趋势输出的对象总数，包括无法评价的对象。",
+          "viewers": [
+            "table",
+            "download"
+          ],
+          "unit": "计数或比例无量纲，周期计数遵循所选频率。",
+          "temporalScope": "文件内适用于该项检验的有值观测时段。",
+          "qualitySource": {
+            "outputName": "linear-summary",
+            "fields": [
+              "groupCount"
+            ]
+          }
+        },
+        {
+          "name": "mann-kendall-trends",
+          "role": "PRIMARY_RESULT",
+          "kind": "artifact",
+          "mediaType": "application/vnd.apache.parquet",
+          "format": "parquet",
+          "meaning": "各对象的非参数单调趋势检验结果及可评价性。可评价性依据明细的 status 列。",
+          "viewers": [
+            "chart",
+            "download"
+          ],
+          "unit": "Sen 斜率为所选观测值字段单位每年或每日。检验统计量与显著性概率无量纲。",
+          "temporalScope": "文件内适用于该项检验的有值观测时段。",
+          "qualitySource": {
+            "outputName": "mann-kendall-summary",
+            "fields": [
+              "groupCount",
+              "alpha"
+            ]
+          }
+        },
+        {
+          "name": "mann-kendall-summary",
+          "role": "SUMMARY",
+          "kind": "value",
+          "mediaType": "application/json",
+          "format": "json",
+          "meaning": "记录非参数趋势输出的对象总数和所用显著性水平，包括无法评价的对象。",
+          "viewers": [
+            "table",
+            "download"
+          ],
+          "unit": "计数或比例无量纲，周期计数遵循所选频率。",
+          "temporalScope": "文件内适用于该项检验的有值观测时段。",
+          "qualitySource": {
+            "outputName": "mann-kendall-summary",
+            "fields": [
+              "groupCount",
+              "alpha"
+            ]
+          }
+        },
+        {
+          "name": "outlier-observations",
+          "role": "DIAGNOSTIC",
+          "kind": "artifact",
+          "mediaType": "application/vnd.apache.parquet",
+          "format": "parquet",
+          "meaning": "保留该数据版本的所有观测及逐行诊断，标出偏离中位数的异常候选。",
+          "viewers": [
+            "table",
+            "download"
+          ],
+          "unit": "所选观测值字段在输入 DataVersion 上声明的单位。",
+          "temporalScope": "文件内适用于该项检验的有值观测时段。",
+          "qualitySource": {
+            "outputName": "outlier-summary",
+            "fields": [
+              "notEvaluableGroupCount",
+              "missingValueCount",
+              "outlierCount"
+            ]
+          }
+        },
+        {
+          "name": "outlier-summary",
+          "role": "SUMMARY",
+          "kind": "value",
+          "mediaType": "application/json",
+          "format": "json",
+          "meaning": "记录异常候选、缺失和无法评价的对象统计及 MAD 阈值。",
+          "viewers": [
+            "table",
+            "download"
+          ],
+          "unit": "计数或比例无量纲，周期计数遵循所选频率。",
+          "temporalScope": "文件内适用于该项检验的有值观测时段。",
+          "qualitySource": {
+            "outputName": "outlier-summary",
+            "fields": [
+              "notEvaluableGroupCount",
+              "missingValueCount",
+              "outlierCount"
+            ]
+          }
+        },
+        {
+          "name": "period-changes",
+          "role": "PRIMARY_RESULT",
+          "kind": "artifact",
+          "mediaType": "application/vnd.apache.parquet",
+          "format": "parquet",
+          "meaning": "按用户指定的统计量比较基准期和对比期。可评价性依据明细的 status 列和两期统计值。",
+          "viewers": [
+            "chart",
+            "download"
+          ],
+          "unit": "统计值与绝对差沿用输入字段单位，相对差为百分比。",
+          "temporalScope": "用户分别指定的基准期和对比期。",
+          "qualitySource": {
+            "outputName": "period-change-summary",
+            "fields": [
+              "groupCount",
+              "aggregation"
+            ]
+          }
+        },
+        {
+          "name": "period-change-summary",
+          "role": "SUMMARY",
+          "kind": "value",
+          "mediaType": "application/json",
+          "format": "json",
+          "meaning": "记录期间比较输出的对象总数和采用的统计量，包括无法评价的对象。",
+          "viewers": [
+            "table",
+            "download"
+          ],
+          "unit": "计数或比例无量纲，周期计数遵循所选频率。",
+          "temporalScope": "用户分别指定的基准期和对比期。",
+          "qualitySource": {
+            "outputName": "period-change-summary",
+            "fields": [
+              "groupCount",
+              "aggregation"
+            ]
+          }
+        },
+        {
+          "name": "change-points",
+          "role": "DIAGNOSTIC",
+          "kind": "artifact",
+          "mediaType": "application/vnd.apache.parquet",
+          "format": "parquet",
+          "meaning": "每个可评价对象的 Pettitt 候选位置变化点。",
+          "viewers": [
+            "table",
+            "download"
+          ],
+          "unit": "以所选观测值字段为基础，检验统计量和显著性概率无量纲。",
+          "temporalScope": "文件内适用于该项检验的有值观测时段。",
+          "qualitySource": {
+            "outputName": "change-point-summary",
+            "fields": [
+              "evaluatedGroupCount",
+              "notEvaluableGroupCount"
+            ]
+          }
+        },
+        {
+          "name": "change-point-summary",
+          "role": "SUMMARY",
+          "kind": "value",
+          "mediaType": "application/json",
+          "format": "json",
+          "meaning": "记录变化点检验的可评价对象数、无法评价对象数及解释限制。",
+          "viewers": [
+            "table",
+            "download"
+          ],
+          "unit": "计数或比例无量纲，周期计数遵循所选频率。",
+          "temporalScope": "文件内适用于该项检验的有值观测时段。",
+          "qualitySource": {
+            "outputName": "change-point-summary",
+            "fields": [
+              "evaluatedGroupCount",
+              "notEvaluableGroupCount"
+            ]
+          }
+        },
+        {
+          "name": "seasonal-trends",
+          "role": "PRIMARY_RESULT",
+          "kind": "artifact",
+          "mediaType": "application/vnd.apache.parquet",
+          "format": "parquet",
+          "meaning": "按同季比较的 Mann–Kendall 统计和按年表示的季节 Sen 斜率。",
+          "viewers": [
+            "chart",
+            "download"
+          ],
+          "unit": "斜率为所选观测值字段单位每年。检验概率无量纲。",
+          "temporalScope": "文件内适用于该项检验的有值观测时段。",
+          "qualitySource": {
+            "outputName": "seasonal-trend-summary",
+            "fields": [
+              "status",
+              "evaluatedGroupCount",
+              "notEvaluableGroupCount"
+            ]
+          }
+        },
+        {
+          "name": "seasonal-trend-summary",
+          "role": "SUMMARY",
+          "kind": "value",
+          "mediaType": "application/json",
+          "format": "json",
+          "meaning": "记录季节周期粒度、可评价性和实际纳入对象数。",
+          "viewers": [
+            "table",
+            "download"
+          ],
+          "unit": "计数或比例无量纲，周期计数遵循所选频率。",
+          "temporalScope": "文件内适用于该项检验的有值观测时段。",
+          "qualitySource": {
+            "outputName": "seasonal-trend-summary",
+            "fields": [
+              "status",
+              "evaluatedGroupCount",
+              "notEvaluableGroupCount"
+            ]
+          }
+        },
+        {
+          "name": "gap-runs",
+          "role": "DIAGNOSTIC",
+          "kind": "artifact",
+          "mediaType": "application/vnd.apache.parquet",
+          "format": "parquet",
+          "meaning": "分析窗中连续缺少有效值的周期段和段长。",
+          "viewers": [
+            "table",
+            "download"
+          ],
+          "unit": "计数或比例无量纲，周期计数遵循所选频率。",
+          "temporalScope": "用户指定的分析起止时间及聚合频率。",
+          "qualitySource": {
+            "outputName": "gap-run-summary",
+            "fields": [
+              "gapRunCount",
+              "missingPeriodCount",
+              "longestGapPeriods"
+            ]
+          }
+        },
+        {
+          "name": "gap-run-summary",
+          "role": "SUMMARY",
+          "kind": "value",
+          "mediaType": "application/json",
+          "format": "json",
+          "meaning": "记录连续缺测段、缺测周期数和最长段长。",
+          "viewers": [
+            "table",
+            "download"
+          ],
+          "unit": "计数或比例无量纲，周期计数遵循所选频率。",
+          "temporalScope": "用户指定的分析起止时间及聚合频率。",
+          "qualitySource": {
+            "outputName": "gap-run-summary",
+            "fields": [
+              "gapRunCount",
+              "missingPeriodCount",
+              "longestGapPeriods"
+            ]
+          }
+        },
+        {
+          "name": "threshold-classification",
+          "role": "DIAGNOSTIC",
+          "kind": "artifact",
+          "mediaType": "application/vnd.apache.parquet",
+          "format": "parquet",
+          "meaning": "按使用者指定的阈值和比较方向，为每条输入观测所属的日历周期分类。",
+          "viewers": [
+            "chart",
+            "download"
+          ],
+          "unit": "所选观测值字段在输入 DataVersion 上声明的单位。",
+          "temporalScope": "有输入观测的日历周期。",
+          "qualitySource": {
+            "outputName": "threshold-event-summary",
+            "fields": [
+              "status",
+              "eventCount",
+              "thresholdValue"
+            ]
+          }
+        },
+        {
+          "name": "threshold-events",
+          "role": "PRIMARY_RESULT",
+          "kind": "artifact",
+          "mediaType": "application/vnd.apache.parquet",
+          "format": "parquet",
+          "meaning": "连续满足用户所给阈值条件的事件及起止周期。",
+          "viewers": [
+            "table",
+            "download"
+          ],
+          "unit": "阈值与观测值共享输入字段单位，持续时间使用日历周期数。",
+          "temporalScope": "由连续满足阈值条件的观测所属日历周期界定。",
+          "qualitySource": {
+            "outputName": "threshold-event-summary",
+            "fields": [
+              "status",
+              "eventCount",
+              "thresholdValue"
+            ]
+          }
+        },
+        {
+          "name": "threshold-event-summary",
+          "role": "SUMMARY",
+          "kind": "value",
+          "mediaType": "application/json",
+          "format": "json",
+          "meaning": "记录事件计数、比较方向和用户提供的阈值。",
+          "viewers": [
+            "table",
+            "download"
+          ],
+          "unit": "阈值使用输入字段单位，事件数无量纲。",
+          "temporalScope": "由连续满足阈值条件的观测所属日历周期界定。",
+          "qualitySource": {
+            "outputName": "threshold-event-summary",
+            "fields": [
+              "status",
+              "eventCount",
+              "thresholdValue"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

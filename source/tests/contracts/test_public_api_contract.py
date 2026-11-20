@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
+import pytest
 
 from scripts.development import generate_public_api_contract as module_under_test
 
@@ -21,6 +23,26 @@ def test_explicit_product_selection_matches_single_product_default() -> None:
     assert module_under_test.encoded_contract(
         ROOT, "groundwater"
     ) == module_under_test.encoded_contract(ROOT)
+
+
+def test_work_item_asset_selection_uses_generated_sdk_contract() -> None:
+    from groundwater_api_client.generated import models, operations
+
+    operation = operations.KERNEL_LINK_WORK_ITEM_ASSET
+    assert operation.path == "/work-items/{workItemId}/assets"
+    command = {
+        "projectId": "p", "requestId": "attach", "expectedRevision": 2,
+        "reference": {"kind": "RESULT", "runId": "run", "outputName": "aggregate-summary"},
+    }
+    request = models.KernelWorkItemAssetAttach.model_validate(command)
+    assert isinstance(request.reference, models.KernelResultAssetSelection)
+    assert request.model_dump(by_alias=True) == command
+    with pytest.raises(ValidationError):
+        models.KernelWorkItemAssetAttach.model_validate(command | {
+            "reference": {"kind": "RESULT", "runId": "run"},
+        })
+    with pytest.raises(ValidationError):
+        models.KernelWorkItemAssetAttach.model_validate(command | {"expectedRevision": True})
 
 
 def test_public_contract_has_only_gateway_paths_and_unique_operations() -> None:

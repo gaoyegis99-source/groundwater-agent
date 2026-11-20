@@ -28,7 +28,8 @@ from .intent_route_queue import (
 )
 from ..application.route_commands import fail_intent_route, resolve_intent_route
 from .message_request_common import IntentRouteRequest
-from .message_requests import create_message_request, message_request
+from .message_requests import create_message_request, message_request, saved_business_selection
+from ..business_capabilities import public_business_capability_refs
 from .persistence import (
     create_session,
     events_after,
@@ -132,6 +133,8 @@ class InteractionOwner:
         *,
         input_references: list[dict[str, object]] | None = None,
         workflow_selection: dict | None = None,
+        business_capabilities: tuple[dict, ...] = (),
+        actor_roles: frozenset[str] = frozenset(),
         installed_models: tuple = (),
         corrects_request_id: str | None = None,
         corrects_agent_run_id: str | None = None,
@@ -146,6 +149,8 @@ class InteractionOwner:
             requested_mode,
             input_references=input_references,
             workflow_selection=workflow_selection,
+            business_capabilities=business_capabilities,
+            actor_roles=actor_roles,
             installed_models=installed_models,
             corrects_request_id=corrects_request_id,
             corrects_agent_run_id=corrects_agent_run_id,
@@ -156,6 +161,20 @@ class InteractionOwner:
 
     def message_request(self, session_id: str, request_id: str) -> dict[str, object]:
         return message_request(self.database, session_id, self.project_id, request_id)
+
+    def business_capability_refs(self, agent_run_id: str) -> dict | None:
+        return public_business_capability_refs(saved_business_selection(self.database, agent_run_id))
+
+    def business_capability_route_hint(self, agent_run_id: str) -> dict | None:
+        selection = saved_business_selection(self.database, agent_run_id, routing=True)
+        if selection is None:
+            return None
+        business = selection["business_capability"]
+        return {
+            "title": business["title"],
+            "continues_preparation": business.get("continuesPreparation", False),
+            "guidance": "A supplied answer to the blocked preparation continues the current analysis request.",
+        }
 
     def route_metrics(self) -> IntentRoutingMetrics:
         return intent_routing_metrics(self.database)

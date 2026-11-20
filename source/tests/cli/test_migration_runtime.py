@@ -7,7 +7,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from scripts.maintenance.contracts import canonical_bytes
+from scripts.checks.check_migration_rehearsal import _create_kernel_v33
+from scripts.maintenance.contracts import canonical_bytes, sha256_digest
 from scripts.maintenance import migration_runtime
 from scripts.maintenance.migration_runtime import MigrationError, apply_plan, create_plan
 from scripts.maintenance import instance_runtime
@@ -99,7 +100,7 @@ def test_migration_plan_freezes_identity_map_and_all_target_versions(
     assert result["legacySubjects"] == ["legacy:alice", "legacy:bob"]
     assert result["targets"] == {
         "publicApi": "v12",
-        "kernel": 36,
+        "kernel": 38,
         "data": 8,
         "knowledge": 7,
         "manifest": 4,
@@ -114,6 +115,40 @@ def test_migration_plan_freezes_identity_map_and_all_target_versions(
             docker=ROOT.parent / "bin/docker",
             source_root=ROOT,
         )
+
+
+def test_rehearsal_fixture_is_frozen_v33_and_upgrades_to_current(tmp_path: Path) -> None:
+    from platform_kernel.database import migrate_database
+
+    database = tmp_path / "kernel.sqlite3"
+    _create_kernel_v33(database)
+    migrate_database(database)
+
+    with sqlite3.connect(database) as connection:
+        assert connection.execute("SELECT version FROM schema_version").fetchone() == (38,)
+        assert connection.execute("SELECT owner_subject FROM sessions").fetchone() == ("legacy:alice",)
+        assert connection.execute("SELECT decision_subject FROM confirmations").fetchone() == ("legacy:bob",)
+
+
+def test_migration_apply_rejects_a_confirmed_plan_for_old_targets(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, instance_id, mapping = _legacy_instance(tmp_path)
+    result = create_plan(paths, instance_id, mapping, docker=FAKE_DOCKER)
+    plan_path = Path(result["plan"])
+    plan = json.loads(plan_path.read_text())
+    plan.pop("confirmationDigest")
+    plan["targets"]["kernel"] = 37
+    confirmation = sha256_digest(canonical_bytes(plan))
+    plan_path.write_bytes(canonical_bytes(plan | {"confirmationDigest": confirmation}))
+
+    def unexpected_instance_read(*args):
+        pytest.fail("Stale plan reached instance storage")
+
+    monkeypatch.setattr(migration_runtime, "read_manifest", unexpected_instance_read)
+    with pytest.raises(MigrationError, match="MIGRATION_TARGET_SCHEMA_CHANGED"):
+        apply_plan(paths, plan_path, confirmation, docker=FAKE_DOCKER, source_root=ROOT)
 
 
 def test_migration_plan_rejects_active_instance_and_incomplete_mapping(

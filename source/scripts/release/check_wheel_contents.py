@@ -88,10 +88,15 @@ def _source_files(distribution: str) -> dict[str, Path]:
             if path.is_file()
         }
         if distribution == "platform-assembler":
-            files[
-                "platform_assembler-7.0.0.data/data/share/platform-assembler/"
-                "product-ui.v1.schema.json"
-            ] = definition.source_root / "product-ui.v1.schema.json"
+            for asset in (
+                "business-capabilities.v1.schema.json",
+                "operator-validation.v2.schema.json",
+                "product-ui.v1.schema.json",
+                "workflow-platform.v1.schema.json",
+            ):
+                files[
+                    "platform_assembler-7.0.0.data/data/share/platform-assembler/" + asset
+                ] = definition.source_root / asset
         return files
     package = definition.source_root / definition.package
     files = {

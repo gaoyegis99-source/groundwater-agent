@@ -137,6 +137,11 @@ async def revise_confirmation(
         model = model_by_id.get(old["model_id"])
         if model is None or not isinstance(arguments, dict):
             raise ConfirmationConflictError("CONFIRMATION_ARGUMENTS_INVALID")
+        if workflow_selection and workflow_selection.get("business_capability") is not None:
+            frozen_arguments = json.loads(old["arguments_json"])
+            if arguments != frozen_arguments:
+                raise ConfirmationConflictError("BUSINESS_CAPABILITY_REPREPARATION_REQUIRED")
+            arguments = frozen_arguments
         try:
             validate(arguments, model.input_schema)
         except ValidationError:

@@ -75,11 +75,9 @@ def _rewrite_openapi_refs(value):
                 else _rewrite_openapi_refs(item)
             )
             for key, item in value.items()
-            # ``discriminator`` is OpenAPI routing metadata rather than a
-            # JSON Schema assertion.  The generated oneOf branches already
-            # carry their literal ``kind`` constraints, so retaining it would
-            # make strict Ajv reject an otherwise fully checkable schema.
-            if key != "discriminator"
+            # These are OpenAPI and SDK metadata. Ajv checks the oneOf
+            # branches and integer types directly.
+            if key not in {"discriminator", "x-strict"}
         }
     if isinstance(value, list):
         return [_rewrite_openapi_refs(item) for item in value]

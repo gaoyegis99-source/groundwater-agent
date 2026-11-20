@@ -461,7 +461,7 @@ def test_draft_freezes_new_graph_and_evidence_without_execution(kernel_settings)
     )
     with connect_database(app.database) as connection:
         assert (
-            connection.execute("SELECT version FROM schema_version").fetchone()[0] == 36
+            connection.execute("SELECT version FROM schema_version").fetchone()[0] == 38
         )
         assert (
             "PRIVATE BODY"

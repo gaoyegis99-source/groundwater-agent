@@ -1,10 +1,11 @@
 # Platform Operator Pack
 
-`platform-operator-pack==2.0.0` is a static capability package, not a network
-service. It contains exactly 106 immutable operator manifests (80 `native`, 15
-`qgis`, 11 `remote_http`), their smoke cases and fixtures, the implementation lock, pure
+`platform-operator-pack==2.0.0` is a static capability package containing immutable
+operator manifests, smoke cases and fixtures, the implementation lock, pure
 implementations, a checked-in identity-to-function mapping, and the restricted
-subprocess entrypoint used by Executor Workers.
+subprocess entrypoint used by Executor Workers. The generated inventory records
+exact versions, runtime counts, and workflow references.
+[Groundwater capability inventory](../../docs/development/current-capability-inventory.md#operator-catalog-摘要)
 
 It deliberately contains no API, administration plane, database, registry,
 upload flow, outbox, message broker, object store, or independent cache. The

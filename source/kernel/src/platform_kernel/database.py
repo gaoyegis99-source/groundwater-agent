@@ -21,6 +21,11 @@ from .schema.interaction import (
     PUBLISHED_OUTPUT_STEPS_SCHEMA,
 )
 from .schema.agent import PROVIDER_REQUESTS_SCHEMA
+from .schema.work_items import (
+    WORK_ITEM_ACTIVITY_TRIGGERS,
+    WORK_ITEM_V37_STATEMENTS,
+    WORK_ITEM_V38_TABLE_STATEMENTS,
+)
 from .schema.workflow import WORKFLOW_SERVICE_BINDINGS_SCHEMA
 from .schema.common import RESEARCH_IDENTITY_SCHEMA
 
@@ -32,6 +37,8 @@ V31_SCHEMA_DIGEST = "1547c6e45d08f63b6fb7e1e602ae730ac1d13fb933c38478011a52d76b7
 V32_SCHEMA_DIGEST = "540f693c1e743bc8aae7c1b4d0309e11bac0024f268fdd480ca73c0482239364"
 V34_SCHEMA_DIGEST = "037ac6df53d0968713823e5c5519bd03905e448f5ee3dadef866a5d277838867"
 V33_SCHEMA_DIGEST = "805b0f2272c4da80f615a78d8006d5507446f00175f6348ac75ece82bf239e75"
+V36_SCHEMA_DIGEST = "db480e8d1df5b1c7b5b72bb62db24d6fdb4c79f7cfc50de659085f5ca943b4df"
+V37_SCHEMA_DIGEST = "d647e55c4092e2a7650fa6f5c96705f8adef18e22427c5bed372c2489c897dee"
 
 
 _listener_lock = Lock()
@@ -137,7 +144,7 @@ def scheduler_store_writable(path: Path) -> bool:
 
 
 def initialize_database(path: Path) -> None:
-    """Create v35 or open an exact v35 store without implicit upgrades."""
+    """Create or open an exact current Kernel store without implicit upgrades."""
 
     path.parent.mkdir(parents=True, exist_ok=True)
     with connect_database(path) as connection:
@@ -168,7 +175,7 @@ def initialize_database(path: Path) -> None:
 
 
 def migrate_database(path: Path) -> None:
-    """Explicitly migrate one frozen v29-v34 store through every version."""
+    """Explicitly migrate a frozen Kernel store through each remaining version."""
     path.parent.mkdir(parents=True, exist_ok=True)
     upgrade_from: int | None = None
     with connect_database(path) as connection:
@@ -221,6 +228,14 @@ def migrate_database(path: Path) -> None:
                 if _schema_digest(_schema_signature(connection)) != V35_SCHEMA_DIGEST:
                     raise ValueError("SCHEMA_VERSION_UNSUPPORTED")
                 upgrade_from = 35
+            elif rows[0]["version"] == 36:
+                if _schema_digest(_schema_signature(connection)) != V36_SCHEMA_DIGEST:
+                    raise ValueError("SCHEMA_VERSION_UNSUPPORTED")
+                upgrade_from = 36
+            elif rows[0]["version"] == 37:
+                if _schema_digest(_schema_signature(connection)) != V37_SCHEMA_DIGEST:
+                    raise ValueError("SCHEMA_VERSION_UNSUPPORTED")
+                upgrade_from = 37
             elif rows[0]["version"] != SCHEMA_VERSION:
                 raise ValueError("SCHEMA_VERSION_UNSUPPORTED")
             elif _schema_signature(connection) != _expected_schema_signature():
@@ -265,6 +280,12 @@ def migrate_database(path: Path) -> None:
             for statement in PUBLISHED_OUTPUT_STEPS_SCHEMA.strip().rstrip(";").split(";"):
                 connection.execute(statement)
             connection.execute("UPDATE schema_version SET version=36")
+        upgrade_from = 36
+    if upgrade_from == 36:
+        _upgrade_v36_database(path)
+        upgrade_from = 37
+    if upgrade_from == 37:
+        _upgrade_v37_database(path)
     with connect_database(path) as connection:
         rows = connection.execute("SELECT version FROM schema_version").fetchall()
         if len(rows) != 1 or rows[0]["version"] != SCHEMA_VERSION:
@@ -272,6 +293,63 @@ def migrate_database(path: Path) -> None:
         if _schema_signature(connection) != _expected_schema_signature():
             raise ValueError("SCHEMA_VERSION_UNSUPPORTED")
         connection.execute("PRAGMA journal_mode = WAL")
+
+
+def _upgrade_v36_database(path: Path) -> None:
+    _backup_database(path, 36)
+    with connect_database(path) as connection:
+        begin_immediate(connection)
+        rows = connection.execute("SELECT version FROM schema_version").fetchall()
+        if (
+            len(rows) != 1
+            or rows[0]["version"] != 36
+            or _schema_digest(_schema_signature(connection)) != V36_SCHEMA_DIGEST
+        ):
+            raise ValueError("SCHEMA_VERSION_UNSUPPORTED")
+        for statement in WORK_ITEM_V37_STATEMENTS:
+            connection.execute(statement)
+        if _schema_digest(_schema_signature(connection)) != V37_SCHEMA_DIGEST:
+            raise ValueError("SCHEMA_VERSION_UNSUPPORTED")
+        if connection.execute("PRAGMA foreign_key_check").fetchone() is not None:
+            raise ValueError("SCHEMA_FOREIGN_KEY_VIOLATION")
+        connection.execute("UPDATE schema_version SET version=37")
+
+
+def _upgrade_v37_database(path: Path) -> None:
+    _backup_database(path, 37)
+    with connect_database(path) as connection:
+        begin_immediate(connection)
+        rows = connection.execute("SELECT version FROM schema_version").fetchall()
+        if (
+            len(rows) != 1
+            or rows[0]["version"] != 37
+            or _schema_digest(_schema_signature(connection)) != V37_SCHEMA_DIGEST
+        ):
+            raise ValueError("SCHEMA_VERSION_UNSUPPORTED")
+        connection.execute("ALTER TABLE work_item_commands RENAME TO work_item_commands_v37")
+        for statement in WORK_ITEM_V38_TABLE_STATEMENTS:
+            connection.execute(statement)
+        connection.execute(
+            """INSERT INTO work_item_commands (
+                   sequence, project_id, owner_subject, request_id, work_item_id,
+                   command, fingerprint, revision, changed, link_id, created_at
+               ) SELECT sequence, project_id, owner_subject, request_id, work_item_id,
+                        command, fingerprint, revision, changed, link_id, created_at
+                 FROM work_item_commands_v37"""
+        )
+        connection.execute("DROP TABLE work_item_commands_v37")
+        connection.execute(
+            """INSERT INTO work_item_activity (work_item_id, sequence, kind, command_sequence, created_at)
+               SELECT work_item_id, sequence, 'COMMAND', sequence, created_at
+               FROM work_item_commands"""
+        )
+        for statement in WORK_ITEM_ACTIVITY_TRIGGERS:
+            connection.execute(statement)
+        if _schema_signature(connection) != _expected_schema_signature():
+            raise ValueError("SCHEMA_VERSION_UNSUPPORTED")
+        if connection.execute("PRAGMA foreign_key_check").fetchone() is not None:
+            raise ValueError("SCHEMA_FOREIGN_KEY_VIOLATION")
+        connection.execute("UPDATE schema_version SET version=38")
 
 
 def _upgrade_v33_database(path: Path) -> None:
@@ -562,9 +640,14 @@ def append_event(
             utc_now(),
         ),
     )
+    notify_on_commit(connection)
+    return int(cursor.lastrowid)
+
+
+def notify_on_commit(connection: sqlite3.Connection) -> None:
+    """Wake local readers once the surrounding state and event transaction commits."""
     if isinstance(connection, _KernelConnection):
         connection.event_appended = True
-    return int(cursor.lastrowid)
 
 
 def read_session_events(

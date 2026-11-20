@@ -102,9 +102,27 @@ def test_data_route_compiles_research_streaming_limits_at_gateway():
     assert all("client_max_body_size" not in line for line in other_public_api_lines)
 
 
+def test_work_item_events_use_authenticated_unbuffered_gateway_route():
+    from assembler_gateway import _nginx_config
+
+    nginx = _nginx_config("groundwater", [], {})
+    routes = [line for line in nginx.splitlines() if "work-items/[^/]+/events$" in line]
+    assert len(routes) == 1
+    [route] = routes
+    assert "proxy_pass $upstream_kernel;" in route
+    assert "proxy_buffering off; proxy_cache off;" in route
+    assert "proxy_set_header Last-Event-ID $http_last_event_id;" in route
+    assert "proxy_set_header Authorization $http_authorization;" in route
+    assert "proxy_set_header Cookie $http_cookie;" in route
+    assert "auth_request /_platform_identity;" in nginx
+    assert "auth_request off;" not in route
+
+
 @pytest.mark.parametrize(
     "prefix",
     [
+        "/api/v12/work-items",
+        "/api/v12/work-items/audit",
         "/api/v11/ready",
         "/api/v11/audit",
         "/",
@@ -125,7 +143,7 @@ def test_product_route_prefix_is_a_strict_trust_boundary(tmp_path, prefix):
 
     error = (
         "PRODUCT_ROUTE_CONFLICT"
-        if prefix in {"/api/v12/ready", "/api/v12/audit"}
+        if prefix.startswith("/api/v12/work-items")
         else "PRODUCT_ROUTE_PREFIX_INVALID"
     )
     with pytest.raises(ValueError, match=error):
@@ -213,6 +231,7 @@ def test_groundwater_compiles_v12_research_outputs() -> None:
         "assembly-lock.json",
         "product-ui.json",
         "product-icon.svg",
+        "workflow-platform.json",
     }
     kernel = json.loads((output / "kernel-config.json").read_text())
     executor = json.loads((output / "executor-config.json").read_text())

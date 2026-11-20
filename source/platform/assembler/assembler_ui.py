@@ -43,6 +43,22 @@ def _sha256(value: bytes) -> str:
     return "sha256:" + hashlib.sha256(value).hexdigest()
 
 
+def _validate_profile_schema(profile: dict) -> None:
+    try:
+        PRODUCT_UI_VALIDATOR.validate(profile)
+    except ValidationError as cause:
+        raise ValueError("PRODUCT_UI_SCHEMA_INVALID") from cause
+
+
+def project_business_capabilities(
+    product_ui: str, identity: dict, capabilities: list[dict],
+) -> tuple[str, dict]:
+    profile = {**json.loads(product_ui), "businessCapabilities": capabilities}
+    _validate_profile_schema(profile)
+    rendered = json.dumps(profile, ensure_ascii=False, indent=2) + "\n"
+    return rendered, {**identity, "profileOutputChecksum": _sha256(rendered.encode("utf-8"))}
+
+
 def _unsafe_svg_reference(value: str) -> bool:
     lowered = value.strip().lower()
     if any(
@@ -363,10 +379,7 @@ def load_product_ui(
         for label in value["profiles"].values():
             _nonempty(label)
 
-    try:
-        PRODUCT_UI_VALIDATOR.validate(profile)
-    except ValidationError as cause:
-        raise ValueError("PRODUCT_UI_SCHEMA_INVALID") from cause
+    _validate_profile_schema(profile)
 
     rendered = json.dumps(profile, ensure_ascii=False, indent=2) + "\n"
     identity = {

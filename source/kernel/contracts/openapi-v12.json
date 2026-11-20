@@ -247,6 +247,43 @@
         "title": "AuditEventPage",
         "type": "object"
       },
+      "BusinessObjectReference": {
+        "additionalProperties": false,
+        "properties": {
+          "externalId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Externalid",
+            "type": "string"
+          },
+          "fieldId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Fieldid",
+            "type": "string"
+          },
+          "objectKind": {
+            "enum": [
+              "REGION",
+              "WELL",
+              "AQUIFER"
+            ],
+            "title": "Objectkind",
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/WorkItemDataReference"
+          }
+        },
+        "required": [
+          "objectKind",
+          "source",
+          "fieldId",
+          "externalId"
+        ],
+        "title": "BusinessObjectReference",
+        "type": "object"
+      },
       "CapabilitiesResponse": {
         "additionalProperties": false,
         "properties": {
@@ -434,6 +471,25 @@
         "title": "CurrentUser",
         "type": "object"
       },
+      "DataAssetReference": {
+        "additionalProperties": false,
+        "properties": {
+          "dataRef": {
+            "$ref": "#/components/schemas/WorkItemDataReference"
+          },
+          "kind": {
+            "const": "DATA",
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "dataRef"
+        ],
+        "title": "DataAssetReference",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -489,6 +545,75 @@
         "type": "object"
       },
       "JsonValue": {},
+      "KnowledgeAssetReference-Input": {
+        "additionalProperties": false,
+        "properties": {
+          "checksum": {
+            "title": "Checksum",
+            "type": "string"
+          },
+          "documentId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Documentid",
+            "type": "string"
+          },
+          "kind": {
+            "const": "KNOWLEDGE",
+            "title": "Kind",
+            "type": "string"
+          },
+          "versionId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Versionid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "documentId",
+          "versionId",
+          "checksum"
+        ],
+        "title": "KnowledgeAssetReference",
+        "type": "object"
+      },
+      "KnowledgeAssetReference-Output": {
+        "additionalProperties": false,
+        "properties": {
+          "checksum": {
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Checksum",
+            "type": "string"
+          },
+          "documentId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Documentid",
+            "type": "string"
+          },
+          "kind": {
+            "const": "KNOWLEDGE",
+            "title": "Kind",
+            "type": "string"
+          },
+          "versionId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Versionid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "documentId",
+          "versionId",
+          "checksum"
+        ],
+        "title": "KnowledgeAssetReference",
+        "type": "object"
+      },
       "LoginRequest": {
         "additionalProperties": false,
         "properties": {
@@ -1740,6 +1865,75 @@
         "title": "RejectionRequest",
         "type": "object"
       },
+      "ResultAssetReference": {
+        "additionalProperties": false,
+        "properties": {
+          "dataRef": {
+            "$ref": "#/components/schemas/WorkItemResultDataReference"
+          },
+          "kind": {
+            "const": "RESULT",
+            "title": "Kind",
+            "type": "string"
+          },
+          "outputName": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Outputname",
+            "type": "string"
+          },
+          "publicationId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Publicationid",
+            "type": "string"
+          },
+          "runId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Runid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "runId",
+          "outputName",
+          "publicationId",
+          "dataRef"
+        ],
+        "title": "ResultAssetReference",
+        "type": "object"
+      },
+      "ResultAssetSelection": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "const": "RESULT",
+            "title": "Kind",
+            "type": "string"
+          },
+          "outputName": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Outputname",
+            "type": "string"
+          },
+          "runId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Runid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "runId",
+          "outputName"
+        ],
+        "title": "ResultAssetSelection",
+        "type": "object"
+      },
       "SessionCreate": {
         "additionalProperties": false,
         "properties": {
@@ -2678,6 +2872,1510 @@
         "title": "ValidationIssue",
         "type": "object"
       },
+      "WorkItemActivityPage": {
+        "additionalProperties": false,
+        "properties": {
+          "entries": {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "COMMAND": "#/components/schemas/WorkItemCommandActivity",
+                  "SESSION": "#/components/schemas/WorkItemSessionActivity"
+                },
+                "propertyName": "kind"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/WorkItemCommandActivity"
+                },
+                {
+                  "$ref": "#/components/schemas/WorkItemSessionActivity"
+                }
+              ]
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "nextAfter": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextafter"
+          }
+        },
+        "required": [
+          "entries",
+          "nextAfter"
+        ],
+        "title": "WorkItemActivityPage",
+        "type": "object"
+      },
+      "WorkItemAgentRunLink": {
+        "additionalProperties": false,
+        "properties": {
+          "agentRunId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Agentrunid",
+            "type": "string"
+          },
+          "goalRevision": {
+            "minimum": 1.0,
+            "title": "Goalrevision",
+            "type": "integer",
+            "x-strict": true
+          },
+          "sessionId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Sessionid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "agentRunId",
+          "sessionId",
+          "goalRevision"
+        ],
+        "title": "WorkItemAgentRunLink",
+        "type": "object"
+      },
+      "WorkItemAssetAttach": {
+        "additionalProperties": false,
+        "properties": {
+          "expectedRevision": {
+            "minimum": 1.0,
+            "title": "Expectedrevision",
+            "type": "integer",
+            "x-strict": true
+          },
+          "projectId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Projectid",
+            "type": "string"
+          },
+          "reference": {
+            "discriminator": {
+              "mapping": {
+                "DATA": "#/components/schemas/DataAssetReference",
+                "KNOWLEDGE": "#/components/schemas/KnowledgeAssetReference-Input",
+                "RESULT": "#/components/schemas/ResultAssetSelection",
+                "WORKFLOW": "#/components/schemas/WorkflowAssetSelection"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DataAssetReference"
+              },
+              {
+                "$ref": "#/components/schemas/KnowledgeAssetReference-Input"
+              },
+              {
+                "$ref": "#/components/schemas/WorkflowAssetSelection"
+              },
+              {
+                "$ref": "#/components/schemas/ResultAssetSelection"
+              }
+            ],
+            "title": "Reference"
+          },
+          "requestId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Requestid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "projectId",
+          "requestId",
+          "expectedRevision",
+          "reference"
+        ],
+        "title": "WorkItemAssetAttach",
+        "type": "object"
+      },
+      "WorkItemAssetLink": {
+        "additionalProperties": false,
+        "properties": {
+          "linkId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Linkid",
+            "type": "string"
+          },
+          "linkedAt": {
+            "title": "Linkedat",
+            "type": "string"
+          },
+          "reference": {
+            "anyOf": [
+              {
+                "discriminator": {
+                  "mapping": {
+                    "DATA": "#/components/schemas/DataAssetReference",
+                    "KNOWLEDGE": "#/components/schemas/KnowledgeAssetReference-Output",
+                    "RESULT": "#/components/schemas/ResultAssetReference",
+                    "WORKFLOW": "#/components/schemas/WorkflowAssetReference"
+                  },
+                  "propertyName": "kind"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/DataAssetReference"
+                  },
+                  {
+                    "$ref": "#/components/schemas/KnowledgeAssetReference-Output"
+                  },
+                  {
+                    "$ref": "#/components/schemas/WorkflowAssetReference"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ResultAssetReference"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference"
+          },
+          "state": {
+            "enum": [
+              "AVAILABLE",
+              "UNAVAILABLE"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "linkId",
+          "linkedAt",
+          "state",
+          "reference"
+        ],
+        "title": "WorkItemAssetLink",
+        "type": "object"
+      },
+      "WorkItemAuditEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "actorSubject": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Actorsubject",
+            "type": "string"
+          },
+          "changed": {
+            "title": "Changed",
+            "type": "boolean"
+          },
+          "command": {
+            "enum": [
+              "CREATE",
+              "LINK_SESSION",
+              "LINK_OBJECT",
+              "LINK_ASSET",
+              "ARCHIVE"
+            ],
+            "title": "Command",
+            "type": "string"
+          },
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "linkId": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linkid"
+          },
+          "requestId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Requestid",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 1.0,
+            "title": "Revision",
+            "type": "integer",
+            "x-strict": true
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sequence",
+          "requestId",
+          "actorSubject",
+          "command",
+          "revision",
+          "changed",
+          "linkId",
+          "createdAt"
+        ],
+        "title": "WorkItemAuditEntry",
+        "type": "object"
+      },
+      "WorkItemAuditPage": {
+        "additionalProperties": false,
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/WorkItemAuditEntry"
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "nextAfter": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextafter"
+          }
+        },
+        "required": [
+          "entries",
+          "nextAfter"
+        ],
+        "title": "WorkItemAuditPage",
+        "type": "object"
+      },
+      "WorkItemChange": {
+        "additionalProperties": false,
+        "properties": {
+          "expectedRevision": {
+            "minimum": 1.0,
+            "title": "Expectedrevision",
+            "type": "integer",
+            "x-strict": true
+          },
+          "projectId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Projectid",
+            "type": "string"
+          },
+          "requestId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Requestid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "projectId",
+          "requestId",
+          "expectedRevision"
+        ],
+        "title": "WorkItemChange",
+        "type": "object"
+      },
+      "WorkItemCommandActivity": {
+        "additionalProperties": false,
+        "properties": {
+          "actorSubject": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Actorsubject",
+            "type": "string"
+          },
+          "changed": {
+            "title": "Changed",
+            "type": "boolean"
+          },
+          "command": {
+            "enum": [
+              "CREATE",
+              "LINK_SESSION",
+              "LINK_OBJECT",
+              "LINK_ASSET",
+              "ARCHIVE",
+              "UPDATE",
+              "REVIEW"
+            ],
+            "title": "Command",
+            "type": "string"
+          },
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "kind": {
+            "const": "COMMAND",
+            "title": "Kind",
+            "type": "string"
+          },
+          "linkId": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linkid"
+          },
+          "requestId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Requestid",
+            "type": "string"
+          },
+          "reviewSessionId": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewsessionid"
+          },
+          "revision": {
+            "minimum": 1.0,
+            "title": "Revision",
+            "type": "integer",
+            "x-strict": true
+          },
+          "sequence": {
+            "maximum": 9007199254740991.0,
+            "minimum": 1.0,
+            "title": "Sequence",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "sequence",
+          "createdAt",
+          "command",
+          "requestId",
+          "actorSubject",
+          "revision",
+          "changed",
+          "linkId",
+          "reviewSessionId"
+        ],
+        "title": "WorkItemCommandActivity",
+        "type": "object"
+      },
+      "WorkItemCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "projectId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Projectid",
+            "type": "string"
+          },
+          "requestId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Requestid",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "projectId",
+          "requestId",
+          "title"
+        ],
+        "title": "WorkItemCreate",
+        "type": "object"
+      },
+      "WorkItemDataReference": {
+        "additionalProperties": false,
+        "properties": {
+          "checksum": {
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Checksum",
+            "type": "string"
+          },
+          "datasetId": {
+            "minLength": 1,
+            "title": "Datasetid",
+            "type": "string"
+          },
+          "format": {
+            "minLength": 1,
+            "title": "Format",
+            "type": "string"
+          },
+          "kind": {
+            "const": "data_version",
+            "title": "Kind",
+            "type": "string"
+          },
+          "mediaType": {
+            "minLength": 1,
+            "title": "Mediatype",
+            "type": "string"
+          },
+          "objectId": {
+            "minLength": 1,
+            "title": "Objectid",
+            "type": "string"
+          },
+          "semanticId": {
+            "minLength": 1,
+            "title": "Semanticid",
+            "type": "string"
+          },
+          "service": {
+            "const": "data-primary",
+            "title": "Service",
+            "type": "string"
+          },
+          "sizeBytes": {
+            "minimum": 0.0,
+            "title": "Sizebytes",
+            "type": "integer",
+            "x-strict": true
+          },
+          "versionId": {
+            "minLength": 1,
+            "title": "Versionid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "service",
+          "datasetId",
+          "versionId",
+          "semanticId",
+          "objectId",
+          "mediaType",
+          "format",
+          "sizeBytes",
+          "checksum"
+        ],
+        "title": "WorkItemDataReference",
+        "type": "object"
+      },
+      "WorkItemDetail": {
+        "additionalProperties": false,
+        "properties": {
+          "agentRuns": {
+            "items": {
+              "$ref": "#/components/schemas/WorkItemAgentRunLink"
+            },
+            "title": "Agentruns",
+            "type": "array"
+          },
+          "assets": {
+            "items": {
+              "$ref": "#/components/schemas/WorkItemAssetLink"
+            },
+            "title": "Assets",
+            "type": "array"
+          },
+          "objects": {
+            "items": {
+              "$ref": "#/components/schemas/WorkItemObjectLink"
+            },
+            "title": "Objects",
+            "type": "array"
+          },
+          "sessions": {
+            "items": {
+              "$ref": "#/components/schemas/WorkItemSessionLink"
+            },
+            "title": "Sessions",
+            "type": "array"
+          },
+          "taskRuns": {
+            "items": {
+              "$ref": "#/components/schemas/WorkItemTaskRunLink"
+            },
+            "title": "Taskruns",
+            "type": "array"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/WorkItemTaskLink"
+            },
+            "title": "Tasks",
+            "type": "array"
+          },
+          "workItem": {
+            "$ref": "#/components/schemas/WorkItemSummary"
+          },
+          "workflowRuns": {
+            "items": {
+              "$ref": "#/components/schemas/WorkItemWorkflowRunLink"
+            },
+            "title": "Workflowruns",
+            "type": "array"
+          }
+        },
+        "required": [
+          "workItem",
+          "sessions",
+          "tasks",
+          "taskRuns",
+          "agentRuns",
+          "workflowRuns",
+          "objects",
+          "assets"
+        ],
+        "title": "WorkItemDetail",
+        "type": "object"
+      },
+      "WorkItemLifecycleSnapshot": {
+        "additionalProperties": false,
+        "properties": {
+          "eventCursor": {
+            "maximum": 9007199254740991.0,
+            "minimum": 0.0,
+            "title": "Eventcursor",
+            "type": "integer"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 1.0,
+            "title": "Revision",
+            "type": "integer",
+            "x-strict": true
+          },
+          "state": {
+            "enum": [
+              "DRAFT",
+              "READY",
+              "WAITING_INPUT",
+              "WAITING_REVIEW",
+              "WAITING_CONFIRMATION",
+              "EXECUTING",
+              "RESULT_REVIEW",
+              "BLOCKED",
+              "COMPLETED",
+              "CANCELLED",
+              "ARCHIVED"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "tracks": {
+            "items": {
+              "$ref": "#/components/schemas/WorkItemLifecycleTrack"
+            },
+            "title": "Tracks",
+            "type": "array"
+          },
+          "workItemId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Workitemid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "workItemId",
+          "revision",
+          "eventCursor",
+          "state",
+          "reason",
+          "tracks"
+        ],
+        "title": "WorkItemLifecycleSnapshot",
+        "type": "object"
+      },
+      "WorkItemLifecycleTrack": {
+        "additionalProperties": false,
+        "properties": {
+          "acceptedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Acceptedat"
+          },
+          "confirmationId": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmationid"
+          },
+          "publications": {
+            "items": {
+              "$ref": "#/components/schemas/WorkItemPublication"
+            },
+            "title": "Publications",
+            "type": "array"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "review": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkItemReviewPreview"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sessionId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Sessionid",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "DRAFT",
+              "READY",
+              "WAITING_INPUT",
+              "WAITING_REVIEW",
+              "WAITING_CONFIRMATION",
+              "EXECUTING",
+              "RESULT_REVIEW",
+              "BLOCKED",
+              "COMPLETED",
+              "CANCELLED",
+              "ARCHIVED"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "stopPending": {
+            "title": "Stoppending",
+            "type": "boolean"
+          },
+          "taskId": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Taskid"
+          },
+          "taskRevision": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer",
+                "x-strict": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Taskrevision"
+          }
+        },
+        "required": [
+          "sessionId",
+          "taskId",
+          "taskRevision",
+          "state",
+          "reason",
+          "confirmationId",
+          "stopPending",
+          "publications",
+          "review",
+          "acceptedAt"
+        ],
+        "title": "WorkItemLifecycleTrack",
+        "type": "object"
+      },
+      "WorkItemMetadataUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "expectedRevision": {
+            "minimum": 1.0,
+            "title": "Expectedrevision",
+            "type": "integer",
+            "x-strict": true
+          },
+          "projectId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Projectid",
+            "type": "string"
+          },
+          "requestId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Requestid",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "projectId",
+          "requestId",
+          "expectedRevision"
+        ],
+        "title": "WorkItemMetadataUpdate",
+        "type": "object"
+      },
+      "WorkItemObjectAttach": {
+        "additionalProperties": false,
+        "properties": {
+          "expectedRevision": {
+            "minimum": 1.0,
+            "title": "Expectedrevision",
+            "type": "integer",
+            "x-strict": true
+          },
+          "projectId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Projectid",
+            "type": "string"
+          },
+          "reference": {
+            "$ref": "#/components/schemas/BusinessObjectReference"
+          },
+          "requestId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Requestid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "projectId",
+          "requestId",
+          "expectedRevision",
+          "reference"
+        ],
+        "title": "WorkItemObjectAttach",
+        "type": "object"
+      },
+      "WorkItemObjectLink": {
+        "additionalProperties": false,
+        "properties": {
+          "linkId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Linkid",
+            "type": "string"
+          },
+          "linkedAt": {
+            "title": "Linkedat",
+            "type": "string"
+          },
+          "reference": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BusinessObjectReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "enum": [
+              "AVAILABLE",
+              "UNAVAILABLE"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "linkId",
+          "linkedAt",
+          "state",
+          "reference"
+        ],
+        "title": "WorkItemObjectLink",
+        "type": "object"
+      },
+      "WorkItemPage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/WorkItemSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "nextAfter": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextafter"
+          }
+        },
+        "required": [
+          "items",
+          "nextAfter"
+        ],
+        "title": "WorkItemPage",
+        "type": "object"
+      },
+      "WorkItemPublication": {
+        "additionalProperties": false,
+        "properties": {
+          "runId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Runid",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "PENDING",
+              "PUBLISHED",
+              "FAILED",
+              "UNAVAILABLE"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "runId",
+          "state"
+        ],
+        "title": "WorkItemPublication",
+        "type": "object"
+      },
+      "WorkItemReceipt": {
+        "additionalProperties": false,
+        "properties": {
+          "changed": {
+            "title": "Changed",
+            "type": "boolean"
+          },
+          "linkId": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linkid"
+          },
+          "revision": {
+            "minimum": 1.0,
+            "title": "Revision",
+            "type": "integer",
+            "x-strict": true
+          },
+          "workItemId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Workitemid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "workItemId",
+          "revision",
+          "changed",
+          "linkId"
+        ],
+        "title": "WorkItemReceipt",
+        "type": "object"
+      },
+      "WorkItemResultDataReference": {
+        "additionalProperties": false,
+        "properties": {
+          "checksum": {
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Checksum",
+            "type": "string"
+          },
+          "datasetId": {
+            "minLength": 1,
+            "title": "Datasetid",
+            "type": "string"
+          },
+          "format": {
+            "minLength": 1,
+            "title": "Format",
+            "type": "string"
+          },
+          "kind": {
+            "const": "data_version",
+            "title": "Kind",
+            "type": "string"
+          },
+          "mediaType": {
+            "minLength": 1,
+            "title": "Mediatype",
+            "type": "string"
+          },
+          "objectId": {
+            "minLength": 1,
+            "title": "Objectid",
+            "type": "string"
+          },
+          "outputName": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Outputname",
+            "type": "string"
+          },
+          "semanticId": {
+            "minLength": 1,
+            "title": "Semanticid",
+            "type": "string"
+          },
+          "service": {
+            "const": "data-primary",
+            "title": "Service",
+            "type": "string"
+          },
+          "sizeBytes": {
+            "minimum": 0.0,
+            "title": "Sizebytes",
+            "type": "integer",
+            "x-strict": true
+          },
+          "versionId": {
+            "minLength": 1,
+            "title": "Versionid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "service",
+          "datasetId",
+          "versionId",
+          "semanticId",
+          "objectId",
+          "mediaType",
+          "format",
+          "sizeBytes",
+          "checksum",
+          "outputName"
+        ],
+        "title": "WorkItemResultDataReference",
+        "type": "object"
+      },
+      "WorkItemReview": {
+        "additionalProperties": false,
+        "properties": {
+          "expectedRevision": {
+            "minimum": 1.0,
+            "title": "Expectedrevision",
+            "type": "integer",
+            "x-strict": true
+          },
+          "projectId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Projectid",
+            "type": "string"
+          },
+          "requestId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Requestid",
+            "type": "string"
+          },
+          "reviewToken": {
+            "title": "Reviewtoken",
+            "type": "string"
+          },
+          "sessionId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Sessionid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "projectId",
+          "requestId",
+          "expectedRevision",
+          "sessionId",
+          "reviewToken"
+        ],
+        "title": "WorkItemReview",
+        "type": "object"
+      },
+      "WorkItemReviewPreview": {
+        "additionalProperties": false,
+        "properties": {
+          "resultLinkIds": {
+            "items": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Resultlinkids",
+            "type": "array"
+          },
+          "token": {
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "resultLinkIds"
+        ],
+        "title": "WorkItemReviewPreview",
+        "type": "object"
+      },
+      "WorkItemSessionActivity": {
+        "additionalProperties": false,
+        "properties": {
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "eventType": {
+            "title": "Eventtype",
+            "type": "string"
+          },
+          "kind": {
+            "const": "SESSION",
+            "title": "Kind",
+            "type": "string"
+          },
+          "sequence": {
+            "maximum": 9007199254740991.0,
+            "minimum": 1.0,
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "sessionId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Sessionid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "sequence",
+          "createdAt",
+          "sessionId",
+          "eventType"
+        ],
+        "title": "WorkItemSessionActivity",
+        "type": "object"
+      },
+      "WorkItemSessionAttach": {
+        "additionalProperties": false,
+        "properties": {
+          "expectedRevision": {
+            "minimum": 1.0,
+            "title": "Expectedrevision",
+            "type": "integer",
+            "x-strict": true
+          },
+          "projectId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Projectid",
+            "type": "string"
+          },
+          "requestId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Requestid",
+            "type": "string"
+          },
+          "sessionId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Sessionid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "projectId",
+          "requestId",
+          "expectedRevision",
+          "sessionId"
+        ],
+        "title": "WorkItemSessionAttach",
+        "type": "object"
+      },
+      "WorkItemSessionLink": {
+        "additionalProperties": false,
+        "properties": {
+          "archivedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archivedat"
+          },
+          "linkedAt": {
+            "title": "Linkedat",
+            "type": "string"
+          },
+          "sessionId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Sessionid",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "sessionId",
+          "title",
+          "linkedAt",
+          "archivedAt"
+        ],
+        "title": "WorkItemSessionLink",
+        "type": "object"
+      },
+      "WorkItemSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "archivedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archivedat"
+          },
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "ownerSubject": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Ownersubject",
+            "type": "string"
+          },
+          "projectId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Projectid",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 1.0,
+            "title": "Revision",
+            "type": "integer",
+            "x-strict": true
+          },
+          "status": {
+            "enum": [
+              "ACTIVE",
+              "ARCHIVED"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updatedAt": {
+            "title": "Updatedat",
+            "type": "string"
+          },
+          "workItemId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Workitemid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "workItemId",
+          "projectId",
+          "ownerSubject",
+          "title",
+          "description",
+          "revision",
+          "status",
+          "createdAt",
+          "updatedAt",
+          "archivedAt"
+        ],
+        "title": "WorkItemSummary",
+        "type": "object"
+      },
+      "WorkItemTaskLink": {
+        "additionalProperties": false,
+        "properties": {
+          "revision": {
+            "minimum": 1.0,
+            "title": "Revision",
+            "type": "integer",
+            "x-strict": true
+          },
+          "sessionId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Sessionid",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ACTIVE",
+              "COMPLETE"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "taskId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Taskid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "taskId",
+          "sessionId",
+          "revision",
+          "status"
+        ],
+        "title": "WorkItemTaskLink",
+        "type": "object"
+      },
+      "WorkItemTaskRunLink": {
+        "additionalProperties": false,
+        "properties": {
+          "agentRunId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Agentrunid",
+            "type": "string"
+          },
+          "taskId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Taskid",
+            "type": "string"
+          },
+          "taskRevision": {
+            "minimum": 1.0,
+            "title": "Taskrevision",
+            "type": "integer",
+            "x-strict": true
+          }
+        },
+        "required": [
+          "taskId",
+          "taskRevision",
+          "agentRunId"
+        ],
+        "title": "WorkItemTaskRunLink",
+        "type": "object"
+      },
+      "WorkItemWorkflowRunLink": {
+        "additionalProperties": false,
+        "properties": {
+          "agentRunId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Agentrunid",
+            "type": "string"
+          },
+          "runId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Runid",
+            "type": "string"
+          },
+          "sessionId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Sessionid",
+            "type": "string"
+          },
+          "workflowRef": {
+            "$ref": "#/components/schemas/WorkflowIdentity"
+          }
+        },
+        "required": [
+          "runId",
+          "agentRunId",
+          "sessionId",
+          "workflowRef"
+        ],
+        "title": "WorkItemWorkflowRunLink",
+        "type": "object"
+      },
+      "WorkflowAssetReference": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "const": "WORKFLOW",
+            "title": "Kind",
+            "type": "string"
+          },
+          "runId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Runid",
+            "type": "string"
+          },
+          "workflowRef": {
+            "$ref": "#/components/schemas/WorkflowIdentity"
+          }
+        },
+        "required": [
+          "kind",
+          "runId",
+          "workflowRef"
+        ],
+        "title": "WorkflowAssetReference",
+        "type": "object"
+      },
+      "WorkflowAssetSelection": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "const": "WORKFLOW",
+            "title": "Kind",
+            "type": "string"
+          },
+          "runId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Runid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "runId"
+        ],
+        "title": "WorkflowAssetSelection",
+        "type": "object"
+      },
       "WorkflowDraftResponse": {
         "additionalProperties": false,
         "properties": {
@@ -2829,6 +4527,35 @@
           "nodes"
         ],
         "title": "WorkflowGraphResponse",
+        "type": "object"
+      },
+      "WorkflowIdentity": {
+        "additionalProperties": false,
+        "properties": {
+          "checksum": {
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Checksum",
+            "type": "string"
+          },
+          "id": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "version": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "checksum"
+        ],
+        "title": "WorkflowIdentity",
         "type": "object"
       },
       "WorkflowNodeDiagnostic": {
@@ -6423,6 +8150,1474 @@
           }
         },
         "summary": "Recover Workflow"
+      }
+    },
+    "/api/v12/work-items": {
+      "get": {
+        "operationId": "kernel_list_work_items",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "projectId",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Projectid"
+            }
+          },
+          {
+            "in": "query",
+            "name": "includeArchived",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Includearchived",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "default": "",
+              "maxLength": 256,
+              "title": "After",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "List Work Items"
+      },
+      "post": {
+        "operationId": "kernel_create_work_item",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkItemCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemReceipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Create Work Item"
+      }
+    },
+    "/api/v12/work-items/{workItemId}": {
+      "get": {
+        "operationId": "kernel_get_work_item",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workItemId",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "title": "Workitemid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "projectId",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Projectid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Get Work Item"
+      }
+    },
+    "/api/v12/work-items/{workItemId}/activity": {
+      "get": {
+        "operationId": "kernel_list_work_item_activity",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workItemId",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "title": "Workitemid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "projectId",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Projectid"
+            }
+          },
+          {
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "title": "After",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemActivityPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "List Work Item Activity"
+      }
+    },
+    "/api/v12/work-items/{workItemId}/archive": {
+      "post": {
+        "operationId": "kernel_archive_work_item",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workItemId",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "title": "Workitemid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkItemChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemReceipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Archive Work Item"
+      }
+    },
+    "/api/v12/work-items/{workItemId}/assets": {
+      "post": {
+        "operationId": "kernel_link_work_item_asset",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workItemId",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "title": "Workitemid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkItemAssetAttach"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemReceipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Link Work Item Asset"
+      }
+    },
+    "/api/v12/work-items/{workItemId}/audit": {
+      "get": {
+        "operationId": "kernel_list_work_item_audit",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workItemId",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "title": "Workitemid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "projectId",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Projectid"
+            }
+          },
+          {
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 9223372036854775807,
+              "minimum": 0,
+              "title": "After",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemAuditPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "List Work Item Audit"
+      }
+    },
+    "/api/v12/work-items/{workItemId}/events": {
+      "get": {
+        "operationId": "kernel_stream_work_item_events",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workItemId",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "title": "Workitemid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "projectId",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Projectid"
+            }
+          },
+          {
+            "in": "query",
+            "name": "afterEventId",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "title": "Aftereventid",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Last-Event-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Last-Event-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/WorkItemCommandActivity"
+                        },
+                        {
+                          "$ref": "#/components/schemas/WorkItemSessionActivity"
+                        },
+                        {
+                          "maxProperties": 0,
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "event": {
+                      "enum": [
+                        "work_item.activity",
+                        "work_item.refresh",
+                        "work_item.reset"
+                      ]
+                    },
+                    "id": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "event",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Stream Work Item Events"
+      }
+    },
+    "/api/v12/work-items/{workItemId}/objects": {
+      "post": {
+        "operationId": "kernel_link_work_item_object",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workItemId",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "title": "Workitemid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkItemObjectAttach"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemReceipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Link Work Item Object"
+      }
+    },
+    "/api/v12/work-items/{workItemId}/review": {
+      "post": {
+        "operationId": "kernel_review_work_item",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workItemId",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "title": "Workitemid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkItemReview"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemReceipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Review Work Item"
+      }
+    },
+    "/api/v12/work-items/{workItemId}/sessions": {
+      "post": {
+        "operationId": "kernel_link_work_item_session",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workItemId",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "title": "Workitemid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkItemSessionAttach"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemReceipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Link Work Item Session"
+      }
+    },
+    "/api/v12/work-items/{workItemId}/snapshot": {
+      "get": {
+        "operationId": "kernel_get_work_item_snapshot",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workItemId",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "title": "Workitemid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "projectId",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Projectid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemLifecycleSnapshot"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Get Work Item Snapshot"
+      }
+    },
+    "/api/v12/work-items/{workItemId}/update": {
+      "post": {
+        "operationId": "kernel_update_work_item",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workItemId",
+            "required": true,
+            "schema": {
+              "maxLength": 256,
+              "minLength": 1,
+              "title": "Workitemid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkItemMetadataUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemReceipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsV11"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Update Work Item"
       }
     },
     "/api/v12/workflow-runs/{runId}": {

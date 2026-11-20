@@ -16,7 +16,7 @@ import { resourceItemFromDetail } from './resource-item';
 import { UploadDialog } from './UploadDialog';
 import { ErrorNotice } from './ErrorNotice';
 import { Icon } from './Icon';
-import { productIconUrl, productUi, type WorkflowContinuation } from './product-ui';
+import { productIconUrl, productUi, visibleBusinessCapabilities, type BusinessCapability, type ProductUiProfile, type WorkflowContinuation } from './product-ui';
 import { sessionTask, TaskHeader } from './TaskCard';
 import { modelName, taskModelName } from './card-presentation';
 import { MessageQueue } from './MessageQueue';
@@ -35,6 +35,7 @@ const WorkspacePanel = lazy(() => import('./WorkspacePanel').then(module => ({ d
 const DatabaseWorkbench = lazy(() => import('./DatabaseWorkbench').then(module => ({ default: module.DatabaseWorkbench })));
 const KnowledgeDrawer = lazy(() => import('./Drawers').then(module => ({ default: module.KnowledgeDrawer })));
 const CapabilityDrawer = lazy(() => import('./ProductDrawers').then(module => ({ default: module.CapabilityDrawer })));
+const BusinessCapabilityDrawer = lazy(() => import('./ProductDrawers').then(module => ({ default: module.BusinessCapabilityDrawer })));
 const ReadinessDrawer = lazy(() => import('./ProductDrawers').then(module => ({ default: module.ReadinessDrawer })));
 
 export default function App() {
@@ -56,6 +57,12 @@ export default function App() {
     role => role === 'admin' || role === 'researcher',
   ) ?? false;
   const configuredServices = new Set(capabilities?.services ?? []);
+  const businessCapabilities = visibleBusinessCapabilities(ui, capabilityError ? null : capabilities);
+  const featuredCapabilities = businessCapabilities.filter(item => item.tier === 'CORE' && item.defaultVisible);
+  const linkedExamples = new Set(ui.businessCapabilities?.map(item => item.exampleId));
+  const examples = ui.examples.filter(item => !linkedExamples.has(item.id));
+  const featuredExamples = ui.businessCapabilities ? [] : examples.filter(item => item.featured);
+  const otherExamples = ui.businessCapabilities ? examples : examples.filter(item => !item.featured);
   const [historyPanelKey, setHistoryPanelKey] = useState('');
   const historyButton = useRef<HTMLButtonElement>(null);
   const historyPanelOpen = !!storageScope && historyPanelKey === `${storageScope}/${activeId}`;
@@ -64,8 +71,12 @@ export default function App() {
   const homeWorkbenchOpener = useRef<HTMLButtonElement>(null);
   const {
     drawer, closeDrawer, openDatabase, openKnowledge,
-    openCapabilities, openReadiness,
+    openCapabilities, openBusinessCapability, openReadiness,
   } = useDrawerController();
+  const businessDetail = drawer?.kind === 'business-capability'
+    ? businessCapabilities.find(({ ref }) => ref.id === drawer.id && ref.version === drawer.version) : undefined;
+  const businessDetailUnavailable = drawer?.kind === 'business-capability' && !businessDetail;
+  useEffect(() => { if (businessDetailUnavailable) closeDrawer(); }, [businessDetailUnavailable, closeDrawer]);
   const drawerShadeVisible = drawer?.kind === 'database' || drawer?.kind === 'knowledge';
   const researchWorkspace = ui.workspaceLayout === 'research';
   const compactConversation = researchWorkspace && !!activeId;
@@ -389,9 +400,8 @@ export default function App() {
     turn?.focus({ preventScroll: true });
     turn?.scrollIntoView({ block: 'start' });
   }
-  function exampleButton(index: number) {
-    const example = ui.examples[index];
-    return <button key={example.id} aria-labelledby={`example-title-${index} example-description-${index}`} onClick={() => fillTemplate(example.prompt, example.title)}><Icon name={example.icon} /><span className="example-copy"><strong id={`example-title-${index}`}>{example.title}</strong><small id={`example-description-${index}`}>{example.prompt}</small></span><Icon name="arrow-right" /></button>;
+  function exampleButton(example: ProductUiProfile['examples'][number]) {
+    return <button type="button" key={example.id} aria-label={`${example.title} ${example.prompt}`} onClick={() => fillTemplate(example.prompt, example.title)}><Icon name={example.icon} /><span className="example-copy"><strong>{example.title}</strong><small>{example.prompt}</small></span><Icon name="arrow-right" /></button>;
   }
   function fillTemplate(prompt: string, title: string, workflowContext?: string, previousWorkflow?: WorkflowSelection | null) {
     setTemplateChange({ scope: storageScope, sessionId: activeId, before: draft, after: prompt, title, workflowContext, previousWorkflow });
@@ -402,6 +412,13 @@ export default function App() {
     closeDrawer();
     fillTemplate(prompt, title, workflowContext);
     requestAnimationFrame(() => composer.current?.focus());
+  }
+  function fillBusinessCapability(capability: BusinessCapability) {
+    closeDrawer();
+    setBindingTarget(undefined);
+    fillTemplate(capability.prompt, capability.title, undefined, workflow);
+    setWorkflow(null);
+    focusComposerFromWorkbench();
   }
   function chooseWorkflow(model: WorkflowModel) {
     const target = modelIdentity(model);
@@ -672,7 +689,25 @@ export default function App() {
         onConfirmation={snapshotCurrent && currentConfirmation ? focusCurrentConfirmation : undefined} />}
       <div className="chat-scroll" ref={chatScroll} data-testid="message-list" onScroll={event => { const node = event.currentTarget; atBottom.current = node.scrollHeight - node.scrollTop - node.clientHeight < 80; const card = node.querySelector('[data-task-card]');
         setReadingOlder(!!card && card.getBoundingClientRect().top >= node.getBoundingClientRect().bottom); if (atBottom.current) setNewMessages(false); }}>
-        {historyReadFailure ? <div className="conversation">{historyReadFailure}</div> : !history?.items.length && !history?.controlMessages?.length && !activeTask && !currentTask && !loading ? <section className="welcome" aria-labelledby="welcome-title"><h1 id="welcome-title">{ui.brand.welcome}</h1><details className="usage-guide"><summary>使用说明</summary><p>PRIVATE 资料仅 owner 和 admin 可读；PROJECT 资料可供项目成员共享。归档前请复核输入 checksum、参数、随机种子、模型实现和 lineage。</p></details>{capabilityError && <div className="connection-notice" role="alert"><strong>业务服务尚未连接</strong><p>{capabilityError.code === 'PRODUCT_UI_IDENTITY_MISMATCH' ? '产品配置与当前服务不一致，业务操作已停用。' : capabilityError.code === 'API_RESPONSE_INVALID' ? '当前仅提供前端预览，暂不能发送。' : '无法连接业务接口，暂不能发送。'}</p><button onClick={() => void connectProject()}>重试连接</button></div>}<section className="example-group" aria-label="常用任务"><h2>常用任务</h2><div className="example-grid">{ui.examples.map((item, index) => item.featured ? exampleButton(index) : null)}</div><details className="more-examples"><summary>更多场景<Icon name="arrow-down" /></summary><div className="example-grid">{ui.examples.map((item, index) => !item.featured ? exampleButton(index) : null)}</div></details></section></section> : <div className="conversation">
+        {historyReadFailure ? <div className="conversation">{historyReadFailure}</div> : !history?.items.length && !history?.controlMessages?.length && !activeTask && !currentTask && !loading ? <section className="welcome" aria-labelledby="welcome-title">
+          <h1 id="welcome-title">{ui.brand.welcome}</h1>
+          <details className="usage-guide"><summary>使用说明</summary><p>PRIVATE 资料仅 owner 和 admin 可读；PROJECT 资料可供项目成员共享。归档前请复核输入 checksum、参数、随机种子、模型实现和 lineage。</p></details>
+          {capabilityError && <div className="connection-notice" role="alert"><strong>业务服务尚未连接</strong><p>{capabilityError.code === 'PRODUCT_UI_IDENTITY_MISMATCH' ? '产品配置与当前服务不一致，业务操作已停用。' : capabilityError.code === 'API_RESPONSE_INVALID' ? '当前仅提供前端预览，暂不能发送。' : '无法连接业务接口，暂不能发送。'}</p><button onClick={() => void connectProject()}>重试连接</button></div>}
+          <section className="example-group" aria-label="常用任务">
+            {(featuredCapabilities.length > 0 || featuredExamples.length > 0) && <>
+              <h2>常用任务</h2>
+              <div className="example-grid">
+                {featuredCapabilities.map(({ ref, title, description }) => <button type="button" key={`${ref.id}@${ref.version}`} aria-label={`${title} ${description}`} aria-haspopup="dialog" onClick={() => openBusinessCapability(ref.id, ref.version)}>
+                  <Icon name="layers" /><span className="example-copy"><strong>{title}</strong><small>{description}</small></span><Icon name="arrow-right" />
+                </button>)}
+                {featuredExamples.map(exampleButton)}
+              </div>
+            </>}
+            {otherExamples.length > 0 && <details className="more-examples">
+              <summary>更多场景<Icon name="arrow-down" /></summary><div className="example-grid">{otherExamples.map(exampleButton)}</div>
+            </details>}
+          </section>
+        </section> : <div className="conversation">
           {history?.controlMessages?.map(message => <ControlProposalCard
             key={message.requestId} message={message}
             proposal={history.controlProposals?.find(item => item.sourceRequestId === message.requestId)}
@@ -785,8 +820,14 @@ export default function App() {
       onClose={() => { setBindingTarget(undefined); closeDrawer(); }} onAttach={canResearch ? attach : undefined} /></Suspense>}
     {drawer?.kind === 'knowledge' && <Suspense fallback={<p className="muted drawer-loading">正在加载知识库…</p>}><KnowledgeDrawer key={`knowledge:${drawer.reference?.versionId ?? ''}:${drawer.reference?.unitId ?? ''}`} project={project} reference={drawer.reference} onClose={closeDrawer} /></Suspense>}
     {drawer?.kind === 'capabilities' && capabilities && <Suspense fallback={<p className="muted drawer-loading">正在加载能力目录…</p>}>
-      <CapabilityDrawer capabilities={capabilities} onWorkflow={canResearch ? chooseWorkflow : undefined}
-        onExample={prompt => fillFromCapabilities(prompt, ui.examples.find(item => item.prompt === prompt)?.title ?? '推荐问题')} onClose={closeDrawer} />
+      <CapabilityDrawer capabilities={capabilities} businessCapabilities={businessCapabilities} examples={examples}
+        onBusinessCapability={openBusinessCapability} onWorkflow={canResearch ? chooseWorkflow : undefined}
+        onExample={prompt => fillFromCapabilities(prompt, examples.find(item => item.prompt === prompt)?.title ?? '推荐问题')} onClose={closeDrawer} />
+    </Suspense>}
+    {businessDetail && <Suspense fallback={<p className="muted drawer-loading">正在加载业务场景…</p>}>
+      <BusinessCapabilityDrawer capability={businessDetail} onClose={closeDrawer}
+        onUse={canResearch && businessDetail.tier !== 'EXPERIMENTAL' && businessDetail.validationStatus === 'TECHNICALLY_VALIDATED'
+          ? () => fillBusinessCapability(businessDetail) : undefined} />
     </Suspense>}
     {drawer?.kind === 'readiness' && <Suspense fallback={<p className="muted drawer-loading">正在加载服务状态…</p>}><ReadinessDrawer services={capabilities?.services} onClose={closeDrawer} /></Suspense>}
     {file && uploadLimitBytes && <UploadDialog file={file} project={project} storageScope={storageScope} maxBytes={uploadLimitBytes}

@@ -6,7 +6,7 @@
 | --- | --- |
 | Public HTTP | v12 |
 | Product Manifest / Product UI / Module Contract / Assembly Lock | v8 / v1 / v9 / v8 |
-| Kernel HTTP / Config / SQLite | v12 / v8 / v36 |
+| Kernel HTTP / Config / SQLite | v12 / v8 / v38 |
 | Session Event / IntentDecision / message request | v20 / v4 / v5 |
 | AgentFinal / SubmittedReply | v5 / v6 |
 | Workflow / Executable Model | v6 / v6（当前产品）；装配仍接受 Executable Model v4、v5 |
@@ -33,7 +33,7 @@ Config 独占完整 Workflow DAG。Product UI 只包含产品拥有的交互展�
 Data 与 Knowledge 不发布宿主机端口。统一 Gateway 同时提供研究页面与 `/api/v12/*`，默认仅监听 loopback；内部 tools、health 和 OpenAPI 路径不直接公开。Kernel 使用本地会话或 API Token 校验身份，再向内部服务传递项目角色；前端权限显示来自 capabilities，服务端授权仍是最终边界。
 
 Product `publicRoutes.prefix` 只接受规范的 `/api/v12/<segment>` 路径，禁止尾斜线、
-空段、点段及 Nginx 元字符；Kernel 的 sessions、agent/workflow runs、health、
+空段、点段及 Nginx 元字符；Kernel 的 sessions、work-items、agent/workflow runs、health、
 capabilities、ready、audit，以及根页面、assets 和 Product UI 精确静态路径均不可被产品服务
 覆盖。路由声明在写入 Nginx 前完成这项信任边界校验。
 
@@ -88,6 +88,8 @@ SUBJECT/ROLE grant、READ/WRITE/ADMIN 资源权限或资源级 revision CAS。
 
 Intent Router 只判断语义与任务动作；Kernel 负责模式、控制权限和持久目标。Confirmation、AgentAction、WorkflowRun 与 JobRequest 分别保存业务参数和冻结 `input_references`。模型输出不能创建执行事实。
 
+WorkItem 关联同一项目与所有者下的多个 Session。Task 保持原 Session 的持久化边界，交付继续由 Task 的条件、证据与审阅决定。WorkItem 详情中的 Task、TaskRun、AgentRun 和 WorkflowRun 是既有记录的关系投影。业务快照按当前 Task 修订与关联运行计算，显示精确发布与显式业务验收。WorkItem 保存业务元数据、关系、命令和验收回执、活动游标及精确资源引用。活动提供持久恢复和重读通知，查询快照负责生命周期。查看引用仍须取得资源所有者的当前授权。接口与归档规则见[WorkItem](../capabilities/http-api.md#workitem)。
+
 工具处理进度采用三方声明协议。Agent 每次调用受管工具时必须提供
 `AgentProgressIntent(capability, objective, template_key)`，只声明本次要完成的具体目标，不能声明
 成功或失败，也不携带业务参数。Data、Knowledge 和 Kernel 内置工具各自拥有
@@ -128,7 +130,7 @@ Agent 与 Router 可以各自配置一个同 Provider、同模型备用 base URL
 
 ## 恢复与隔离
 
-当前源码初始化 Kernel SQLite v36、Executor SQLite v9、Data schema v8 和 Knowledge schema v7。
+当前源码初始化 Kernel SQLite v38、Executor SQLite v9、Data schema v8 和 Knowledge schema v7。
 `gw migrate plan/apply` 只接受 Kernel v29–v33、Data v4–v7、Knowledge v4–v6，并在已停止实例的
 可验证快照和影子存储上逐版本升级；普通服务启动只接受当前版本，不隐式跨版本写入。校验覆盖
 schema、记录数、外键、对象 checksum、owner 映射和 lineage，全部通过后才原子切换实例指针。

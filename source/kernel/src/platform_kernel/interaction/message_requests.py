@@ -6,6 +6,8 @@ import json
 from pathlib import Path
 from uuid import uuid4
 
+from ..application.task_api import preparation_in_connection
+from ..business_capabilities import continue_business_capability, select_business_capability
 from ..database import append_event, connect_database, utc_now
 from ..errors import ConfirmationConflictError, ResourceNotFoundError
 from ..workflow_selection import bind_workflow_selection, selected_model
@@ -34,6 +36,8 @@ def create_message_request(
     owner_subject: str = DEFAULT_LOCAL_ACTOR_SUBJECT,
     max_pending: int = 108,
     workflow_selection: dict | None = None,
+    business_capabilities: tuple[dict, ...] = (),
+    actor_roles: frozenset[str] = frozenset(),
     installed_models: tuple = (),
 ) -> tuple[dict[str, object], str | None]:
     normalized_references = tuple(input_references or ())
@@ -54,6 +58,8 @@ def create_message_request(
                 (existing["agent_run_id"],),
             ).fetchone()
             recorded = json.loads(row[0]) if row is not None else None
+            if recorded is not None and recorded.get("business_capability") is not None:
+                recorded = None
             if recorded is not None:
                 recorded.pop("inputs")
             if recorded != workflow_selection:
@@ -99,6 +105,23 @@ def create_message_request(
                 message=message, intent=fast_intent,
             )
             return receipt_from_row(row, corrects_agent_run_id), None
+        business_selection = None
+        if requested_mode == "AUTO" and business_capabilities:
+            effective_references = list(normalized_references)
+            business_selection = select_business_capability(
+                business_capabilities, message, actor_roles, effective_references,
+            )
+            if business_selection is None:
+                continuation = _continue_blocked_preparation(
+                    connection, session, business_capabilities, message, actor_roles, effective_references,
+                )
+                if continuation is not None:
+                    business_selection, effective_references = continuation
+            if business_selection is not None:
+                business_selection = bind_workflow_selection(
+                    business_selection, selected_model(business_selection, installed_models),
+                    tuple(effective_references),
+                )
         require_turn_capacity_connection(
             connection, project_id, owner_subject, session_id, max_pending,
         )
@@ -151,10 +174,11 @@ def create_message_request(
                 created_at,
             ),
         )
-        if workflow_selection is not None:
+        stored_selection = workflow_selection if workflow_selection is not None else business_selection
+        if stored_selection is not None:
             connection.execute(
                 "INSERT INTO message_workflow_selections VALUES (?,?)",
-                (agent_run_id, json.dumps(workflow_selection, ensure_ascii=True, sort_keys=True, allow_nan=False)),
+                (agent_run_id, json.dumps(stored_selection, ensure_ascii=True, sort_keys=True, allow_nan=False)),
             )
         if requested_mode != "AUTO":
             materialize_workflow_draft(
@@ -192,3 +216,52 @@ def message_request(
     if row is None:
         raise ResourceNotFoundError("MESSAGE_REQUEST_NOT_FOUND")
     return response_from_row(row)
+
+
+def _continue_blocked_preparation(connection, session, registry, message, actor_roles, references):
+    goal_revision = session["goal_revision"]
+    row = connection.execute(
+        """SELECT w.selection_json FROM message_requests AS m
+           JOIN message_workflow_selections AS w USING (agent_run_id)
+           WHERE m.session_id=? AND m.goal_revision=?
+             AND m.intent_decision='DIALOGUE' AND m.dialogue_policy='EXECUTION_PROPOSAL'""",
+        (session["session_id"], goal_revision),
+    ).fetchone()
+    if row is None:
+        return None
+    previous = json.loads(row["selection_json"])
+    if previous.get("business_capability") is None:
+        return None
+    preparation = preparation_in_connection(connection, session["session_id"], current_goal_revision=goal_revision)
+    if (
+        preparation is None or not preparation["fresh_for_current_turn"]
+        or preparation["status"] != "BLOCKED"
+        or preparation["disposition"] in {"FAILED", "ABANDONED", "REJECTED"}
+    ):
+        return None
+    issue = next((
+        issue
+        for entry in preparation["entries"]
+        if entry["target_id"] == previous["model_id"] and entry["status"] == "BLOCKED"
+        for issue in entry["blocking_issues"]
+    ), None)
+    if issue is None:
+        return None
+    return continue_business_capability(registry, previous, issue, message, actor_roles, references)
+
+
+def saved_business_selection(database: Path, agent_run_id: str, *, routing: bool = False) -> dict | None:
+    with connect_database(database) as connection:
+        row = connection.execute(
+            """SELECT w.selection_json,m.intent_decision,m.semantic_intent,m.routing_status
+               FROM message_workflow_selections AS w JOIN message_requests AS m USING (agent_run_id)
+               WHERE w.agent_run_id=?""",
+            (agent_run_id,),
+        ).fetchone()
+    if row is None:
+        return None
+    active = row["intent_decision"] == "DIALOGUE" and row["semantic_intent"] in {"EXECUTE_ON_DATA", "CONSULT"}
+    if not active and not (routing and row["routing_status"] == "ROUTING_RUNNING"):
+        return None
+    selection = json.loads(row["selection_json"])
+    return selection if selection and selection.get("business_capability") is not None else None

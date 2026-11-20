@@ -134,7 +134,12 @@ export function PreparationDetails({ history, dataAvailable = true, onData, onVe
     const formats = issue.input ? productUi().models[entry.targetId]?.inputs[issue.input]?.formats ?? [] : [];
     const input = entry.targetKind === 'EXECUTABLE_MODEL' && entry.targetVersion && issue.input
       ? { modelId: entry.targetId, modelVersion: entry.targetVersion, name: issue.input } : undefined;
-    return <div className="preparation-blocker" key={`${issue.code}/${issue.path ?? issue.input ?? issue.parameter ?? index}`}><span>阻塞：{issue.code}{issue.path ? ` · ${issue.path}` : ''}</span>
+    const businessIssue = issue.code.startsWith('CAPABILITY_');
+    return <div className="preparation-blocker" key={`${issue.code}/${issue.path ?? issue.input ?? issue.parameter ?? index}`}><span>
+      {businessIssue
+        ? `${issue.parameter ? `${argumentLabel(issue.parameter, entry.targetId)} · ` : ''}${errorCodeMessage(issue.code)}`
+        : `阻塞：${issue.code}${issue.path ? ` · ${issue.path}` : ''}`}
+    </span>
       {actionable && issue.kind === 'MISSING_DATA' && dataAvailable && <button onClick={() => onData(formats, input)}>选择所需数据</button>}
       {actionable && (issue.kind === 'MISSING_PARAMETER' || issue.kind === 'INVALID_PARAMETER') && issue.parameter && <button onClick={() => onParameter(issue.parameter!)}>补充参数</button>}
       {actionable && issue.kind === 'UNRESOLVED_ITEM' && <button onClick={() => onParameter('未解决事项')}>补充未解决事项</button>}
