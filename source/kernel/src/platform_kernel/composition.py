@@ -213,6 +213,8 @@ class PlatformApplication:
                 if self.settings.agent_preview_enabled
                 else None,
                 usage_ledger=SQLiteUsageLedger(self.database),
+                work_item_context=lambda request: self.work_items.agent_context(request),
+                authorize_business_selection=lambda request: self.work_items.require_agent_selection(request),
                 operator_worker_status=self.readiness.worker_status if (
                     self.settings.workflow_composition is not None or self.settings.operator_uses
                 ) else None,
@@ -242,10 +244,9 @@ class PlatformApplication:
             ),
         )
         self.work_items = WorkItemOwner(
-            self.database, self.settings.project_id,
+            self.database, self.settings,
             ReferenceAuthority(self.client, self.settings, self.workflow_execution, self.database),
             self.interaction.create_session_in_transaction,
-            self.settings.models,
         )
         self.trace_processor = SQLiteTraceProcessor(self.database)
         self.runtime = KernelRuntime(

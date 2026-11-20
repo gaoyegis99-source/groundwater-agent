@@ -153,6 +153,12 @@ def redact_span_payload(payload: dict[str, Any]) -> dict[str, Any]:
                 for key in ("input_tokens", "output_tokens", "total_tokens")
                 if type(usage.get(key)) is int and usage[key] >= 0
             }
+        if source.get("name") == "agent.work_item_context":
+            allowed.update({
+                key: details[key]
+                for key in ("input_bytes", "input_tokens", "included_blocks", "omitted_blocks")
+                if type(details.get(key)) is int and details[key] >= 0
+            })
         data["data"] = allowed
     error = None
     if payload.get("error") is not None:

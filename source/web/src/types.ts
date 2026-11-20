@@ -17,6 +17,8 @@ export type WorkItemActivityPage = PublicApiComponents['schemas']['kernel__WorkI
 export type WorkItemActivityEntry = WorkItemActivityPage['entries'][number];
 export type WorkItemUpdateCommand = PublicApiOperations['kernel_update_work_item']['requestBody']['content']['application/json'];
 export type WorkItemReviewCommand = PublicApiOperations['kernel_review_work_item']['requestBody']['content']['application/json'];
+export type WorkItemAssetSelection = PublicApiComponents['schemas']['kernel__WorkItemAssetAttach']['reference'];
+export type WorkItemMaterialCommand = WorkItemChangeCommand & { reference: WorkItemAssetSelection | BusinessObjectReference };
 
 export interface JsonSchemaProperty {
   type?: string | string[];

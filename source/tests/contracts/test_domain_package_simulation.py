@@ -434,7 +434,6 @@ def test_domain_packages_change_agent_surface_but_not_kernel_schema(
         call = model.calls[0]
         expected = {
             "submit_reply",
-            "update_task",
             "list_operators",
             "get_operator",
             *(t.name for t in settings.observation_tools),

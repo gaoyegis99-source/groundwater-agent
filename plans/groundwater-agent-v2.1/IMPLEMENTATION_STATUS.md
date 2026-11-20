@@ -153,3 +153,79 @@
 - **NEW**。内部 `work-item-agent-context.v1` 只读分层。L0 记录持久请求及受校验的执行范围。L1 分开表达整个工作与当前会话的状态，并带当前 Task、准备问题、确认和发布事实。L2 按当前任务核对关联的精确可读版本及已选业务能力。L3 在需要续作或复盘时读取少量已关联会话的事实摘要，带时间、版本和类别。原会话的内存摘要和完整消息保持自身作用域。
 - 背景以 JSON 数据消息送入模型，固定说明把用户资料字段与工具授权分开。用现有 tokenizer 和请求容量检测限制附加包，最高 1,200 token 与 4,096 UTF-8 字节。可选资料和历史按优先级省略，保留当前用户请求。资源校验不可用时省略相应背景。流程沿用旧的 public API 与 SQLite。
 - 影响 WorkItem owner、会话身份查询、Agent Runtime 的模型输入过滤、工具权限、上下文 manifest 及测试。主要风险是晚到的撤权、恢复重放旧材料、自由文本越权和模型输入超限。验证包含实际 provider 调用、同次重试、跨 Session/主体/项目、资源失效、老会话、只读任务、预算和 trace 检查。阶段内运行 Kernel、合同与隔离链路回归。
+
+### 实现与行为
+
+- 本阶段基线为本地 `main@7a6e621162a51c55340e44167df42c334290f1c9`。交付在 Kernel 当前 Session 的 Agent 调用路径。通过持久 AgentRun、当前或待启动运行指针、项目、目标修订和成员角色找回关联 WorkItem。异步校验完成后再检查工作修订、当前运行与成员身份。
+- `work-item-agent-context.v1` 用来源分块表达四层内容。WorkItem 汇总和当前 Session/Task 的进度分开。关联资料按当前请求选取，并由 Data、Knowledge 及 Kernel 的成果绑定校验精确版本。已选能力复用本轮解析好的版本身份。续作和复盘按需读取至多四条带时间和修订的其他会话事实摘要。
+- SDK 在每次主模型调度前装配独立数据消息。协议重试和确认恢复重新装配。模型收到的附加包保留原始用户消息，限制为 4,096 字节和 1,200 token，同时受完整请求容量及可用输入预算八分之一约束。单个资源慢时省略该项，整次装配超过 2.5 秒时继续处理原请求。清单和追踪只记录来源、哈希、处置和用量。
+- 公开持久请求的只读工具清单去掉 `update_task`。任务登记和证据续作走自动意图路由，只有相应业务意图及任务动作才开放写工具。历史内部调用兼容既有行为。意图路由没有接收 WorkItem 数据；原确认审批和执行绑定继续由 Kernel 校验。
+- 公开 API/OpenAPI、生成客户端和数据库结构沿用当前版本。内部存储清单只增加受白名单约束的来源、分层与省略原因。新数据消息不进入 SDK 检查点和跨轮记忆编译。
+- 复核后统一了只读提示词与工具准入。L3 记录快照时间与 WorkItem 事件游标，并区分 Session 当前目标修订和被保留业务事实的来源修订。能力和档位的冻结版本在发送模型请求前按当前角色重新授权。Knowledge 撤回、过期或失去读取权限时从模型引用中剔除。
+
+| 影响范围 | 文件 |
+| --- | --- |
+| 新增 Kernel 源码和专项测试 | `application/work_item_context.py`、`work_items/agent_context.py`、`agent_runtime/sdk_execution/work_item_context.py`、`kernel/tests/test_agent_work_item_context.py` |
+| WorkItem、身份与装配 | `work_items/{owner,references}.py`、`application/work_item_lifecycle_facts.py`、`access/research_auth.py`、`interaction/access.py`、`business_capabilities.py`、`composition.py`、`scripts/checks/import_boundaries/rules.py` |
+| Agent 请求与工具策略 | `agent_runtime/{mode,prompts}.py`、`persistence/{context,run_queries}.py`、`tooling/{factory,task_tools}.py`、`sdk_execution/{types,execution_builders,initial_execution,resumed_execution}.py` |
+| 上下文清单与追踪 | `agent_runtime/persistence/context_views.py`、`sdk_execution/{usage_capture,usage_context_views,usage_model_start}.py`、`agent_runtime/tracing.py` |
+| 回归和文档 | `kernel/tests/{test_kernel_lifecycle,test_workflow_task_runtime_probe}.py`、`tests/contracts/test_domain_package_simulation.py`、`tests/e2e/test_monitoring_work_item.py`、`docs/capabilities/agent-discovery.md`、本报告 |
+
+### 验证与风险
+
+| 检查 | 结果 |
+| --- | --- |
+| `../bin/dev check --scope kernel` | 1,017 个 Kernel 用例通过，类型检查、Ruff、空白、核心导入和架构边界检查通过。[日志](../../.pytest_cache/gw-v21-phase3-arsgEXUc/kernel-reviewed.log) |
+| `../bin/dev check --scope contracts` | 191 个合同用例通过，运行时 OpenAPI、Python SDK、TS/Ajv 生成一致。[日志](../../.pytest_cache/gw-v21-phase3-arsgEXUc/contracts-reviewed.log) |
+| `python -B -m pytest -q -p no:cacheprovider kernel/tests/test_agent_work_item_context.py kernel/tests/test_agent_context_efficiency.py kernel/tests/test_work_item_references.py kernel/tests/test_workflow_task_runtime_probe.py` | 33 个用例通过。覆盖主体/项目/会话隔离、只读工具和提示词、历史来源、归档、角色撤销、过期或撤回知识、历史语义修订、重试、恢复、预算和日志正文隔离。[日志](../../.pytest_cache/gw-v21-phase3-arsgEXUc/focus-reviewed.log) |
+| `python -B -m pytest -q -p no:cacheprovider tests/e2e/test_monitoring_work_item.py` | 2 个用例通过。隔离的 PostgreSQL、Data、Executor 和本地 Worker 验证已选能力、真实监测流程产物、精确发布身份、跨会话状态及读取权限撤销。临时数据库容器已停止。[日志](../../.pytest_cache/gw-v21-phase3-arsgEXUc/monitoring-reviewed.log) |
+| 本地 Chat Completions 适配器与新增模块类型检查 | DeepSeek 和 MiniMax 转换器保留原用户消息与单独的数据消息。三个新增生产模块的专项类型检查通过。[适配器日志](../../.pytest_cache/gw-v21-phase3-arsgEXUc/adapter-roles.log) · [类型检查](../../.pytest_cache/gw-v21-phase3-arsgEXUc/context-types.log) |
+| 架构复核、文档及变更检查 | 独立复核确认所提权限、Knowledge 生命周期、只读提示词和 L3 来源问题已修正。文档校验与 `git diff --check` 通过。 |
+
+红灯用例确认原调用没有 WorkItem 数据。首次回归发现监测和任务探针使用只读对话写 Task，旧合同用例也期望该工具。已让登记和证据续作走现有的任务意图入口，并按新规则检查只读工具清单。阶段最终验收使用本地脚本模型和已物化工具链。真实模型供应商、生产数据与部署留待后续独立验证。
+
+大型 WorkItem 的汇总仍需读取完整生命周期。整体装配超时会省略背景，追踪保留省略原因。跨会话只装配有来源的状态事实。之前会话的完整用户陈述和模型推断继续留在各自会话。
+
+阶段 3 达到本地技术退出条件。当前工作区包含经核验的改动，供后续阶段继续使用。
+
+## 阶段 4 数据工作空间与业务对象关联体验
+
+### 实施方案
+
+- **EXISTING**。Data 拥有资料、精确版本、字段画像、语义修订、质量记录与上传发布。Knowledge 拥有文档及版本。Kernel 的 WorkItem 关联命令已校验项目、主体、工作修订、精确资料以及历史语义。会话已有按输入角色绑定、结构化准备问题及冻结确认。
+- **EXTEND**。工作详情展示关系与来源身份，支持选择精确资料、新上传后核对、知识版本、运行及发布成果。井、区和含水层使用三个既有对象种类，由用户选择来源字段并填写业务键。已有对象只按该来源解释。工作资料与会话的待发送输入、准备校验和确认采用分别呈现。
+- **NEW**。复用数据库查看器承接工作资料检查和选择。在工作资料入口加载选中版本的质量与语义页，显示 Data 返回的缺失、异常、覆盖范围、CRS、垂向基准和已有质量运行。只采用匹配资料版本与语义版本的质量运行，未知保持待核验。会话选择输入角色时提供当前工作的可读资料，提交与重新准备继续使用现有 Session 命令。
+- **DECISION**。使用现有公共合同和生成校验器。工作资料选择保留精确版本并沿用 WorkItem 修订及幂等请求 ID；跨项目、撤权、未完成发布和不可用服务均由原所有者复核。状态标签与字段事实来自服务，当前工作不建立主数据或全局业务键。
+- 分项实施与验证。在 `DatabaseWorkbench.tsx` 与新增质量组件先验证精确版本、历史语义、检查状态及分页。在 `WorkItemMaterials.tsx`、引用选择组件与 `work-item-api.ts` 验证绑定、来源、对象表单、不可用和幂等恢复。通过 `App.tsx`、`SessionWorkContext.tsx` 接入角色选择与现有准备流程。覆盖撤权、跨项目、资料缺失、单位/坐标检查与窄屏浏览，并执行 Web、合同和本地集成回归。
+
+### 实现与影响
+
+- 基线为本地 `main@7a6e621162a51c55340e44167df42c334290f1c9` 加阶段 3 已验收的工作区改动。工作详情复用 Data 目录和上传发布。选择后先核对资料和质量，再提交 WorkItem 关联。回执不确定时重放相同的请求 ID、修订及载荷。关联列表分页展示，逐份查看才加载详细资料，不会为列表中的每个对象请求质量历史。
+- 业务对象表单使用 WELL、REGION、AQUIFER，由用户指定来源字段与业务键。显示来源数据集、资料版本、语义修订、对象和校验和。知识目录和历史版本按页读取，撤回、过期或不可访问的知识显示安全状态。运行和命名成果关联走原有 Kernel 命令，成果选择同时核对发布及 Data 精确身份。
+- 角色选择器提供本工作的可读资料。现有 Kernel 准备和 Executor 读入合同要求该资料版本的当前语义与唯一原始对象。历史关联可以检查和追溯，计算时用户须主动查看并选择当前可校验的候选。原关联保留精确历史身份。工作关联、会话草稿、准备校验及确认采用分别显示，当前角色和精确输入随现有消息合同提交。
+- 独立复核定位了会话切换、撤权、模态框焦点和历史较深时的容量问题。选择器生命周期绑定当前会话与身份，回到页面时重新校验候选。质量查找一次读取最多两页，并允许继续向前查找，未知状态保持待核验。批量候选的附加使用 Data 对象唯一键，已绑定的历史语义优先保留供用户核对。
+- 公开 API、OpenAPI、生成类型和数据库结构沿用现有版本。本阶段不增加 Data、Knowledge、Kernel 或 Executor 的资源所有权。能力校验和字段科学语义复用原准备合同。
+
+| 修改范围 | 文件 |
+| --- | --- |
+| 新增资料工作区及检查组件 | `WorkItemMaterials.tsx`、`WorkItemOtherAssets.tsx`、`DataSemanticHistory.tsx`、`DataVersionQuality.tsx`、`LinkedWorkData.tsx` |
+| 既有资料界面与精确读取 | `DatabaseWorkbench.tsx`、`UploadDialog.tsx`、`api.ts`、`resource-item.ts`、`types.ts` |
+| WorkItem、Session 和交互 | `App.tsx`、`WorkItemDetails.tsx`、`WorkItemWorkspace.tsx`、`WorkItemSessions.tsx`、`SessionWorkContext.tsx`、`work-item-api.ts`、`use-drawer-controller.ts`、`workbench-focus.ts`、`work-item-workspace.css` |
+| 测试与文档 | `DatabaseWorkbench.test.tsx`、`work-item-workspace.test.tsx`、`data-version-quality.test.tsx`、`work-item-other-assets.test.tsx`、《Agent 发现、理解与任务准备》及本报告 |
+
+### 验证与退出条件
+
+| 检查 | 结果 |
+| --- | --- |
+| `../bin/dev check --scope web` | 47 个测试文件、486 个用例通过。TypeScript、生产构建、Ruff 和差异空白检查通过。 |
+| `../bin/dev check --scope contracts` | 191 个合同用例通过。运行时 OpenAPI 和 Python、TypeScript/Ajv 生成校验通过。 |
+| `python -B -m pytest -q -p no:cacheprovider kernel/tests/test_internal_modules.py kernel/tests/test_work_item_references.py kernel/tests/test_work_items.py kernel/tests/test_business_capability_preparation.py` | 116 个 Kernel 用例通过，覆盖工作引用、权限、输入角色、字段、单位和空间条件。 |
+| `python -B -m pytest -q -p no:cacheprovider tests/e2e/test_monitoring_work_item.py tests/e2e/test_composed_workflow.py::test_monitoring_trend_publishes_exact_results tests/e2e/test_composed_workflow.py::test_monitoring_trend_capability_requires_user_threshold` | 6 个端到端用例通过。使用隔离的 PostgreSQL、Data、Executor、本地 Worker 和脚本模型，覆盖准备阻塞、补参、确认和精确成果发布。 |
+| 本地 Chromium 与生产构建 | 用真实 Kernel 会话与 Data 测试响应核对历史语义、质量及未知状态、业务对象来源、精确角色请求、390 像素窄屏和撤权。无 JavaScript 页面异常。真实服务的准备与发布由上述端到端用例核对。 |
+| `python -B -m scripts.checks.check_documentation`、`git diff --check` | 文档与变更检查通过。 |
+
+首轮回归确认旧界面缺少资料选择入口。最终回归覆盖切换会话时清除旧选择、重新聚焦后重新核验候选、质量历史的有限自动读取，以及同格式对象中明确选择原始对象。
+
+历史语义和其他对象仍可按原身份追溯。用于计算时，需显式选择该数据版本的当前语义和唯一原始对象。未取得匹配质量记录时保持待核验。真实业务数据、外部模型供应商和生产环境留待独立发布验证。
+
+阶段 4 达到本地技术退出条件。

@@ -36,9 +36,15 @@ export function useWorkbenchModal(
     const root = ref.current;
     if (!open || !root) return;
     const opener = document.activeElement;
-    const shell = root.closest('.app-shell');
-    const backgrounds = [...shell?.children ?? []].filter((child): child is HTMLElement =>
-      child instanceof HTMLElement && !child.contains(root) && !child.hasAttribute('data-overlay-dismiss') && !child.inert);
+    const shell = root.closest('.app-shell, .work-item-shell');
+    const backgrounds: HTMLElement[] = [];
+    for (let pane: HTMLElement | null = root; shell && pane && pane !== shell; pane = pane.parentElement) {
+      for (const sibling of pane.parentElement?.children ?? []) {
+        if (sibling instanceof HTMLElement && sibling !== pane && !sibling.hasAttribute('data-overlay-dismiss') && !sibling.inert) {
+          backgrounds.push(sibling);
+        }
+      }
+    }
     backgrounds.forEach(child => { child.inert = true; });
 
     const initial = initialSelector ? root.querySelector<HTMLElement>(initialSelector) : null;

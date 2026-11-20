@@ -9,6 +9,7 @@ from typing import Any
 from agents import ModelSettings
 from agents.models.interface import Model
 
+from ...application.work_item_context import WorkItemContextBlock, WorkItemContextRequest
 from ...settings import KernelSettings
 from ..memory import MemoryUpdate
 from ..observation_client import ObservationClient
@@ -41,6 +42,8 @@ class SDKExecutionDependencies:
     publish_preview: Callable[[str, str, str | None], None] | None = None
     usage_ledger: UsageLedgerPort | None = None
     operator_worker_status: Callable[[str], Awaitable[str]] | None = None
+    work_item_context: Callable[[WorkItemContextRequest], Awaitable[tuple[WorkItemContextBlock, ...]]] | None = None
+    authorize_business_selection: Callable[[WorkItemContextRequest], Awaitable[None]] | None = None
 
 
 class SDKExecutionError(RuntimeError):

@@ -329,6 +329,20 @@ def _authenticate_token(database: Path, project_id: str, token: str) -> RequestI
     return _identity(row)
 
 
+def enabled_project_identity(
+    database: Path, project_id: str, subject: str,
+) -> RequestIdentity | None:
+    """Resolve current membership of a principal bound to a durable command."""
+    with connect_database(database) as connection:
+        row = connection.execute(
+            """SELECT u.user_id,u.display_name,m.role FROM research_users u
+               JOIN research_project_memberships m ON m.user_id=u.user_id
+               WHERE u.user_id=? AND u.enabled=1 AND m.project_id=?""",
+            (subject, project_id),
+        ).fetchone()
+    return None if row is None else _identity(row)
+
+
 def _identity(row: sqlite3.Row) -> RequestIdentity:
     return RequestIdentity(
         row["user_id"], row["display_name"], frozenset({row["role"]})

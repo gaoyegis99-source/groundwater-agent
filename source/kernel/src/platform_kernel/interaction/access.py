@@ -25,6 +25,22 @@ def agent_owner_subject(database: Path, agent_run_id: str) -> str | None:
     return None if row is None else str(row["owner_subject"])
 
 
+def current_agent_turn_subject(
+    database: Path, project_id: str, session_id: str, agent_run_id: str, goal_revision: int,
+) -> str | None:
+    with connect_database(database) as connection:
+        row = connection.execute(
+            """SELECT s.owner_subject FROM sessions s
+               JOIN agent_runs a ON a.session_id=s.session_id AND a.project_id=s.project_id
+               WHERE s.project_id=? AND s.session_id=? AND a.agent_run_id=?
+                 AND s.goal_revision=? AND a.goal_revision=s.goal_revision
+                 AND (s.agent_run_id=a.agent_run_id OR s.pending_agent_run_id=a.agent_run_id)
+                 AND s.archived_at IS NULL""",
+            (project_id, session_id, agent_run_id, goal_revision),
+        ).fetchone()
+    return None if row is None else str(row["owner_subject"])
+
+
 def require_owned_session(
     database: Path, project_id: str, session_id: str, subject: str
 ) -> None:

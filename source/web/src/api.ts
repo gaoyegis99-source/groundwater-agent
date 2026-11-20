@@ -249,16 +249,20 @@ export function contentUrl(_project: string, versionId: string, objectId?: strin
 }
 
 export async function readDataVersion(versionId: string, signal: AbortSignal, reference?: ResourceReference): Promise<ResourceDetail> {
+  return (await readDataVersionWithHead(versionId, signal, reference)).detail;
+}
+
+export async function readDataVersionWithHead(versionId: string, signal: AbortSignal, reference?: ResourceReference) {
   const path = `/data/versions/${encodeURIComponent(versionId)}`;
   const version = await callApi('data_get_version', path, undefined, signal, decodeResourceDetail);
   if (version.versionId !== versionId) throw new ApiError(409, 'DATA_VERSION_IDENTITY_MISMATCH');
-  if (!reference || reference.versionId !== versionId) return version;
+  if (!reference || reference.versionId !== versionId) return { detail: version, currentSemanticId: version.semanticId };
   const object = version.objects.find(item => item.objectId === reference.objectId);
   if (!object || version.datasetId !== reference.datasetId || object.checksum !== reference.checksum
     || object.format !== reference.format || object.mediaType !== reference.mediaType || object.size !== reference.sizeBytes) {
     throw new ApiError(409, 'DATA_VERSION_IDENTITY_MISMATCH');
   }
-  return readDataVersionSemantic(version, reference.semanticId, signal);
+  return { detail: await readDataVersionSemantic(version, reference.semanticId, signal), currentSemanticId: version.semanticId };
 }
 
 export async function readDataVersionSemantic(version: ResourceDetail, semanticId: string, signal: AbortSignal): Promise<ResourceDetail> {

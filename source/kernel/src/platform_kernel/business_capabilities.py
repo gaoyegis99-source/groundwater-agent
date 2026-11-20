@@ -279,3 +279,17 @@ def public_business_capability_refs(selection: dict | None) -> dict | None:
     if business is None:
         return None
     return {key: business[key] for key in ("capabilityRef", *_REFS)}
+
+
+def visible_business_capability_refs(
+    registry: tuple[dict, ...], selection: dict | None, actor_roles: frozenset[str],
+) -> dict | None:
+    if selection is None or selection.get("business_capability") is None:
+        return None
+    installed = _installed_option(registry, selection)
+    if installed is None:
+        return None
+    capability, option = installed
+    if not actor_roles.intersection(capability["roles"]) or not actor_roles.intersection(option["roles"]):
+        return None
+    return public_business_capability_refs(selection)

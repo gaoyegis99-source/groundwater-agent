@@ -3,7 +3,7 @@ import { loadResponseValidator } from './generated/public-api-v12.validators.laz
 import type {
   WorkItemActivityEntry, WorkItemActivityPage, WorkItemChangeCommand, WorkItemCreateCommand,
   WorkItemDetail, WorkItemLifecycleSnapshot, WorkItemReceipt, WorkItemReviewCommand,
-  WorkItemSessionAttach, WorkItemSessionContext, WorkItemSummary, WorkItemUpdateCommand,
+  WorkItemMaterialCommand, WorkItemSessionAttach, WorkItemSessionContext, WorkItemSummary, WorkItemUpdateCommand,
 } from './types';
 
 type WorkItemScope = { project: string; subject: string };
@@ -64,6 +64,18 @@ export function linkWorkItemSession(workItemId: string, command: WorkItemSession
     if (receipt.linkId !== command.sessionId) throw new TypeError('API_RESPONSE_INVALID');
     return receipt;
   });
+}
+
+export function linkWorkItemMaterial(workItemId: string, { reference, ...change }: WorkItemMaterialCommand, signal: AbortSignal) {
+  const path = workItemPath(workItemId);
+  const decode = (value: unknown) => {
+    const receipt = itemReceipt(workItemId, value);
+    if (!receipt.linkId) throw new TypeError('API_RESPONSE_INVALID');
+    return receipt;
+  };
+  return 'objectKind' in reference
+    ? callApi('kernel_link_work_item_object', `${path}/objects`, { ...change, reference }, signal, decode)
+    : callApi('kernel_link_work_item_asset', `${path}/assets`, { ...change, reference }, signal, decode);
 }
 
 export function readWorkItemSessionContext(sessionId: string, scope: WorkItemScope, signal: AbortSignal) {

@@ -5,7 +5,8 @@ import { WorkItemIssue } from './WorkItemForms';
 import { readWorkItemSessionContext } from './work-item-api';
 import { workItemTime } from './work-item-presentation';
 import { sessionFromWorkItem, workItemHref } from './work-item-route';
-import type { ResourceReference, WorkItemSessionContext } from './types';
+import type { Confirmation, ResourceReference, TaskPreparationEntry, WorkItemSessionContext } from './types';
+import { workflowFileKey } from './workflow-selection';
 import './work-item-workspace.css';
 
 type Read =
@@ -15,7 +16,25 @@ type Read =
 
 const objectLabels = { WELL: '监测井', REGION: '区域', AQUIFER: '含水层' };
 
-function ContextSources({ context, onOpenData }: {
+type InputEvidence = {
+  draftInputs?: ResourceReference[];
+  prepared?: TaskPreparationEntry[];
+  confirmation?: Confirmation;
+};
+
+function inputState(reference: ResourceReference, { draftInputs, prepared, confirmation }: InputEvidence) {
+  const key = workflowFileKey(reference);
+  const matches = (item: ResourceReference) => workflowFileKey(item) === key;
+  if (confirmation && ['PENDING', 'CONFIRMED'].includes(confirmation.status) &&
+      confirmation.actions.some(action => Object.values(action.inputReferences ?? {}).some(matches))) {
+    return confirmation.status === 'CONFIRMED' ? '确认采用此版本' : '待确认方案使用此版本';
+  }
+  const checks = prepared?.filter(entry => Object.values(entry.inputs).some(matches)) ?? [];
+  if (checks.length) return checks.some(entry => entry.status === 'BLOCKED') ? '输入准备待补充' : '当前准备已校验此版本';
+  return draftInputs?.some(matches) ? '已放入本会话草稿' : '已关联到工作';
+}
+
+function ContextSources({ context, onOpenData, ...evidence }: InputEvidence & {
   context: WorkItemSessionContext;
   onOpenData: (reference: ResourceReference) => void;
 }) {
@@ -29,8 +48,9 @@ function ContextSources({ context, onOpenData }: {
           const reference = link.state === 'AVAILABLE' ? link.reference : null;
           return reference && <li key={link.linkId}>
             <span>{objectLabels[reference.objectKind]} · {reference.externalId}</span>
-            <small>来自此工作 · <time dateTime={link.linkedAt}>{workItemTime(link.linkedAt)}</time></small>
+            <small>业务键来源字段 {reference.fieldId} · <time dateTime={link.linkedAt}>{workItemTime(link.linkedAt)}</time></small>
             <details><summary>资料版本</summary>版本 {reference.source.versionId} · 语义 {reference.source.semanticId}</details>
+            <button type="button" onClick={() => onOpenData(reference.source)}>核对对象来源</button>
           </li>;
         })}
       </ul>
@@ -47,6 +67,7 @@ function ContextSources({ context, onOpenData }: {
               {reference.kind === 'RESULT' ? outputName(reference.outputName) : `打开 ${reference.dataRef.format.toUpperCase()} 资料`}
             </button>}
             <small>关联于 <time dateTime={link.linkedAt}>{workItemTime(link.linkedAt)}</time></small>
+            {'dataRef' in reference && <small>{inputState(reference.dataRef, evidence)}</small>}
             <details><summary>来源与版本</summary>{reference.kind === 'KNOWLEDGE'
               ? <>文档 {reference.documentId} · 版本 {reference.versionId}</>
               : <>版本 {reference.dataRef.versionId} · 语义 {reference.dataRef.semanticId}
@@ -84,7 +105,7 @@ function ContextSources({ context, onOpenData }: {
   </>;
 }
 
-export function SessionWorkContext({ sessionId, project, subject, openOnEntry, onOpenData }: {
+export function SessionWorkContext({ sessionId, project, subject, openOnEntry, onOpenData, ...evidence }: InputEvidence & {
   sessionId: string;
   project: string;
   subject: string;
@@ -134,7 +155,7 @@ export function SessionWorkContext({ sessionId, project, subject, openOnEntry, o
         <h3>{context.workItem.title}</h3>
         {context.workItem.description && <p>{context.workItem.description}</p>}
         <p className="work-item-meta">工作修订 {context.workItem.revision} · 更新于 <time dateTime={context.workItem.updatedAt}>{workItemTime(context.workItem.updatedAt)}</time></p>
-        {context.workItem.status === 'ARCHIVED' ? <p>此业务工作已归档。</p> : <ContextSources context={context} onOpenData={onOpenData} />}
+        {context.workItem.status === 'ARCHIVED' ? <p>此业务工作已归档。</p> : <ContextSources context={context} onOpenData={onOpenData} {...evidence} />}
       </>}
     </div>}
   </section>;

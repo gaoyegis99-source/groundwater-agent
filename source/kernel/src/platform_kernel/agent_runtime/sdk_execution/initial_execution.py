@@ -57,6 +57,7 @@ from .execution_builders import (
     _capabilities,
 )
 from .segment_runner import _execute_agent
+from .work_item_context import install_work_item_context
 
 
 async def execute_initial(
@@ -206,6 +207,11 @@ async def execute_initial(
                     context_policy=context_policy,
                 )
                 hooks.set_initial_context_manifest(context_view.manifest())
+                install_work_item_context(
+                    run_config, dependencies, hooks, request_context, capabilities,
+                    project_id=project_id, session_id=session_id, agent_run_id=agent_run_id,
+                    goal_revision=goal_revision,
+                )
                 execution = await _execute_agent(
                     agent,
                     input_items,

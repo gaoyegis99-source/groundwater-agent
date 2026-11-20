@@ -24,6 +24,7 @@ from kernel.tests.test_kernel_lifecycle import (
 from platform_kernel.database import connect_database
 from platform_kernel.access.identity import RequestIdentity
 from platform_kernel.api.dependencies import current_identity
+from platform_kernel.intent_routing import IntentDecisionV4
 from platform_protocol_contracts import build_problem_details
 
 
@@ -201,7 +202,10 @@ def test_workflow_task_http_probe(kernel_settings, tmp_path, remote_status):
         session_id = session["sessionId"]
         started = time.perf_counter()
         accepted, completed = _turn(
-            client, application, session_id, GOAL, read_only=True
+            client, application, session_id, GOAL, intent=IntentDecisionV4.from_python(
+                response_kind="DIALOGUE", semantic_intent="DESIGN", task_action="CREATE",
+                dialogue_policy="READ_ONLY", control_intent=None, clarification_reason=None,
+            ),
         )
         observations.append(
             {
@@ -381,7 +385,10 @@ def test_workflow_task_http_probe(kernel_settings, tmp_path, remote_status):
 
         started = time.perf_counter()
         accepted, linked = _turn(
-            client, application, session_id, "请登记执行结果", read_only=True
+            client, application, session_id, "请登记执行结果", intent=IntentDecisionV4.from_python(
+                response_kind="DIALOGUE", semantic_intent="REVIEW_RESULT", task_action="CONTINUE",
+                dialogue_policy="READ_ONLY", control_intent=None, clarification_reason=None,
+            ),
         )
         observations.append(
             {

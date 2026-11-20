@@ -25,6 +25,20 @@ class ModeResolutionError(ValueError):
     pass
 
 
+def allows_task_update(capabilities: AgentModeCapabilities, request_context: dict | None) -> bool:
+    if capabilities.clarification_only:
+        return False
+    if capabilities.allow_model_tools or capabilities.mode == "WORKFLOW_DRAFT":
+        return True
+    if not request_context or request_context.get("request_id") is None:
+        # Pre-v12 internal callers have no classified, durable message request.
+        return True
+    return (
+        request_context.get("semantic_intent") in {"DESIGN", "REVIEW_RESULT"}
+        and request_context.get("task_action") in {"CREATE", "REVISE", "CONTINUE", "REVIEW"}
+    )
+
+
 def allows_operator_proposal(context: dict | None) -> bool:
     return bool(
         context

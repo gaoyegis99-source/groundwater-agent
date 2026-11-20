@@ -70,7 +70,8 @@ function WorkItemIndex(scope: Scope) {
   </>;
 }
 
-export function WorkItemWorkspace({ route, project, subject, scope, mark, brand, signOut, permitted, identityError, retryIdentity, onSessionsChange }: Scope & {
+export function WorkItemWorkspace({ route, project, subject, scope, mark, brand, signOut, permitted, identityError, retryIdentity,
+  dataEnabled, knowledgeEnabled, onSessionsChange }: Scope & {
   route: WorkItemRoute;
   scope: string;
   mark: string;
@@ -79,6 +80,8 @@ export function WorkItemWorkspace({ route, project, subject, scope, mark, brand,
   permitted: boolean;
   identityError: boolean;
   retryIdentity: () => void;
+  dataEnabled: boolean;
+  knowledgeEnabled: boolean;
   onSessionsChange: () => void;
 }) {
   const main = useRef<HTMLElement>(null);
@@ -106,7 +109,7 @@ export function WorkItemWorkspace({ route, project, subject, scope, mark, brand,
                 ? <><h1 id="work-item-heading">新建业务工作</h1><WorkItemCreate key={scope} project={project} scope={scope} /></>
                 : route.kind === 'detail'
                   ? <WorkItemDetails key={`${scope}/${route.id}`} id={route.id} project={project} subject={subject}
-                    scope={scope} onSessionsChange={onSessionsChange} />
+                    scope={scope} dataEnabled={dataEnabled} knowledgeEnabled={knowledgeEnabled} onSessionsChange={onSessionsChange} />
                   : <><h1 id="work-item-heading">业务工作</h1><p role="alert">工作链接无效。</p></>}
             </>}
     </main>

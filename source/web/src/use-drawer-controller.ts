@@ -1,25 +1,32 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { KnowledgeReference, ResourceReference } from './types';
 
 export type Drawer =
-  | { kind: 'database'; id?: string; reference?: ResourceReference; compare?: boolean; formats?: string[] }
+  | { kind: 'database'; id?: string; reference?: ResourceReference; compare?: boolean; formats?: string[]; inspectMetadata?: boolean }
   | { kind: 'knowledge'; reference?: KnowledgeReference }
   | { kind: 'capabilities' }
   | { kind: 'business-capability'; id: string; version: string }
   | { kind: 'readiness' }
   | null;
 
-export function useDrawerController() {
-  const [drawer, setDrawer] = useState<Drawer>(null);
+export function useDrawerController(scope: string) {
+  const [selection, setSelection] = useState<{ scope: string; drawer: NonNullable<Drawer> } | null>(null);
+  const drawer = selection?.scope === scope ? selection.drawer : null;
   const opener = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (selection && selection.scope !== scope) {
+      opener.current = null;
+      setSelection(current => current === selection ? null : current);
+    }
+  }, [scope, selection]);
   const open = useCallback((next: NonNullable<Drawer>) => {
     if (!opener.current && document.activeElement instanceof HTMLElement) opener.current = document.activeElement;
-    setDrawer(next);
-  }, []);
+    setSelection({ scope, drawer: next });
+  }, [scope]);
   const closeDrawer = useCallback(() => {
     const previous = opener.current;
     opener.current = null;
-    setDrawer(null);
+    setSelection(null);
     requestAnimationFrame(() => {
       if (!opener.current && previous?.isConnected && previous.getClientRects().length
         && document.activeElement === document.body) previous.focus({ preventScroll: true });

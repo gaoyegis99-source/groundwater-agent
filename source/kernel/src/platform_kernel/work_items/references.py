@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from datetime import date
 from pathlib import Path
 import re
 from typing import TYPE_CHECKING
@@ -85,13 +86,17 @@ class ReferenceAuthority:
             "publicationId": publication_id, "dataRef": output.as_dict(),
         }
 
-    async def is_visible(self, kind: str, reference: dict, actor: RequestIdentity) -> bool:
+    async def is_visible(
+        self, kind: str, reference: dict, actor: RequestIdentity, *, for_agent: bool = False,
+    ) -> bool:
         try:
             if kind == "OBJECT":
                 return await self.resolve_object(reference, actor) == reference
             if reference.get("kind") != kind:
                 return False
-            if kind in ("DATA", "KNOWLEDGE"):
+            if kind == "KNOWLEDGE":
+                return await self._resolve_knowledge(reference, actor, active_only=for_agent) == reference
+            if kind == "DATA":
                 return await self.resolve_asset(reference, actor, frozenset()) == reference
             if kind == "WORKFLOW":
                 run = self._owned_run(_text(reference.get("runId")), actor)
@@ -183,7 +188,9 @@ class ReferenceAuthority:
             if field_id not in fields:
                 raise WorkItemConflictError("WORK_ITEM_REFERENCE_MISMATCH")
 
-    async def _resolve_knowledge(self, reference: dict, actor: RequestIdentity) -> dict:
+    async def _resolve_knowledge(
+        self, reference: dict, actor: RequestIdentity, *, active_only: bool = False,
+    ) -> dict:
         version_id = _text(reference.get("versionId"))
         checksum = _text(reference.get("checksum"))
         if re.fullmatch(r"sha256:[0-9a-f]{64}", checksum) is None:
@@ -194,6 +201,8 @@ class ReferenceAuthority:
         }
         version = await self._read("knowledge-next", f"/knowledge/v3/versions/{_segment(version_id)}", actor)
         _require_identity(version, expected)
+        if active_only and not _active_knowledge(version):
+            raise WorkItemConflictError("WORK_ITEM_REFERENCE_UNAVAILABLE")
         return {"kind": "KNOWLEDGE", **expected}
 
     async def _read(self, binding: str, path: str, actor: RequestIdentity) -> dict:
@@ -225,6 +234,18 @@ class ReferenceAuthority:
         if not isinstance(body, dict):
             raise UpstreamServiceError("WORK_ITEM_REFERENCE_RESPONSE_INVALID")
         return body
+
+
+def _active_knowledge(version: dict) -> bool:
+    if version.get("status") != "ACTIVE":
+        return False
+    through = version.get("validThrough")
+    if through is None:
+        return True
+    try:
+        return isinstance(through, str) and date.fromisoformat(through) >= date.today()
+    except ValueError:
+        return False
 
 
 def _named_output(run: WorkflowRun, output_name: str) -> DataVersionRefV2:

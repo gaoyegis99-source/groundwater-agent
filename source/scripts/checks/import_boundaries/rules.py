@@ -231,8 +231,10 @@ KERNEL_MODULE_IMPORTS = {
     },
     "work_items": {
         "platform_kernel.access",
+        "platform_kernel.application.work_item_context",
         "platform_kernel.application.work_item_lifecycle_facts",
         "platform_kernel.application.work_item_links",
+        "platform_kernel.business_capabilities",
         "platform_kernel.contracts",
         "platform_kernel.database",
         "platform_kernel.errors",

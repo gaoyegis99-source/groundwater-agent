@@ -287,6 +287,21 @@ def handoff_task_rows(
     ).fetchall()
 
 
+def handoff_session_rows(
+    connection: Connection, work_item_id: str, project_id: str, subject: str, current_session_id: str,
+) -> list[Row]:
+    return connection.execute(
+        OWNED_LINKED_SESSIONS_SQL + """
+        SELECT s.session_id, s.goal_revision,
+               COALESCE((SELECT e.created_at FROM session_events e WHERE e.session_id=s.session_id
+                         ORDER BY e.event_id DESC LIMIT 1), s.linked_at) AS last_activity_at
+        FROM linked_sessions s
+        WHERE s.session_id<>? AND s.archived_at IS NULL
+        ORDER BY last_activity_at DESC, s.session_id LIMIT 4""",
+        (work_item_id, project_id, subject, current_session_id),
+    ).fetchall()
+
+
 def handoff_approval_rows(
     connection: Connection, work_item_id: str, project_id: str,
     subject: str, current_session_id: str,

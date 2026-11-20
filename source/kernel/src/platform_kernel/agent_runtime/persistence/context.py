@@ -93,7 +93,8 @@ def load_initial_context_sources(
             (session_id,),
         ).fetchone()
         request_row = connection.execute(
-            """SELECT a.*,COALESCE(m.clarification_required,0) clarification_required,
+            """SELECT a.*,m.request_id,m.semantic_intent,m.task_action,
+                      COALESCE(m.clarification_required,0) clarification_required,
                       COALESCE(m.input_references_json,'[]') input_references_json,
                       w.selection_json workflow_selection_json
                FROM agent_requests a LEFT JOIN message_requests m ON m.agent_run_id=a.agent_run_id

@@ -53,6 +53,7 @@ from .execution_builders import (
     _capabilities,
 )
 from .segment_runner import _execute_agent
+from .work_item_context import install_work_item_context
 
 
 async def execute_resumed(
@@ -119,6 +120,7 @@ async def execute_resumed(
                     **load_request_context(dependencies.database, agent_run_id),
                     "task_context": full_task_context,
                     "preparation_context": full_preparation_context,
+                    "finalization": True,
                     "explicit_model_tool_request": load_explicit_model_tool_request(
                         dependencies.database, dependencies.settings, agent_run_id,
                     ),
@@ -163,6 +165,11 @@ async def execute_resumed(
                     dependencies.model_settings,
                     tool_choice="submit_reply",
                     parallel_tool_calls=False,
+                )
+                install_work_item_context(
+                    run_config, dependencies, hooks, request_context, capabilities,
+                    project_id=project_id, session_id=session_id, agent_run_id=agent_run_id,
+                    goal_revision=goal_revision, finalization=True,
                 )
                 restore_timeout = asyncio.timeout_at(deadline_at)
                 try:

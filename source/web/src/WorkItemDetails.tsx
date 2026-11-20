@@ -3,6 +3,7 @@ import { localizedSessionTitle } from './SessionNavigation';
 import { outputName } from './card-presentation';
 import { WorkItemArchive, WorkItemEdit, WorkItemIssue } from './WorkItemForms';
 import { WorkItemSessions } from './WorkItemSessions';
+import { MaterialIdentity, WorkItemMaterials } from './WorkItemMaterials';
 import { listWorkItemActivity, readWorkItem, reviewWorkItem } from './work-item-api';
 import { useWorkItemCommand } from './use-work-item-command';
 import { useWorkItemPages, workItemAccessLost } from './use-work-item-queries';
@@ -52,26 +53,6 @@ function WorkItemActivity({ id, project, cursor }: { id: string; project: string
       {cursor !== undefined && cursor > latest && page.nextAfter === null && !page.error &&
         <button type="button" onClick={page.reload} disabled={page.loading}>刷新活动</button>}
     </div>
-  </WorkItemSection>;
-}
-
-function WorkItemMaterials({ detail }: { detail: WorkItemDetail }) {
-  const labels = { WELL: '监测井', REGION: '区域', AQUIFER: '含水层' };
-  const materials = detail.assets.filter(asset => asset.reference?.kind !== 'RESULT');
-  return <WorkItemSection id="work-item-materials" title="资料与业务对象">
-    {!detail.objects.length && !materials.length && <p>暂无关联资料与业务对象。</p>}
-    {!!detail.objects.length && <ul className="work-item-items">
-      {detail.objects.map(({ reference, linkId, state }) => <li key={linkId}>
-        {state === 'AVAILABLE' && reference ? <><strong>{labels[reference.objectKind]}</strong><span>{reference.externalId}</span></> : <span>关联对象暂不可用</span>}
-      </li>)}
-    </ul>}
-    {!!materials.length && <ul className="work-item-items">
-      {materials.map(({ reference, linkId, state }) => <li key={linkId}>
-        {state === 'UNAVAILABLE' ? <span>关联资产暂不可用</span> : reference?.kind === 'DATA' ? <><strong>数据资料</strong><span>{reference.dataRef.format.toUpperCase()}</span></>
-          : reference?.kind === 'KNOWLEDGE' ? <span>知识资料</span>
-            : reference?.kind === 'WORKFLOW' ? <span>专业计算记录</span> : <span>关联资产暂不可用</span>}
-      </li>)}
-    </ul>}
   </WorkItemSection>;
 }
 
@@ -130,7 +111,8 @@ function WorkItemResults({ detail, snapshot, disabled, onRefresh }: {
       {assets.map(({ linkId, reference }) => {
         const run = detail.workflowRuns.find(workflow => workflow.runId === reference.runId);
         return <li key={linkId}>
-          <div><strong>{outputName(reference.outputName)}</strong><span>已发布 · {reference.dataRef.format.toUpperCase()}</span></div>
+          <div><strong>{outputName(reference.outputName)}</strong><span>已发布 · {reference.dataRef.format.toUpperCase()}</span>
+            <MaterialIdentity reference={reference.dataRef} /></div>
           {run && <a href={sessionHref(run.sessionId, detail.workItem.workItemId, true)}>在会话中查看成果</a>}
         </li>;
       })}
@@ -144,11 +126,13 @@ function WorkItemResults({ detail, snapshot, disabled, onRefresh }: {
 
 type Observation = { snapshot: WorkItemLifecycleSnapshot | null; error: unknown; epoch: number; fresh: boolean };
 
-export function WorkItemDetails({ id, project, subject, scope, onSessionsChange }: {
+export function WorkItemDetails({ id, project, subject, scope, dataEnabled, knowledgeEnabled, onSessionsChange }: {
   id: string;
   project: string;
   subject: string;
   scope: string;
+  dataEnabled: boolean;
+  knowledgeEnabled: boolean;
   onSessionsChange: () => void;
 }) {
   const [attempt, setAttempt] = useState(0);
@@ -160,6 +144,16 @@ export function WorkItemDetails({ id, project, subject, scope, onSessionsChange 
     setObserved(previous => ({ ...previous, fresh: false }));
     setAttempt(previous => previous + 1);
   }
+
+  useEffect(() => {
+    const visible = () => { if (document.visibilityState === 'visible') refresh(); };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', visible);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', visible);
+    };
+  }, []);
 
   useEffect(() => subscribeWorkItem(id, project, {
     onSnapshot: next => setObserved(previous => ({
@@ -225,7 +219,8 @@ export function WorkItemDetails({ id, project, subject, scope, onSessionsChange 
           <WorkItemSessions detail={detail} scope={scope} current={current}
             onRefresh={refresh} onSessionsChange={onSessionsChange} />
         </WorkItemSection>
-        {!body.error && <WorkItemMaterials detail={detail} />}
+        {!body.error && <WorkItemMaterials detail={detail} scope={scope} current={current}
+          dataEnabled={dataEnabled} knowledgeEnabled={knowledgeEnabled} onRefresh={refresh} />}
         {!body.error && <WorkItemResults detail={detail} snapshot={snapshot} disabled={!current} onRefresh={refresh} />}
       </div>
       <aside className="work-item-detail-aside">

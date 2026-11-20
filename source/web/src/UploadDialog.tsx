@@ -14,8 +14,9 @@ const formats: Record<string, [string, string, string]> = {
   xlsx: ['xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Excel 工作簿'], gpkg: ['geopackage', 'application/geopackage+sqlite3', 'GeoPackage 地理数据'],
   zip: ['zip', 'application/zip', 'ZIP 压缩包'],
 };
-export function UploadDialog({ file, project, storageScope = '', onClose, onUploaded, maxBytes = 1024 ** 3 }: {
+export function UploadDialog({ file, project, storageScope = '', onClose, onUploaded, maxBytes = 1024 ** 3, submitLabel = '上传并附加' }: {
   file: File; project: string; storageScope?: string; onClose: () => void; onUploaded: (resource: ResourceItem) => void; maxBytes?: number;
+  submitLabel?: string;
 }) {
   const dialogRef = useRef<HTMLElement>(null);
   useWorkbenchModal(dialogRef, true, '[name="resource-name"]');
@@ -108,6 +109,6 @@ export function UploadDialog({ file, project, storageScope = '', onClose, onUplo
       {error && <ErrorNotice error={error} title={uncertain ? '上传结果尚未确认' : '文件尚未上传成功'} />}
       {uncertain && <p className="limitations" role="status">请保留当前文件并重新选择同一文件。系统会先查询已记录的 publication 状态；只有确认仍可继续时才会重新传送，避免产生重复版本。</p>}
     </div>
-    <div className="upload-actions">{busy && <button type="button" disabled={phase === 'cancel'} onClick={() => void cancel()}>{phase === 'cancel' ? '正在取消…' : '取消上传'}</button>}<button className="primary wide" disabled={busy || uncertain || !format.trim() || !mediaType.trim() || !name.trim()} onClick={() => void submit()}>上传并附加</button></div>
+    <div className="upload-actions">{busy && <button type="button" disabled={phase === 'cancel'} onClick={() => void cancel()}>{phase === 'cancel' ? '正在取消…' : '取消上传'}</button>}<button className="primary wide" disabled={busy || uncertain || !format.trim() || !mediaType.trim() || !name.trim()} onClick={() => void submit()}>{submitLabel}</button></div>
   </section></div>;
 }

@@ -20,6 +20,7 @@ from platform_data_service.operations.worker import Worker as DataWorker
 from platform_executor_service.app import create_app as executor_app
 from platform_executor_service.composition import ExecutorApplication
 from platform_executor_service.database import connect_database as executor_database
+from platform_kernel.agent_runtime.sdk_execution.work_item_context import PREFIX
 from platform_kernel.api import create_app as kernel_app
 from platform_kernel.composition import PlatformApplication
 from services.data.tests.conftest import postgres as postgres, settings as data_settings  # noqa: F401
@@ -47,10 +48,10 @@ def _new_session(api):
     return response["sessionId"]
 
 
-def _dialogue(api, session_id, request_id, message):
+def _dialogue(api, session_id, request_id, message, *, requested_mode="DIALOGUE"):
     path = f"/api/v12/sessions/{session_id}"
     api.post(path + "/messages", json={
-        "requestId": request_id, "requestedMode": "DIALOGUE", "message": message,
+        "requestId": request_id, "requestedMode": requested_mode, "message": message,
     }).raise_for_status()
     return _wait_for_session(api, path, "COMPLETE")
 
@@ -88,6 +89,15 @@ def _activity_after(api, path, cursor):
 def _track(snapshot, session_id):
     (track,) = [track for track in snapshot["tracks"] if track["sessionId"] == session_id]
     return track
+
+
+def _model_context(call):
+    return [
+        block
+        for item in call.input
+        if isinstance(item.get("content"), str) and item["content"].startswith(PREFIX)
+        for block in json.loads(item["content"][len(PREFIX):])["blocks"]
+    ]
 
 
 def _publish_well_observations(data, worker, *, typed_time=False):
@@ -182,16 +192,21 @@ def test_monitoring_work_item_preserves_linked_sessions_and_published_data(
             return _bridge(data, request)
 
         def application(steps):
-            router = ScriptedModel([ModelStep(output=[assistant_message("EXECUTE_ON_DATA|NONE|NONE")])])
+            router = ScriptedModel([
+                ModelStep(output=[assistant_message(decision)])
+                for decision in ("DESIGN|CREATE|NONE", "EXECUTE_ON_DATA|NONE|NONE", "REVIEW_RESULT|CONTINUE|NONE")
+            ])
             return PlatformApplication(
                 settings=settings, model=ScriptedModel(steps), intent_router_model=router,
                 client=httpx.AsyncClient(transport=httpx.MockTransport(route)),
             )
 
-        with TestClient(kernel_app(application=application(_task_steps(arguments, input_ref, workflow_result)))) as api:
+        app = application(_task_steps(arguments, input_ref, workflow_result))
+        model = app.agent_runtime.sdk_execution.model
+        with TestClient(kernel_app(application=app)) as api:
             old_session = _new_session(api)
             session_path = f"/api/v12/sessions/{old_session}"
-            created_task = _dialogue(api, old_session, "register-task", TASK_GOAL)
+            created_task = _dialogue(api, old_session, "register-task", TASK_GOAL, requested_mode="AUTO")
             task_before = api.get(session_path + "/task").raise_for_status().json()["task"]
             task_id = task_before["spec"]["taskId"]
             assert task_before["spec"]["revision"] == 1
@@ -209,6 +224,9 @@ def test_monitoring_work_item_preserves_linked_sessions_and_published_data(
                 "message": _MONITORING_TREND_REQUEST + "识别高于 10 m 的阈值事件。",
             }).raise_for_status()
             pending = _wait_for_session(api, session_path, "WAITING_CONFIRMATION")
+            analysis_blocks = _model_context(model.calls[-1])
+            sources = {block["source"] for block in analysis_blocks}
+            assert {"CAPABILITY_SELECTION", "WORK_ITEM_REFERENCE", "CURRENT_SESSION"} <= sources
             assert pending["confirmation"]["status"] == "PENDING"
             assert pending["confirmation"]["actions"][0]["inputReferences"] == {"versionId": input_ref}
             assert _detail(api, work)["workflowRuns"] == []
@@ -242,7 +260,16 @@ def test_monitoring_work_item_preserves_linked_sessions_and_published_data(
             result_link = _command(api, work, "assets", "link-threshold-summary", 6, reference={
                 "kind": "RESULT", "runId": run_id, "outputName": RESULT_NAME,
             })
-            _dialogue(api, old_session, "register-task-evidence", "请将本次已发布的结果登记为任务证据。")
+            _dialogue(
+                api, old_session, "register-task-evidence", "请继续当前任务，将本次已发布的结果登记为任务证据。",
+                requested_mode="AUTO",
+            )
+            review_blocks = _model_context(model.calls[-1])
+            result_context, = [
+                block["value"] for block in review_blocks if block["sourceId"] == result_link["linkId"]
+            ]
+            assert result_context["dataRef"] == result
+            assert result_context["publicationId"] == publication["publicationId"]
             task_after = api.get(session_path + "/task").raise_for_status().json()["task"]
             assert task_after["spec"]["taskId"] == task_id
             assert task_after["progress"]["lifecycle"] == "COMPLETE"
@@ -260,6 +287,13 @@ def test_monitoring_work_item_preserves_linked_sessions_and_published_data(
             assert review["token"]
 
             _dialogue(api, new_session, "linked-ordinary-consultation", "什么是含水层？")
+            consult_call = model.calls[-1]
+            consult_context = {block["source"]: block["value"] for block in _model_context(consult_call)}
+            assert consult_context["WORK_ITEM"]["state"] == "RESULT_REVIEW"
+            assert consult_context["CURRENT_SESSION"]["sessionId"] == new_session
+            assert "task" not in consult_context["CURRENT_SESSION"]
+            assert review["token"] not in json.dumps(consult_call.input)
+            assert {tool.name for tool in consult_call.tools}.isdisjoint({"update_task", "record_plan"})
             assert api.get(f"/api/v12/sessions/{new_session}/task").raise_for_status().json()["task"] is None
             after_consultation = _snapshot(api, work)
             assert after_consultation["state"] == "RESULT_REVIEW"
@@ -289,6 +323,7 @@ def test_monitoring_work_item_preserves_linked_sessions_and_published_data(
 
             consult = _new_session(api)
             _dialogue(api, consult, "ordinary-consultation", "含水层如何获得补给？")
+            assert _model_context(model.calls[-1]) == []
             assert api.get(f"/api/v12/sessions/{consult}/task").raise_for_status().json()["task"] is None
             assert _snapshot(api, work) == completed
             items = api.get("/api/v12/work-items", params=PROJECT).raise_for_status().json()["items"]

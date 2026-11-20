@@ -83,6 +83,8 @@ class _ContextViewCaptureMixin:
                     *_envelope_blocks(agent, system_prompt, usage),
                 ],
             }
+        if self.work_item_manifest_blocks:
+            manifest = {**manifest, "blocks": [*manifest["blocks"], *self.work_item_manifest_blocks]}
         context_view_id = self.usage_ledger.create_context_view(
             request_agent_run_id=self.request_agent_run_id,
             segment_id=self.segment["segment_id"],

@@ -164,7 +164,9 @@ export function WorkItemSessions({ detail, scope, current, onRefresh, onSessions
     {!!detail.sessions.length && <ul className="work-item-items">
       {detail.sessions.map(session => <li key={session.sessionId}>
         <a href={sessionFromWorkItem(`#/sessions/${encodeURIComponent(session.sessionId)}`, item.workItemId)}>{localizedSessionTitle(session.title)}</a>
-        {session.archivedAt && <span>已归档</span>}
+        {session.archivedAt ? <span>已归档</span> : <a href={sessionFromWorkItem(
+          `#/sessions/${encodeURIComponent(session.sessionId)}/workbench/inputs`, item.workItemId,
+        )} aria-label={`准备计算输入 · ${localizedSessionTitle(session.title)}`}>准备计算输入</a>}
       </li>)}
     </ul>}
     {linkedTitle && <p role="status">{linkedTitle}</p>}

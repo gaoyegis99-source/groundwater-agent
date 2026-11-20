@@ -91,6 +91,8 @@ class _RunUsageCapture(
         self.tool_retry_settings: tuple[str, object, bool | None] | None = None
         self.token_warning_emitted = False
         self.active_input_items: list[TResponseInputItem] = []
+        self.work_item_input: TResponseInputItem | None = None
+        self.work_item_manifest_blocks: list[dict[str, object]] = []
 
     def record_activity(self, activity: dict[str, Any]) -> None:
         self.activity_recorder.record(activity)

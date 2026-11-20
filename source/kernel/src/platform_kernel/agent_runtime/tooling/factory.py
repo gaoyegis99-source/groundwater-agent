@@ -12,7 +12,7 @@ from ...settings import (
     ObservationToolDefinition,
     ServiceBinding,
 )
-from ..mode import AgentModeCapabilities, resolve_mode_capabilities
+from ..mode import AgentModeCapabilities, allows_task_update, resolve_mode_capabilities
 from ..model_tool import build_model_tool
 from ..observation_client import ObservationClient
 from ..preparation_tool import build_preparation_tool
@@ -99,6 +99,7 @@ def build_agent_tools(
             tuple(models) if models else all_installed_models,
             provider=provider,
             include_execution_facts=include_execution_facts,
+            include_task_update=allows_task_update(capabilities, request_context),
         ))
     if capabilities.allow_observations:
         tools.extend(

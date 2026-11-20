@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import sourceProfile from '../../products/groundwater/ui/product-ui.json';
 import App from './App';
 import { decodeProductUi, setProductUi } from './product-ui';
-import { capabilitiesForProfile, historyFixture, instant, sessionSummaryFixture } from './test-fixtures';
+import { capabilitiesForProfile, dataDetail, dataRef, historyFixture, instant, sessionSummaryFixture } from './test-fixtures';
 import type { components } from './generated/public-api-v12';
 
 const profile = decodeProductUi(sourceProfile);
@@ -43,7 +43,7 @@ function json(body: unknown, status = 200) {
 }
 
 function fixture({
-  onCreate, onArchive, onReview, readSnapshot, onCreateSession, onLinkSession, readContext, candidates = [], role = 'researcher',
+  onCreate, onArchive, onReview, readSnapshot, onCreateSession, onLinkSession, readContext, customResponse, readDetail, candidates = [], role = 'researcher',
 }: {
   onCreate?: (command: Record<string, unknown>) => Promise<Response>;
   onArchive?: (command: Record<string, unknown>) => Promise<Response>;
@@ -52,14 +52,20 @@ function fixture({
   onCreateSession?: (command: Record<string, unknown>) => Promise<Response>;
   onLinkSession?: (command: Record<string, unknown>) => Promise<Response>;
   readContext?: (sessionId: string) => Promise<Response>;
+  customResponse?: (url: URL, init?: RequestInit) => Promise<Response | undefined>;
+  readDetail?: () => typeof detail;
   candidates?: ReturnType<typeof sessionSummaryFixture>[];
   role?: 'researcher' | 'viewer';
 } = {}) {
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
-    const { pathname, searchParams } = new URL(url, window.location.origin);
+    const parsed = new URL(url, window.location.origin);
+    const { pathname, searchParams } = parsed;
+    const response = await customResponse?.(parsed, init);
+    if (response) return response;
     if (pathname === '/api/v12/capabilities') {
       return json(capabilitiesForProfile(profile, {
         currentUser: { subject: 'test-user', displayName: '测试用户', roles: [role] },
+        services: ['data', 'knowledge-next'],
       }));
     }
     if (pathname === '/api/v12/sessions') return json({ items: candidates, nextCursor: null });
@@ -87,7 +93,7 @@ function fixture({
     if (pathname.endsWith('/activity')) {
       return json({ entries: [{ kind: 'SESSION', sequence: 5, createdAt: instant, sessionId: 'session-1', eventType: 'task.revised' }], nextAfter: null });
     }
-    if (pathname === '/api/v12/work-items/work-1') return json(detail);
+    if (pathname === '/api/v12/work-items/work-1') return json(readDetail?.() ?? detail);
     throw new Error(`Unhandled API ${init?.method} ${url}`);
   });
   vi.stubGlobal('fetch', fetchMock);
@@ -112,6 +118,131 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+});
+
+it('associates one exact historical semantic version and replays a lost attach receipt', async () => {
+  const pinned = dataRef({ semanticId: 'semantics-historical' });
+  const version = dataDetail({
+    project: 'demo', title: '水位观测资料',
+    semantics: { description: '当前定义', crs: 'EPSG:4326' },
+  });
+  const submitted: Record<string, unknown>[] = [];
+  fixture({ customResponse: async ({ pathname }, init) => {
+    if (pathname === '/api/v12/data/datasets') return json({
+      items: [{ datasetId: version.datasetId, title: version.title, currentVersion: version.versionId,
+        project: 'demo', tags: [], createdAt: instant, formats: ['json'], semantics: {} }],
+      nextCursor: null, matchBasis: 'catalog',
+    });
+    if (pathname.endsWith('/datasets/dataset-1/versions')) return json({ items: [], nextCursor: null });
+    if (pathname.endsWith('/datasets/dataset-1/quality-runs')) return json({ items: [], nextCursor: null });
+    if (pathname.endsWith('/versions/version-1')) return json(version);
+    if (pathname.endsWith('/versions/version-1/semantics')) return json({
+      items: [{ semanticId: pinned.semanticId, createdAt: instant, actor: {} }], nextCursor: null,
+    });
+    if (pathname.endsWith('/versions/version-1/semantics/semantics-historical')) return json({
+      versionId: 'version-1', semanticId: pinned.semanticId, createdAt: instant, actor: {},
+      body: { description: '冻结水位语义', source: 'research', verticalDatum: '1985 国家高程基准', timeRange: '2020—2021' },
+    });
+    if (pathname.endsWith('/work-items/work-1/assets')) {
+      submitted.push(JSON.parse(String(init?.body)));
+      if (submitted.length === 1) throw new TypeError('receipt was lost');
+      return json({ workItemId: 'work-1', revision: 3, linkId: 'exact-asset', changed: true });
+    }
+  } });
+  open('#/work-items/work-1');
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: '选择数据资料' }));
+  fireEvent.click(await screen.findByRole('button', { name: /水位观测资料/ }));
+  await screen.findByRole('option', { name: /semantics-historical/ });
+  fireEvent.change(screen.getByLabelText('语义修订'), { target: { value: pinned.semanticId } });
+  expect(await screen.findByText('1985 国家高程基准')).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: '选择此资料版本' }));
+  fireEvent.click(screen.getByRole('button', { name: '确认关联资料' }));
+  fireEvent.click(await screen.findByRole('button', { name: '重试关联' }));
+  await waitFor(() => expect(submitted).toHaveLength(2));
+  expect(submitted[0]).toEqual({
+    projectId: 'demo', requestId: expect.any(String), expectedRevision: 2, reference: { kind: 'DATA', dataRef: pinned },
+  });
+  expect(submitted[1]).toEqual(submitted[0]);
+});
+
+it('chooses a field from the exact source before saving a locally scoped business object', async () => {
+  const source = dataDetail({
+    project: 'demo', title: '井台账', descriptor: { fields: [
+      { fieldId: 'key-well', name: '井号', type: 'string' },
+      { fieldId: 'no-semantics', name: '未定义字段', type: 'string' },
+    ] },
+    semantics: { fields: { 'key-well': { meaning: '项目井号' } } },
+  });
+  const post = vi.fn();
+  let linked = false;
+  const expected = { objectKind: 'AQUIFER', fieldId: 'key-well', externalId: 'AQ-02', source: dataRef() } as const;
+  fixture({
+    readDetail: () => linked ? { ...detail, workItem: { ...summary, revision: 3 }, objects: [
+      { linkId: 'object-1', linkedAt: instant, state: 'AVAILABLE', reference: expected },
+    ] } : detail,
+    readSnapshot: () => linked ? { ...snapshot, revision: 3, eventCursor: 6 } : snapshot,
+    customResponse: async ({ pathname }, init) => {
+      if (pathname === '/api/v12/data/datasets') return json({
+        items: [{ datasetId: source.datasetId, title: source.title, currentVersion: source.versionId,
+          project: 'demo', tags: [], createdAt: instant, formats: ['json'], semantics: {} }],
+        nextCursor: null, matchBasis: 'catalog',
+      });
+      if (pathname.endsWith('/versions/version-1')) return json(source);
+      if (pathname.endsWith('/versions') || pathname.endsWith('/semantics') || pathname.endsWith('/quality-runs')) {
+        return json({ items: [], nextCursor: null });
+      }
+      if (pathname.endsWith('/work-items/work-1/objects')) {
+        post(JSON.parse(String(init?.body)));
+        linked = true;
+        return json({ workItemId: 'work-1', revision: 3, linkId: 'object-1', changed: true });
+      }
+    },
+  });
+  open('#/work-items/work-1');
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: '关联监测井、区域或含水层' }));
+  fireEvent.click(await screen.findByRole('button', { name: /井台账/ }));
+  fireEvent.click(await screen.findByRole('button', { name: '选择此对象来源' }));
+  const form = screen.getByRole('form', { name: '填写关联业务对象' });
+  expect(form).toHaveFocus();
+  expect(within(form).queryByRole('option', { name: /未定义字段/ })).not.toBeInTheDocument();
+  expect(within(form).getByRole('button', { name: '确认关联对象' })).toBeDisabled();
+  fireEvent.change(within(form).getByLabelText('对象类型'), { target: { value: 'AQUIFER' } });
+  fireEvent.change(within(form).getByLabelText('来源字段'), { target: { value: 'key-well' } });
+  fireEvent.change(within(form).getByLabelText('业务键'), { target: { value: ' AQ-02 ' } });
+  fireEvent.click(within(form).getByRole('button', { name: '确认关联对象' }));
+  expect(await screen.findByText('含水层 · AQ-02')).toBeVisible();
+  expect(screen.getByText('业务键来源字段 key-well')).toBeVisible();
+  expect(post).toHaveBeenCalledExactlyOnceWith({
+    projectId: 'demo', requestId: expect.any(String), expectedRevision: 2, reference: expected,
+  });
+});
+
+it('closes a WorkItem data inspector when navigation changes the session', async () => {
+  const reference = dataRef();
+  fixture({
+    candidates: sessions.map(session => sessionSummaryFixture({ sessionId: session.sessionId, title: session.title })),
+    readContext: async sessionId => json({ context: sessionId === 'session-1' ? {
+      sessionId, linkedAt: instant, workItem: summary, objects: [], openTasks: [], approvedActions: [],
+      assets: [{ linkId: 'data-1', linkedAt: instant, state: 'AVAILABLE', reference: { kind: 'DATA', dataRef: reference } }],
+    } : null }),
+    customResponse: async ({ pathname }) => {
+      if (pathname.endsWith('/data/versions/version-1')) return json(dataDetail({ title: '甲会话待选资料' }));
+      if (pathname.endsWith('/data/datasets')) return json({ items: [], nextCursor: null, matchBasis: 'catalog' });
+      if (pathname.endsWith('/versions') || pathname.endsWith('/semantics') || pathname.endsWith('/quality-runs')) {
+        return json({ items: [], nextCursor: null });
+      }
+    },
+  });
+  open('#/sessions/session-1?workItem=work-1');
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: '打开 JSON 资料' }));
+  expect(await screen.findByRole('heading', { name: '甲会话待选资料' })).toBeVisible();
+  open('#/sessions/session-2');
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: '数据库' })).not.toBeInTheDocument());
+  expect(screen.queryByRole('button', { name: '附加精确版本' })).not.toBeInTheDocument();
+  expect(screen.queryByText('甲会话待选资料')).not.toBeInTheDocument();
 });
 
 it('opens business work from home and loads subsequent pages with authoritative status', async () => {
@@ -210,7 +341,8 @@ it('discards a late list response after switching to another subject', async () 
     });
   }));
   const route = { kind: 'list' } as const;
-  const props = { route, brand: 'Groundwater', mark: '/icon', signOut: null, permitted: true, identityError: false, retryIdentity: () => {}, onSessionsChange: () => {} };
+  const props = { route, brand: 'Groundwater', mark: '/icon', signOut: null, permitted: true, identityError: false,
+    dataEnabled: true, knowledgeEnabled: true, retryIdentity: () => {}, onSessionsChange: () => {} };
   const initial = render(<WorkItemWorkspace {...props} project="first" subject="first-user" scope="groundwater:first:first-user" />);
   await waitFor(() => expect(resolvePrevious).toBeTypeOf('function'));
   initial.rerender(<WorkItemWorkspace {...props} project="second" subject="second-user" scope="groundwater:second:second-user" />);

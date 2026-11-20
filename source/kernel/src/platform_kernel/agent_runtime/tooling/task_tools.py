@@ -158,6 +158,7 @@ def build_task_tools(
     *,
     provider: str = "deepseek",
     include_execution_facts: bool = True,
+    include_task_update: bool = True,
 ) -> list[FunctionTool]:
     async def update_task(context: ToolContext, arguments_json: str):
         if provider == "minimax":
@@ -316,7 +317,7 @@ def build_task_tools(
             builtin_progress_intent_schema(tool.name)
         )
     return [
-        update_tool,
+        *([update_tool] if include_task_update else []),
         *(
             [list_execution_facts, get_execution_fact]
             if include_execution_facts else []

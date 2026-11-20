@@ -1,5 +1,14 @@
 import type { ResourceDetail, ResourceItem, ResourceReference } from './types';
 
+export function dataObjectKey(reference: ResourceReference) {
+  return JSON.stringify([reference.versionId, reference.objectId]);
+}
+
+export function appendResourceItems(previous: ResourceItem[], selected: ResourceItem[]) {
+  const replacements = new Map(selected.map(item => [dataObjectKey(item), item]));
+  return [...previous.filter(item => !replacements.has(dataObjectKey(item))), ...replacements.values()];
+}
+
 export function isResourceReference(value: unknown): value is ResourceReference {
   if (value === null || typeof value !== 'object') return false;
   const item = value as Record<string, unknown>;

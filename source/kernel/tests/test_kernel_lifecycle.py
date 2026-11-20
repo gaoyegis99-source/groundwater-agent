@@ -21,6 +21,7 @@ from platform_kernel.database import connect_database
 from platform_kernel.errors import AgentRunError
 from platform_kernel.agent_runtime.models import AgentPlanStepV2
 from platform_kernel.agent_runtime.persistence import save_plan
+from platform_kernel.intent_routing import IntentDecisionV4
 from platform_kernel.settings_types import ExecutableModelFieldRequirement
 from platform_kernel.workflow_execution.models import WorkflowTickResult
 
@@ -131,7 +132,9 @@ def _post_message(client, session_id, message, requested_mode="AUTO"):
     )
 
 
-def _turn(client, application, session_id, message, *, read_only=False):
+def _turn(
+    client, application, session_id, message, *, read_only=False, intent: IntentDecisionV4 | None = None,
+):
     read_only = (
         read_only
         or message == "advise"
@@ -146,8 +149,8 @@ def _turn(client, application, session_id, message, *, read_only=False):
     if route is not None:
         application.interaction.resolve_route(
             route.agent_run_id,
-            "DIALOGUE",
-            "READ_ONLY" if read_only else "EXECUTION_PROPOSAL",
+            "DIALOGUE" if intent is None else intent,
+            ("READ_ONLY" if read_only else "EXECUTION_PROPOSAL") if intent is None else None,
             provider="test",
             model="fixed-router",
             trace_id=f"route-{route.agent_run_id}",

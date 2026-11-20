@@ -1,17 +1,19 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 import json
 from pathlib import Path
 from sqlite3 import Connection, Row
-from typing import Literal, cast
+from typing import Literal, TypeVar, cast
 from uuid import uuid4
 
 from platform_protocol_contracts import canonical_json, sha256_bytes
 
-from ..access import RequestIdentity
+from ..access import RequestIdentity, resolve_identity
+from ..access.research_auth import enabled_project_identity
+from ..application.work_item_context import WorkItemContextBlock, WorkItemContextRequest
 from ..application.work_item_links import (
     linked_workflow_run,
     require_session_link_scope,
@@ -21,11 +23,15 @@ from ..application.work_item_lifecycle_facts import (
     SessionFacts,
     collect_session_facts,
     handoff_approval_rows,
+    handoff_session_rows,
     handoff_task_rows,
 )
+from ..business_capabilities import visible_business_capability_refs
 from ..database import begin_immediate, connect_database, notify_on_commit, utc_now
-from ..errors import ResourceNotFoundError, WorkItemConflictError
-from ..settings import ExecutableModelDefinition
+from ..errors import AgentRunError, ResourceNotFoundError, WorkItemConflictError
+from ..interaction.access import current_agent_turn_subject
+from ..settings import KernelSettings
+from .agent_context import context_blocks
 from .handoff import approved_actions
 from .lifecycle import (
     PublicationState,
@@ -41,6 +47,21 @@ from .references import ReferenceAuthority
 
 
 CommandKind = Literal["CREATE", "CREATE_SESSION", "LINK_SESSION", "LINK_OBJECT", "LINK_ASSET", "ARCHIVE", "UPDATE", "REVIEW"]
+_AuthorityValue = TypeVar("_AuthorityValue")
+_AGENT_AUTHORITY_TIMEOUT = 1.0
+
+
+async def _authority_read(
+    read: Awaitable[_AuthorityValue], seconds: float | None, unavailable: _AuthorityValue,
+) -> _AuthorityValue:
+    deadline = asyncio.timeout(seconds)
+    try:
+        async with deadline:
+            return await read
+    except TimeoutError:
+        if not deadline.expired():
+            raise
+        return unavailable
 
 
 @dataclass(frozen=True)
@@ -80,6 +101,8 @@ class _LifecycleRead:
     sessions: tuple[SessionFacts, ...]
     results: tuple[ResultLink, ...]
     approvals: dict[tuple[str, str], str]
+    history: tuple[Row, ...]
+    observed_at: str
 
 
 def _activity_entry(row: Row) -> dict:
@@ -99,14 +122,14 @@ def _activity_entry(row: Row) -> dict:
 
 class WorkItemOwner:
     def __init__(
-        self, database: Path, project_id: str, references: ReferenceAuthority,
-        create_session: Callable[[Connection, str], str], models: tuple[ExecutableModelDefinition, ...],
+        self, database: Path, settings: KernelSettings, references: ReferenceAuthority,
+        create_session: Callable[[Connection, str], str],
     ) -> None:
         self.database = database
-        self.project_id = project_id
+        self.project_id = settings.project_id
         self.references = references
         self._create_session = create_session
-        self._models = models
+        self._settings = settings
 
     def list_items(
         self, actor: RequestIdentity, include_archived: bool, after: str, limit: int
@@ -169,17 +192,27 @@ class WorkItemOwner:
 
     async def lifecycle(self, work_item_id: str, actor: RequestIdentity) -> dict:
         saved = await asyncio.to_thread(self._read_lifecycle, work_item_id, actor)
+        return await self._project_lifecycle(saved, actor)
+
+    async def _project_lifecycle(
+        self, saved: _LifecycleRead, actor: RequestIdentity, *, authority_timeout: float | None = None,
+    ) -> dict:
+        work_item_id = saved.item["work_item_id"]
         archived = saved.item["archived_at"] is not None
         slots = asyncio.Semaphore(8)
         runs = {run.run_id: run for facts in saved.sessions for run in delivery_workflows(facts)}
 
         async def publication(run_id: str) -> PublicationState:
             async with slots:
-                return await self.references.publication_state(run_id, actor)
+                return await _authority_read(
+                    self.references.publication_state(run_id, actor), authority_timeout, "UNAVAILABLE",
+                )
 
         async def readable(link: ResultLink) -> bool:
             async with slots:
-                return await self.references.is_visible("RESULT", link.reference, actor)
+                return await _authority_read(
+                    self.references.is_visible("RESULT", link.reference, actor), authority_timeout, False,
+                )
 
         to_observe = [
             run_id for run_id, run in runs.items()
@@ -234,7 +267,9 @@ class WorkItemOwner:
             "tracks": tracks,
         }
 
-    def _read_lifecycle(self, work_item_id: str, actor: RequestIdentity) -> _LifecycleRead:
+    def _read_lifecycle(
+        self, work_item_id: str, actor: RequestIdentity, *, history_for: str | None = None,
+    ) -> _LifecycleRead:
         with connect_database(self.database) as connection:
             connection.execute("BEGIN")
             item = self._owned(connection, work_item_id, actor)
@@ -249,7 +284,12 @@ class WorkItemOwner:
                     (work_item_id,),
                 )
             }
-        return _LifecycleRead(item, cursor, sessions, results, approvals)
+            history = (
+                handoff_session_rows(connection, work_item_id, self.project_id, actor.subject, history_for)
+                if history_for is not None else []
+            )
+            observed_at = utc_now()
+        return _LifecycleRead(item, cursor, sessions, results, approvals, tuple(history), observed_at)
 
     @staticmethod
     def _result_links(connection: Connection, work_item_id: str) -> tuple[ResultLink, ...]:
@@ -299,13 +339,17 @@ class WorkItemOwner:
 
     async def _project_references(
         self, detail: dict, stored: list[Row], actor: RequestIdentity, *, visible_only: bool = False,
+        authority_timeout: float | None = None, for_agent: bool = False,
     ) -> None:
         upstream_slots = asyncio.Semaphore(8)
 
         async def project(row: Row) -> dict:
             reference = json.loads(row["reference_json"])
             async with upstream_slots:
-                visible = await self.references.is_visible(row["kind"], reference, actor)
+                visible = await _authority_read(
+                    self.references.is_visible(row["kind"], reference, actor, for_agent=for_agent),
+                    authority_timeout, False,
+                )
             return {
                 "link_id": row["link_id"],
                 "linked_at": row["linked_at"],
@@ -335,11 +379,103 @@ class WorkItemOwner:
         if context is None:
             return None
         await self._project_references(context, stored, actor, visible_only=True)
-        context["approved_actions"] = approved_actions(approvals, context["assets"], self._models)
+        context["approved_actions"] = approved_actions(approvals, context["assets"], self._settings.models)
         return context
 
+    async def agent_context(
+        self, request: WorkItemContextRequest,
+    ) -> tuple[WorkItemContextBlock, ...]:
+        actor = await asyncio.to_thread(self._agent_actor, request)
+        if actor is None:
+            return ()
+        try:
+            blocks = await self._project_agent_context(request, actor)
+        except ResourceNotFoundError:
+            return ()
+        if blocks and await asyncio.to_thread(self._agent_actor, request) == actor:
+            return blocks
+        return ()
+
+    def _agent_actor(self, request: WorkItemContextRequest) -> RequestIdentity | None:
+        if request.project_id != self.project_id:
+            return None
+        subject = current_agent_turn_subject(
+            self.database, request.project_id, request.session_id, request.agent_run_id,
+            request.goal_revision,
+        )
+        if subject is None:
+            return None
+        actor = (
+            enabled_project_identity(self.database, request.project_id, subject)
+            if self._settings.research_auth_required else resolve_identity({}, self._settings)
+        )
+        if actor is None or actor.subject != subject or not actor.roles.intersection({"admin", "researcher"}):
+            return None
+        return actor
+
+    async def require_agent_selection(self, request: WorkItemContextRequest) -> None:
+        actor = await asyncio.to_thread(self._agent_actor, request)
+        if actor is None or self._agent_selection(request, actor) is None:
+            raise AgentRunError("BUSINESS_CAPABILITY_SELECTION_STALE")
+
+    def _agent_selection(self, request: WorkItemContextRequest, actor: RequestIdentity) -> dict | None:
+        return visible_business_capability_refs(
+            self._settings.business_capabilities, request.selection, actor.roles,
+        )
+
+    async def _project_agent_context(
+        self, request: WorkItemContextRequest, actor: RequestIdentity,
+    ) -> tuple[WorkItemContextBlock, ...]:
+        context, stored, _ = await asyncio.to_thread(
+            self._read_session_context, request.session_id, actor,
+            reference_limit=8 if request.include_resources else 0, handoff=False,
+        )
+        if context is None or context["work_item"]["status"] == "ARCHIVED":
+            return ()
+        item = context["work_item"]
+        saved = await asyncio.to_thread(
+            self._read_lifecycle, item["work_item_id"], actor,
+            history_for=request.session_id if request.include_history else None,
+        )
+        if saved.item["revision"] != item["revision"]:
+            return ()
+        facts = next((entry for entry in saved.sessions if entry.session_id == request.session_id), None)
+        if facts is None:
+            return ()
+        lifecycle, _ = await asyncio.gather(
+            self._project_lifecycle(saved, actor, authority_timeout=_AGENT_AUTHORITY_TIMEOUT),
+            self._project_references(
+                context, stored, actor, visible_only=True, authority_timeout=_AGENT_AUTHORITY_TIMEOUT,
+                for_agent=True,
+            ),
+        )
+        still_current, _, _ = await asyncio.to_thread(
+            self._read_session_context, request.session_id, actor, reference_limit=0, handoff=False,
+        )
+        if still_current is None or still_current["work_item"] != item:
+            return ()
+        history = ()
+        if saved.history:
+            latest = await asyncio.to_thread(self._agent_history, request, item["work_item_id"], actor)
+            fact_revisions = {facts.session_id: facts.goal_revision for facts in saved.sessions}
+            history = tuple(
+                dict(row) | {"observed_at": saved.observed_at, "business_goal_revision": fact_revisions[row["session_id"]]}
+                for row in saved.history if tuple(row) in latest and row["session_id"] in fact_revisions
+            )
+        return context_blocks(request, actor, context, lifecycle, facts, history, self._agent_selection(request, actor))
+
+    def _agent_history(
+        self, request: WorkItemContextRequest, work_item_id: str, actor: RequestIdentity,
+    ) -> set[tuple]:
+        with connect_database(self.database) as connection:
+            return {
+                tuple(row) for row in handoff_session_rows(
+                    connection, work_item_id, request.project_id, actor.subject, request.session_id,
+                )
+            }
+
     def _read_session_context(
-        self, session_id: str, actor: RequestIdentity,
+        self, session_id: str, actor: RequestIdentity, *, reference_limit: int = 24, handoff: bool = True,
     ) -> tuple[dict | None, list[Row], list[Row]]:
         with connect_database(self.database) as connection:
             connection.execute("BEGIN")
@@ -362,9 +498,11 @@ class WorkItemOwner:
             stored = connection.execute(
                 """SELECT kind, link_id, reference_json, linked_at FROM work_item_references
                    WHERE work_item_id = ? AND kind IN ('OBJECT','DATA','KNOWLEDGE','RESULT')
-                   ORDER BY linked_at DESC, link_id LIMIT 24""",
-                (work_item_id,),
-            ).fetchall()
+                   ORDER BY linked_at DESC, link_id LIMIT ?""",
+                (work_item_id, reference_limit),
+            ).fetchall() if reference_limit else []
+            if not handoff:
+                return context, stored, []
             scope = (work_item_id, self.project_id, actor.subject, session_id)
             context["open_tasks"] = [dict(row) for row in handoff_task_rows(connection, *scope)]
             approvals = handoff_approval_rows(connection, *scope)

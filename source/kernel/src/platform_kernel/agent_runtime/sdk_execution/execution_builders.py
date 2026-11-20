@@ -23,7 +23,7 @@ from ..context_policy import (
 from ..memory import (
     ExecutionContextV1,
 )
-from ..mode import ModeResolutionError, resolve_mode_capabilities
+from ..mode import ModeResolutionError, allows_task_update, resolve_mode_capabilities
 from ..models import SubmittedReplyV6
 from ..prompts import build_draft_instructions, build_instructions
 from ..tooling import build_agent_tools
@@ -53,6 +53,7 @@ def _build_agent(
         raise SDKExecutionError(str(error), upstream=False, usage=_ZERO_USAGE) from error
     mode = capabilities.mode
     models = capabilities.models
+    task_updates_allowed = allows_task_update(capabilities, request_context)
     observations = dependencies.settings.observation_tools
     composition_settings = (
         dependencies.settings
@@ -101,9 +102,10 @@ plus 2–3 mutually exclusive natural-language interaction_options.
             execution_allowed=capabilities.allow_model_tools,
             operator_proposal=composition_settings is not None,
             operator_discovery=capabilities.allow_operator_catalog,
+            task_updates_allowed=task_updates_allowed,
         )
     selection = request_context.get("workflow_selection") if request_context else None
-    if selection is not None:
+    if selection is not None and not request_context.get("finalization"):
         business = selection.get("business_capability")
         if business is not None:
             mode_instructions += (
@@ -154,7 +156,7 @@ plus 2–3 mutually exclusive natural-language interaction_options.
             "Use these exact identities; do not derive object metadata using the message text.\n"
             + json.dumps(input_references, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
         )
-    if not capabilities.clarification_only and mode != "WORKFLOW_DRAFT":
+    if mode != "WORKFLOW_DRAFT" and task_updates_allowed:
         mode_instructions += (
             "\nFor an explicit deliverable, use update_task to preserve user goals, "
             "requirements, steps and evidence across Turns. Casual questions need no task. "

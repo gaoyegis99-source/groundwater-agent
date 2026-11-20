@@ -23,7 +23,9 @@ class _ModelStartCaptureMixin:
         system_prompt: str | None,
         input_items: list[TResponseInputItem],
     ) -> None:
-        self.active_input_items = list(input_items)
+        # Repair may resend the conversation. The WorkItem filter must reload its
+        # own packet, so do not promote the filtered message to repair history.
+        self.active_input_items = [item for item in input_items if item is not self.work_item_input]
         if self.context is None:
             self.context = context
             self.start = ExecutionUsage(

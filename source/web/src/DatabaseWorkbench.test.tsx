@@ -1,9 +1,17 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import { DatabaseWorkbench } from './DatabaseWorkbench';
+import { appendResourceItems } from './resource-item';
 import { dataDetail, dataRef } from './test-fixtures';
 
 const json = (value: unknown) => new Response(JSON.stringify(value), { status: 200, headers: { 'Content-Type': 'application/json' } });
+
+it('keeps one attachment per Data version and object when applying exact candidates', () => {
+  const item = { ...dataRef(), name: '当前语义', familyId: 'dataset-1' };
+  const old = { ...item, semanticId: 'legacy', name: '历史语义' };
+  const other = { ...item, objectId: 'another-object' };
+  expect(appendResourceItems([old, other], [item])).toEqual([other, item]);
+});
 
 it('shows persisted field statistics, bounded samples and the declared unit', async () => {
   const detail = dataDetail({
@@ -105,6 +113,84 @@ it('closes with Escape and traps focus inside the database dialog', async () => 
   await waitFor(() => expect(screen.getByLabelText('搜索')).toHaveFocus());
   fireEvent.keyDown(dialog, { key: 'Escape' });
   expect(close).toHaveBeenCalledOnce();
+});
+
+it('does not render cross-project metadata or enable association in the WorkItem inspector', async () => {
+  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.endsWith('/data/versions/version-1')) return json(dataDetail({
+      project: 'other', title: '不应显示的资料', semantics: { description: '不应显示的描述' },
+    }));
+    return json({ items: [], nextCursor: null, matchBasis: 'catalog' });
+  }));
+  render(<DatabaseWorkbench project="demo" initialId="version-1" inspectMetadata onClose={vi.fn()} onChoose={vi.fn()} />);
+  expect(await screen.findByText('所选版本读取失败')).toBeVisible();
+  expect(screen.queryByText('不应显示的资料')).not.toBeInTheDocument();
+  expect(screen.queryByText('不应显示的描述')).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: '附加精确版本' })).not.toBeInTheDocument();
+});
+
+it('requires a deliberate move from historical semantics to a computable exact version', async () => {
+  const pinned = dataRef({ semanticId: 'historical' });
+  const source = dataDetail({ semanticId: 'head', semantics: { description: '当前水位口径' } });
+  vi.stubGlobal('fetch', vi.fn(async (request: RequestInfo | URL) => {
+    const path = new URL(String(request), 'http://localhost').pathname;
+    if (path.endsWith('/semantics/historical')) return json({
+      versionId: pinned.versionId, semanticId: 'historical', createdAt: source.createdAt, actor: {},
+      body: { description: '历史水位口径' },
+    });
+    if (path.endsWith('/versions/version-1')) return json(source);
+    return json({ items: [], nextCursor: null, ...(path.endsWith('/datasets') ? { matchBasis: 'catalog' } : {}) });
+  }));
+  const attach = vi.fn();
+  render(<div className="work-item-shell"><button type="button">外部操作</button><section>
+    <button type="button">旁边操作</button>
+    <DatabaseWorkbench project="demo" initialId={pinned.versionId} reference={pinned} inspectMetadata
+      inputRole="输入资料" onClose={vi.fn()} onAttach={attach} />
+  </section></div>);
+  expect(await screen.findByText('历史水位口径')).toBeVisible();
+  expect(screen.getByRole('button', { name: '绑定到输入资料' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: '外部操作', hidden: true }).inert).toBe(true);
+  expect(screen.getByRole('button', { name: '旁边操作', hidden: true }).inert).toBe(true);
+  expect(attach).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: '核对此版本的当前语义和原始对象' }));
+  expect(await screen.findByText('当前水位口径')).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: '绑定到输入资料' }));
+  expect(attach).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+    versionId: pinned.versionId, semanticId: 'head', objectId: pinned.objectId, checksum: pinned.checksum,
+  }));
+});
+
+it('selects the raw object when explicitly recovering from a linked query object of the same format', async () => {
+  const raw = dataDetail().objects[0];
+  const query = { ...raw, role: 'query' as const, objectId: 'query-object', checksum: `sha256:${'b'.repeat(64)}` };
+  const queryRef = dataRef({ objectId: query.objectId, checksum: query.checksum });
+  const source = dataDetail({ objects: [query, raw], title: '带查询对象的资料' });
+  vi.stubGlobal('fetch', vi.fn(async (request: RequestInfo | URL) => {
+    const path = new URL(String(request), 'http://localhost').pathname;
+    if (path.endsWith('/work-item')) return json({
+      context: {
+        sessionId: 'session-1', linkedAt: source.createdAt, workItem: {
+          workItemId: 'work-1', projectId: 'demo', ownerSubject: 'subject', title: 'Workspace',
+          description: null, status: 'ACTIVE', revision: 1, createdAt: source.createdAt, updatedAt: source.createdAt, archivedAt: null,
+        },
+        objects: [], openTasks: [], approvedActions: [],
+        assets: [{ linkId: 'link-1', linkedAt: source.createdAt, state: 'AVAILABLE', reference: { kind: 'DATA', dataRef: queryRef } }],
+      },
+    });
+    if (path.endsWith('/versions/version-1')) return json(source);
+    return json({ items: [], nextCursor: null, ...(path.endsWith('/datasets') ? { matchBasis: 'catalog' } : {}) });
+  }));
+  const attach = vi.fn();
+  render(<DatabaseWorkbench project="demo" linkedWork={{ sessionId: 'session-1', subject: 'subject' }}
+    allowedFormats={['json']} inputRole="输入资料" onClose={vi.fn()} onAttach={attach} />);
+  fireEvent.click(await screen.findByRole('button', { name: /关联资料.*version-1/ }));
+  const bind = await screen.findByRole('button', { name: '绑定到输入资料' });
+  expect(bind).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: '核对此版本的当前语义和原始对象' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: '绑定到输入资料' })).toBeEnabled());
+  fireEvent.click(screen.getByRole('button', { name: '绑定到输入资料' }));
+  expect(attach).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ objectId: raw.objectId, checksum: raw.checksum }));
 });
 
 it('compares immutable identity, objects, fields and complete semantics without reading content', async () => {

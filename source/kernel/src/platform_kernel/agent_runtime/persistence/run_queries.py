@@ -175,7 +175,8 @@ def _project_current(
 def load_request_context(database: Path, agent_run_id: str) -> dict:
     with connect_database(database) as connection:
         row = connection.execute(
-            """SELECT a.*, COALESCE(d.message, m.message) AS draft_message,
+            """SELECT a.*, m.request_id, m.semantic_intent, m.task_action,
+                      m.message AS current_message, COALESCE(d.message, m.message) AS draft_message,
                       COALESCE(m.clarification_required, 0)
                       AS clarification_required,
                       COALESCE(m.input_references_json, '[]') AS input_references_json,

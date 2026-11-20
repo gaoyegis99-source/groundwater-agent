@@ -12,7 +12,7 @@ import { RoutingDebug } from './RoutingDetails';
 import { ConfirmationCard } from './ChatCards';
 import { WorkflowPreparation } from './WorkflowPreparation';
 import { matchesModel, modelIdentity, workflowFileKey, type WorkflowModel, type WorkflowSelection } from './workflow-selection';
-import { resourceItemFromDetail } from './resource-item';
+import { appendResourceItems, dataObjectKey, resourceItemFromDetail } from './resource-item';
 import { UploadDialog } from './UploadDialog';
 import { ErrorNotice } from './ErrorNotice';
 import { Icon } from './Icon';
@@ -80,7 +80,7 @@ export default function App() {
   const {
     drawer, closeDrawer, openDatabase, openKnowledge,
     openCapabilities, openBusinessCapability, openReadiness,
-  } = useDrawerController();
+  } = useDrawerController(JSON.stringify([storageScope, activeId, !!capabilityError, !!workRoute]));
   const businessDetail = drawer?.kind === 'business-capability'
     ? businessCapabilities.find(({ ref }) => ref.id === drawer.id && ref.version === drawer.version) : undefined;
   const businessDetailUnavailable = drawer?.kind === 'business-capability' && !businessDetail;
@@ -302,12 +302,17 @@ export default function App() {
     openDatabase({ formats });
   }
   function attach(resource: ResourceItem) {
-    if (currentSessionId() !== activeId || !canResearch) return;
+    if (currentSessionId() !== activeId || !canResearch || capabilityError) return;
     currentVersionRead.current?.abort();
     setCurrentVersionError(null);
-    setAttachments(previous => [...previous.filter(item => workflowFileKey(item) !== workflowFileKey(resource)), resource]);
-    if (workflow && activeBinding) {
-      setWorkflow({ ...workflow, bindings: { ...workflow.bindings, [activeBinding.name]: workflowFileKey(resource) } });
+    const key = workflowFileKey(resource);
+    const sameObject = (item: ResourceItem) => dataObjectKey(item) === dataObjectKey(resource);
+    const replaced = new Set(attachments.filter(item => sameObject(item) && workflowFileKey(item) !== key).map(workflowFileKey));
+    setAttachments(previous => appendResourceItems(previous, [resource]));
+    if (workflow && (replaced.size || activeBinding)) {
+      const bindings = Object.fromEntries(Object.entries(workflow.bindings).filter(([, previous]) => !replaced.has(previous)));
+      if (activeBinding) bindings[activeBinding.name] = key;
+      setWorkflow({ ...workflow, bindings });
       setBindingTarget(undefined);
     }
     setFile(null);
@@ -599,11 +604,17 @@ export default function App() {
     selection={workflow} model={selectedModel || undefined} attachments={attachments} prepared={preparationForSelection || undefined}
     project={project} expanded={workspace.routeTab === 'inputs'} onResource={openInputResource}
     onKnowledge={configuredServices.has('knowledge-next') ? showKnowledge : undefined}
-    onApplyCandidates={configuredServices.has('data') && canResearch ? candidates => {
-      const selected = Object.values(candidates);
-      setAttachments(previous => [...new Map([...previous, ...selected].map(item => [workflowFileKey(item), item])).values()]);
+    onApplyCandidates={configuredServices.has('data') && canResearch && !capabilityError ? candidates => {
+      const bound = new Set(Object.values(workflow.bindings));
+      const apply = Object.entries(candidates).filter(([, candidate]) =>
+        !attachments.some(item => dataObjectKey(item) === dataObjectKey(candidate)
+          && workflowFileKey(item) !== workflowFileKey(candidate) && bound.has(workflowFileKey(item))));
+      if (apply.length < Object.keys(candidates).length) {
+        setSessionFeedback({ scope: storageScope, text: '已保留绑定中的语义修订。请逐项核对有冲突的候选资料。' });
+      }
+      setAttachments(previous => appendResourceItems(previous, apply.map(([, item]) => item)));
       setWorkflow({ ...workflow, bindings: { ...workflow.bindings, ...Object.fromEntries(
-        Object.entries(candidates).map(([name, item]) => [name, workflowFileKey(item)]),
+        apply.map(([name, item]) => [name, workflowFileKey(item)]),
       ) } });
     } : undefined}
     onChange={value => { setBindingTarget(undefined); setWorkflow(value); }}
@@ -614,6 +625,7 @@ export default function App() {
   if (workRoute) return <Suspense fallback={<main aria-busy="true"><Loading>正在打开业务工作…</Loading></main>}>
     <WorkItemWorkspace route={workRoute} scope={storageScope} project={project} subject={capabilities?.currentUser.subject ?? ''}
       mark={mark} brand={ui.brand.productName} signOut={signOut} permitted={showWorkItems} identityError={!!capabilityError}
+      dataEnabled={configuredServices.has('data')} knowledgeEnabled={configuredServices.has('knowledge-next')}
       retryIdentity={() => void connectProject()} onSessionsChange={() => void loadSessions()} />
   </Suspense>;
   const sessionContext = activeId && <div className="session-context">
@@ -695,7 +707,13 @@ export default function App() {
       {showWorkItems && activeId && <Suspense fallback={null}>
         <SessionWorkContext key={`${storageScope}/${activeId}/${returnWorkItem ?? ''}`} sessionId={activeId}
           project={project} subject={capabilities?.currentUser.subject ?? ''} openOnEntry={!!returnWorkItem}
-          onOpenData={reference => openInputResource(reference.versionId, reference)} />
+          draftInputs={attachments}
+          prepared={snapshotCurrent && preparation?.freshForCurrentTurn ? preparation.entries : undefined}
+          confirmation={snapshotCurrent && latestConfirmation?.goalRevision === lastTurn?.goalRevision ? latestConfirmation : undefined}
+          onOpenData={reference => {
+            rememberDetailOrigin();
+            openDatabase({ id: reference.versionId, reference, inspectMetadata: true });
+          }} />
       </Suspense>}
       {activeHistory && connection === 'disconnected' && <div className="conversation-offline" role="status">
         <span>连接中断，显示最近快照 <time dateTime={activeHistory.snapshotAt}>{new Date(activeHistory.snapshotAt).toLocaleString('zh-CN', { dateStyle: 'short', timeStyle: 'short' })}</time></span>
@@ -832,10 +850,12 @@ export default function App() {
       }} onRemovePending={reference => setAttachments(previous => previous.filter(item => workflowFileKey(item) !== workflowFileKey(reference)))} onEdit={id => workspace.editConfirmation(id)} onResolveParameter={resolvePreparationParameter} onEditClose={workspace.closeConfirmation} onRevision={(confirmation, actions) => void reviseConfirmation(confirmation, actions)} onRecover={id => void recoverWorkflow(id)} /></Suspense>}
     <button className="drawer-shade" type="button" tabIndex={-1} aria-hidden="true" data-overlay-dismiss
       data-open={drawerShadeVisible} disabled={!drawerShadeVisible} onClick={closeDrawer} />
-    {drawer?.kind === 'database' && <Suspense fallback={<p className="muted drawer-loading">正在加载数据库…</p>}><DatabaseWorkbench key={`database:${drawer.id ?? ''}:${drawer.reference?.semanticId ?? ''}:${drawer.reference?.objectId ?? ''}:${drawer.compare ? 'compare' : ''}:${drawer.formats?.join(',') ?? ''}`}
+    {drawer?.kind === 'database' && <Suspense fallback={<p className="muted drawer-loading">正在加载数据库…</p>}><DatabaseWorkbench key={`database:${storageScope}:${drawer.id ?? ''}:${drawer.reference?.semanticId ?? ''}:${drawer.reference?.objectId ?? ''}:${drawer.compare ? 'compare' : ''}:${drawer.formats?.join(',') ?? ''}`}
       project={project} initialId={drawer.id} reference={drawer.reference} compare={drawer.compare} allowedFormats={drawer.formats}
+      inspectMetadata={drawer.inspectMetadata}
+      linkedWork={showWorkItems && activeBinding && capabilities ? { sessionId: activeId, subject: capabilities.currentUser.subject } : undefined}
       inputRole={activeBinding ? ui.models[activeBinding.modelId]?.inputs[activeBinding.name]?.label : undefined}
-      onClose={() => { setBindingTarget(undefined); closeDrawer(); }} onAttach={canResearch ? attach : undefined} /></Suspense>}
+      onClose={() => { setBindingTarget(undefined); closeDrawer(); }} onAttach={canResearch && !capabilityError ? attach : undefined} /></Suspense>}
     {drawer?.kind === 'knowledge' && <Suspense fallback={<p className="muted drawer-loading">正在加载知识库…</p>}><KnowledgeDrawer key={`knowledge:${drawer.reference?.versionId ?? ''}:${drawer.reference?.unitId ?? ''}`} project={project} reference={drawer.reference} onClose={closeDrawer} /></Suspense>}
     {drawer?.kind === 'capabilities' && capabilities && <Suspense fallback={<p className="muted drawer-loading">正在加载能力目录…</p>}>
       <CapabilityDrawer capabilities={capabilities} businessCapabilities={businessCapabilities} examples={examples}
