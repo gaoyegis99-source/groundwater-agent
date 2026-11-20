@@ -36,11 +36,12 @@ Data 仅在知识包带绑定时需要。可设置 `KNOWLEDGE_DATA_URL` 为容�
 
 完整输入约束由 `KnowledgePackageV1` 的 OpenAPI Schema 定义；最小示例见 [example.json](examples/example.json)。页面直接上传这个格式。每包至多 128 篇文档、16 MiB；每篇至多 64 个单元、16 个来源、32 个 Data 绑定；每单元至多 4,000 字符。非法输入返回字段位置，不部分入库。
 
-[地下水水源地专业知识](docs/groundwater-professional-knowledge.md)整理了53条概念、机理与方法知识，
-以及12类自然语言意图表达，供解释、方法选择和任务理解使用。
-[导入知识包](examples/groundwater-professional-knowledge.v1.json)使用本服务现有格式，
+[地下水水源地专业知识](docs/groundwater-professional-knowledge.md)包含53条专业知识，
+按解释、应用与概念辨析组织；意图理解分为9类主任务、2项上下文修饰规则和1项歧义处理规则。
+[导入知识包](examples/groundwater-professional-knowledge.v1.json)包含65篇文档，内容版本为 `2.1.0`，
+使用本服务现有格式并沿用稳定知识编号。别名仅表示同义名称，常见问法保留在正文中。
 默认项目为 `local-data`；首次上传前核对目标项目，更新时按 preflight 返回值设置版本前置条件。
-正文不附加项目汇报、原文摘录或审计记录；来源元数据仅保留在导入结构中。
+正文为整理后的专业知识；来源元数据仅保留在导入结构中。
 这些意图条目是检索辅助内容，不改变 Kernel 路由与执行流程。
 
 装配启动时的领域目录 bootstrap 先调用 preflight，对语义内容完全一致的条目直接返回
