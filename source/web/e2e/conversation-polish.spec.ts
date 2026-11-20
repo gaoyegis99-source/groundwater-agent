@@ -36,6 +36,7 @@ test('the conversation can select every installed workflow and send the selected
     if (pathname.endsWith('/messages')) return route.fulfill({ json: historyFixture({ sessionId }) });
     if (pathname.endsWith('/results')) return route.fulfill({ json: sessionResultsFixture([], { sessionId }) });
     if (pathname.endsWith('/events') || pathname.endsWith('/preview')) return route.fulfill({ contentType: 'text/event-stream', body: ': connected\n\n' });
+    if (/^\/api\/v12\/sessions\/[^/]+\/work-item$/.test(pathname) && route.request().method() === 'GET') return route.fulfill({ json: { context: null } });
     throw new Error(`Unexpected workflow selection request: ${pathname}`);
   });
   await page.goto(`/#/sessions/${sessionId}`);
@@ -108,6 +109,7 @@ test('archived sessions and operation feedback remain visible on desktop', async
     if (url.pathname.endsWith('/messages')) return route.fulfill({ json: historyFixture() });
     if (url.pathname.endsWith('/results')) return route.fulfill({ json: { items: [], nextCursor: null } });
     if (url.pathname.endsWith('/events') || url.pathname.endsWith('/preview')) return route.fulfill({ contentType: 'text/event-stream', body: ': connected\n\n' });
+    if (/^\/api\/v12\/sessions\/[^/]+\/work-item$/.test(url.pathname) && route.request().method() === 'GET') return route.fulfill({ json: { context: null } });
     throw new Error(`Unexpected conversation request: ${url.pathname}`);
   });
   await page.goto('/#/sessions/session-1');
@@ -259,6 +261,7 @@ test('UI-03A directory supports Session operations and navigation at desktop wid
     }
     if (path.endsWith('/results')) return route.fulfill({ json: sessionResultsFixture([], { sessionId: id }) });
     if (path.endsWith('/events') || path.endsWith('/preview')) return route.fulfill({ contentType: 'text/event-stream', body: ': connected\n\n' });
+    if (/^\/api\/v12\/sessions\/[^/]+\/work-item$/.test(path) && route.request().method() === 'GET') return route.fulfill({ json: { context: null } });
     throw new Error(`Unexpected directory request: ${path}`);
   });
 
@@ -353,6 +356,7 @@ test('a published inversion weight starts a pinned sampling draft without submit
       format: weights.format, mediaType: weights.mediaType, role: 'raw',
     }] }) });
     if (pathname.endsWith('/events') || pathname.endsWith('/preview')) return route.fulfill({ contentType: 'text/event-stream', body: ': connected\n\n' });
+    if (/^\/api\/v12\/sessions\/[^/]+\/work-item$/.test(pathname) && route.request().method() === 'GET') return route.fulfill({ json: { context: null } });
     throw new Error(`Unexpected continuation request: ${pathname}`);
   });
   await page.goto('/#/sessions/session-1');

@@ -127,8 +127,9 @@ it.each(['viewer', 'admin', 'missing-service', 'stale-model', 'stale-workflow'])
   fireEvent.click(screen.getByText('更多场景'));
   expect(screen.queryByRole('button', { name: /发现趋势/ })).not.toBeInTheDocument();
 
-  fireEvent.click(screen.getByRole('button', { name: '能力目录' }));
-  const catalog = await screen.findByRole('dialog', { name: '能力目录' });
+  fireEvent.click(screen.getByRole('link', { name: '能力目录' }));
+  const catalog = await screen.findByRole('main', { name: '能力目录' });
+  await within(catalog).findByRole('searchbox', { name: '搜索工作流' });
   expect(within(catalog).queryByRole('button', { name: new RegExp(title) })).not.toBeInTheDocument();
   expect(within(catalog).queryByRole('button', { name: '发现趋势' })).not.toBeInTheDocument();
 });
@@ -139,9 +140,9 @@ it('offers a role-eligible advanced capability through the catalog without featu
 
   await screen.findByTitle('项目：demo');
   expect(screen.queryByRole('button', { name: new RegExp(title) })).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: '能力目录' }));
-  const catalog = await screen.findByRole('dialog', { name: '能力目录' });
-  fireEvent.click(within(catalog).getByRole('button', { name: new RegExp(title) }));
+  fireEvent.click(screen.getByRole('link', { name: '能力目录' }));
+  const catalog = await screen.findByRole('main', { name: '能力目录' });
+  fireEvent.click(await within(catalog).findByRole('button', { name: new RegExp(title) }));
   expect(await screen.findByRole('dialog', { name: title })).toBeVisible();
 });
 

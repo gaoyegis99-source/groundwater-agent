@@ -65,8 +65,14 @@ def doctor() -> dict[str, Any]:
         "docker": _version(["docker", "--version"]),
         "compose": _version(["docker", "compose", "version"]),
     }
-    residue = workspace_cleanup.workspace_clean_plan(PROJECT_ROOT, SOURCE_ROOT)
     issues = []
+    residue: dict[str, Any] = {"candidateCount": None, "files": None, "bytes": None}
+    try:
+        residue = workspace_cleanup.workspace_clean_plan(PROJECT_ROOT, SOURCE_ROOT)
+    except FileNotFoundError:
+        issues.append("WORKSPACE_RESIDUE_CHANGED_DURING_SCAN")
+    except workspace_cleanup.WorkspaceCleanupRefusal as exc:
+        issues.append(str(exc))
     if (PROJECT_ROOT / "runtime").exists():
         issues.append("LEGACY_RUNTIME_PRESENT")
     if (SOURCE_ROOT / ".env").exists():

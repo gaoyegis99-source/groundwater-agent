@@ -13,7 +13,7 @@ async function chooseFormat(workbench: Locator, format: string) {
 
 async function openWorkbench(page: Page) {
   await page.goto('/');
-  await page.getByRole('button', { name: '数据库' }).click();
+  await page.getByRole('button', { name: '选择已有资料' }).click();
   return page.getByTestId('database-workbench');
 }
 

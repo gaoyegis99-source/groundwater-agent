@@ -161,7 +161,7 @@ details[open] > summary { margin-bottom: 8px; }
 /* Start from a task; examples remain a fill-only action. */
 .welcome { width: 100%; max-width: 830px; margin: 0 auto; padding: clamp(62px, 13vh, 126px) 34px 28px; text-align: left; }
 .eyebrow { display: block; margin-bottom: 8px; font-size: 12px; font-weight: 600; letter-spacing: .12em; color: #798391; }
-.welcome h1 { margin: 0 0 8px; font-size: clamp(26px, 2.4vw, 32px); font-weight: 680; letter-spacing: -.7px; }
+.welcome > :is(h1, h2) { margin: 0 0 8px; font-size: clamp(26px, 2.4vw, 32px); font-weight: 680; letter-spacing: -.7px; }
 .usage-guide { margin: 14px 0 0; color: var(--muted); }
 .usage-guide p { max-width: 720px; font-size: 12px; }
 .example-group { margin-top: 32px; }

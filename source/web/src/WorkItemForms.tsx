@@ -3,6 +3,7 @@ import { browserStorageAvailable, readPendingWorkItemCreate, rememberWorkItemCre
 import { newRequestId } from './message-routing';
 import { useWorkItemCommand } from './use-work-item-command';
 import { archiveWorkItem, createWorkItem, updateWorkItem } from './work-item-api';
+import { workItemCommandCache } from './work-item-command-cache';
 import { workItemHref } from './work-item-route';
 import { workItemErrorMessage } from './work-item-presentation';
 import type { WorkItemChangeCommand, WorkItemCreateCommand, WorkItemSummary, WorkItemUpdateCommand } from './types';
@@ -63,28 +64,31 @@ export function WorkItemCreate({ scope, project }: { scope: string; project: str
   </form>;
 }
 
-export function WorkItemArchive({ item, disabled, onRefresh, compact }: {
+export function WorkItemArchive({ item, scope, disabled, onRefresh, compact }: {
   item: WorkItemSummary;
+  scope: string;
   disabled?: boolean;
   onRefresh: () => void;
   compact?: boolean;
 }) {
+  const cache = workItemCommandCache<WorkItemChangeCommand>(scope, item, 'archive', value => Object.keys(value).length === 3);
+  const [restored] = useState(cache.read);
   const [confirming, setConfirming] = useState(false);
   const confirmButton = useRef<HTMLButtonElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const command = useWorkItemCommand<WorkItemChangeCommand>(
     (value, signal) => archiveWorkItem(item.workItemId, value, signal),
     () => { setConfirming(false); onRefresh(); },
-    { onRejected: onRefresh },
+    { restored, remember: cache.remember, onRejected: onRefresh },
   );
   useEffect(() => { if (confirming) confirmButton.current?.focus(); }, [confirming]);
-  if (item.status === 'ARCHIVED' && !command.unsettled) return null;
+  if (item.status === 'ARCHIVED' && !command.unsettled) return <WorkItemIssue error={command.error} />;
 
   return <div className="work-item-command">
     <WorkItemIssue error={command.error} />
     {confirming || command.unsettled ? <div className="work-item-actions">
-      <span>{command.unsettled && !command.busy ? '归档结果待确认' : '确认归档这项工作？'}</span>
-      <button type="button" ref={confirmButton} disabled={command.busy || (disabled && !command.unsettled)}
+      <span role="status">{command.unsettled && !command.busy ? '归档结果待确认' : '确认归档这项工作？'}</span>
+      <button type="button" ref={confirmButton} disabled={command.busy || disabled}
         onClick={() => void command.submit(command.unsettled ?? {
           projectId: item.projectId, expectedRevision: item.revision, requestId: newRequestId(),
         })}>{command.busy ? '正在归档…' : command.unsettled ? '重试归档' : '确认归档'}</button>
@@ -97,21 +101,28 @@ export function WorkItemArchive({ item, disabled, onRefresh, compact }: {
   </div>;
 }
 
-export function WorkItemEdit({ item, disabled, onRefresh }: {
+export function WorkItemEdit({ item, scope, disabled, onRefresh }: {
   item: WorkItemSummary;
+  scope: string;
   disabled?: boolean;
   onRefresh: () => void;
 }) {
-  const [draft, setDraft] = useState<(Draft & { revision: number }) | null>(null);
+  const cache = workItemCommandCache<WorkItemUpdateCommand>(scope, item, 'edit', value => Object.keys(value).length === 5
+    && typeof value.title === 'string' && value.title.length <= 120 && usableTitle(value.title)
+    && (value.description === null || (typeof value.description === 'string' && value.description.length <= 2000)));
+  const [restored] = useState(cache.read);
+  const [draft, setDraft] = useState<(Draft & { revision: number }) | null>(() => restored ? {
+    title: restored.title ?? '', description: restored.description ?? '', revision: restored.expectedRevision,
+  } : null);
   const editor = useRef<HTMLFormElement>(null);
   const command = useWorkItemCommand<WorkItemUpdateCommand>(
     (value, signal) => updateWorkItem(item.workItemId, value, signal),
     () => { setDraft(null); onRefresh(); },
-    { onRejected: onRefresh },
+    { restored, remember: cache.remember, onRejected: onRefresh },
   );
-  const editing = draft !== null;
+  const editing = draft !== null && !command.unsettled;
   useEffect(() => { if (editing) editor.current?.querySelector('input')?.focus(); }, [editing]);
-  if (item.status === 'ARCHIVED' && !command.unsettled) return null;
+  if (item.status === 'ARCHIVED' && !command.unsettled) return <WorkItemIssue error={command.error} />;
   if (!draft) return <button type="button" disabled={disabled} onClick={() => {
     command.clearError();
     setDraft({ title: item.title, description: item.description ?? '', revision: item.revision });
@@ -123,6 +134,7 @@ export function WorkItemEdit({ item, disabled, onRefresh }: {
   const older = draft.revision !== item.revision;
   return <form ref={editor} className="work-item-form" onSubmit={event => {
     event.preventDefault();
+    if (disabled || command.busy) return;
     if (command.unsettled) { void command.submit(command.unsettled); return; }
     if (older || !changed || !usableTitle(title)) return;
     void command.submit({
@@ -131,9 +143,10 @@ export function WorkItemEdit({ item, disabled, onRefresh }: {
   }}>
     <WorkItemFields draft={draft} change={value => setDraft({ ...value, revision: draft.revision })} disabled={!!command.unsettled} />
     <WorkItemIssue error={command.error} />
+    {command.unsettled && !command.busy && <p role="status">编辑回执待核对。</p>}
     {older && !command.unsettled && <p role="status">工作有新修订。请重新打开编辑器核对内容。</p>}
     <div className="work-item-actions">
-      <button type="submit" disabled={command.busy || (!command.unsettled && (disabled || older || !changed || !usableTitle(title)))}>
+      <button type="submit" disabled={command.busy || disabled || (!command.unsettled && (older || !changed || !usableTitle(title)))}>
         {command.busy ? '正在保存…' : command.unsettled ? '重试保存' : '保存修改'}
       </button>
       {!command.unsettled && <button type="button" onClick={() => setDraft(null)}>取消编辑</button>}

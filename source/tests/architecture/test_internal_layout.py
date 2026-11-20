@@ -28,6 +28,21 @@ def test_internal_layout_contract_passes() -> None:
     assert "INTERNAL_LAYOUT_CHECK_OK" in result.stdout
 
 
+def test_reference_validation_reads_active_docs_and_skips_generated_release_copies(tmp_path: Path) -> None:
+    (tmp_path / "active.md").write_text("[missing](active-target.md)\n", encoding="utf-8")
+    generated = tmp_path / ".generated" / "release"
+    generated.mkdir(parents=True)
+    (generated / "moved.md").write_text("[missing](original-target.md)\n", encoding="utf-8")
+    errors: list[str] = []
+    original_source_root = MODULE.SOURCE_ROOT
+    try:
+        MODULE.SOURCE_ROOT = tmp_path
+        MODULE.validate_active_references(errors)
+    finally:
+        MODULE.SOURCE_ROOT = original_source_root
+    assert errors == ["active.md: BROKEN_LOCAL_MARKDOWN_LINK:active-target.md"]
+
+
 def test_runtime_validation_rejects_legacy_repository_lifecycle(tmp_path: Path) -> None:
     (tmp_path / "runtime").mkdir()
     errors: list[str] = []

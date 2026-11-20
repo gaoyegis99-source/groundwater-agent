@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { ApiError } from './api';
 import { argumentLabel, modelName, outputName } from './card-presentation';
 import { localizedSessionTitle } from './SessionNavigation';
 import { WorkItemIssue } from './WorkItemForms';
@@ -13,6 +14,51 @@ type Read =
   | { status: 'loading' }
   | { status: 'error'; error: unknown }
   | { status: 'loaded'; context: WorkItemSessionContext | null };
+const loading: Read = { status: 'loading' };
+
+export function useSessionWorkContext(sessionId: string, project: string, subject: string, route: string) {
+  const key = JSON.stringify([sessionId, project, subject, route]);
+  const [attempt, setAttempt] = useState(0);
+  const [read, setRead] = useState<{ key: string; value: Read }>();
+  const refresh = useCallback(() => setAttempt(value => value + 1), []);
+  useEffect(() => {
+    if (!sessionId || !project || !subject) return;
+    let pending: AbortController | undefined;
+    function load() {
+      pending?.abort();
+      const controller = new AbortController();
+      pending = controller;
+      setRead({ key, value: loading });
+      void readWorkItemSessionContext(sessionId, { project, subject }, controller.signal).then(
+        context => { if (!controller.signal.aborted) setRead({ key, value: { status: 'loaded', context } }); },
+        error => { if (!controller.signal.aborted) setRead({ key, value: { status: 'error', error } }); },
+      );
+    }
+    load();
+    const visible = () => { if (document.visibilityState === 'visible') load(); };
+    window.addEventListener('focus', load);
+    document.addEventListener('visibilitychange', visible);
+    return () => {
+      pending?.abort();
+      window.removeEventListener('focus', load);
+      document.removeEventListener('visibilitychange', visible);
+    };
+  }, [key, sessionId, project, subject, attempt]);
+  return { state: read?.key === key && sessionId ? read.value : loading, refresh };
+}
+
+export function SessionWorkScope({ state, id, retry }: { state: Read; id?: string; retry?: () => void }) {
+  const work = state.status === 'loaded' ? state.context?.workItem : undefined;
+  const code = state.status === 'error' && state.error instanceof ApiError ? state.error.status : undefined;
+  const name = work?.title ?? (state.status === 'loading' ? '正在核对工作归属…' : state.status === 'loaded' ? '普通咨询'
+    : code === 0 ? '连接中断，工作归属待核对'
+      : code === 401 || code === 403 ? '当前身份无法查看工作归属' : '工作归属暂不可用');
+  return <div className="session-work-scope">
+    <span id={id} aria-live="polite">{work ? `业务工作 · ${name}${work.status === 'ARCHIVED' ? '（已归档）' : ''}` : name}</span>
+    {work && <a href={workItemHref(work.workItemId)}>返回业务工作</a>}
+    {state.status === 'error' && retry && <button className="text-button" onClick={retry}>重新读取工作归属</button>}
+  </div>;
+}
 
 const objectLabels = { WELL: '监测井', REGION: '区域', AQUIFER: '含水层' };
 
@@ -42,7 +88,7 @@ function ContextSources({ context, onOpenData, ...evidence }: InputEvidence & {
   const source = (sessionId: string) => sessionFromWorkItem(`#/sessions/${encodeURIComponent(sessionId)}`, workItemId);
   return <>
     {context.objects.length > 0 && <div>
-      <h4>业务对象</h4>
+      <h3>业务对象</h3>
       <ul className="work-context-sources">
         {context.objects.map(link => {
           const reference = link.state === 'AVAILABLE' ? link.reference : null;
@@ -56,7 +102,7 @@ function ContextSources({ context, onOpenData, ...evidence }: InputEvidence & {
       </ul>
     </div>}
     {context.assets.length > 0 && <div>
-      <h4>关联资料与成果</h4>
+      <h3>关联资料与成果</h3>
       <ul className="work-context-sources">
         {context.assets.map(link => {
           const reference = link.state === 'AVAILABLE' ? link.reference : null;
@@ -77,7 +123,7 @@ function ContextSources({ context, onOpenData, ...evidence }: InputEvidence & {
       </ul>
     </div>}
     {context.openTasks.length > 0 && <div>
-      <h4>待继续的任务</h4>
+      <h3>待继续的任务</h3>
       <ul className="work-context-sources">
         {context.openTasks.map(task => <li key={task.taskId}>
           <a href={source(task.sessionId)}>{localizedSessionTitle(task.sessionTitle)}</a>
@@ -86,7 +132,7 @@ function ContextSources({ context, onOpenData, ...evidence }: InputEvidence & {
       </ul>
     </div>}
     {context.approvedActions.length > 0 && <div>
-      <h4>已确认的方案</h4>
+      <h3>已确认的方案</h3>
       <ul className="work-context-sources">
         {context.approvedActions.map(action => <li key={`${action.sessionId}/${action.eventId}/${action.position}`}>
           <strong>{modelName(action.modelId)}</strong>
@@ -105,54 +151,28 @@ function ContextSources({ context, onOpenData, ...evidence }: InputEvidence & {
   </>;
 }
 
-export function SessionWorkContext({ sessionId, project, subject, openOnEntry, onOpenData, ...evidence }: InputEvidence & {
-  sessionId: string;
-  project: string;
-  subject: string;
+export function SessionWorkContext({ state, refresh, openOnEntry, onOpenData, ...evidence }: InputEvidence & {
+  state: Read;
+  refresh: () => void;
   openOnEntry: boolean;
   onOpenData: (reference: ResourceReference) => void;
 }) {
   const [open, setOpen] = useState(openOnEntry);
-  const [attempt, setAttempt] = useState(0);
-  const [state, setState] = useState<Read>({ status: 'loading' });
-  function refresh() { setAttempt(value => value + 1); }
-  useEffect(() => {
-    if (!open) return;
-    let pending: AbortController | undefined;
-    function load() {
-      pending?.abort();
-      const controller = new AbortController();
-      pending = controller;
-      setState({ status: 'loading' });
-      void readWorkItemSessionContext(sessionId, { project, subject }, controller.signal).then(
-        context => { if (!controller.signal.aborted) setState({ status: 'loaded', context }); },
-        error => { if (!controller.signal.aborted) setState({ status: 'error', error }); },
-      );
-    }
-    load();
-    const visible = () => { if (document.visibilityState === 'visible') load(); };
-    window.addEventListener('focus', load);
-    document.addEventListener('visibilitychange', visible);
-    return () => {
-      pending?.abort();
-      window.removeEventListener('focus', load);
-      document.removeEventListener('visibilitychange', visible);
-    };
-  }, [open, sessionId, project, subject, attempt]);
-
   const context = state.status === 'loaded' ? state.context : null;
+  if (state.status === 'loaded' && !context) return <div className="session-work-context is-unlinked">
+    <span className="sr-only" id="session-work-scope">普通咨询</span>
+  </div>;
   return <section className="session-work-context" aria-label="工作背景">
     <div className="work-context-bar">
+      <SessionWorkScope state={state} id="session-work-scope" />
       <button type="button" className="text-button" aria-expanded={open} aria-controls={open ? 'work-context-content' : undefined}
-        onClick={() => { if (!open) setState({ status: 'loading' }); setOpen(value => !value); }}>工作背景</button>
-      {open && context && <a href={workItemHref(context.workItem.workItemId)}>返回业务工作</a>}
+        onClick={() => { if (!open) refresh(); setOpen(value => !value); }}>工作背景</button>
     </div>
     {open && <div className="work-context-content" id="work-context-content" aria-busy={state.status === 'loading'}>
       {state.status === 'loading' && <p role="status">正在核对工作背景…</p>}
       {state.status === 'error' && <WorkItemIssue error={state.error} retry={refresh} />}
-      {state.status === 'loaded' && !context && <p>此会话未关联业务工作。</p>}
       {context && <>
-        <h3>{context.workItem.title}</h3>
+        <h2>{context.workItem.title}</h2>
         {context.workItem.description && <p>{context.workItem.description}</p>}
         <p className="work-item-meta">工作修订 {context.workItem.revision} · 更新于 <time dateTime={context.workItem.updatedAt}>{workItemTime(context.workItem.updatedAt)}</time></p>
         {context.workItem.status === 'ARCHIVED' ? <p>此业务工作已归档。</p> : <ContextSources context={context} onOpenData={onOpenData} {...evidence} />}

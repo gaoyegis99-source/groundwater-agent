@@ -71,8 +71,8 @@ test('01 desktop shell, navigation, API boundary and keyboard controls', async (
   await expect(page.getByTestId('chat-app')).toBeVisible();
   await expect(page.getByRole('textbox', { name: '消息输入框' })).toBeVisible();
   await expect(page.getByTestId('connection-status')).toContainText('项目已连接');
-  await expect(page.getByRole('button', { name: '数据库' })).toBeEnabled();
-  await expect(page.getByRole('button', { name: '知识库' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: '选择已有资料' })).toBeEnabled();
+  await expect(page.getByRole('link', { name: '知识与方法' })).toBeEnabled();
   await page.setViewportSize({ width: 1280, height: 800 });
   await expect(page.getByRole('button', { name: '折叠会话侧栏' })).toBeVisible();
   await page.getByRole('button', { name: '打开任务工作台' }).click();
@@ -89,9 +89,9 @@ test('01 desktop shell, navigation, API boundary and keyboard controls', async (
   expect(errors).toEqual([]);
 });
 
-test('02 Data and Knowledge drawers navigate real v12 records', async ({ page }, info) => {
+test('02 contextual Data selection and Knowledge directory navigate real v12 records', async ({ page }, info) => {
   await page.goto('/');
-  await page.getByRole('button', { name: '数据库' }).click();
+  await page.getByRole('button', { name: '选择已有资料' }).click();
   const data = page.getByTestId('database-workbench');
   await expect(data.locator('.database-item').first()).toBeVisible();
   await data.locator('.database-item').first().click();
@@ -109,7 +109,7 @@ test('02 Data and Knowledge drawers navigate real v12 records', async ({ page },
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('database-workbench')).toHaveCount(0);
 
-  await page.getByRole('button', { name: '知识库' }).click();
+  await page.getByRole('link', { name: '知识与方法' }).click();
   const knowledge = page.getByTestId('knowledge-drawer');
   await expect(knowledge.locator('.library-item').first()).toBeVisible();
   await knowledge.locator('.library-item').first().click();

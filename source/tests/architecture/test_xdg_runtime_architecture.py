@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts.maintenance import bootstrap_toolchain
+from scripts.maintenance import bootstrap_toolchain, gw
 from scripts.maintenance.xdg_layout import (
     LayoutRefusal,
     resolve_lifecycle_paths,
@@ -78,6 +78,30 @@ def test_doctor_runs_without_runtime_or_project_environment(tmp_path: Path) -> N
     assert payload["docker_contacted"] is False
     assert payload["paths"]["cache"].startswith(str(tmp_path))
     assert not (PROJECT / "runtime").exists()
+
+
+@pytest.mark.parametrize(
+    ("error", "issue"),
+    [
+        (FileNotFoundError("a temporary database journal disappeared"), "WORKSPACE_RESIDUE_CHANGED_DURING_SCAN"),
+        (gw.workspace_cleanup.WorkspaceCleanupRefusal("WORKSPACE_TYPE_REJECTED"), "WORKSPACE_TYPE_REJECTED"),
+    ],
+)
+def test_doctor_reports_an_incomplete_residue_scan_without_contacting_docker(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, error: Exception, issue: str
+) -> None:
+    for key, value in _environment(tmp_path).items():
+        monkeypatch.setenv(key, value)
+
+    def scan(*_paths):
+        raise error
+
+    monkeypatch.setattr(gw.workspace_cleanup, "workspace_clean_plan", scan)
+    payload = gw.doctor()
+    assert payload["status"] == "NOT_READY"
+    assert issue in payload["issues"]
+    assert payload["workspaceResidue"] == {"candidates": None, "files": None, "bytes": None}
+    assert payload["docker_contacted"] is False
 
 
 def test_toolchain_location_is_bound_to_lock_digest(tmp_path: Path) -> None:

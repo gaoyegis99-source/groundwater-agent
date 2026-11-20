@@ -115,6 +115,7 @@ test('desktop recovery retries safely, confirms the failed scope, tracks publish
       phase = 'executing'; cursor++;
       return route.fulfill({ status: 202, json: sessionResponseFixture({ sessionId: 'workflow-session', goalRevision: 2 }) });
     }
+    if (/^\/api\/v12\/sessions\/[^/]+\/work-item$/.test(url.pathname) && route.request().method() === 'GET') return route.fulfill({ json: { context: null } });
     throw new Error(`Unexpected workflow test request: ${url.pathname}`);
   });
   await page.goto('/#/sessions/workflow-session');

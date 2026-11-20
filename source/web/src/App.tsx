@@ -3,7 +3,7 @@ import type { FormEvent } from 'react';
 import { useDrawerController } from './use-drawer-controller';
 import { useWorkspaceController } from './use-workspace-controller';
 import { useMessageActions } from './use-message-actions';
-import { currentSessionId, useProjectSessions } from './use-project-sessions';
+import { currentSessionId, isViewingConversation, useProjectSessions } from './use-project-sessions';
 import { useSessionStream } from './use-session-stream';
 import { hasVerificationMarker, isComposedConfirmation, isVerificationHistory, needsExecutionInputs, turnPhase } from './chat-state';
 import { TurnTimeline } from './TurnTimeline';
@@ -30,11 +30,12 @@ import { identityStorageScope } from './browser-scope';
 import './conversation-polish.css';
 import './conversation-tasks.css';
 import { ProjectTaskHistory } from './ProjectTaskHistory';
-import { readWorkItemRoute, sessionFromWorkItem, useWorkItemHash, workItemHref, workItemReturnId } from './work-item-route';
+import { ProductDirectoryPage, ProductNavigation, readProductDirectory, type ProductDestination } from './ProductWorkspaceNavigation';
+import { SessionWorkContext, SessionWorkScope, useSessionWorkContext } from './SessionWorkContext';
+import { readWorkItemRoute, sessionFromWorkItem, useWorkItemHash, workItemReturnId } from './work-item-route';
 
 const WorkspacePanel = lazy(() => import('./WorkspacePanel').then(module => ({ default: module.WorkspacePanel })));
 const WorkItemWorkspace = lazy(() => import('./WorkItemWorkspace').then(module => ({ default: module.WorkItemWorkspace })));
-const SessionWorkContext = lazy(() => import('./SessionWorkContext').then(module => ({ default: module.SessionWorkContext })));
 const DatabaseWorkbench = lazy(() => import('./DatabaseWorkbench').then(module => ({ default: module.DatabaseWorkbench })));
 const KnowledgeDrawer = lazy(() => import('./Drawers').then(module => ({ default: module.KnowledgeDrawer })));
 const CapabilityDrawer = lazy(() => import('./ProductDrawers').then(module => ({ default: module.CapabilityDrawer })));
@@ -50,7 +51,7 @@ export default function App() {
     if (debugEnabled) setDebug(previous => [...previous.slice(-79), entry]);
   }, [debugEnabled]);
   const {
-    activeId, capabilities, capabilityError, sessionError, clearSessionError,
+    capabilities, capabilityError, sessionError, clearSessionError,
     sessions, sessionCursor, sessionsLoading, updatingSessionId, loadSessions, connectProject,
     sessionQuery, setSessionQuery, showArchived, setShowArchived, updateSession,
   } = useProjectSessions(log);
@@ -60,11 +61,21 @@ export default function App() {
     role => role === 'admin' || role === 'researcher',
   ) ?? false;
   const hash = useWorkItemHash();
+  const activeId = currentSessionId(hash);
   const researchWorkspace = ui.workspaceLayout === 'research';
   const workRoute = researchWorkspace ? readWorkItemRoute(hash) : null;
+  const directory = researchWorkspace ? readProductDirectory(hash) : null;
   const showWorkItems = researchWorkspace && !!storageScope && canResearch && !capabilityError;
-  const returnWorkItem = showWorkItems ? workItemReturnId(hash) : null;
+  const workSession = useSessionWorkContext(showWorkItems ? activeId : '', project, capabilities?.currentUser.subject ?? '', hash.split('?')[0]);
+  const returnWorkItem = workSession.state.status === 'loaded' ? workSession.state.context?.workItem.workItemId ?? null : null;
   const configuredServices = new Set(capabilities?.services ?? []);
+  const destinations = new Set<ProductDestination>(['home']);
+  if (showWorkItems) destinations.add('work');
+  if (capabilities && !capabilityError) {
+    destinations.add('capabilities');
+    if (configuredServices.has('data')) destinations.add('data');
+    if (configuredServices.has('knowledge-next')) destinations.add('knowledge');
+  }
   const businessCapabilities = visibleBusinessCapabilities(ui, capabilityError ? null : capabilities);
   const featuredCapabilities = businessCapabilities.filter(item => item.tier === 'CORE' && item.defaultVisible);
   const linkedExamples = new Set(ui.businessCapabilities?.map(item => item.exampleId));
@@ -80,14 +91,14 @@ export default function App() {
   const {
     drawer, closeDrawer, openDatabase, openKnowledge,
     openCapabilities, openBusinessCapability, openReadiness,
-  } = useDrawerController(JSON.stringify([storageScope, activeId, !!capabilityError, !!workRoute]));
+  } = useDrawerController(JSON.stringify([storageScope, activeId, !!capabilityError, workRoute, directory]));
   const businessDetail = drawer?.kind === 'business-capability'
     ? businessCapabilities.find(({ ref }) => ref.id === drawer.id && ref.version === drawer.version) : undefined;
   const businessDetailUnavailable = drawer?.kind === 'business-capability' && !businessDetail;
   useEffect(() => { if (businessDetailUnavailable) closeDrawer(); }, [businessDetailUnavailable, closeDrawer]);
   const drawerShadeVisible = drawer?.kind === 'database' || drawer?.kind === 'knowledge';
   const compactConversation = researchWorkspace && !!activeId;
-  const workspace = useWorkspaceController(activeId, storageScope);
+  const workspace = useWorkspaceController(activeId, storageScope, hash, returnWorkItem);
   const hideCollapsedHomeWorkspace = !activeId && researchWorkspace;
   const deferHomeWorkspace = hideCollapsedHomeWorkspace && !workspace.homeOpened && !workspace.routeTab;
   const sessionWorkspaceOpen = compactConversation && !historyPanelOpen && !workspace.collapsed;
@@ -105,7 +116,19 @@ export default function App() {
   const viewingWorkbench = !!workspace.routeTab;
   const workspaceOpener = useRef<HTMLElement | null>(null);
   const previouslyInWorkbench = useRef(false);
+  const productPage = !!(workRoute || directory);
+  const previouslyInProductPage = useRef(productPage);
+  const composerAfterProductPage = useRef(false);
   const composerAfterRoute = useRef(false);
+  useEffect(() => {
+    const wasInProductPage = previouslyInProductPage.current;
+    previouslyInProductPage.current = productPage;
+    if (!wasInProductPage || productPage || viewingWorkbench) return;
+    if (composerAfterProductPage.current) {
+      composerAfterProductPage.current = false;
+      composer.current?.focus();
+    } else document.getElementById('conversation-main')?.focus();
+  }, [productPage, viewingWorkbench]);
   useEffect(() => {
     if (viewingWorkbench) {
       if (document.activeElement instanceof HTMLElement && document.activeElement.closest('.main-panel, .project-task-history')) {
@@ -145,6 +168,7 @@ export default function App() {
     decision, controlDecision, reviseConfirmation, recoverWorkflow, newChatWithAttachments, workflow, setWorkflow,
   } = useMessageActions({
     activeId,
+    conversationView: !productPage,
     storageScope,
     project,
     subject: capabilities?.currentUser.subject ?? '',
@@ -232,6 +256,19 @@ export default function App() {
   const fileInput = useRef<HTMLInputElement>(null);
   const attachButton = useRef<HTMLButtonElement>(null);
   const composer = useRef<HTMLTextAreaElement>(null);
+  const sessionRetryFocus = useRef<{ button: HTMLButtonElement; sessionId: string; scope: string } | null>(null);
+  useLayoutEffect(() => {
+    const retry = sessionRetryFocus.current;
+    if (!retry) return;
+    if (retry.sessionId !== activeId || retry.scope !== storageScope) {
+      sessionRetryFocus.current = null;
+    } else if (history?.sessionId === activeId && !retry.button.isConnected) {
+      sessionRetryFocus.current = null;
+      if (document.activeElement === document.body) {
+        (document.getElementById('workspace-route-heading') ?? composer.current)?.focus({ preventScroll: true });
+      }
+    }
+  }, [activeId, storageScope, history, workspace.routeTab]);
   const [templateChange, setTemplateChange] = useState<{ scope: string; sessionId: string; before: string; after: string; title: string; workflowContext?: string; previousWorkflow?: WorkflowSelection | null } | null>(null);
   const [sessionFeedback, setSessionFeedback] = useState<{ scope: string; text: string } | null>(null);
   const sessionNotice = sessionFeedback?.scope === storageScope ? sessionFeedback.text : '';
@@ -243,7 +280,7 @@ export default function App() {
     uploadCandidate.current = null;
     setPreparingUpload(false); setUploadConfigError(null); setFile(null);
     return () => { uploadRequest.current += 1; };
-  }, [activeId, storageScope]);
+  }, [activeId, storageScope, productPage]);
 
   useEffect(() => {
     atBottom.current = true;
@@ -303,7 +340,7 @@ export default function App() {
     openDatabase({ formats });
   }
   function attach(resource: ResourceItem) {
-    if (currentSessionId() !== activeId || !canResearch || capabilityError) return;
+    if (!isViewingConversation(activeId) || !canResearch || capabilityError) return;
     currentVersionRead.current?.abort();
     setCurrentVersionError(null);
     const key = workflowFileKey(resource);
@@ -327,7 +364,7 @@ export default function App() {
   }
   async function prepareUpload(selected: File) {
     const request = ++uploadRequest.current;
-    const isCurrent = () => request === uploadRequest.current && currentSessionId() === activeId;
+    const isCurrent = () => request === uploadRequest.current && isViewingConversation(activeId);
     uploadCandidate.current = selected;
     setPreparingUpload(true); setUploadConfigError(null);
     try {
@@ -377,7 +414,7 @@ export default function App() {
     const controller = new AbortController();
     currentVersionRead.current = controller;
     const generation = stream.refs.viewGeneration.current;
-    const current = () => !controller.signal.aborted && currentSessionId() === activeId && stream.refs.viewGeneration.current === generation;
+    const current = () => !controller.signal.aborted && isViewingConversation(activeId) && stream.refs.viewGeneration.current === generation;
     try {
       const detail = await readDataVersion(id, controller.signal);
       if (!current()) return;
@@ -424,6 +461,7 @@ export default function App() {
   function fillFromCapabilities(prompt: string, title: string, workflowContext?: string) {
     closeDrawer();
     fillTemplate(prompt, title, workflowContext);
+    returnFromDirectoryToDraft();
     requestAnimationFrame(() => composer.current?.focus());
   }
   function fillBusinessCapability(capability: BusinessCapability) {
@@ -431,6 +469,7 @@ export default function App() {
     setBindingTarget(undefined);
     fillTemplate(capability.prompt, capability.title, undefined, workflow);
     setWorkflow(null);
+    returnFromDirectoryToDraft();
     focusComposerFromWorkbench();
   }
   function chooseWorkflow(model: WorkflowModel) {
@@ -444,10 +483,16 @@ export default function App() {
     setBindingTarget(undefined);
     fillTemplate(filled, name, existing, workflow);
     setWorkflow(workflow && matchesModel(workflow, model) ? workflow : { target, bindings: {}, parameters: {} });
+    returnFromDirectoryToDraft();
     requestAnimationFrame(() => {
       if (workspace.routeTab === 'inputs') document.getElementById('workflow-preparation')?.focus();
       else composer.current?.focus();
     });
+  }
+  function returnFromDirectoryToDraft() {
+    if (!directory) return;
+    composerAfterProductPage.current = true;
+    window.location.hash = '#/';
   }
   function prepareContinuation(runId: string, policy: WorkflowContinuation, reference: ResourceReference) {
     if (currentSessionId() !== activeId || reference.outputName !== policy.output) return;
@@ -569,15 +614,10 @@ export default function App() {
   const historyError = activeId && !activeHistory ? stream.error : null;
   const historyReadFailure = historyError && <div className="workbench-read-error session-read-failure">
     <ErrorNotice title="对话读取未完成" error={historyError} />
-    <button type="button" aria-disabled={loading} onClick={async event => {
+    <button type="button" aria-disabled={loading} onClick={event => {
       if (loading) return;
-      const retryButton = event.currentTarget;
-      await refresh(activeId);
-      requestAnimationFrame(() => {
-        if (!retryButton.isConnected && document.activeElement === document.body && currentSessionId() === activeId) {
-          (document.getElementById('workspace-route-heading') ?? composer.current)?.focus({ preventScroll: true });
-        }
-      });
+      sessionRetryFocus.current = { button: event.currentTarget, sessionId: activeId, scope: storageScope };
+      void refresh(activeId);
     }}>{loading ? '正在重新读取…' : '重新读取对话'}</button>
   </div>;
   const operationFeedback = error && error !== historyError && <div className="error-banner"><ErrorNotice error={error} /><button className="icon-button" aria-label="关闭提示" onClick={clearError}><Icon name="close" /></button></div>;
@@ -623,13 +663,61 @@ export default function App() {
   const projectTitle = project ? `项目：${project}` : '正在连接项目…';
   const signOut = capabilities?.authenticationRequired !== false &&
     <button className="text-button" onClick={() => void logoutResearch().finally(() => window.location.reload())}>退出</button>;
-  if (workRoute) return <Suspense fallback={<main aria-busy="true"><Loading>正在打开业务工作…</Loading></main>}>
-    <WorkItemWorkspace route={workRoute} scope={storageScope} project={project} subject={capabilities?.currentUser.subject ?? ''}
-      roles={capabilities?.currentUser.roles}
-      mark={mark} brand={ui.brand.productName} signOut={signOut} permitted={showWorkItems} identityError={!!capabilityError}
-      dataEnabled={configuredServices.has('data')} knowledgeEnabled={configuredServices.has('knowledge-next')}
-      retryIdentity={() => void connectProject()} onSessionsChange={() => void loadSessions()} />
-  </Suspense>;
+  const detailPanels = <>
+    <button className="drawer-shade" type="button" tabIndex={-1} aria-hidden="true" data-overlay-dismiss
+      data-open={drawerShadeVisible} disabled={!drawerShadeVisible} onClick={closeDrawer} />
+    {drawer?.kind === 'database' && <Suspense fallback={<p className="muted drawer-loading">正在加载数据库…</p>}><DatabaseWorkbench key={`database:${storageScope}:${drawer.id ?? ''}:${drawer.reference?.semanticId ?? ''}:${drawer.reference?.objectId ?? ''}:${drawer.compare ? 'compare' : ''}:${drawer.formats?.join(',') ?? ''}`}
+      project={project} initialId={drawer.id} reference={drawer.reference} compare={drawer.compare} allowedFormats={drawer.formats}
+      inspectMetadata={drawer.inspectMetadata}
+      linkedWork={showWorkItems && activeBinding && capabilities ? { sessionId: activeId, subject: capabilities.currentUser.subject } : undefined}
+      inputRole={activeBinding ? ui.models[activeBinding.modelId]?.inputs[activeBinding.name]?.label : undefined}
+      onClose={() => { setBindingTarget(undefined); closeDrawer(); }} onAttach={canResearch && !capabilityError && !workRoute ? attach : undefined} /></Suspense>}
+    {drawer?.kind === 'knowledge' && <Suspense fallback={<p className="muted drawer-loading">正在加载知识库…</p>}><KnowledgeDrawer key={`knowledge:${drawer.reference?.versionId ?? ''}:${drawer.reference?.unitId ?? ''}`} project={project} reference={drawer.reference} onClose={closeDrawer} /></Suspense>}
+    {drawer?.kind === 'capabilities' && capabilities && <Suspense fallback={<p className="muted drawer-loading">正在加载能力目录…</p>}>
+      <CapabilityDrawer capabilities={capabilities} businessCapabilities={businessCapabilities} examples={examples}
+        onBusinessCapability={openBusinessCapability} onWorkflow={canResearch ? chooseWorkflow : undefined}
+        onExample={prompt => fillFromCapabilities(prompt, examples.find(item => item.prompt === prompt)?.title ?? '推荐问题')} onClose={closeDrawer} />
+    </Suspense>}
+    {businessDetail && <Suspense fallback={<p className="muted drawer-loading">正在加载业务场景…</p>}>
+      <BusinessCapabilityDrawer capability={businessDetail} onClose={closeDrawer}
+        onUse={canResearch && businessDetail.tier !== 'EXPERIMENTAL' && businessDetail.validationStatus === 'TECHNICALLY_VALIDATED'
+          ? () => fillBusinessCapability(businessDetail) : undefined} />
+    </Suspense>}
+    {drawer?.kind === 'readiness' && <Suspense fallback={<p className="muted drawer-loading">正在加载服务状态…</p>}><ReadinessDrawer services={capabilities?.services} onClose={closeDrawer} /></Suspense>}
+  </>;
+  if (workRoute) return <div className="workspace-modal-scope">
+    <Suspense fallback={<main aria-busy="true"><Loading>正在打开业务工作…</Loading></main>}>
+      <WorkItemWorkspace route={workRoute} scope={storageScope} project={project} subject={capabilities?.currentUser.subject ?? ''}
+        roles={capabilities?.currentUser.roles}
+        mark={mark} brand={ui.brand.productName} signOut={signOut} permitted={showWorkItems} identityError={!!capabilityError}
+        navigation={<ProductNavigation current="work" available={destinations} />}
+        dataEnabled={configuredServices.has('data')} knowledgeEnabled={configuredServices.has('knowledge-next')}
+        onAccessLost={closeDrawer}
+        inspectedResult={workRoute.kind === 'detail' && workRoute.section === 'results'
+          && drawer?.kind === 'database' && drawer.inspectMetadata ? drawer.reference : undefined}
+        onInspectResult={destinations.has('data') ? reference => openDatabase({
+          id: reference.versionId, reference, inspectMetadata: true,
+        }) : undefined}
+        retryIdentity={() => void connectProject()} onSessionsChange={() => void loadSessions()} />
+    </Suspense>
+    {detailPanels}
+  </div>;
+  if (directory) return <>
+    <ProductDirectoryPage directory={directory} brand={ui.brand.productName} mark={mark} signOut={signOut}
+      navigation={<ProductNavigation current={directory} available={destinations} />}
+      status={capabilityError ? 'error' : !capabilities ? 'loading' : destinations.has(directory) ? 'ready' : 'unavailable'}
+      retry={() => void connectProject()}>
+      <Suspense fallback={<Loading>正在打开目录…</Loading>}>
+        {directory === 'data' && <DatabaseWorkbench key={storageScope} embedded project={project} onClose={closeDrawer} />}
+        {directory === 'knowledge' && <KnowledgeDrawer key={storageScope} embedded project={project} onClose={closeDrawer} />}
+        {directory === 'capabilities' && capabilities && <CapabilityDrawer key={storageScope} embedded
+          capabilities={capabilities} businessCapabilities={businessCapabilities} examples={examples}
+          onBusinessCapability={openBusinessCapability} onWorkflow={canResearch ? chooseWorkflow : undefined}
+          onExample={prompt => fillFromCapabilities(prompt, examples.find(item => item.prompt === prompt)?.title ?? '推荐问题')} onClose={closeDrawer} />}
+      </Suspense>
+    </ProductDirectoryPage>
+    {detailPanels}
+  </>;
   const sessionContext = activeId && <div className="session-context">
     <h1 className="sr-only">{activeSummary?.title ? localizedSessionTitle(activeSummary.title) : '研究对话'}</h1>
     <nav className="session-detail-nav" aria-label="会话详情" onClick={event => {
@@ -644,7 +732,7 @@ export default function App() {
       <a href={sessionFromWorkItem(`#/sessions/${activeId}/workbench/parameters`, returnWorkItem)}>参数</a>
       <a href={sessionFromWorkItem(`#/sessions/${activeId}/workbench/tasks`, returnWorkItem)}>运行</a>
       <a href={sessionFromWorkItem(`#/sessions/${activeId}/workbench/results`, returnWorkItem)}>成果</a>
-      <button type="button" ref={historyButton} className="session-history-entry" aria-label="任务历史" title="任务历史"
+      <button type="button" ref={historyButton} className="session-history-entry" aria-label="任务历史" title="查找项目中的历史任务"
         aria-expanded={historyPanelOpen} aria-controls="project-task-history" disabled={!storageScope}
         onClick={() => setHistoryPanelKey(historyPanelOpen ? '' : `${storageScope}/${activeId}`)}>
         {compactConversation && <Icon name="clock" />}<span>任务历史</span>
@@ -658,6 +746,7 @@ export default function App() {
       </button>
     </nav>
   </div>;
+  const WelcomeTitle = activeId ? 'h2' : 'h1';
   return <div className={`app-shell${activeId ? " has-session" : ""}${workspace.routeTab ? " workspace-route" : ""}`} data-testid="chat-app">
     {currentConfirmation && !workspace.routeTab && <button type="button" className="current-confirmation-skip" onClick={focusCurrentConfirmation}>查看当前确认</button>}
     <a className="main-content-skip" href={workspace.routeTab ? '#workspace-route-heading' : '#conversation-main'}
@@ -672,14 +761,16 @@ export default function App() {
         <button className="icon-button panel-toggle desktop-session-toggle" aria-label={leftCollapsed ? '展开会话侧栏' : '折叠会话侧栏'}
           aria-expanded={!leftCollapsed} onClick={() => setLeftCollapsed(value => !value)}><Icon name={leftCollapsed ? 'arrow-right' : 'arrow-left'} /></button>
       </div>
+      {researchWorkspace && <ProductNavigation current={activeId ? null : 'home'} available={destinations} />}
       <SessionNavigation key={storageScope} activeId={activeId} recoveredTitle={activeHistory ? recoveredSessionTitle : null}
         sessions={sessions} query={sessionQuery} showArchived={showArchived} cursor={sessionCursor}
         loading={sessionsLoading} error={sessionError} notice={sessionNotice} updatingId={updatingSessionId}
         canCreate={!!project && !pending && !continuationVersionId && canResearch} canWrite={canResearch}
+        workLinked={!!returnWorkItem}
         onCreate={() => void newChat()}
         onQuery={setSessionQuery} onArchiveFilter={setShowArchived} onRead={cursor => void loadSessions(cursor)}
         onRename={renameSession} onArchive={(id, archived) => void archiveSession(id, archived)} />
-      <div className="sidebar-tools"><button aria-label="能力目录" title="能力目录" onClick={openCapabilities} disabled={!capabilities}><Icon name="layers" /><span className="sidebar-tool-label">能力</span><Icon name="arrow-up-right" /></button>{configuredServices.has('data') && <button aria-label="数据库" title="数据库" onClick={() => openDatabase()} disabled={!project}><Icon name="folder" /><span className="sidebar-tool-label">数据库</span><Icon name="arrow-up-right" /></button>}{configuredServices.has('knowledge-next') && <button aria-label="知识库" title="知识库" onClick={() => openKnowledge()} disabled={!project}><Icon name="book" /><span className="sidebar-tool-label">知识库</span><Icon name="arrow-up-right" /></button>}</div>
+      {!researchWorkspace && <div className="sidebar-tools"><button aria-label="能力目录" title="能力目录" onClick={openCapabilities} disabled={!capabilities}><Icon name="layers" /><span className="sidebar-tool-label">能力</span><Icon name="arrow-up-right" /></button>{configuredServices.has('data') && <button aria-label="数据库" title="数据库" onClick={() => openDatabase()} disabled={!project}><Icon name="folder" /><span className="sidebar-tool-label">数据库</span><Icon name="arrow-up-right" /></button>}{configuredServices.has('knowledge-next') && <button aria-label="知识库" title="知识库" onClick={() => openKnowledge()} disabled={!project}><Icon name="book" /><span className="sidebar-tool-label">知识库</span><Icon name="arrow-up-right" /></button>}</div>}
     </aside>
     <main id="conversation-main" className="main-panel" tabIndex={-1} hidden={!!workspace.routeTab}>
       <header className={`topbar${compactConversation ? ' session-toolbar' : ''}`}>
@@ -693,7 +784,6 @@ export default function App() {
         </div>
         {compactConversation && sessionContext}
         <div className="topbar-actions">
-          {showWorkItems && !activeId && <a className="secondary work-items-entry" href={workItemHref()}>业务工作</a>}
           <button type="button" className="connection-state" data-testid="connection-status" aria-label={`服务状态 · ${connectionLabel}`}
             title={compactConversation ? projectTitle : connectionLabel} aria-haspopup="dialog" onClick={openReadiness}>
             <span className={`status-dot ${project && (!activeId || connected) ? 'online' : ''}`} aria-hidden="true" />
@@ -706,17 +796,16 @@ export default function App() {
         </div>
       </header>
       {!compactConversation && sessionContext}
-      {showWorkItems && activeId && <Suspense fallback={null}>
-        <SessionWorkContext key={`${storageScope}/${activeId}/${returnWorkItem ?? ''}`} sessionId={activeId}
-          project={project} subject={capabilities?.currentUser.subject ?? ''} openOnEntry={!!returnWorkItem}
+      {showWorkItems && activeId &&
+        <SessionWorkContext key={`${storageScope}/${activeId}`} state={workSession.state}
+          refresh={workSession.refresh} openOnEntry={!!workItemReturnId(hash)}
           draftInputs={attachments}
           prepared={snapshotCurrent && preparation?.freshForCurrentTurn ? preparation.entries : undefined}
           confirmation={snapshotCurrent && latestConfirmation?.goalRevision === lastTurn?.goalRevision ? latestConfirmation : undefined}
           onOpenData={reference => {
             rememberDetailOrigin();
             openDatabase({ id: reference.versionId, reference, inspectMetadata: true });
-          }} />
-      </Suspense>}
+          }} />}
       {activeHistory && connection === 'disconnected' && <div className="conversation-offline" role="status">
         <span>连接中断，显示最近快照 <time dateTime={activeHistory.snapshotAt}>{new Date(activeHistory.snapshotAt).toLocaleString('zh-CN', { dateStyle: 'short', timeStyle: 'short' })}</time></span>
         <button type="button" className="text-button" disabled={loading} onClick={() => void refresh(activeId)}>刷新会话</button>
@@ -728,7 +817,7 @@ export default function App() {
       <div className="chat-scroll" ref={chatScroll} data-testid="message-list" onScroll={event => { const node = event.currentTarget; atBottom.current = node.scrollHeight - node.scrollTop - node.clientHeight < 80; const card = node.querySelector('[data-task-card]');
         setReadingOlder(!!card && card.getBoundingClientRect().top >= node.getBoundingClientRect().bottom); if (atBottom.current) setNewMessages(false); }}>
         {historyReadFailure ? <div className="conversation">{historyReadFailure}</div> : !history?.items.length && !history?.controlMessages?.length && !activeTask && !currentTask && !loading ? <section className="welcome" aria-labelledby="welcome-title">
-          <h1 id="welcome-title">{ui.brand.welcome}</h1>
+          <WelcomeTitle id="welcome-title">{ui.brand.welcome}</WelcomeTitle>
           <details className="usage-guide"><summary>使用说明</summary><p>PRIVATE 资料仅 owner 和 admin 可读；PROJECT 资料可供项目成员共享。归档前请复核输入 checksum、参数、随机种子、模型实现和 lineage。</p></details>
           {capabilityError && <div className="connection-notice" role="alert"><strong>业务服务尚未连接</strong><p>{capabilityError.code === 'PRODUCT_UI_IDENTITY_MISMATCH' ? '产品配置与当前服务不一致，业务操作已停用。' : capabilityError.code === 'API_RESPONSE_INVALID' ? '当前仅提供前端预览，暂不能发送。' : '无法连接业务接口，暂不能发送。'}</p><button onClick={() => void connectProject()}>重试连接</button></div>}
           <section className="example-group" aria-label="常用任务">
@@ -801,6 +890,7 @@ export default function App() {
                 onRemove={item => setAttachments(previous => previous.filter(value => workflowFileKey(value) !== workflowFileKey(item)))} />
             </div>}
         <MessageComposer key={activeId} inputRef={composer} value={draft} selection={false} busy={busy}
+            contextId={showWorkItems && activeId ? 'session-work-scope' : undefined}
             submitting={pending && pendingLabel === '正在提交消息'}
             canSend={canSend && canResearch && (!workflow || !!selectedModel)}
             feedback={capabilityError && history?.items.length ? '业务服务尚未连接，暂不能发送。'
@@ -813,6 +903,8 @@ export default function App() {
             onChange={value => { setTemplateChange(null); updateDraft(value); }} onSend={() => void send()} tools={<>
               {activeId && busy && <button disabled={!canResearch || (!draft.trim() && !attachments.length && !workflow)} onClick={() => enqueue()}>稍后发送</button>}
               {canResearch && !!capabilities?.models.length && <button type="button" className="composer-workflow-button" aria-haspopup="dialog" onClick={openCapabilities}><Icon name="layers" />工作流</button>}
+              {researchWorkspace && destinations.has('data') && canResearch && <button type="button" className="icon-button composer-data-button"
+                aria-label="选择已有资料" title="选择已有资料" aria-haspopup="dialog" onClick={() => openDatabase()}><Icon name="folder" /></button>}
               {configuredServices.has('data') && <><button ref={attachButton} className="icon-button attach-button" aria-label="添加附件" title={preparingUpload ? '正在读取上传要求' : '上传资料'} disabled={!canResearch || !project || pending || !!file || preparingUpload} onClick={() => fileInput.current?.click()}><Icon name="plus" /></button>{preparingUpload && <span className="upload-preparing">正在读取上传要求…</span>}
               <input ref={fileInput} type="file" hidden onChange={event => { const selected = event.target.files?.[0]; if (selected) void prepareUpload(selected); event.target.value = ''; }} /></>}
             </>} />
@@ -825,6 +917,7 @@ export default function App() {
     {deferHomeWorkspace && <div id="workspace-panel" data-testid="workspace-panel" className="is-collapsed" hidden />}
     {(!activeId && !deferHomeWorkspace || viewingWorkbench || (compactConversation && !historyPanelOpen)) && <Suspense fallback={<p id="workspace-panel" className="muted workspace-loading" role="status">正在加载工作台…</p>}><WorkspacePanel history={activeHistory} results={activeHistory ? results : []} resultsRead={activeHistory ? resultsRead : { status: 'not-requested' }} activeId={activeId} storageScope={storageScope} project={project} capabilities={capabilities} dataAvailable={configuredServices.has('data')} collapsed={workspace.collapsed} pendingInputs={attachments} selectedResourceId={workspace.resourceId} selectedResourceReference={workspace.resourceReference} editingConfirmationId={workspace.editingConfirmationId} confirmationFocus={workspace.confirmationFocus} focusRequest={workspace.focusRequest} busy={busy} onToggle={toggleWorkspace} onJump={jumpToTurn} onCurrentConfirmation={focusCurrentConfirmation} routedTab={workspace.routeTab} onRouteTab={workspace.focus}
       hideWhenCollapsed={hideCollapsedHomeWorkspace}
+      scopeBreadcrumb={showWorkItems && activeId ? <SessionWorkScope state={workSession.state} retry={workSession.refresh} /> : undefined}
       feedback={<>{receiptFeedback}{workspace.routeTab && historyReadFailure}{operationFeedback}{submissionFeedback}</>}
       inputEditor={workspace.routeTab === 'inputs' ? workflowPreparation : null}
       onChooseMethod={workspace.routeTab === 'inputs' && canResearch && capabilities?.models.length ? openCapabilities : undefined}
@@ -850,26 +943,7 @@ export default function App() {
           && ui.models[input.modelId]?.inputs[input.name]) pickWorkflowInput(input.name, formats ?? []);
         else openDatabase({ formats });
       }} onRemovePending={reference => setAttachments(previous => previous.filter(item => workflowFileKey(item) !== workflowFileKey(reference)))} onEdit={id => workspace.editConfirmation(id)} onResolveParameter={resolvePreparationParameter} onEditClose={workspace.closeConfirmation} onRevision={(confirmation, actions) => void reviseConfirmation(confirmation, actions)} onRecover={id => void recoverWorkflow(id)} /></Suspense>}
-    <button className="drawer-shade" type="button" tabIndex={-1} aria-hidden="true" data-overlay-dismiss
-      data-open={drawerShadeVisible} disabled={!drawerShadeVisible} onClick={closeDrawer} />
-    {drawer?.kind === 'database' && <Suspense fallback={<p className="muted drawer-loading">正在加载数据库…</p>}><DatabaseWorkbench key={`database:${storageScope}:${drawer.id ?? ''}:${drawer.reference?.semanticId ?? ''}:${drawer.reference?.objectId ?? ''}:${drawer.compare ? 'compare' : ''}:${drawer.formats?.join(',') ?? ''}`}
-      project={project} initialId={drawer.id} reference={drawer.reference} compare={drawer.compare} allowedFormats={drawer.formats}
-      inspectMetadata={drawer.inspectMetadata}
-      linkedWork={showWorkItems && activeBinding && capabilities ? { sessionId: activeId, subject: capabilities.currentUser.subject } : undefined}
-      inputRole={activeBinding ? ui.models[activeBinding.modelId]?.inputs[activeBinding.name]?.label : undefined}
-      onClose={() => { setBindingTarget(undefined); closeDrawer(); }} onAttach={canResearch && !capabilityError ? attach : undefined} /></Suspense>}
-    {drawer?.kind === 'knowledge' && <Suspense fallback={<p className="muted drawer-loading">正在加载知识库…</p>}><KnowledgeDrawer key={`knowledge:${drawer.reference?.versionId ?? ''}:${drawer.reference?.unitId ?? ''}`} project={project} reference={drawer.reference} onClose={closeDrawer} /></Suspense>}
-    {drawer?.kind === 'capabilities' && capabilities && <Suspense fallback={<p className="muted drawer-loading">正在加载能力目录…</p>}>
-      <CapabilityDrawer capabilities={capabilities} businessCapabilities={businessCapabilities} examples={examples}
-        onBusinessCapability={openBusinessCapability} onWorkflow={canResearch ? chooseWorkflow : undefined}
-        onExample={prompt => fillFromCapabilities(prompt, examples.find(item => item.prompt === prompt)?.title ?? '推荐问题')} onClose={closeDrawer} />
-    </Suspense>}
-    {businessDetail && <Suspense fallback={<p className="muted drawer-loading">正在加载业务场景…</p>}>
-      <BusinessCapabilityDrawer capability={businessDetail} onClose={closeDrawer}
-        onUse={canResearch && businessDetail.tier !== 'EXPERIMENTAL' && businessDetail.validationStatus === 'TECHNICALLY_VALIDATED'
-          ? () => fillBusinessCapability(businessDetail) : undefined} />
-    </Suspense>}
-    {drawer?.kind === 'readiness' && <Suspense fallback={<p className="muted drawer-loading">正在加载服务状态…</p>}><ReadinessDrawer services={capabilities?.services} onClose={closeDrawer} /></Suspense>}
+    {detailPanels}
     {file && uploadLimitBytes && <UploadDialog file={file} project={project} storageScope={storageScope} maxBytes={uploadLimitBytes}
       onClose={() => { setFile(null); requestAnimationFrame(() => attachButton.current?.focus({ preventScroll: true })); }} onUploaded={attach} />}
   </div>;

@@ -8,7 +8,7 @@ import { saveWorkflowSelection, storedWorkflowSelection, workflowFileKey, workfl
 import type { Confirmation, ConfirmationRevisionAction, History, ResourceItem, Session } from './types';
 import type { SessionStreamRefs } from './use-session-stream';
 import { scopedStorageKey } from './browser-scope';
-import { currentSessionId } from './use-project-sessions';
+import { isViewingConversation } from './use-project-sessions';
 
 const naturalControls = new Set(['批准', '同意', '确认执行', '批准执行', '拒绝', '不同意', '拒绝执行', '停止', '停下', '停止分析', '停止本次分析', '取消', '取消执行', '取消计算', '状态', '查看状态', '当前状态', '查询状态', '进度怎么样', '进度怎么样？', '现在怎么样了', '现在怎么样了？']);
 const statusQueries = new Set(['状态', '查看状态', '当前状态', '查询状态', '进度怎么样', '进度怎么样？', '现在怎么样了', '现在怎么样了？']);
@@ -56,6 +56,7 @@ function reconcileConfirmation(mutation: ConfirmationMutation, history: History)
 
 type MessageActionOptions = {
   activeId: string;
+  conversationView: boolean;
   storageScope: string;
   project: string;
   subject: string;
@@ -80,6 +81,7 @@ type StopRequest = {
 
 export function useMessageActions({
   activeId,
+  conversationView,
   storageScope,
   project,
   subject,
@@ -117,6 +119,8 @@ export function useMessageActions({
   const previousStorageScope = useRef(storageScope);
   const activeStorageScope = useRef(storageScope);
   activeStorageScope.current = storageScope;
+  const conversationGeneration = useRef(0);
+  useLayoutEffect(() => { conversationGeneration.current += 1; }, [conversationView]);
   const resultCheck = useRef<AbortController | null>(null);
   useLayoutEffect(() => () => {
     resultCheck.current?.abort();
@@ -155,7 +159,7 @@ export function useMessageActions({
     setActionError(caught);
   }
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const firstIdentityBinding = !previousStorageScope.current && !!storageScope;
     previousStorageScope.current = storageScope;
     if (!storageScope) return;
@@ -284,8 +288,10 @@ export function useMessageActions({
   function navigate(id: string) { window.location.hash = `/sessions/${id}`; }
   async function createSession(operation: number, initialDraft?: { text: string; attachments: ResourceItem[]; submission?: SavedSubmission; workflow?: WorkflowSelection }) {
     const generation = viewGeneration.current;
+    const conversation = conversationGeneration.current;
     const created = await callApi('kernel_create_session', '/sessions', { projectId: project }) as Session;
-    if (viewGeneration.current !== generation || currentSessionId() !== activeId) {
+    if (viewGeneration.current !== generation || conversationGeneration.current !== conversation
+        || activeStorageScope.current !== storageScope || !isViewingConversation(activeId)) {
       await loadSessions();
       return null;
     }
@@ -299,7 +305,7 @@ export function useMessageActions({
     navigate(created.sessionId); await loadSessions(); return created.sessionId;
   }
   async function newChat() {
-    if (pending || sessionCreationPending.current || !project) return;
+    if (pending || sessionCreationPending.current || !project || !isViewingConversation(activeId)) return;
     sessionCreationPending.current = true;
     const operation = ++mutationSerial.current;
     const generation = viewGeneration.current;
@@ -308,7 +314,7 @@ export function useMessageActions({
     finally { sessionCreationPending.current = false; setPendingOperation(previous => previous?.id === operation ? null : previous); }
   }
   async function newChatWithAttachments(nextAttachments: ResourceItem[], text = '', workflow?: WorkflowSelection) {
-    if (pending || sessionCreationPending.current || !project) return;
+    if (pending || sessionCreationPending.current || !project || !isViewingConversation(activeId)) return;
     sessionCreationPending.current = true;
     setContinuationVersionId(nextAttachments[0]?.versionId ?? null);
     const operation = ++mutationSerial.current;
@@ -324,7 +330,7 @@ export function useMessageActions({
     const message = suggestedMessage ?? (draft.trim() || (selected ? '请准备所选工作流。' : attachments.length ? '请处理已附加的数据。' : ''));
     const controlAllowed = isNaturalControl(message, attachments.length > 0 || !!selected)
       && (!pendingControl || isStatusQuery(message, attachments.length > 0));
-    if ((!retry && ((busy && !controlAllowed) || submission)) || pending || !project) return;
+    if ((!retry && ((busy && !controlAllowed) || submission)) || pending || !project || !isViewingConversation(activeId)) return;
     if (!retry && !message) return;
     const sent: SavedSubmission = retry ?? {
       body: { ...messageBody(message),
@@ -351,7 +357,7 @@ export function useMessageActions({
     let submitted = false;
     const current = () => activeStorageScope.current === storageScope && activeRef.current === id
       && viewGeneration.current === generation + (migrated ? 1 : 0);
-    const currentResultCheck = () => current() && currentSessionId() === id && !validation?.signal.aborted;
+    const currentResultCheck = () => current() && isViewingConversation(id) && !validation?.signal.aborted;
     try {
       if (validation) {
         try {
@@ -384,7 +390,14 @@ export function useMessageActions({
       submitted = true;
       if (!id) {
         const created = await createSession(operation, { text: draft, attachments, submission: sent, workflow: selected ?? undefined });
-        if (created === null) return;
+        if (created === null) {
+          if (savedSubmission(storageScope, '')?.body.requestId === sent.body.requestId) {
+            saveSubmission(storageScope, '', null);
+            if (current()) setSubmission(previous => previous?.body.requestId === sent.body.requestId ? null : previous);
+          }
+          submitted = false;
+          return;
+        }
         id = created; migrated = true;
         saveSubmission(storageScope, '', null);
         sessionStorage.removeItem(scopedStorageKey(storageScope, 'draft'));

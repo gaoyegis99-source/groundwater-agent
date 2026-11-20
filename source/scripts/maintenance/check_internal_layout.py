@@ -292,6 +292,7 @@ def validate_symlinks(errors: list[str]) -> None:
 def validate_active_references(errors: list[str]) -> None:
     skipped = {
         ".git",
+        ".generated",
         ".venv",
         "node_modules",
         "__pycache__",

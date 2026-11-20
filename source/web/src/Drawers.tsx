@@ -5,6 +5,7 @@ import { Icon } from './Icon';
 import { KnowledgeEvidenceView } from './KnowledgeEvidenceView';
 import type { KnowledgeEvidence, KnowledgeEvidenceBundle, KnowledgeReference, ResourceDetail } from './types';
 import './knowledge-polish.css';
+import './product-directories.css';
 import { containTabFocus, useWorkbenchModal } from './workbench-focus';
 export { sizeLabel } from './format';
 
@@ -15,14 +16,14 @@ export function ResourcePreview({ resource }: { resource: ResourceDetail; projec
 
 type KnowledgeDocument = { documentId: string; currentVersion: string; title: string; summary?: string; createdAt: string; sourceCount?: number; status?: string | null };
 type KnowledgeSelection = { kind: 'reference'; reference: KnowledgeReference } | { kind: 'document'; document: KnowledgeDocument };
-type KnowledgeDrawerProps = { project: string; reference?: KnowledgeReference; onClose: () => void };
+type KnowledgeDrawerProps = { project: string; reference?: KnowledgeReference; onClose: () => void; embedded?: boolean };
 
 export function KnowledgeDrawer(props: KnowledgeDrawerProps) {
   const { project, reference } = props;
   return <KnowledgeBrowser key={JSON.stringify([project, reference?.versionId, reference?.unitId, reference?.checksum])} {...props} />;
 }
 
-function KnowledgeBrowser({ project, reference, onClose }: KnowledgeDrawerProps) {
+function KnowledgeBrowser({ project, reference, onClose, embedded = false }: KnowledgeDrawerProps) {
   const drawerRef = useRef<HTMLElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const directoryRef = useRef<HTMLDivElement>(null);
@@ -42,7 +43,7 @@ function KnowledgeBrowser({ project, reference, onClose }: KnowledgeDrawerProps)
   const [detailLoading, setDetailLoading] = useState(Boolean(reference));
   const [detailError, setDetailError] = useState<ApiError | null>(null);
 
-  useWorkbenchModal(drawerRef, true);
+  useWorkbenchModal(drawerRef, !embedded);
 
   useEffect(() => {
     if (!catalogRequest) return;
@@ -91,12 +92,12 @@ function KnowledgeBrowser({ project, reference, onClose }: KnowledgeDrawerProps)
   useEffect(() => {
     if (!selection && restoreDirectory.current) {
       restoreDirectory.current = false;
-      if (directoryRef.current) directoryRef.current.scrollTop = directoryScroll.current;
-      (selectedButton.current?.isConnected ? selectedButton.current : searchRef.current)?.focus({ preventScroll: true });
+      if (!embedded && directoryRef.current) directoryRef.current.scrollTop = directoryScroll.current;
+      (selectedButton.current?.isConnected ? selectedButton.current : searchRef.current)?.focus({ preventScroll: !embedded });
     } else if (selection && !detailLoading && items.length) {
       drawerRef.current?.querySelector<HTMLElement>('[data-primary="true"], .evidence-article')?.focus();
     }
-  }, [selection, detailLoading, items]);
+  }, [selection, detailLoading, items, embedded]);
 
   function back() {
     restoreDirectory.current = true;
@@ -109,8 +110,11 @@ function KnowledgeBrowser({ project, reference, onClose }: KnowledgeDrawerProps)
     containTabFocus(event, event.currentTarget as HTMLElement);
   }
 
-  return <section ref={drawerRef} tabIndex={-1} className="drawer knowledge-drawer" role="dialog" aria-modal="true" aria-label="知识库" data-testid="knowledge-drawer" onKeyDown={keyDown}>
-    <div className="drawer-heading"><div><span className="drawer-eyebrow">知识库</span><h2>知识与证据</h2><p>查找方法，核对引用原文与来源。</p></div><button className="icon-button" aria-label="关闭知识库" onClick={onClose}><Icon name="close" /></button></div>
+  return <section ref={drawerRef} tabIndex={embedded ? undefined : -1}
+    className={embedded ? 'knowledge-drawer is-embedded' : 'drawer knowledge-drawer'}
+    role={embedded ? undefined : 'dialog'} aria-modal={embedded ? undefined : true} aria-label={embedded ? undefined : '知识库'}
+    data-testid="knowledge-drawer" onKeyDown={embedded ? undefined : keyDown}>
+    {!embedded && <div className="drawer-heading"><div><span className="drawer-eyebrow">知识库</span><h2>知识与证据</h2><p>查找方法，核对引用原文与来源。</p></div><button className="icon-button" aria-label="关闭知识库" onClick={onClose}><Icon name="close" /></button></div>}
     <div className="knowledge-directory" hidden={Boolean(selection)}>
       <form role="search" aria-label="知识目录搜索" className="knowledge-directory-search" onSubmit={event => { event.preventDefault(); selectedButton.current = null; directoryScroll.current = 0; setCatalogRequest({ query: search.trim() }); }}>
         <label>搜索知识目录<input ref={searchRef} type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="标题、摘要或知识编号" /></label><button type="submit">搜索</button>
@@ -126,6 +130,7 @@ function KnowledgeBrowser({ project, reference, onClose }: KnowledgeDrawerProps)
     </div>
     {selection && <div className="knowledge-reading">
       <button className="text-button knowledge-return" onClick={back}><Icon name="arrow-left" />返回知识目录</button>
+      {embedded && <h2>证据原文</h2>}
       {detailLoading && <><p role="status">正在读取证据原文…</p><div className="knowledge-skeleton" aria-hidden="true"><span /><span /><span /></div></>}
       {detailError && <div className="knowledge-read-error"><ErrorNotice error={detailError} title="知识读取未完成" /><button onClick={() => setDetailRetry(value => value + 1)}>重新读取证据</button></div>}
       {!detailLoading && !detailError && !items.length && <div className="empty-inline" role="status">没有可读取的证据片段，请返回目录选择其他知识。</div>}

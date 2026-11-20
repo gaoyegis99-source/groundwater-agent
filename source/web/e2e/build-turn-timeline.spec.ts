@@ -98,6 +98,7 @@ test('Turn timeline resumes native SSE, merges an older page and keeps scientifi
       } });
     }
     if (path.endsWith('/events')) return route.continue();
+    if (/^\/api\/v12\/sessions\/[^/]+\/work-item$/.test(path) && route.request().method() === 'GET') return route.fulfill({ json: { context: null } });
     throw new Error(`Unexpected timeline request: ${path}`);
   });
 

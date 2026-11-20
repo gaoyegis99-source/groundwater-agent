@@ -29,6 +29,7 @@ interface SessionNavigationProps {
   notice: string;
   updatingId: string | null;
   canCreate: boolean;
+  workLinked?: boolean;
   canWrite: boolean;
   onCreate: () => void;
   onQuery: (value: string) => void;
@@ -47,10 +48,11 @@ export function SessionNavigation(props: SessionNavigationProps) {
   const archiveAction = activeStatus?.actions.includes('unarchive') ? 'unarchive' : 'archive';
   const recoveredTitle = props.activeId && !active ? props.recoveredTitle : null;
   const updating = props.updatingId === props.activeId;
+  const createLabel = props.workLinked ? '新建独立对话' : '新建对话';
 
   return <>
-    <button aria-label="新建对话" className="new-chat" onClick={props.onCreate} disabled={!props.canCreate}>
-      <Icon name="plus" /><span className="new-chat-label">新建对话</span>
+    <button aria-label={createLabel} className="new-chat" onClick={props.onCreate} disabled={!props.canCreate}>
+      <Icon name="plus" /><span className="new-chat-label">{createLabel}</span>
     </button>
     <h2 className="sidebar-label">{props.showArchived ? '已归档对话' : '科研会话'}</h2>
     <div className="session-filters">

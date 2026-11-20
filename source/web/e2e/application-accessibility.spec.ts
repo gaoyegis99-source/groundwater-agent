@@ -97,6 +97,7 @@ async function mockApplication(page: Page, withSession = false, analysis?: strin
     if (url.pathname.endsWith('/sessions/task-history')) return reply({ items: [], nextCursor: null });
     if (url.pathname.endsWith('/ready')) return reply({ status: 'READY', components: { kernel: { status: 'READY' } } });
     if (url.pathname.endsWith('/trace')) return reply({});
+    if (/^\/api\/v12\/sessions\/[^/]+\/work-item$/.test(url.pathname) && route.request().method() === 'GET') return route.fulfill({ json: { context: null } });
     throw new Error(`Unexpected application accessibility request: ${url.pathname}`);
   });
 }
@@ -220,7 +221,7 @@ test('upload, database, confirmation and result surfaces have no serious accessi
   await expect(page.getByTestId('confirmation-card')).toBeVisible();
   await expect(page.getByTestId('result-card')).toBeVisible();
   await noHighImpactViolations(page);
-  await page.getByRole('button', { name: '数据库', exact: true }).click();
+  await page.getByRole('button', { name: '选择已有资料', exact: true }).click();
   await expect(page.getByTestId('database-workbench')).toBeVisible();
   await noHighImpactViolations(page);
   await page.keyboard.press('Escape');
@@ -276,7 +277,7 @@ test('interaction feedback keeps controls usable and respects reduced motion', a
     await expect(page.locator('html')).toHaveAttribute('data-observed-overlay-motion', 'workspace-fade-out');
   }
 
-  const openDatabase = page.getByRole('button', { name: '数据库', exact: true });
+  const openDatabase = page.getByRole('button', { name: '选择已有资料', exact: true });
   const shade = page.locator('.app-shell > .drawer-shade[data-open]');
   const drawer = page.getByRole('dialog', { name: '数据库' });
   try {
@@ -748,8 +749,8 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800
     await page.keyboard.press('Escape');
     await expect(rename).toBeFocused();
 
-    for (const title of ['数据库', '知识库', '能力目录']) {
-      const opener = sidebar.getByRole('button', { name: title, exact: true });
+    for (const [title, label] of [['数据库', '选择已有资料'], ['能力目录', '工作流']]) {
+      const opener = main.getByRole('button', { name: label, exact: true });
       await opener.focus();
       await opener.press('Enter');
       const overlay = page.getByRole('dialog', { name: title });
@@ -763,6 +764,16 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800
       await expect(overlay).toHaveCount(0);
       await expect(opener).toBeFocused();
     }
+
+    const knowledgeEntry = sidebar.getByRole('link', { name: '知识与方法' });
+    await knowledgeEntry.focus();
+    await knowledgeEntry.press('Enter');
+    const knowledgePage = page.getByRole('main', { name: '知识与方法' });
+    await expect(knowledgePage.getByRole('heading', { name: '知识与方法' })).toBeFocused();
+    await expect(page.getByRole('dialog', { name: '知识库' })).toHaveCount(0);
+    await noPageOverflow();
+    await page.goBack();
+    await expect(main).toBeFocused();
 
     const attach = main.getByRole('button', { name: '添加附件' });
     await attach.focus();
@@ -794,7 +805,7 @@ test.describe('desktop composition', () => {
     await input.press('Shift+Enter');
     await input.pressSequentially('W02');
     await expect(input).toHaveValue('第一行监测问题\nW02');
-    await expect(input).toHaveAccessibleDescription('Enter 发送 · Shift+Enter 换行');
+    await expect(input).toHaveAccessibleDescription('普通咨询 Enter 发送 · Shift+Enter 换行');
     const send = page.getByRole('button', { name: '发送消息', exact: true });
     await expect(send).toBeInViewport();
     expect(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches)).toBe(true);

@@ -173,8 +173,9 @@ it('keeps the resource links on the left and opens the home workbench from the h
   render(<App />);
   await screen.findByTitle('项目：demo');
   const left = screen.getByRole('complementary', { name: '会话侧栏' });
-  expect(screen.getByRole('button', { name: '数据库' })).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: '知识库' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '数据库' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '知识与方法' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '选择已有资料' })).toBeInTheDocument();
   expect(screen.queryByRole('complementary', { name: '任务工作台' })).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: '折叠会话侧栏' }));
   expect(left).toHaveClass('is-collapsed');
@@ -201,8 +202,8 @@ it('hides management entry points for services not selected by the product', asy
   }));
   render(<App />);
   await screen.findByTitle('项目：demo');
-  expect(screen.getByRole('button', { name: '数据库' })).toBeVisible();
-  expect(screen.queryByRole('button', { name: '知识库' })).not.toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '数据库' })).toBeVisible();
+  expect(screen.queryByRole('link', { name: '知识与方法' })).not.toBeInTheDocument();
 });
 
 it('does not expose Data or Knowledge actions for an empty assembled service topology', async () => {
@@ -213,8 +214,8 @@ it('does not expose Data or Knowledge actions for an empty assembled service top
   }));
   render(<App />);
   await screen.findByTitle('项目：demo');
-  expect(screen.queryByRole('button', { name: '数据库' })).not.toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: '知识库' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('link', { name: '数据库' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('link', { name: '知识与方法' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: '添加附件' })).not.toBeInTheDocument();
 });
 

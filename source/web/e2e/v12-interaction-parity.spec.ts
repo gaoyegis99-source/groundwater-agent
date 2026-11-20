@@ -57,7 +57,7 @@ with GroundwaterClient(sys.argv[1], api_token=os.environ["GROUNDWATER_API_TOKEN"
     expect(created.projectId).toBe('groundwater-demo');
     await page.goto(`/#/sessions/${sessionId}`);
     await expect(page.getByTestId('connection-status')).toHaveText(/(项目|实时更新)已连接/);
-    await page.getByRole('button', { name: '数据库', exact: true }).click();
+    await page.getByRole('button', { name: '选择已有资料', exact: true }).click();
     const drawer = page.getByTestId('database-workbench');
     await drawer.getByPlaceholder('标题、说明或标识').fill(title);
     await drawer.locator('.database-item').filter({ hasText: dataset.datasetId }).click();

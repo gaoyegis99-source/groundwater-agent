@@ -35,10 +35,10 @@ body {
 }
 
 :root[data-workspace-layout="research"] .app-shell { background: var(--gw-canvas); }
-:root[data-workspace-layout="research"] :is(.welcome h1, .markdown-content h1) { font-family: var(--gw-font-title); }
+:root[data-workspace-layout="research"] :is(.welcome > :is(h1, h2), .markdown-content h1) { font-family: var(--gw-font-title); }
 :root[data-workspace-layout="research"] :is(pre, code, .mono) { font-family: var(--gw-font-id); }
 
-.gw-page-title, :root[data-workspace-layout="research"] .welcome h1 {
+.gw-page-title, :root[data-workspace-layout="research"] .welcome > :is(h1, h2) {
   font: var(--gw-weight-strong) var(--gw-size-title)/var(--gw-leading-title) var(--gw-font-title);
   letter-spacing: normal;
   overflow-wrap: anywhere;

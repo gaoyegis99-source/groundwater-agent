@@ -52,7 +52,7 @@ test('production GeoJSON renders 150,000 features with the full color range', as
     throw new Error('Unexpected GeoJSON benchmark request: ' + path);
   });
   await page.goto('/');
-  await page.getByRole('button', { name: '数据库', exact: true }).click();
+  await page.getByRole('button', { name: '选择已有资料', exact: true }).click();
   const database = page.getByTestId('database-workbench');
   const dataset = database.getByRole('button', { name: /大型 GeoJSON 样本/ });
   await expect(dataset).toBeVisible();
@@ -139,6 +139,7 @@ test('production GeoTIFF maps render and probe the centre pixel in results and t
       return route.fulfill({ status: 206, contentType: 'image/tiff', body: raster.subarray(start, end + 1),
         headers: { 'content-range': `bytes ${start}-${end}/${raster.length}` } });
     }
+    if (/^\/api\/v12\/sessions\/[^/]+\/work-item$/.test(path) && route.request().method() === 'GET') return route.fulfill({ json: { context: null } });
     throw new Error(`Unexpected raster test request: ${path}`);
   });
   await page.goto('/#/sessions/session-1');
@@ -293,11 +294,12 @@ test('production database preserves exact int64 values and loads charts only on 
       });
     }
     else if (url.pathname.endsWith('/data/queries/query-1/cancel')) body = { queryId: 'query-1', state: 'SUCCEEDED' };
+    else if (/^\/api\/v12\/sessions\/[^/]+\/work-item$/.test(url.pathname) && route.request().method() === 'GET') return route.fulfill({ json: { context: null } });
     else throw new Error(`Unexpected build-test API request: ${url.pathname}`);
     await route.fulfill({ json: body });
   });
   await page.goto('/');
-  await page.getByRole('button', { name: '数据库', exact: true }).click();
+  await page.getByRole('button', { name: '选择已有资料', exact: true }).click();
   await page.getByRole('button', { name: /模拟监测表/ }).click();
   await expect(page.locator('.table-workspace .table-scroll')).toContainText('7');
   const table = page.getByRole('region', { name: '查询结果表' });
@@ -404,7 +406,7 @@ test('production database preserves exact int64 values and loads charts only on 
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('database-workbench')).toHaveCount(0);
   const duringDetails = querySubmissions.length;
-  await page.getByRole('button', { name: '数据库', exact: true }).click();
+  await page.getByRole('button', { name: '选择已有资料', exact: true }).click();
   await page.getByRole('button', { name: /模拟监测表/ }).click();
   await expect(page.getByRole('region', { name: '数据详情', exact: true }).getByRole('heading', { name: '模拟监测表' })).toBeVisible();
   await expect(table).toBeVisible();

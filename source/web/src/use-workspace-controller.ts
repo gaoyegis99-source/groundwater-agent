@@ -4,7 +4,7 @@ import type { ResourceReference } from './types';
 import { scopedStorageKey } from './browser-scope';
 import { readJsonCache } from './browser-cache';
 import { isResourceReference } from './resource-item';
-import { sessionFromWorkItem, workItemReturnId } from './work-item-route';
+import { sessionFromWorkItem } from './work-item-route';
 
 type WorkspaceFocus = { tab: WorkspaceTab; nonce: number } | null;
 export type ConfirmationFocus = { field: string; value?: string } | null;
@@ -15,20 +15,15 @@ function readResourceSelection(key: string) {
   return { key, id, reference: reference?.versionId === id ? reference : null };
 }
 
-function readWorkspaceRoute(): WorkspaceTab | null {
-  const route = /^#\/sessions\/[a-zA-Z0-9-]+\/workbench\/(inputs|draft|parameters|tasks|results)$/.exec(window.location.hash.split('?')[0]);
-  return route ? route[1] as WorkspaceTab : null;
+function readWorkspaceRoute(hash: string, sessionId: string): WorkspaceTab | null {
+  const route = /^#\/sessions\/([a-zA-Z0-9-]+)\/workbench\/(inputs|draft|parameters|tasks|results)$/.exec(hash.split('?')[0]);
+  return route?.[1] === sessionId ? route[2] as WorkspaceTab : null;
 }
 
-export function useWorkspaceController(activeSessionId: string, storageScope: string) {
+export function useWorkspaceController(activeSessionId: string, storageScope: string, hash: string, workItemId: string | null) {
   const [homePanel, setHomePanel] = useState<'initial' | 'open' | 'collapsed'>('initial');
   const [sessionCollapsed, setSessionCollapsed] = useState(false);
-  const [routeTab, setRouteTab] = useState(readWorkspaceRoute);
-  useEffect(() => {
-    const sync = () => setRouteTab(readWorkspaceRoute());
-    window.addEventListener('hashchange', sync);
-    return () => window.removeEventListener('hashchange', sync);
-  }, []);
+  const routeTab = readWorkspaceRoute(hash, activeSessionId);
   const collapsed = activeSessionId
     ? !routeTab && sessionCollapsed
     : homePanel !== 'open';
@@ -46,19 +41,17 @@ export function useWorkspaceController(activeSessionId: string, storageScope: st
 
   const returnToConversation = useCallback(() => {
     if (activeSessionId) {
-      window.location.hash = sessionFromWorkItem(`#/sessions/${activeSessionId}`, workItemReturnId(window.location.hash));
-      setRouteTab(null);
+      window.location.hash = sessionFromWorkItem(`#/sessions/${activeSessionId}`, workItemId);
     } else setHomePanel(panel => panel === 'open' ? 'collapsed' : panel);
-  }, [activeSessionId]);
+  }, [activeSessionId, workItemId]);
   const focus = useCallback((tab: WorkspaceTab) => {
     if (activeSessionId) {
-      window.location.hash = sessionFromWorkItem(`#/sessions/${activeSessionId}/workbench/${tab}`, workItemReturnId(window.location.hash));
-      setRouteTab(tab);
+      window.location.hash = sessionFromWorkItem(`#/sessions/${activeSessionId}/workbench/${tab}`, workItemId);
       return;
     }
     setFocusRequest({ tab, nonce: Date.now() });
     setHomePanel('open');
-  }, [activeSessionId]);
+  }, [activeSessionId, workItemId]);
   const openResource = useCallback((id: string, reference: ResourceReference | null = null) => {
     const exact = id && reference?.versionId === id ? reference : null;
     setSelection({ key: selectionKey, id: id || null, reference: exact });

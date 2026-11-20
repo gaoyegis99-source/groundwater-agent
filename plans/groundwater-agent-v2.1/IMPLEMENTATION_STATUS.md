@@ -318,3 +318,132 @@
 澄清后的新请求需要用户明确附加资料。科学验证覆盖合成样例，场地应用仍需核实等时观测、共同垂向基准、介质假设及参数依据。真实业务数据和生产部署留待单独验证。
 
 阶段 6 达到本地技术退出条件。
+
+## 阶段 7 AI 原生工作台信息架构
+
+### 本地基线与实施计划
+
+- **EXISTING**。`main@b33e0dfe0a20c43ceaf7da8d47881ee759b2a823`，工作区和暂存区干净。已有工作列表、归档筛选、工作详情、关联会话、资料核对、权威生命周期、成果验收和活动。Data、Knowledge、能力目录有现成读取组件。四项入口目前分布在工作页导航、会话侧栏和抽屉，工作详情会在一页装配所有区块。直接打开会话只在主动展开后核对工作背景。
+- **EXTEND**。统一全局导航，新增可刷新和后退的数据、知识与方法、能力目录页面。目录复用其现有组件，保留会话和成果中的精确详情、资料选择、诊断和能力详情面板。工作列表仍按 API 游标读取，保留已有归档筛选。工作概览先呈现权威状态、下一步及继续对话入口。会话、资料、任务与进度、成果和活动各有可直接访问的分区。详情、快照订阅和身份范围在分区间共享，当前分区才挂载相关读取面板。
+- **NEW**。会话页及其任务工作台以服务端会话关系显示工作名称和返回入口。旧 URL 查询参数只用于兼容导航意图。会话和附加资料仍按原主体、项目及 SessionID 隔离。普通咨询保留原入口。工作任务页以生命周期、关联会话和运行链接导向权威 Task。项目任务历史保留跨工作的查找用途。
+- **DECISION**。使用现有 Hash 路由和语义链接，分区以 `aria-current` 表示，主内容/分区标题接受导航焦点。目录页使用页面滚动，面板继续使用现有 Dialog 焦点管理。前端沿用现有 API、状态、写入回执、审计及对象身份。数据源与成果面板传递完整引用供原 API 重验。`App.tsx` 保留交互组装，导航、目录框架和会话工作背景移入独立组件或 hook。
+- **DEFER**。真实用户验收和跨服务全链路发布门禁留给阶段 8。新增路由和界面使用合成夹具结合本地 API 复核。权威数据未知时显示读取、离线、过期或访问错误，尤其覆盖刷新直接路由、异步撤权、工作分区焦点和跨会话草稿隔离。
+
+| 实施次序 | 影响文件和验收 |
+| --- | --- |
+| 工作分区 | `work-item-route.ts`、`WorkItemWorkspace.tsx`、`WorkItemDetails.tsx`、关联成果及样式。验证分区 URL、初始直达、快照复用、归档、切换焦点和访问丢失。 |
+| 全局目录 | 新的导航及目录框架、`DatabaseWorkbench.tsx`、`Drawers.tsx`、`ProductDrawers.tsx`。验证独立目录无需打开抽屉，次级详情仍可回到原位置。 |
+| 会话范围 | `App.tsx`、`SessionWorkContext.tsx`、`WorkspacePanel.tsx` 和本地路由逻辑。验证直接打开已关联会话、工作标题、旧链接、普通咨询、浏览器返回及两项工作的草稿不互串。 |
+| 核验 | 先写导航与授权回归用例，再执行 Web、合同、目标 API 回归和本地 Chromium 旅程。检查 1,440、768 和 390 像素下键盘、焦点、状态文字与窄屏布局，审查全部 Git 差异。 |
+
+### 信息架构
+
+```mermaid
+flowchart LR
+  Nav[工作台导航] --> List[业务工作]
+  Nav --> Data[数据库]
+  Nav --> Knowledge[知识与方法]
+  Nav --> Capabilities[能力目录]
+  Nav --> Home[对话首页]
+  List --> Work[工作名称与状态]
+  Work --> Overview[概览]
+  Work --> Conversations[对话]
+  Work --> Materials[资料]
+  Work --> Progress[任务与进度]
+  Work --> Results[成果]
+  Work --> Activity[活动]
+  Conversations --> Session[会话与当前工作]
+  Home --> Session
+  Session --> Composer[消息、草稿与已附资料]
+  Progress --> Task[会话任务与运行]
+  Session --> Task
+  Results --> Inspection[精确资料详情与诊断]
+  Composer --> Inspection
+```
+
+| 组件 | 职责与边界 |
+| --- | --- |
+| `ProductWorkspaceNavigation`、`WorkItemWorkspace` | 全局可直达入口、目录壳和工作列表。列表复用服务端分页、更新时间和归档筛选。 |
+| `WorkItemDetails`、`WorkItemSessions`、`WorkItemMaterials`、`WorkItemResults` | 工作详情和生命周期订阅随工作身份保留。分区单独读取本区内容。跨工作时重新校验身份。 |
+| `useProjectSessions`、`useWorkspaceController` | 前者维护项目会话列表与身份，后者读取当前会话的工作台路由，并处理作用域内的精确资源和导航焦点。 |
+| `SessionWorkContext`、`MessageComposer` | 前者从会话 API 恢复工作范围及来源，后者展示作用域并提交当前会话草稿与附件。 |
+| `TurnTimeline`、`TaskCard`、`ProjectTaskHistory` | 时间线展示本会话各轮事件。任务卡使用已有 Task 投影。项目任务历史支持跨工作及会话的查询。 |
+| `DatabaseWorkbench`、`KnowledgeDrawer`、`CapabilityDrawer`、`ArtifactViewer` | 全局目录复用专业组件，精确资料、证据和能力详情按上下文展开。Viewer 查看经校验的具名结果，Data 工作台进一步核对原版本和对象。 |
+
+### 路由迁移
+
+旧的 `#/`、`#/work-items/:id`、`#/sessions/:id` 和 `#/sessions/:id/workbench/:view` 可直接使用。工作基础链接进入概览，分区路径依次为 `conversations`、`materials`、`tasks`、`results`、`activity`。顶层目录为 `#/data`、`#/knowledge`、`#/capabilities`。旧 `workItem` 查询参数只提示展开背景，工作归属从会话 API 核对。已有资料的会话内入口由侧栏移至输入区，从全局目录选用方法进入对话首页草稿。切换工作或会话后，草稿、附件和精确资源继续按主体、项目与会话分隔。此迁移使用现有公开 API、生成合同和数据库结构。
+
+### 实现与风险处置
+
+- 项目会话控制与会话工作台通过同一个 Hash 快照解析位置。跨工作分区保留同一工作详情和 SSE 订阅，刷新读取 Kernel 的权威快照。成果与资料区在进入时按需加载。会话身份、项目或路由变化时停止采用旧归属响应。浏览器重新获得焦点和用户展开背景时也会核对。没有关联工作的会话保留普通咨询。
+- 编辑、归档、资料和成果关联的待确认回执按主体、项目、工作和命令保留在当前标签页。用户返回或刷新后可以显式重试同一请求。恢复沿用请求 ID、预期修订和内容。浏览器关闭会话存储时，可在当前分区重试。服务端继续校验所有写操作及精确成果。工作或成果权限明确失效时，内容与相关的精确查看入口收起。
+- 目录页与普通对话之间切换时，待返回的首页创建请求仍可刷新会话列表。已离开原页面的请求回执不会接管当前路由或清除用户后来编辑的草稿。读取上传配置也受原页面约束。
+- 焦点随全局页面及工作分区跳转。对话内的 Data 和能力面板保留 Dialog 键盘与返回焦点。窄屏工作分区换行，短视口下会话侧栏独立滚动。目录分别呈现服务未配置、连接错误、读取中和有结果的状态。
+
+| 变更范围 | 文件 |
+| --- | --- |
+| 新全局导航与目录样式 | `ProductWorkspaceNavigation.tsx`、`product-workspace-navigation.css`、`product-directories.css` |
+| 复用目录与精确面板 | `DatabaseWorkbench.tsx`、`Drawers.tsx`、`ProductDrawers.tsx`、`workbench-focus.ts` |
+| 工作分区与回执恢复 | `work-item-route.ts`、`WorkItemWorkspace.tsx`、`WorkItemDetails.tsx`、`WorkItemForms.tsx`、`WorkItemMaterials.tsx`、`WorkItemResults.tsx`、`work-item-workspace.css`、`work-item-command-cache.ts` |
+| 会话、草稿、运行与工作范围 | `App.tsx`、`use-project-sessions.ts`、`use-workspace-controller.ts`、`use-message-actions.ts`、`SessionNavigation.tsx`、`SessionWorkContext.tsx`、`MessageComposer.tsx`、`WorkspacePanel.tsx`、会话与基础样式 |
+| 回归与文档 | `workspace-navigation.test.tsx`、`product-directories.test.tsx`、WorkItem 及既有 Web 回归、`web/e2e` 生产构建夹具、《Agent 发现、理解与任务准备》及本报告 |
+
+### 验证结果
+
+| 检查 | 结果 |
+| --- | --- |
+| `../bin/dev check --scope web` | 51 个文件、565 个用例通过，类型检查、生产构建、Ruff 和差异空白检查通过。 |
+| `../node_modules/.bin/playwright test --config playwright.build.config.ts` | 生产构建的 50 个 Chromium 用例通过，0 失败、跳过或重试。覆盖键盘、对比度、短窗口布局、断线重试、运行与成果、其他装配产品。 |
+| `../bin/dev check --scope contracts` | 191 个用例通过，运行时 OpenAPI、Python SDK 和 TypeScript/Ajv 生成校验通过。首次离线运行缺少分词缓存路径，指定本地已有缓存后通过。 |
+| `python -B -m pytest -q -p no:cacheprovider kernel/tests/test_work_items.py kernel/tests/test_work_item_lifecycle_api.py kernel/tests/test_work_item_references.py` | 29 个用例通过，覆盖身份、工作链接、权威状态和精确引用。 |
+| 本地生产构建与真实 Kernel 登录 | 在 1,440、768、390 像素下核对六个工作分区、键盘操作、直接链接、刷新、后退、工作归属、草稿隔离、上下文弹窗焦点、目录与旧链接。另一账号访问原工作时返回拒绝。资料读取使用合成夹具，旅程没有提交消息或调用外部模型。 |
+| Chromium 目录检查 | 数据、知识与方法、能力目录在 1,440、768、390 像素下共 9 组页面检查通过，目录主内容的 axe A/AA 检查无发现。 |
+| `bash scripts/checks/check-boundaries.sh`、`python -B -m scripts.checks.check_documentation` 和 `git diff --check` | 架构、文档与差异空白检查通过。 |
+
+红灯用例复现了目录被晚到回执切回对话、同一会话切换页面后保留旧权限、分区切换丢失写回执和精确成果失效后继续打开面板。复测覆盖上述场景。浏览器复测还修正了侧栏对比度、短视口滚动和重试后焦点恢复。生产实例、真实水文业务数据和完整发布门禁留待阶段 8 验收。
+
+阶段 7 达到本地技术退出条件。改动保留在当前工作区，基线提交和暂存区保持原状。
+
+## 阶段 8 完整业务旅程与发布验收
+
+### 基线与实施计划
+
+- **EXISTING**。本地 `main@b33e0dfe0a20c43ceaf7da8d47881ee759b2a823` 加阶段 7 的 Web 与文档改动。监测旅程已有真实 Data、Kernel、Executor 和原生 Worker 的运行、精确成果、审核和重启证据。流场旅程覆盖结构化缺参、补答及原生发布。浏览器已有使用真实 Kernel 验证工作页面的旅程，其目录使用合成夹具。
+- **EXTEND**。在同一条监测验收路径中补齐身份登录、工作内新建会话、缺参补答、归属和精确来源，核对确认前零执行、发布与业务接受时序、成果复用、重新登录和归档。适用时使用抽样运行录据验证准备、执行和发布耗时。保留旧会话关联及历史身份回归。以已安装的浏览器构建验证界面的操作和错误状态。
+- **NEW**。按阶段清单逐条建立主旅程、失败注入、安全矩阵及观测指标记录。指标明确样本分母、计时边界和数据来源。用已有测试和隔离运行补齐证据，记录未执行的门禁和要求的补验材料。
+- **DECISION**。测试使用本地合成数据与脚本 Provider，复用现有公开 API、任务、流程、执行器及治理数据。完整发布入口只在精确依赖已缓存且可以离线隔离时启动。全程使用临时实例、已有软件和本地数据，保留阶段 7 工作区改动。
+- **DEFER**。真实用户、生产实例、场地与专家科学验收需要对应外部证据。任何未完成的发布门禁单独记录，技术旅程与合成科学回归各按其范围评价。
+
+| 实施次序 | 文件和验收 |
+| --- | --- |
+| 监测端到端 | `test_monitoring_work_item.py` 的主旅程和已有装配夹具。登录、创建、缺参、确认、原生运行、发布、审核、复用及恢复。 |
+| 失败与权限 | 复用 Kernel、Data、Knowledge、Executor 和 Web 现有测试。必要时补写可复现的边界用例。 |
+| 发布门禁 | 核对本地依赖，运行适用的正式离线检查和生产构建。跟踪测试计数、退化恢复、发布阻断项和证据范围。 |
+| 阶段总结 | 本报告记录基线、改动文件、合同变化、命令与结果、计量、风险和退出条件。 |
+
+### 实现与合同
+
+`source/tests/e2e/test_monitoring_work_item.py` 扩充了登录、工作内创建会话、补参、确认、运行、发布、验收、复用、重启后恢复和归档的端到端用例，并保留历史会话关联与重放回归。源版本的时区、单位、时间范围、语义版本和来源在原数据更新后仍可追溯。测试以校验和核对阈值事件、完整性、缺测和异常四项实际输出。样例没有声明坐标系或绑定 Data 质量规则集。
+
+`plans/README.md` 和 `source/scripts/checks/check_worktree_hygiene.py` 纳入 V2.1 计划，`source/scripts/maintenance/check_internal_layout.py` 将文档引用检查限定为实际维护的文档。`source/scripts/maintenance/gw.py` 在缓存文件消失或清理规划拒绝检查缓存时返回具体诊断和未知计数。文档引用与环境检查新增相应回归。公开 API 和数据库结构沿用现有合同。
+
+### 本地验收证据
+
+| 范围 | 结果 |
+| --- | --- |
+| `pytest tests/e2e/test_monitoring_work_item.py tests/e2e/test_composed_workflow.py::test_monitoring_trend_capability_requires_user_threshold` | 隔离的原生 PostgreSQL 16.10 下 3 项通过。主旅程使用合成监测资料和脚本 Provider，真实 Kernel、Data、Executor 和原生 Worker。确认前执行作业为 0，发布 21 项成果，跨会话精确复用 1 项。执行、发布和业务验收分别核对。 |
+| `../bin/dev workflow-golden --case monitoring-trend` | 监测 Golden 的 21 项产出比对无差异。流场的阶段 6 锁定回归有通过记录，本阶段容器探针未通过，尚无新的流场 Golden 结果。 |
+| PostgreSQL、Executor 和控制面回归 | Data 与 Knowledge 切片 115 项通过、5 项未选，Executor、Worker 和迁移关键切片 11 项通过。覆盖权限撤销、并发修订、过期验收、SSE 恢复、丢失 Worker、超时和取消。局部故障验证覆盖服务不可用、上传断开后的原请求重试、以及发布待定、失败或不可核验时不生成验收令牌。 |
+| 权限与执行边界 | 覆盖跨项目访问拒绝、私有数据与知识权限、工作与会话归属、伪造精确引用、旧确认、提示词要求跳过确认和归档写入限制。固定项目 Gateway 的切换请求被拒绝，界面内多项目切换尚未验收。 |
+| 离线发布材料单项检查 | Native 171 项、Foundation 167 项、Knowledge 100 项、Executor 174 项、干净 XDG 装配根下的合同 191 项通过。13 个 wheel 离线构建和安装校验通过。 |
+| 生产构建浏览器诊断 | 隔离 Chromium 跑通登录、工作内会话、权威资料选择、补参、确认、原生执行、发布和成果列表。按名称打开目标成果的定位超时，浏览器内的后续验收与复用未完成。服务级用例独立覆盖这些操作。 |
+| 完整发布入口 `test_full_project` | 两次确定性装配和 15 项静态预检通过。运行期间源码指纹变化，最终报告为 `VALIDATION_SOURCE_CHANGED`。该次运行的 Data 与 Knowledge 联合、wheel 和最终 Compose 阶段为 `NOT_RUN`。隔离容器的后续检查遇到容器启动和 AppArmor 环境限制，暂无完整发布通过记录。 |
+
+主旅程计时为单个合成监测样本。创建工作到首个会话为 0.072 秒，分析请求到澄清为 0.455 秒，补参到冻结确认 0.800 秒，确认到观察到运行成功 27.482 秒。Data 发布提交区间 2.677 秒，与执行区间重叠。观察到发布至业务验收为 1.270 秒，重新登录至恢复快照 0.237 秒，从首次登录至读取归档证据 32.763 秒。
+
+### 风险与退出结论
+
+默认装配缓存曾记录同版 `groundwater.flow-field@1.0.0` 的不同摘要，触发历史身份保护。干净 XDG 装配根下合同通过，正在运行的 Kernel 装配锁未登记该能力。保留缓存及历史身份检查，发布前需核对缓存来源和版本记录。
+
+阶段 8 已获得监测主旅程的服务级证据。完整发布门禁、全链路浏览器旅程、多项目切换、真实业务数据与专家验收仍待完成。本阶段尚未达到正式发布退出条件。

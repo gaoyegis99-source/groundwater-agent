@@ -85,6 +85,7 @@ async function fixture(page: Page, { holdAutoRouting = false, clarification = fa
         workflowDraftId: null, correctsRequestId: body.correctsRequestId ?? null };
       return reply(receipt, 202);
     }
+    if (/^\/api\/v12\/sessions\/[^/]+\/work-item$/.test(url.pathname) && route.request().method() === 'GET') return route.fulfill({ json: { context: null } });
     throw new Error(`Unexpected browser fixture request ${route.request().method()} ${url.pathname}`);
   });
   await page.goto(debug ? '/?debug=1#/sessions/routing-browser' : '/#/sessions/routing-browser');
@@ -213,6 +214,7 @@ test('structured replies keep evidence folded, open the exact source, and reset 
       items: [{ status: 'OK', versionId: knowledgeId, unitId: 'unit-2', checksum,
         knowledgeId: '方法说明', content: '精确读取的知识正文', scope: 'GENERAL', bindingMatch: 'GENERAL', sources: [] }],
     });
+    if (/^\/api\/v12\/sessions\/[^/]+\/work-item$/.test(url.pathname) && route.request().method() === 'GET') return route.fulfill({ json: { context: null } });
     throw new Error(`Unexpected browser fixture request ${route.request().method()} ${url.pathname}`);
   });
 

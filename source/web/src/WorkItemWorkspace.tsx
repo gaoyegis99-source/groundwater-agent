@@ -6,13 +6,13 @@ import { listWorkItems } from './work-item-api';
 import { workItemHref, type WorkItemRoute } from './work-item-route';
 import { workItemNextStep, workItemStateLabel, workItemTime } from './work-item-presentation';
 import { useWorkItemPages, useWorkItemRowStates, workItemAccessLost } from './use-work-item-queries';
-import type { WorkItemSummary } from './types';
+import type { ResourceReference, WorkItemSummary } from './types';
 import './work-item-workspace.css';
 
 type Scope = { project: string; subject: string };
 const rowId = (item: WorkItemSummary) => item.workItemId;
 
-function WorkItemRows({ project, subject, includeArchived }: Scope & { includeArchived: boolean }) {
+function WorkItemRows({ project, subject, scope, includeArchived }: Scope & { scope: string; includeArchived: boolean }) {
   const readPage = useCallback((after: string | undefined, signal: AbortSignal) =>
     listWorkItems({ project, subject }, { after, includeArchived, signal }), [project, subject, includeArchived]);
   const page = useWorkItemPages(readPage, rowId);
@@ -45,7 +45,7 @@ function WorkItemRows({ project, subject, includeArchived }: Scope & { includeAr
             <time dateTime={item.updatedAt}>更新于 {workItemTime(item.updatedAt)}</time>
             <span>{snapshot ? `${snapshot.tracks.length} 个会话` : '会话数待核对'}</span>
           </div>
-          <WorkItemArchive item={item} compact disabled={page.loading || !!page.error} onRefresh={page.reload} />
+          <WorkItemArchive item={item} scope={scope} compact disabled={page.loading || !!page.error || !!state?.error} onRefresh={page.reload} />
         </li>;
       })}
     </ul>
@@ -56,7 +56,7 @@ function WorkItemRows({ project, subject, includeArchived }: Scope & { includeAr
   </>;
 }
 
-function WorkItemIndex(scope: Scope) {
+function WorkItemIndex(props: Scope & { scope: string }) {
   const [includeArchived, setIncludeArchived] = useState(false);
   return <>
     <div className="work-item-title">
@@ -66,51 +66,61 @@ function WorkItemIndex(scope: Scope) {
     <div className="work-item-list-tools">
       <label><input type="checkbox" checked={includeArchived} onChange={event => setIncludeArchived(event.target.checked)} /> 包含已归档工作</label>
     </div>
-    <WorkItemRows key={String(includeArchived)} {...scope} includeArchived={includeArchived} />
+    <WorkItemRows key={String(includeArchived)} {...props} includeArchived={includeArchived} />
   </>;
 }
 
-export function WorkItemWorkspace({ route, project, subject, scope, roles, mark, brand, signOut, permitted, identityError, retryIdentity,
-  dataEnabled, knowledgeEnabled, onSessionsChange }: Scope & {
+export function WorkItemWorkspace({ route, project, subject, scope, roles, mark, brand, signOut, navigation, permitted, identityError, retryIdentity,
+  dataEnabled, knowledgeEnabled, onSessionsChange, onInspectResult, inspectedResult, onAccessLost }: Scope & {
   route: WorkItemRoute;
   scope: string;
   roles?: readonly string[];
   mark: string;
   brand: string;
   signOut: ReactNode;
+  navigation?: ReactNode;
   permitted: boolean;
   identityError: boolean;
   retryIdentity: () => void;
   dataEnabled: boolean;
   knowledgeEnabled: boolean;
   onSessionsChange: () => void;
+  onInspectResult?: (reference: ResourceReference) => void;
+  inspectedResult?: ResourceReference;
+  onAccessLost?: () => void;
 }) {
   const main = useRef<HTMLElement>(null);
   const routeKey = route.kind === 'detail' ? route.id : route.kind;
   useEffect(() => { main.current?.focus(); }, [routeKey, permitted, scope]);
   return <div className="work-item-shell">
+    <a className="main-content-skip" href="#work-item-main" onClick={event => {
+      event.preventDefault();
+      main.current?.focus();
+    }}>跳到主要内容</a>
     <header className="work-item-topbar">
       <a href="#/" className="work-item-brand"><img src={mark} width={28} height={28} alt="" />{brand}</a>
-      <nav aria-label="工作台导航">
+      {navigation ?? <nav aria-label="工作台导航">
         {permitted && <a href={workItemHref()} aria-current={route.kind === 'list' ? 'page' : undefined}>业务工作</a>}
         <a href="#/">对话首页</a>
-        {signOut}
-      </nav>
+      </nav>}
+      {signOut}
     </header>
-    <main className="work-item-main" ref={main} tabIndex={-1} aria-labelledby="work-item-heading">
+    <main className="work-item-main" id="work-item-main" ref={main} tabIndex={-1} aria-labelledby="work-item-heading">
       {identityError ? <>
         <h1 id="work-item-heading">业务工作</h1>
         <div className="work-item-issue" role="alert">无法核实当前身份。<button type="button" onClick={retryIdentity}>重试连接</button></div>
       </> : !scope ? <><h1 id="work-item-heading">业务工作</h1><p role="status">正在验证身份…</p></>
         : !permitted ? <><h1 id="work-item-heading">业务工作</h1><p role="alert">当前身份无法访问业务工作</p></>
-          : route.kind === 'list' ? <WorkItemIndex key={scope} project={project} subject={subject} />
+          : route.kind === 'list' ? <WorkItemIndex key={scope} scope={scope} project={project} subject={subject} />
             : <>
               <a className="work-item-back" href={workItemHref()}><Icon name="arrow-left" />工作列表</a>
               {route.kind === 'create'
                 ? <><h1 id="work-item-heading">新建业务工作</h1><WorkItemCreate key={scope} project={project} scope={scope} /></>
                 : route.kind === 'detail'
-                  ? <WorkItemDetails key={`${scope}/${route.id}`} id={route.id} project={project} subject={subject}
-                    scope={scope} roles={roles} dataEnabled={dataEnabled} knowledgeEnabled={knowledgeEnabled} onSessionsChange={onSessionsChange} />
+                  ? <WorkItemDetails key={`${scope}/${route.id}`} id={route.id} section={route.section} project={project} subject={subject}
+                    scope={scope} roles={roles} dataEnabled={dataEnabled} knowledgeEnabled={knowledgeEnabled}
+                    onSessionsChange={onSessionsChange} onInspectResult={onInspectResult}
+                    inspectedResult={inspectedResult} onAccessLost={onAccessLost} />
                   : <><h1 id="work-item-heading">业务工作</h1><p role="alert">工作链接无效。</p></>}
             </>}
     </main>

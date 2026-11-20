@@ -91,6 +91,7 @@ test('research overview restores the current Task revision and fits a narrow wor
     }
     if (path.endsWith('/results')) return route.fulfill({ json: sessionResultsFixture([], { sessionId: path.split('/')[4] }) });
     if (path.endsWith('/events') || path.endsWith('/preview')) return route.fulfill({ status: 204 });
+    if (/^\/api\/v12\/sessions\/[^/]+\/work-item$/.test(path) && route.request().method() === 'GET') return route.fulfill({ json: { context: null } });
     throw new Error(`Unexpected task overview request: ${path}`);
   });
 
@@ -233,6 +234,7 @@ test('reviews exact Task evidence and submits changes through the current conver
     if (path.endsWith('/data/versions/version-1')) return route.fulfill({ json: dataDetail({ title: '水位趋势汇总' }) });
     if (path.endsWith('/objects/object-1/content')) return route.fulfill({ json: { range: '2025' } });
     if (path.endsWith('/events') || path.endsWith('/preview')) return route.fulfill({ status: 204 });
+    if (/^\/api\/v12\/sessions\/[^/]+\/work-item$/.test(path) && route.request().method() === 'GET') return route.fulfill({ json: { context: null } });
     throw new Error(`Unexpected Task review request: ${path}`);
   });
 
@@ -360,6 +362,7 @@ test('shows scoped input preparation and verified data quality at desktop and na
       datasetId: oldSpatialInput.datasetId, versionId: 'spatial-latest', currentVersion: 'spatial-latest',
     }) });
     if (path.endsWith('/events') || path.endsWith('/preview')) return route.fulfill({ status: 204 });
+    if (/^\/api\/v12\/sessions\/[^/]+\/work-item$/.test(path) && route.request().method() === 'GET') return route.fulfill({ json: { context: null } });
     throw new Error(`Unexpected preparation request: ${path}`);
   });
   await page.setViewportSize({ width: 1440, height: 900 });

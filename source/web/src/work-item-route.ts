@@ -1,6 +1,9 @@
 import { useSyncExternalStore } from 'react';
 
-export type WorkItemRoute = { kind: 'list' | 'create' | 'invalid' } | { kind: 'detail'; id: string };
+const sectionPaths = ['conversations', 'materials', 'tasks', 'results', 'activity'] as const;
+
+export type WorkItemSection = 'overview' | typeof sectionPaths[number];
+export type WorkItemRoute = { kind: 'list' | 'create' | 'invalid' } | { kind: 'detail'; id: string; section: WorkItemSection };
 
 function subscribeToHash(notify: () => void) {
   window.addEventListener('hashchange', notify);
@@ -17,8 +20,10 @@ export function useWorkItemHash() {
 
 const opaqueId = /^[a-z0-9-]{1,256}$/i;
 
-export function workItemHref(id?: string) {
-  return id ? `#/work-items/${encodeURIComponent(id)}` : '#/work-items';
+export function workItemHref(id?: string, section: WorkItemSection = 'overview') {
+  if (!id) return '#/work-items';
+  const base = `#/work-items/${encodeURIComponent(id)}`;
+  return section === 'overview' ? base : `${base}/${section}`;
 }
 
 export function readWorkItemRoute(hash: string): WorkItemRoute | null {
@@ -26,8 +31,10 @@ export function readWorkItemRoute(hash: string): WorkItemRoute | null {
   if (path === '#/work-items' || path === '#/work-items/') return { kind: 'list' };
   if (path === '#/work-items/new') return { kind: 'create' };
   if (!path.startsWith('#/work-items/')) return null;
-  const id = path.slice('#/work-items/'.length);
-  return opaqueId.test(id) ? { kind: 'detail', id } : { kind: 'invalid' };
+  const [id, suffix, ...extra] = path.slice('#/work-items/'.length).split('/');
+  if (!opaqueId.test(id) || id === 'new' || extra.length) return { kind: 'invalid' };
+  const section = suffix === undefined ? 'overview' : sectionPaths.find(candidate => candidate === suffix);
+  return section ? { kind: 'detail', id, section } : { kind: 'invalid' };
 }
 
 export function workItemReturnId(hash: string) {

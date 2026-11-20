@@ -1,16 +1,18 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError } from './api';
 import { ArgumentValue, argumentLabel, modelName, outputName } from './card-presentation';
 import { DataVersionQuality } from './DataVersionQuality';
 import { DataFieldQuality } from './DataFieldQuality';
 import { newRequestId } from './message-routing';
 import { productUi } from './product-ui';
+import { isResourceReference } from './resource-item';
 import { localizedSessionTitle } from './SessionNavigation';
 import { useWorkItemCommand } from './use-work-item-command';
 import { linkWorkItemMaterial } from './work-item-api';
+import { workItemCommandCache } from './work-item-command-cache';
 import {
   readWorkItemOutput, readWorkItemPublication, readWorkItemResult, readWorkItemRun, readWorkItemRunProfile,
-  readWorkItemSessionEvidence, sameWorkItemResult, workItemOutputRows, workItemResultReference,
+  readWorkItemSessionEvidence, sameDataIdentity, sameWorkItemResult, workItemOutputRows, workItemResultReference,
   type WorkItemResultReference, type WorkItemRun, type WorkItemRunLink,
 } from './work-item-result-evidence';
 import { workItemNextStep, workItemTime } from './work-item-presentation';
@@ -19,12 +21,17 @@ import { WorkItemIssue } from './WorkItemForms';
 import { MaterialIdentity } from './WorkItemMaterials';
 import { WorkItemResultReuse } from './WorkItemResultReuse';
 import { WorkItemReview } from './WorkItemReview';
-import type { ResourceReference, WorkItemDetail, WorkItemLifecycleSnapshot, WorkItemMaterialCommand } from './types';
+import type { ResourceReference, WorkItemDetail, WorkItemLifecycleSnapshot, WorkItemMaterialCommand, WorkItemSummary } from './types';
 
 const ArtifactViewer = lazy(() => import('./ArtifactViewer').then(module => ({ default: module.ArtifactViewer })));
 const pageSize = 8;
 type OutputRow = ReturnType<typeof workItemOutputRows>[number];
 type PublishedResult = { linkId: string; reference: WorkItemResultReference };
+export type WorkItemResultInspectorSource = {
+  reference: WorkItemResultReference;
+  link: WorkItemRunLink;
+  assetLinkId?: string;
+};
 
 type ResultsProps = {
   detail: WorkItemDetail;
@@ -33,6 +40,9 @@ type ResultsProps = {
   current: boolean;
   recheck: number;
   onRefresh: () => void;
+  inspector?: WorkItemResultInspectorSource;
+  onInspectResult?: (source: WorkItemResultInspectorSource) => void;
+  onInspectorAccessLost?: () => void;
 };
 
 type ResultRead<T> = { value: T; error?: never } | { value?: never; error: unknown };
@@ -73,6 +83,28 @@ const outputRoles: Record<string, string> = {
 function publishedAssets(detail: WorkItemDetail): PublishedResult[] {
   return detail.assets.flatMap(({ linkId, reference, state }) =>
     state === 'AVAILABLE' && reference?.kind === 'RESULT' ? [{ linkId, reference }] : []);
+}
+
+function exactRunLink(left: WorkItemRunLink, right: WorkItemRunLink) {
+  return left.runId === right.runId && left.sessionId === right.sessionId && left.agentRunId === right.agentRunId
+    && left.workflowRef.id === right.workflowRef.id && left.workflowRef.version === right.workflowRef.version
+    && left.workflowRef.checksum === right.workflowRef.checksum;
+}
+
+function resultAccessLost(error: unknown) {
+  return error instanceof ApiError && ([401, 403, 404].includes(error.status)
+    || ['WORK_ITEM_REFERENCE_MISMATCH', 'WORK_ITEM_RESULT_NOT_PUBLISHED', 'DATA_VERSION_IDENTITY_MISMATCH'].includes(error.code));
+}
+
+function resultAssociationCache(scope: string, item: WorkItemSummary, { runId, publicationId, outputName, dataRef }: WorkItemResultReference) {
+  const source = JSON.stringify([runId, publicationId, outputName, dataRef.kind, dataRef.service, dataRef.datasetId,
+    dataRef.versionId, dataRef.semanticId, dataRef.objectId, dataRef.checksum, dataRef.mediaType, dataRef.format, dataRef.sizeBytes]);
+  return workItemCommandCache<WorkItemMaterialCommand>(scope, item, 'result-association', value => {
+    if (Object.keys(value).length !== 4 || !value.reference || typeof value.reference !== 'object') return false;
+    const reference = value.reference as Record<string, unknown>;
+    return Object.keys(reference).length === 3 && reference.kind === 'RESULT'
+      && reference.runId === runId && reference.outputName === outputName;
+  }, source);
 }
 
 function RunDetails({ run, link, detail, open, onOpen, recheck, verifiedModel }: {
@@ -122,7 +154,7 @@ function ResultInspection({ reference, linked, row, run, link, historical, taskR
   openDiagnostic?: () => void;
   props: ResultsProps;
 }) {
-  const { detail, scope, current, recheck, onRefresh } = props;
+  const { detail, scope, current, recheck, onRefresh, inspector, onInspectResult, onInspectorAccessLost } = props;
   const item = detail.workItem;
   const key = JSON.stringify([reference, item.workItemId, recheck, linked?.linkId, historical]);
   const version = useResultRead(key, signal => historical
@@ -133,11 +165,17 @@ function ResultInspection({ reference, linked, row, run, link, historical, taskR
   const evidence = useResultRead(version.read?.value ? JSON.stringify([key, goal, taskRevision]) : null,
     signal => readWorkItemSessionEvidence(link, run, signal, reference, goal));
   const [showQuality, setShowQuality] = useState(false);
+  const cache = resultAssociationCache(scope, item, reference);
+  const [restored] = useState(cache.read);
   const association = useWorkItemCommand<WorkItemMaterialCommand>(
-    (command, signal) => linkWorkItemMaterial(item.workItemId, command, signal), onRefresh, { onRejected: onRefresh },
+    (command, signal) => linkWorkItemMaterial(item.workItemId, command, signal), onRefresh,
+    { restored, remember: cache.remember, onRejected: onRefresh },
   );
   const target = useRef<HTMLHeadingElement>(null);
   useEffect(() => { target.current?.focus(); }, []);
+  const inspectionLost = !!inspector && current && sameWorkItemResult(inspector.reference, reference)
+    && resultAccessLost(version.read?.error);
+  useEffect(() => { if (inspectionLost) onInspectorAccessLost?.(); }, [inspectionLost, onInspectorAccessLost]);
   const resource = version.read?.value;
   const title = outputName(reference.outputName);
   const taskAdoption = evidence.read?.value?.taskAdoption;
@@ -167,6 +205,9 @@ function ResultInspection({ reference, linked, row, run, link, historical, taskR
         </dl>
         <MaterialIdentity reference={reference.dataRef} />
       </details>
+      {current && onInspectResult && <button type="button" onClick={() => onInspectResult({ reference, link, assetLinkId: linked?.linkId })}>
+        在数据工作台查看
+      </button>}
       <Suspense fallback={<p role="status">正在加载成果查看器…</p>}>
         <ArtifactViewer resource={resource} project={item.projectId} objectId={reference.dataRef.objectId}
           contextHeading="h4" preferredViewer={productUi().outputs[reference.outputName]?.viewer ?? 'auto'} />
@@ -184,17 +225,23 @@ function ResultInspection({ reference, linked, row, run, link, historical, taskR
         {showQuality && <><DataVersionQuality version={resource} />
           {!!resource.descriptor.fields?.length && <DataFieldQuality descriptor={resource.descriptor} semantics={resource.semantics} />}</>}
       </details>
-      <WorkItemIssue error={association.error} />
-      {item.status === 'ACTIVE' && !linked && <button type="button" disabled={association.busy || !current} onClick={() => {
+      {!association.unsettled && item.status === 'ACTIVE' && !linked && <button type="button" disabled={!current} onClick={() => {
         if (!current) return;
-        void association.submit(association.unsettled ?? {
+        void association.submit({
           projectId: item.projectId, requestId: newRequestId(), expectedRevision: item.revision,
           reference: { kind: 'RESULT', runId: reference.runId, outputName: reference.outputName },
         });
-      }}>{association.busy ? '正在关联…' : association.unsettled ? '重试关联成果' : '关联到此工作'}</button>}
+      }}>关联到此工作</button>}
       {linked && <WorkItemResultReuse detail={detail} scope={scope} sourceSessionId={link.sessionId}
         assetLinkId={linked.linkId} reference={reference} disabled={!current || item.status !== 'ACTIVE'} />}
     </>}
+    <WorkItemIssue error={association.error} />
+    {association.unsettled && <div className="work-item-actions">
+      <span role="status">{association.busy ? '正在关联…' : '成果关联回执待核对。'}</span>
+      {!association.busy && <button type="button" disabled={!current} onClick={() => {
+        if (current && association.unsettled) void association.submit(association.unsettled);
+      }}>重试关联成果</button>}
+    </div>}
   </section>;
 }
 
@@ -203,9 +250,11 @@ function RunResults({ link, snapshot, props }: {
   snapshot: WorkItemLifecycleSnapshot | null;
   props: ResultsProps;
 }) {
-  const { detail, recheck, roles } = props;
+  const { detail, recheck, roles, current, onInspectorAccessLost } = props;
   const { projectId, workItemId } = detail.workItem;
-  const [selected, setSelected] = useState<string | null>(null);
+  const inspector = props.inspector?.reference.runId === link.runId ? props.inspector : undefined;
+  const [selectedOutput, setSelected] = useState<string | null>(null);
+  const selected = inspector?.reference.outputName ?? selectedOutput;
   const [count, setCount] = useState(pageSize);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const track = snapshot?.tracks.find(item => item.sessionId === link.sessionId);
@@ -221,6 +270,16 @@ function RunResults({ link, snapshot, props }: {
   const approvedAssets = publishedAssets(detail).filter(asset => asset.reference.runId === link.runId);
   const pubId = pub?.state === 'PUBLISHED' ? pub.publicationId : null;
   const pubError = publication.read?.error;
+  const inspectedReference = inspector?.reference;
+  const matchingOutputs = inspectedReference && run?.outputs.filter(output => output.outputName === inspectedReference.outputName);
+  const output = matchingOutputs?.[0];
+  const inspectionLost = !!inspectedReference && current && (
+    resultAccessLost(runRead.read?.error) || resultAccessLost(pubError)
+    || (!!run && (run.status !== 'SUCCEEDED' || matchingOutputs?.length !== 1
+      || !isResourceReference(output) || !sameDataIdentity(output, inspectedReference.dataRef)))
+    || (!!pub?.state && pubId !== inspectedReference.publicationId)
+  );
+  useEffect(() => { if (inspectionLost) onInspectorAccessLost?.(); }, [inspectionLost, onInspectorAccessLost]);
   const historical = !!publication.read && (!pub?.state &&
     (!pubError || (pubError instanceof ApiError && pubError.code === 'WORKFLOW_PUBLICATION_UNAVAILABLE')));
   const inspectable = !!pubId || (historical && approvedAssets.length > 0);
@@ -234,9 +293,11 @@ function RunResults({ link, snapshot, props }: {
     ...readableRows.filter(row => Object.hasOwn(outputIssues, row.state))];
   const contractIssues = rows.filter(row => Object.hasOwn(outputIssues, row.state));
   const rowReference = (row: OutputRow) => {
-    if (!row.output || Object.hasOwn(outputIssues, row.state) || profile?.state === 'MISMATCH') return undefined;
-    if (pubId) return workItemResultReference(link.runId, pubId, row.output);
-    return approvedAssets.find(asset => asset.reference.outputName === row.name)?.reference;
+    const { output } = row;
+    if (!output || Object.hasOwn(outputIssues, row.state) || profile?.state === 'MISMATCH') return undefined;
+    if (pubId) return workItemResultReference(link.runId, pubId, output);
+    return approvedAssets.find(asset => asset.reference.outputName === row.name
+      && sameDataIdentity(asset.reference.dataRef, output))?.reference;
   };
   const activeRow = visibleRows.find(row => row.name === selected);
   const reference = activeRow && rowReference(activeRow);
@@ -283,11 +344,14 @@ function RunResults({ link, snapshot, props }: {
       {!visibleRows.length ? <p>未找到具名成果。</p> : <ul className="work-item-items work-result-outputs" aria-label="具名输出">
         {visibleRows.slice(0, count).map(row => {
           const verifiedReference = rowReference(row);
+          const pending = verifiedReference && profileRead.read && selected !== row.name
+            && resultAssociationCache(props.scope, detail.workItem, verifiedReference).read();
           return <li key={row.name}>
             <div><strong>{outputName(row.name)}</strong>
               {Object.hasOwn(outputIssues, row.state) ? <span>{outputIssues[row.state]}</span>
                 : row.expected ? <span>{outputRoles[row.expected.role]} · {row.expected.format.toUpperCase()}</span>
-                : row.output ? <span>{row.output.format.toUpperCase()}</span> : null}</div>
+                : row.output ? <span>{row.output.format.toUpperCase()}</span> : null}
+              {pending && <span className="work-item-meta">成果关联回执待核对</span>}</div>
             {verifiedReference && profileRead.read && <button type="button" aria-expanded={selected === row.name}
               aria-label={`查看成果 · ${outputName(row.name)}`}
               onClick={() => selected === row.name ? setSelected(null) : openOutput(row.name)}>{selected === row.name ? '收起查看' : '查看成果'}</button>}
@@ -304,14 +368,26 @@ function RunResults({ link, snapshot, props }: {
 }
 
 export function WorkItemResults({ snapshot, ...props }: ResultsProps & { snapshot: WorkItemLifecycleSnapshot | null }) {
-  const { detail, scope, current, onRefresh } = props;
+  const { detail, scope, current, onRefresh, inspector, onInspectorAccessLost } = props;
   const [selectedRunId, setSelectedRunId] = useState('');
+  const heading = useRef<HTMLHeadingElement>(null);
+  const closeInspector = useCallback(() => {
+    if (!onInspectorAccessLost) return;
+    onInspectorAccessLost();
+    requestAnimationFrame(() => heading.current?.focus());
+  }, [onInspectorAccessLost]);
   const choices = detail.workflowRuns.filter(run => detail.sessions.some(session => session.sessionId === run.sessionId));
+  const inspectedRun = inspector && choices.find(link => exactRunLink(link, inspector.link));
+  const inspectionLost = !!inspector && current && (!inspectedRun || (!!inspector.assetLinkId && !detail.assets.some(asset =>
+    asset.linkId === inspector.assetLinkId && asset.state === 'AVAILABLE' && asset.reference?.kind === 'RESULT'
+    && sameWorkItemResult(asset.reference, inspector.reference),
+  )));
+  useEffect(() => { if (inspectionLost) closeInspector(); }, [inspectionLost, closeInspector]);
   const deliveryIds = new Set(snapshot?.tracks.flatMap(track => track.publications.map(publication => publication.runId)));
-  const run = choices.find(link => link.runId === selectedRunId) ?? choices.find(link => deliveryIds.has(link.runId)) ?? choices.at(-1);
+  const run = inspectedRun ?? choices.find(link => link.runId === selectedRunId) ?? choices.find(link => deliveryIds.has(link.runId)) ?? choices.at(-1);
   const latestReason = snapshot && workItemNextStep(snapshot.reason);
   return <section className="work-item-section work-result-center" aria-labelledby="work-item-results">
-    <h2 id="work-item-results">成果中心</h2>
+    <h2 id="work-item-results" tabIndex={-1} ref={heading}>成果中心</h2>
     {choices.length > 1 && <label className="work-result-picker">选择计算记录
       <select value={run?.runId ?? ''} onChange={event => setSelectedRunId(event.target.value)}>
         {choices.map(choice => <option key={choice.runId} value={choice.runId}>
@@ -319,7 +395,7 @@ export function WorkItemResults({ snapshot, ...props }: ResultsProps & { snapsho
         </option>)}
       </select>
     </label>}
-    {run ? <RunResults key={run.runId} link={run} snapshot={snapshot} props={props} />
+    {run ? <RunResults key={run.runId} link={run} snapshot={snapshot} props={{ ...props, onInspectorAccessLost: closeInspector }} />
       : <p>尚无执行记录。{latestReason && ` ${latestReason}。`}</p>}
     {snapshot?.tracks.some(track => track.review || track.acceptedAt ||
       ['WAITING_REVIEW', 'RESULT_REVIEW'].includes(track.state)) && <h3>业务验收</h3>}

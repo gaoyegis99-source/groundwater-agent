@@ -69,7 +69,7 @@ async function importFile(page: Page, filename: string, checksum: string, keepAt
     await expect(upload).toHaveCount(0, { timeout: 60_000 });
     version = await find();
   } else if (keepAttached) {
-    await page.getByRole('button', { name: '数据库', exact: true }).click();
+    await page.getByRole('button', { name: '选择已有资料', exact: true }).click();
     const drawer = page.getByTestId('database-workbench');
     await drawer.getByPlaceholder('标题、说明或标识').fill(title);
     await drawer.locator('.database-item').filter({ hasText: title }).click();
@@ -91,7 +91,7 @@ async function importFile(page: Page, filename: string, checksum: string, keepAt
 }
 
 async function viewData(page: Page, title: string, versionId: string, text: string, info: TestInfo) {
-  await page.getByRole('button', { name: '数据库', exact: true }).click();
+  await page.getByRole('button', { name: '选择已有资料', exact: true }).click();
   const drawer = page.getByTestId('database-workbench');
   await drawer.getByPlaceholder('标题、说明或标识').fill(title);
   await drawer.locator('.database-item').filter({ hasText: title }).click();

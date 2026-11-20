@@ -3,12 +3,17 @@ import { ApiError, callApi, observeApi } from './api';
 import type { Capabilities, DebugEntry, SessionSummary } from './types';
 import { verifyProductUi } from './product-ui';
 
-export function currentSessionId() {
-  return /^#\/sessions\/([a-zA-Z0-9-]+)(?:\/workbench\/(?:inputs|draft|parameters|tasks|results))?$/.exec(window.location.hash.split('?')[0])?.[1] ?? '';
+export function currentSessionId(hash = window.location.hash) {
+  return /^#\/sessions\/([a-zA-Z0-9-]+)(?:\/workbench\/(?:inputs|draft|parameters|tasks|results))?$/.exec(hash.split('?')[0])?.[1] ?? '';
+}
+
+export function isViewingConversation(sessionId: string) {
+  if (sessionId) return currentSessionId() === sessionId;
+  const path = window.location.hash.split('?')[0];
+  return path === '' || path === '#/';
 }
 
 export function useProjectSessions(log: (entry: DebugEntry) => void) {
-  const [activeId, setActiveId] = useState(currentSessionId);
   const [capabilities, setCapabilities] = useState<Capabilities | null>(null);
   const [capabilityError, setCapabilityError] = useState<ApiError | null>(null);
   const [sessionError, setSessionError] = useState<ApiError | null>(null);
@@ -146,7 +151,6 @@ export function useProjectSessions(log: (entry: DebugEntry) => void) {
         setShowArchivedState(false);
         setSessions([]);
         setSessionCursor(null);
-        setActiveId('');
         window.location.hash = '#/';
       }
       identityRef.current = identity;
@@ -163,15 +167,12 @@ export function useProjectSessions(log: (entry: DebugEntry) => void) {
   useEffect(() => {
     const stop = observeApi(log);
     void connectProject();
-    const onHash = () => setActiveId(currentSessionId());
-    window.addEventListener('hashchange', onHash);
     return () => {
       stop();
       requestSerial.current += 1;
       connectionSerial.current += 1;
       identityGeneration.current += 1;
       updatePending.current = false;
-      window.removeEventListener('hashchange', onHash);
     };
   }, [connectProject, log]);
 
@@ -187,7 +188,6 @@ export function useProjectSessions(log: (entry: DebugEntry) => void) {
   }, [sessionQuery, showArchived, loadSessions]);
 
   return {
-    activeId,
     capabilities,
     capabilityError,
     sessionError,

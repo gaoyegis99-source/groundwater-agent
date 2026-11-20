@@ -1,19 +1,20 @@
 import { useId, type ReactNode, type RefObject } from 'react';
 import { Icon } from './Icon';
 
-export function MessageComposer({ inputRef, value, selection, busy, submitting = false, canSend, tools, unavailableReason, feedback, announceFeedback, onChange, onSend }: {
+export function MessageComposer({ inputRef, value, selection, busy, submitting = false, canSend, tools, unavailableReason, feedback, announceFeedback, contextId, onChange, onSend }: {
   inputRef: RefObject<HTMLTextAreaElement | null>; value: string; selection: boolean;
   busy: boolean; canSend: boolean; tools: ReactNode;
   submitting?: boolean;
   unavailableReason?: string;
   feedback?: string;
   announceFeedback?: boolean;
+  contextId?: string;
   onChange: (value: string) => void; onSend: () => void;
 }) {
   const inputId = useId();
   return <>
     <label className="composer-label" htmlFor={inputId}>消息输入框</label>
-    <textarea id={inputId} ref={inputRef} name="message" autoComplete="off" aria-describedby={`${inputId}-keys${feedback ? ` ${inputId}-feedback` : ''}`} placeholder={selection ? '补充资料或回答问题，继续完善这个方案…' : '描述你的问题，或附上资料一起讨论…'} value={value}
+    <textarea id={inputId} ref={inputRef} name="message" autoComplete="off" aria-describedby={[contextId, `${inputId}-keys`, feedback && `${inputId}-feedback`].filter(Boolean).join(' ')} placeholder={selection ? '补充资料或回答问题，继续完善这个方案…' : '描述你的问题，或附上资料一起讨论…'} value={value}
       onChange={event => onChange(event.target.value)} onKeyDown={event => {
         if (event.nativeEvent.isComposing || event.keyCode === 229) return;
         if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); if (canSend) onSend(); }

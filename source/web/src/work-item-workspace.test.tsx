@@ -1,4 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import sourceProfile from '../../products/groundwater/ui/product-ui.json';
 import App from './App';
@@ -107,6 +108,11 @@ function open(hash: string) {
   });
 }
 
+async function selectSection(name: string) {
+  const navigation = await screen.findByRole('navigation', { name: '工作分区' });
+  await userEvent.setup().click(within(navigation).getByRole('link', { name }));
+}
+
 beforeEach(() => {
   window.history.replaceState({}, '', '/#/');
   sessionStorage.clear();
@@ -118,6 +124,141 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+});
+
+it('switches work sections through links and history while preserving the work read and event stream', async () => {
+  const fetchMock = fixture({ readDetail: () => ({ ...detail, workflowRuns: [{
+    runId: 'run-1', agentRunId: 'agent-1', sessionId: 'session-1',
+    workflowRef: { id: 'monitoring', version: '1.0.0', checksum: `sha256:${'1'.repeat(64)}` },
+  }] }) });
+  const user = userEvent.setup();
+  open('#/work-items/work-1');
+  render(<App />);
+  const navigation = await screen.findByRole('navigation', { name: '工作分区' });
+  expect(within(navigation).getByRole('link', { name: '概览' })).toHaveAttribute('aria-current', 'page');
+  expect(screen.getByRole('link', { name: '继续对话' })).toHaveAttribute('href', '#/sessions/session-2?workItem=work-1');
+  expect(screen.queryByRole('region', { name: '关联会话' })).not.toBeInTheDocument();
+  expect(fetchMock.mock.calls.some(([url]) => url.includes('/activity?'))).toBe(false);
+  const readCount = () => fetchMock.mock.calls.filter(([url]) => new URL(url, window.location.origin).pathname === '/api/v12/work-items/work-1').length;
+  const material = within(navigation).getByRole('link', { name: '资料' });
+  expect(material).toHaveAttribute('href', '#/work-items/work-1/materials');
+  await waitFor(() => expect(EventStream.connections).toHaveLength(1));
+  const readsBeforeNavigation = readCount();
+  material.focus();
+  await user.keyboard('{Enter}');
+  expect(await screen.findByRole('region', { name: '资料与业务对象' })).toBeVisible();
+  expect(screen.getByRole('group', { name: '资料与业务对象' })).toHaveFocus();
+  expect(material).toHaveAttribute('aria-current', 'page');
+  expect(screen.queryByRole('button', { name: '归档工作' })).not.toBeInTheDocument();
+  await user.click(within(navigation).getByRole('link', { name: '活动' }));
+  expect(await screen.findByText('任务已更新')).toBeVisible();
+  expect(screen.queryByRole('region', { name: '资料与业务对象' })).not.toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: '枯水期监测' })).toBeVisible();
+  act(() => window.history.back());
+  expect(await screen.findByRole('region', { name: '资料与业务对象' })).toBeVisible();
+  expect(material).toHaveAttribute('aria-current', 'page');
+  expect(EventStream.connections).toHaveLength(1);
+  expect(EventStream.connections[0].readyState).not.toBe(EventStream.CLOSED);
+  expect(readCount()).toBe(readsBeforeNavigation);
+  expect(fetchMock.mock.calls.some(([url]) => url.includes('/workflow-runs/'))).toBe(false);
+});
+
+it('loads the task section directly and routes tracks to the existing session workbench', async () => {
+  fixture({ readSnapshot: () => ({ ...snapshot, tracks: [
+    { ...snapshot.tracks[0], taskId: 'task-1', taskRevision: 2 },
+  ] }) });
+  open('#/work-items/work-1/tasks');
+  render(<App />);
+  const progress = await screen.findByRole('region', { name: '任务与进度' });
+  expect(await within(progress).findByRole('link', { name: '查看任务与运行 · 水位资料核对' })).toHaveAttribute('href', '#/sessions/session-1/workbench/tasks?workItem=work-1');
+  expect(within(progress).getByRole('link', { name: '配置参数 · 水位资料核对' })).toHaveAttribute('href', '#/sessions/session-1/workbench/parameters?workItem=work-1');
+  expect(screen.queryByRole('region', { name: '成果中心' })).not.toBeInTheDocument();
+});
+
+it('removes the detail and all section links when the server revokes access on a refresh', async () => {
+  let denied = false;
+  fixture({ customResponse: async ({ pathname }) => {
+    if (denied && pathname === '/api/v12/work-items/work-1/snapshot') return json({ code: 'FORBIDDEN' }, 403);
+  } });
+  open('#/work-items/work-1/conversations');
+  render(<App />);
+  expect(await screen.findByRole('link', { name: '水位资料核对' })).toBeVisible();
+  await waitFor(() => expect(EventStream.connections).toHaveLength(1));
+  denied = true;
+  act(() => EventStream.connections[0].dispatchEvent(new Event('work_item.refresh')));
+  expect(await screen.findByRole('alert')).toHaveTextContent('当前身份无权访问');
+  expect(screen.queryByRole('heading', { name: '枯水期监测' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('navigation', { name: '工作分区' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('link', { name: '水位资料核对' })).not.toBeInTheDocument();
+});
+
+it('keeps an unknown work section invalid without reading a work item', async () => {
+  const fetchMock = fixture();
+  open('#/work-items/work-1/unknown');
+  render(<App />);
+  expect(await screen.findByRole('alert')).toHaveTextContent('工作链接无效');
+  expect(screen.getByRole('link', { name: '工作列表' })).toHaveAttribute('href', '#/work-items');
+  expect(fetchMock.mock.calls.some(([url]) => url.includes('/work-items/work-1'))).toBe(false);
+});
+
+it('replays a submitted edit across sections and a page reload after the authority has advanced', async () => {
+  const title = '已核对的枯水期监测';
+  const commands: unknown[] = [];
+  let finishFirst: ((value: Response) => void) | undefined;
+  let firstSignal: AbortSignal | null | undefined;
+  const receipt = () => json({ workItemId: 'work-1', revision: 3, changed: true, linkId: null });
+  fixture({
+    readDetail: () => commands.length ? { ...detail, workItem: { ...summary, title, revision: 3 } } : detail,
+    readSnapshot: () => commands.length ? { ...snapshot, revision: 3, eventCursor: 6 } : snapshot,
+    customResponse: async ({ pathname }, init) => {
+      if (pathname !== '/api/v12/work-items/work-1/update') return;
+      commands.push(JSON.parse(String(init?.body)));
+      if (commands.length === 1) {
+        firstSignal = init?.signal;
+        return new Promise<Response>(resolve => { finishFirst = resolve; });
+      }
+      return receipt();
+    },
+  });
+  open('#/work-items/work-1');
+  const page = render(<App />);
+  const edit = await screen.findByRole('button', { name: '编辑标题和说明' });
+  await waitFor(() => expect(edit).toBeEnabled());
+  fireEvent.click(edit);
+  fireEvent.change(screen.getByRole('textbox', { name: '标题' }), { target: { value: title } });
+  fireEvent.click(screen.getByRole('button', { name: '保存修改' }));
+  await waitFor(() => expect(finishFirst).toBeTypeOf('function'));
+  await selectSection('活动');
+  await screen.findByRole('region', { name: '活动' });
+  expect(firstSignal?.aborted).toBe(true);
+  await act(async () => finishFirst?.(receipt()));
+  await selectSection('概览');
+  expect(await screen.findByRole('button', { name: '重试保存' })).toBeInTheDocument();
+  page.unmount();
+  render(<App />);
+  expect(await screen.findByRole('heading', { name: title })).toBeVisible();
+  expect(screen.getByRole('textbox', { name: '标题' })).toHaveValue(title);
+  expect(screen.getByRole('textbox', { name: '标题' })).toBeDisabled();
+  const replay = screen.getByRole('button', { name: '重试保存' });
+  await waitFor(() => expect(replay).toBeEnabled());
+  expect(commands).toHaveLength(1);
+  fireEvent.click(replay);
+  expect(await screen.findByRole('button', { name: '编辑标题和说明' })).toBeVisible();
+  expect(commands).toHaveLength(2);
+  expect(commands[0]).toEqual({ projectId: 'demo', requestId: expect.any(String), expectedRevision: 2,
+    title, description: '核对浅层井资料' });
+  expect(commands[1]).toEqual(commands[0]);
+});
+
+it('skips directly to the work main region without changing the section URL', async () => {
+  fixture();
+  open('#/work-items/work-1/tasks');
+  render(<App />);
+  const skip = await screen.findByRole('link', { name: '跳到主要内容' });
+  skip.focus();
+  await userEvent.setup().keyboard('{Enter}');
+  expect(screen.getByRole('main')).toHaveFocus();
+  expect(window.location.hash).toBe('#/work-items/work-1/tasks');
 });
 
 it('associates one exact historical semantic version and replays a lost attach receipt', async () => {
@@ -151,6 +292,7 @@ it('associates one exact historical semantic version and replays a lost attach r
   } });
   open('#/work-items/work-1');
   render(<App />);
+  await selectSection('资料');
   fireEvent.click(await screen.findByRole('button', { name: '选择数据资料' }));
   fireEvent.click(await screen.findByRole('button', { name: /水位观测资料/ }));
   await screen.findByRole('option', { name: /semantics-historical/ });
@@ -158,6 +300,11 @@ it('associates one exact historical semantic version and replays a lost attach r
   expect(await screen.findByText('1985 国家高程基准')).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: '选择此资料版本' }));
   fireEvent.click(screen.getByRole('button', { name: '确认关联资料' }));
+  expect(await screen.findByRole('button', { name: '重试关联' })).toBeVisible();
+  await selectSection('活动');
+  await screen.findByRole('region', { name: '活动' });
+  await selectSection('资料');
+  expect(submitted).toHaveLength(1);
   fireEvent.click(await screen.findByRole('button', { name: '重试关联' }));
   await waitFor(() => expect(submitted).toHaveLength(2));
   expect(submitted[0]).toEqual({
@@ -201,6 +348,7 @@ it('chooses a field from the exact source before saving a locally scoped busines
   });
   open('#/work-items/work-1');
   render(<App />);
+  await selectSection('资料');
   fireEvent.click(await screen.findByRole('button', { name: '关联监测井、区域或含水层' }));
   fireEvent.click(await screen.findByRole('button', { name: /井台账/ }));
   fireEvent.click(await screen.findByRole('button', { name: '选择此对象来源' }));
@@ -289,12 +437,15 @@ it('restores detail, exposes both sessions, redacts unavailable references and t
   open('#/work-items/work-1');
   render(<App />);
   expect(await screen.findByRole('heading', { name: '枯水期监测' })).toBeInTheDocument();
-  expect(screen.getByRole('link', { name: '水位资料核对' })).toHaveAttribute('href', '#/sessions/session-1?workItem=work-1');
+  await selectSection('对话');
+  expect(await screen.findByRole('link', { name: '水位资料核对' })).toHaveAttribute('href', '#/sessions/session-1?workItem=work-1');
   expect(screen.getByRole('link', { name: '季节趋势讨论' })).toBeVisible();
-  const materials = screen.getByRole('region', { name: '资料与业务对象' });
+  await selectSection('资料');
+  const materials = await screen.findByRole('region', { name: '资料与业务对象' });
   expect(within(materials).getAllByText(/暂不可用/)).toHaveLength(2);
   expect(materials).not.toHaveTextContent('hidden-object-id');
   expect(materials).not.toHaveTextContent('hidden-asset-id');
+  await selectSection('活动');
   expect(await screen.findByText('任务已更新')).toBeInTheDocument();
   await waitFor(() => expect(EventStream.connections[0]?.url).toContain('afterEventId=5'));
   open('#/work-items');
@@ -318,7 +469,7 @@ it('keeps archived state server-owned when an archive conflicts with another rev
 
 it('keeps WorkItem actions and reads unavailable to a viewer even on a direct link', async () => {
   const fetchMock = fixture({ role: 'viewer' });
-  open('#/work-items/work-1');
+  open('#/work-items/work-1/results');
   render(<App />);
   expect(await screen.findByText('当前身份无法访问业务工作')).toBeVisible();
   expect(screen.queryByRole('button', { name: '归档工作' })).not.toBeInTheDocument();
@@ -368,6 +519,7 @@ it('invalidates an open review confirmation when the verified result set changes
   fixture({ onReview: review, readSnapshot: () => reviewed });
   open('#/work-items/work-1');
   render(<App />);
+  await selectSection('成果');
   const candidate = await screen.findByRole('button', { name: '验收 · 水位资料核对' });
   await waitFor(() => expect(candidate).toBeEnabled());
   fireEvent.click(candidate);
@@ -403,17 +555,25 @@ it.each([
   });
   open('#/work-items/work-1');
   render(<App />);
+  await selectSection('成果');
   const center = await screen.findByRole('region', { name: '成果中心' });
   expect(await within(center).findByText('执行成功')).toBeVisible();
   expect(await within(center).findByText(label)).toBeVisible();
   expect(within(center).queryByRole('button', { name: /复用|确认验收/ })).not.toBeInTheDocument();
 });
 
-it('opens only the checked output, then removes its viewer and reuse action when Data access is revoked', async () => {
+function publishedResultFixture({ isLinked = () => true, onAssociate }: {
+  isLinked?: () => boolean;
+  onAssociate?: (command: unknown) => Promise<Response>;
+} = {}) {
   const output = { ...dataRef(), outputName: 'result-summary' };
   const reference = { kind: 'RESULT', runId: 'run-1', publicationId: 'publication-1', outputName: output.outputName, dataRef: output } as const;
   const workflowRef = { id: 'monitoring', version: '1.0.0', checksum: `sha256:${'1'.repeat(64)}` };
   let readable = true;
+  let workAccessible = true;
+  let linkAvailable = true;
+  let outputAvailable = true;
+  let workDetailDelay: { wait: Promise<void>; started: () => void } | undefined;
   const run = {
     runId: 'run-1', agentRunId: 'agent-1', projectId: 'demo', toolCallId: 'tool-1', position: 0,
     modelId: 'monitoring', modelVersion: '1.0.0', modelChecksum: workflowRef.checksum,
@@ -422,34 +582,148 @@ it('opens only the checked output, then removes its viewer and reuse action when
     outputs: [output], arguments: {}, error: null, createdAt: instant, startedAt: instant, finishedAt: instant, durationMs: 1,
   };
   fixture({
-    readDetail: () => ({ ...detail, agentRuns: [{ sessionId: 'session-1', agentRunId: 'agent-1', goalRevision: 1 }],
+    readSnapshot: () => onAssociate && isLinked() ? { ...snapshot, revision: 3, eventCursor: 6 } : snapshot,
+    readDetail: () => ({ ...detail, workItem: onAssociate && isLinked() ? { ...summary, revision: 3 } : summary,
+      agentRuns: [{ sessionId: 'session-1', agentRunId: 'agent-1', goalRevision: 1 }],
       workflowRuns: [{ runId: 'run-1', agentRunId: 'agent-1', sessionId: 'session-1', workflowRef }],
-      assets: [{ linkId: 'result-link', linkedAt: instant, reference: readable ? reference : null,
-        state: readable ? 'AVAILABLE' : 'UNAVAILABLE' }] }),
-    customResponse: async ({ pathname }) => {
-      if (pathname === '/api/v12/workflow-runs/run-1') return json(run);
+      assets: isLinked() ? [{ linkId: 'result-link', linkedAt: instant, reference: readable && linkAvailable ? reference : null,
+        state: readable && linkAvailable ? 'AVAILABLE' : 'UNAVAILABLE' }] : [] }),
+    customResponse: async ({ pathname }, init) => {
+      if (pathname === '/api/v12/work-items/work-1' && workDetailDelay) {
+        workDetailDelay.started();
+        await workDetailDelay.wait;
+      }
+      if (!workAccessible && pathname === '/api/v12/work-items/work-1/snapshot') return json({ code: 'FORBIDDEN' }, 403);
+      if (onAssociate && pathname === '/api/v12/work-items/work-1/assets') return onAssociate(JSON.parse(String(init?.body)));
+      if (pathname === '/api/v12/workflow-runs/run-1') return json(outputAvailable ? run : { ...run, outputs: [] });
       if (pathname === '/api/v12/workflow-runs/run-1/publication') {
         return json({ workflowRunId: 'run-1', publicationId: 'publication-1', state: 'PUBLISHED' });
       }
       if (pathname === '/api/v12/agent-runs/agent-1/trace') return json({ agentRunId: 'agent-1', traceId: 'trace-1', trace: null, spans: [] });
       if (pathname.startsWith('/api/v12/data/versions/version-1') && !readable) return json({ code: 'DATA_VERSION_NOT_FOUND' }, 404);
-      if (pathname === '/api/v12/data/versions/version-1') return json(dataDetail());
+      if (pathname === '/api/v12/data/versions/version-1') return json(dataDetail({ semanticId: 'semantics-current' }));
+      if (pathname === '/api/v12/data/versions/version-1/semantics/semantics-1') return json({
+        versionId: 'version-1', semanticId: 'semantics-1', createdAt: instant, actor: {}, body: { description: '锁定成果语义' },
+      });
       if (pathname === '/api/v12/data/versions/version-1/objects/object-1/content') return json({ monitoringHighlights: 4 });
+      if (pathname === '/api/v12/data/datasets') return json({ items: [], nextCursor: null, matchBasis: 'catalog' });
+      if (pathname.endsWith('/versions') || pathname.endsWith('/semantics') || pathname.endsWith('/quality-runs')) {
+        return json({ items: [], nextCursor: null });
+      }
       return undefined;
     },
   });
+  return {
+    revokeDataAccess: () => { readable = false; },
+    revokeWorkAccess: () => { workAccessible = false; },
+    revokeResultLink: () => { linkAvailable = false; },
+    revokeResultOutput: () => { outputAvailable = false; },
+    pauseWorkDetail: () => {
+      let resume!: () => void;
+      const started = vi.fn();
+      workDetailDelay = { started, wait: new Promise(resolve => { resume = resolve; }) };
+      return { started, resume };
+    },
+  };
+}
+
+it.each(['available', 'denied'] as const)('recovers a lost result association receipt after the exact output is already linked (Data %s)', async data => {
+  const commands: unknown[] = [];
+  const { revokeDataAccess } = publishedResultFixture({
+    isLinked: () => commands.length > 0,
+    onAssociate: async command => {
+      commands.push(command);
+      if (commands.length === 1) throw new TypeError('receipt was lost');
+      return json({ workItemId: 'work-1', revision: 3, linkId: 'result-link', changed: true });
+    },
+  });
+  open('#/work-items/work-1/results');
+  const page = render(<App />);
+  const openOutput = () => screen.findByRole('button', { name: '查看成果 · result summary' });
+  fireEvent.click(await openOutput());
+  const associate = await screen.findByRole('button', { name: '关联到此工作' });
+  await waitFor(() => expect(associate).toBeEnabled());
+  fireEvent.click(associate);
+  await screen.findByRole('button', { name: '重试关联成果' });
+  page.unmount();
+  if (data === 'denied') revokeDataAccess();
+  render(<App />);
+  expect(await screen.findByText('成果关联回执待核对')).toBeVisible();
+  expect(commands).toHaveLength(1);
+  fireEvent.click(await openOutput());
+  if (data === 'available') expect(await screen.findByText('已关联到工作')).toBeVisible();
+  else {
+    expect(await screen.findByText('成果不可用或当前身份无权读取。')).toBeVisible();
+    expect(screen.queryByRole('button', { name: '关联到此工作' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '在数据工作台查看' })).not.toBeInTheDocument();
+  }
+  const replay = await screen.findByRole('button', { name: '重试关联成果' });
+  await waitFor(() => expect(replay).toBeEnabled());
+  fireEvent.click(replay);
+  await waitFor(() => expect(commands).toHaveLength(2));
+  expect(commands[0]).toEqual({ projectId: 'demo', requestId: expect.any(String), expectedRevision: 2,
+    reference: { kind: 'RESULT', runId: 'run-1', outputName: 'result-summary' } });
+  expect(commands[1]).toEqual(commands[0]);
+});
+
+it('opens only the checked output, then removes its viewer and reuse action when Data access is revoked', async () => {
+  const { revokeDataAccess } = publishedResultFixture();
   open('#/work-items/work-1');
   render(<App />);
+  await selectSection('成果');
   const center = await screen.findByRole('region', { name: '成果中心' });
   expect(within(center).queryByText('预览来源与范围')).not.toBeInTheDocument();
+  expect(within(center).queryByRole('button', { name: '在数据工作台查看' })).not.toBeInTheDocument();
   fireEvent.click(await within(center).findByRole('button', { name: '查看成果 · result summary' }));
   expect(await within(center).findByRole('region', { name: '预览来源与范围' })).toBeVisible();
   expect(within(center).getByLabelText('复用目标会话')).toHaveValue('');
-  readable = false;
+  const opener = await within(center).findByRole('button', { name: '在数据工作台查看' });
+  await userEvent.setup().click(opener);
+  const database = await screen.findByRole('dialog', { name: '数据库' });
+  expect(await within(database).findByText('锁定成果语义')).toBeVisible();
+  expect(within(database).getByRole('link', { name: '下载对象' })).toHaveAttribute('href', '/api/v12/data/versions/version-1/objects/object-1/content');
+  fireEvent.click(within(database).getByRole('button', { name: '关闭数据库' }));
+  await waitFor(() => expect(opener).toHaveFocus());
+  revokeDataAccess();
   act(() => window.dispatchEvent(new Event('focus')));
   expect(await within(center).findByText('成果不可用或当前身份无权读取。')).toBeVisible();
   expect(within(center).queryByRole('region', { name: '预览来源与范围' })).not.toBeInTheDocument();
   expect(within(center).queryByLabelText('复用目标会话')).not.toBeInTheDocument();
+  expect(within(center).queryByRole('button', { name: '在数据工作台查看' })).not.toBeInTheDocument();
+});
+
+it('closes an already open result inspector when WorkItem access is revoked', async () => {
+  const { revokeWorkAccess } = publishedResultFixture();
+  open('#/work-items/work-1/results');
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: '查看成果 · result summary' }));
+  await userEvent.setup().click(await screen.findByRole('button', { name: '在数据工作台查看' }));
+  const database = await screen.findByRole('dialog', { name: '数据库' });
+  expect(await within(database).findByText('锁定成果语义')).toBeVisible();
+  revokeWorkAccess();
+  act(() => EventStream.connections[0].dispatchEvent(new Event('work_item.refresh')));
+  await waitFor(() => expect(database).not.toBeInTheDocument());
+  expect(await screen.findByRole('alert')).toHaveTextContent('当前身份无权访问');
+  await waitFor(() => expect(screen.getByRole('heading', { name: '业务工作详情' })).toHaveFocus());
+});
+
+it.each(['linked reference', 'run output'] as const)('closes an open inspector after a refresh confirms loss of its %s', async missing => {
+  const { pauseWorkDetail, revokeResultLink, revokeResultOutput } = publishedResultFixture({ isLinked: () => missing === 'linked reference' });
+  open('#/work-items/work-1/results');
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: '查看成果 · result summary' }));
+  await userEvent.setup().click(await screen.findByRole('button', { name: '在数据工作台查看' }));
+  const dialog = await screen.findByRole('dialog', { name: '数据库' });
+  expect(await within(dialog).findByText('锁定成果语义')).toBeVisible();
+  const { started, resume } = pauseWorkDetail();
+  if (missing === 'linked reference') revokeResultLink();
+  else revokeResultOutput();
+  act(() => EventStream.connections[0].dispatchEvent(new Event('work_item.refresh')));
+  await waitFor(() => expect(started).toHaveBeenCalled());
+  expect(dialog).toBeVisible();
+  await act(async () => resume());
+  await waitFor(() => expect(dialog).not.toBeInTheDocument());
+  expect(screen.getByRole('heading', { name: '枯水期监测' })).toBeVisible();
 });
 
 it('replays the same WorkItem acceptance after an uncertain receipt and a page reload', async () => {
@@ -466,6 +740,7 @@ it('replays the same WorkItem acceptance after an uncertain receipt and a page r
   readDetail: () => ({ ...detail, workItem: accepted ? { ...summary, revision: 3 } : summary }) });
   open('#/work-items/work-1');
   const first = render(<App />);
+  await selectSection('成果');
   const candidate = await screen.findByRole('button', { name: '验收 · 水位资料核对' });
   await waitFor(() => expect(candidate).toBeEnabled());
   fireEvent.click(candidate);
@@ -494,6 +769,7 @@ it('replays a lost linked-session receipt and opens the verified work background
   fixture({ onCreateSession: create, readContext: getContext });
   open('#/work-items/work-1');
   const page = render(<App />);
+  await selectSection('对话');
   const createButton = await screen.findByRole('button', { name: '在此工作中新建会话' });
   await waitFor(() => expect(createButton).toBeEnabled());
   fireEvent.click(createButton);
@@ -519,6 +795,7 @@ it('offers a safe alternate path when a selected session already belongs to anot
   fixture({ candidates: [sessionSummaryFixture({ sessionId: 'candidate', title: '已有勘察会话' })], onLinkSession: link });
   open('#/work-items/work-1');
   render(<App />);
+  await selectSection('对话');
   const picker = await screen.findByRole('button', { name: '加入已有会话' });
   await waitFor(() => expect(picker).toBeEnabled());
   fireEvent.click(picker);
@@ -527,5 +804,5 @@ it('offers a safe alternate path when a selected session already belongs to anot
   expect(await screen.findByText(/该会话已归属其他业务工作/)).toBeVisible();
   expect(link).toHaveBeenCalledWith(expect.objectContaining({ sessionId: 'candidate', expectedRevision: 2 }));
   expect(await screen.findByRole('button', { name: '在此工作中新建会话' })).toBeVisible();
-  expect(window.location.hash).toBe('#/work-items/work-1');
+  expect(window.location.hash).toBe('#/work-items/work-1/conversations');
 });

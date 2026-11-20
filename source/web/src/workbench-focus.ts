@@ -36,7 +36,7 @@ export function useWorkbenchModal(
     const root = ref.current;
     if (!open || !root) return;
     const opener = document.activeElement;
-    const shell = root.closest('.app-shell, .work-item-shell');
+    const shell = root.closest('.app-shell, .work-item-shell, .workspace-modal-scope');
     const backgrounds: HTMLElement[] = [];
     for (let pane: HTMLElement | null = root; shell && pane && pane !== shell; pane = pane.parentElement) {
       for (const sibling of pane.parentElement?.children ?? []) {

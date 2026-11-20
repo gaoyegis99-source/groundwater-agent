@@ -31,11 +31,11 @@ it('keeps a pending confirmation from an older turn read-only in the parameter w
 
 it('restores the selected result identity before the result list arrives and scopes it to its owner', () => {
   const exact = dataRef({ semanticId: 'published-semantics', objectId: 'published-object' });
-  const first = renderHook(() => useWorkspaceController('session-1', 'researcher-a'));
+  const first = renderHook(() => useWorkspaceController('session-1', 'researcher-a', window.location.hash, null));
   act(() => first.result.current.openResource(exact.versionId, exact));
   first.unmount();
 
-  const restored = renderHook(({ scope }) => useWorkspaceController('session-1', scope), { initialProps: { scope: 'researcher-a' } });
+  const restored = renderHook(({ scope }) => useWorkspaceController('session-1', scope, window.location.hash, null), { initialProps: { scope: 'researcher-a' } });
   expect(restored.result.current.resourceId).toBe(exact.versionId);
   expect(restored.result.current.resourceReference).toEqual(exact);
   restored.rerender({ scope: 'researcher-b' });

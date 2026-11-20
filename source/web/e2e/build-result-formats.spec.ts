@@ -48,6 +48,7 @@ test('a published transfer backtest explains the baseline comparison and priorit
     if (ref) return route.fulfill({ json: dataDetail({ versionId: ref.versionId, objects: [
       { objectId: ref.objectId, checksum: ref.checksum, format: ref.format, mediaType: ref.mediaType, size: ref.sizeBytes, role: 'raw' },
     ] }) });
+    if (/^\/api\/v12\/sessions\/[^/]+\/work-item$/.test(pathname) && route.request().method() === 'GET') return route.fulfill({ json: { context: null } });
     throw new Error(`Unexpected transfer result request: ${pathname}`);
   });
   await page.goto('/#/sessions/session-1');
@@ -180,6 +181,7 @@ test('published result actions preserve identity across the Groundwater output f
         fields, rows: [[42]], features: [], truncated: false, warnings: [], nextOffset: null },
     });
     if (tail === 'cancel' && path.includes('/data/')) return json({ queryId: 'result-query', previewId: 'result-preview', state: 'CANCELLED' });
+    if (/^\/api\/v12\/sessions\/[^/]+\/work-item$/.test(path) && route.request().method() === 'GET') return route.fulfill({ json: { context: null } });
     throw new Error(`Unexpected result format fixture request ${request.method()} ${path}`);
   });
 
@@ -382,6 +384,7 @@ test('current confirmation and published task history share the screen without a
       versionId: ref.versionId, title: '合成验收6k2e观测表（水头版）', descriptor: { fields: [{ fieldId: 'level', name: 'level', type: 'number' }] },
       semantics: { fields: { level: { meaning: '观测水头高程', unit: 'm' } } },
       objects: [{ objectId: ref.objectId, size: ref.sizeBytes, checksum: ref.checksum, role: 'raw', mediaType: ref.mediaType, format: ref.format }] }) });
+    if (/^\/api\/v12\/sessions\/[^/]+\/work-item$/.test(path)) return route.fulfill({ json: { context: null } });
     throw new Error('Unexpected history request ' + path);
   });
   await page.goto('/#/sessions/' + waitingId);

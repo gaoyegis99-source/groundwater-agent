@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { ApiError, callApi } from './api';
 import { outputName } from './card-presentation';
 import { inputReferences, newRequestId } from './message-routing';
+import { isResourceReference } from './resource-item';
 import type {
   BusinessAssetReference, BusinessObjectReference, ResourceDetail, ResourceItem, ResourceReference,
   WorkItemDetail, WorkItemMaterialCommand,
@@ -9,6 +10,7 @@ import type {
 import { UploadDialog } from './UploadDialog';
 import { useWorkItemCommand } from './use-work-item-command';
 import { linkWorkItemMaterial } from './work-item-api';
+import { workItemCommandCache } from './work-item-command-cache';
 import { WorkItemIssue } from './WorkItemForms';
 import { workItemTime } from './work-item-presentation';
 import { WorkItemOtherAssets } from './WorkItemOtherAssets';
@@ -26,6 +28,22 @@ type View =
   | { kind: 'run' };
 type ObjectSource = { item: ResourceItem; fields: NonNullable<ResourceDetail['descriptor']['fields']> };
 type Selection = { reference: Reference; label: string };
+
+function isMaterialCommand(value: Record<string, unknown>) {
+  if (Object.keys(value).length !== 4 || !value.reference || typeof value.reference !== 'object' || Array.isArray(value.reference)) return false;
+  const reference = value.reference as Record<string, unknown>;
+  if ('objectKind' in reference) {
+    return typeof reference.objectKind === 'string' && Object.hasOwn(objectLabels, reference.objectKind)
+      && typeof reference.fieldId === 'string' && typeof reference.externalId === 'string' && isResourceReference(reference.source);
+  }
+  switch (reference.kind) {
+    case 'DATA': return isResourceReference(reference.dataRef);
+    case 'KNOWLEDGE': return typeof reference.documentId === 'string' && typeof reference.versionId === 'string' && typeof reference.checksum === 'string';
+    case 'WORKFLOW': return typeof reference.runId === 'string';
+    case 'RESULT': return typeof reference.runId === 'string' && typeof reference.outputName === 'string';
+    default: return false;
+  }
+}
 
 export function MaterialIdentity({ reference }: { reference: ResourceReference }) {
   return <details className="material-identity"><summary>资料身份</summary><dl>
@@ -88,6 +106,8 @@ export function WorkItemMaterials({ detail, scope, current, dataEnabled, knowled
   onRefresh: () => void;
 }) {
   const { workItem: item } = detail;
+  const cache = workItemCommandCache<WorkItemMaterialCommand>(scope, item, 'material', isMaterialCommand);
+  const [restored] = useState(cache.read);
   const [view, setView] = useState<View>();
   const [objectSource, setObjectSource] = useState<ObjectSource>();
   const [selection, setSelection] = useState<Selection>();
@@ -123,8 +143,12 @@ export function WorkItemMaterials({ detail, scope, current, dataEnabled, knowled
       setFeedback(receipt.changed ? '关联已保存。' : '此引用已关联。');
       onRefresh();
     },
-    { onRejected: onRefresh },
+    { restored, remember: cache.remember, onRejected: onRefresh },
   );
+  const pending = command.unsettled;
+  const pendingKind = pending && ('objectKind' in pending.reference ? 'OBJECT' : pending.reference.kind);
+  const replayAllowed = current && (pendingKind === 'KNOWLEDGE' ? knowledgeEnabled
+    : pendingKind === 'OBJECT' || pendingKind === 'DATA' || pendingKind === 'RESULT' ? dataEnabled : true);
   const occupied = !!(view || objectSource || selection || command.unsettled || file || checkingUpload);
   const restoreOpener = () => {
     requestAnimationFrame(() => {
@@ -196,10 +220,11 @@ export function WorkItemMaterials({ detail, scope, current, dataEnabled, knowled
     <WorkItemIssue error={uploadError} />
     <WorkItemIssue error={command.error} />
     {feedback && <p role="status">{feedback}</p>}
-    {command.unsettled && <button type="button" disabled={command.busy}
-      onClick={() => { if (command.unsettled) void command.submit(command.unsettled); }}>
-      {command.busy ? '正在关联…' : '重试关联'}
-    </button>}
+    {pending && <div className="work-item-actions">
+      <span role="status">{command.busy ? '正在关联…' : '关联回执待核对。'}</span>
+      {!command.busy && <button type="button" disabled={!replayAllowed}
+        onClick={() => { if (replayAllowed) void command.submit(pending); }}>重试关联</button>}
+    </div>}
     {!readableView && view && <div role="status">所选引用暂不可用。<button type="button" onClick={close}>关闭查看</button></div>}
     {!detail.objects.length && !materials.length && <p>暂无关联资料与业务对象。</p>}
     {!!materials.length && <ul className="work-item-items work-material-rows" aria-label="关联资料">

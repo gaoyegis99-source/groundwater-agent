@@ -1,6 +1,7 @@
 # Groundwater V6 工程计划
 
 Groundwater Agent V2 的阶段任务、执行顺序和审查模板见[本地实施提示词](groundwater-agent-v2/prompts/README.md)。
+V2.1 的实施记录与本地验收证据见[阶段报告](groundwater-agent-v2.1/IMPLEMENTATION_STATUS.md)。
 
 ## 历史归档
 

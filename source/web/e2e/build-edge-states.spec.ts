@@ -38,6 +38,7 @@ async function mockShell(page: Page, options: { history?: ReturnType<typeof hist
     if (pathname.endsWith('/results')) return route.fulfill({ json: sessionResultsFixture([], { sessionId }) });
     if (options.draft && pathname.endsWith(`/workflow-drafts/${options.draft.draftId}`)) return route.fulfill({ json: options.draft });
     if (pathname.endsWith('/preview') || pathname.endsWith('/events')) return route.fulfill({ status: 204 });
+    if (/^\/api\/v12\/sessions\/[^/]+\/work-item$/.test(pathname) && route.request().method() === 'GET') return route.fulfill({ json: { context: null } });
     throw new Error(`Unexpected browser fixture request: ${pathname}`);
   });
 }
@@ -80,7 +81,7 @@ test('large JSON keeps a bounded preview, can search off-page data and copies or
   let reads = 0;
   await page.route('**/versions/version-1/objects/object-1/content', route => ++reads === 1 ? route.fulfill({ status: 502 }) : route.fulfill({ contentType: 'application/json', body: json }));
   await page.goto('/');
-  const opener = page.getByRole('button', { name: '数据库', exact: true });
+  const opener = page.getByRole('button', { name: '选择已有资料', exact: true });
   await opener.click();
   const drawer = page.getByRole('dialog', { name: '数据库' });
   await drawer.getByRole('button', { name: /长 JSON 监测记录/ }).click();

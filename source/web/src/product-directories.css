@@ -1,0 +1,107 @@
+.database-workbench.is-embedded {
+  position: static;
+  inset: auto;
+  z-index: auto;
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  animation: none;
+  container: data-directory / inline-size;
+}
+
+.database-workbench.is-embedded .database-grid {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: var(--gw-space-4);
+}
+
+.database-workbench.is-embedded .database-pane {
+  overflow: visible;
+  overscroll-behavior: auto;
+  scrollbar-gutter: auto;
+  scroll-margin-block-start: var(--gw-space-3);
+  padding-inline: 0;
+  border: 0;
+  border-block-start: 1px solid var(--gw-line);
+  background: transparent;
+}
+
+.database-workbench.is-embedded .database-pane-heading,
+.database-workbench.is-embedded .database-actions {
+  flex-wrap: wrap;
+}
+
+.database-workbench.is-embedded .database-actions { position: static; }
+.database-workbench.is-embedded .database-filters > div { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.database-workbench.is-embedded .database-filters :is(select, input) { min-inline-size: 0; }
+.database-workbench.is-embedded .database-summary strong { white-space: normal; overflow-wrap: anywhere; }
+.database-workbench.is-embedded .database-pane-heading h2 { margin: 0; overflow-wrap: anywhere; }
+.database-workbench.is-embedded .database-detail section > h3 { margin: var(--gw-space-5) 0 var(--gw-space-2); }
+.database-workbench.is-embedded .database-empty h2 { margin: var(--gw-space-3) 0 var(--gw-space-1); }
+
+.directory-data-return {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gw-space-2);
+  margin-block-end: var(--gw-space-3);
+}
+
+@container data-directory (min-width: 36rem) {
+  .database-workbench.is-embedded .database-grid {
+    grid-template-columns: minmax(13rem, 2fr) minmax(0, 3fr);
+    column-gap: var(--gw-space-5);
+  }
+
+  .database-workbench.is-embedded .database-preview { grid-column: 1 / -1; }
+}
+
+@container data-directory (min-width: 66rem) {
+  .database-workbench.is-embedded .database-grid {
+    grid-template-columns: minmax(13rem, 1fr) minmax(17rem, 1.35fr) minmax(21rem, 1.75fr);
+    column-gap: var(--gw-space-6);
+  }
+
+  .database-workbench.is-embedded .database-preview { grid-column: auto; }
+}
+
+.knowledge-drawer.is-embedded,
+.capability-directory {
+  min-inline-size: 0;
+  max-inline-size: 60rem;
+  overflow-wrap: anywhere;
+}
+
+.knowledge-drawer.is-embedded { animation: none; }
+.knowledge-drawer.is-embedded :is(.knowledge-directory-results, .knowledge-reading) {
+  overflow: visible;
+  overscroll-behavior: auto;
+  scrollbar-gutter: auto;
+}
+
+.knowledge-drawer.is-embedded .knowledge-directory-search,
+.capability-directory .capability-search > .gw-field { max-inline-size: 36rem; }
+.knowledge-drawer.is-embedded .knowledge-reading > h2 { margin-block: var(--gw-space-2); }
+
+.capability-directory .capability-search[role="group"] button[aria-pressed="true"] {
+  background: var(--gw-selection);
+  border-color: var(--gw-control-border);
+  color: var(--gw-action);
+}
+
+.capability-directory :is(.capability-item, .capability-heading) > h2 { margin: 0; }
+.capability-directory .capability-item > h2 + .capability-examples { margin-block-start: var(--gw-space-3); }
+.capability-directory .capability-examples {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+}
+
+.capability-directory .capability-examples button { white-space: normal; }
+.capability-directory .capability-examples .app-icon { flex: none; }
+
+.is-embedded .database-pane-heading h2,
+.is-embedded .database-empty h2,
+.is-embedded .knowledge-reading > h2,
+.capability-directory h2 {
+  font-size: var(--gw-size-subtitle);
+  line-height: var(--gw-leading-subtitle);
+}

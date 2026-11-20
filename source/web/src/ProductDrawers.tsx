@@ -10,13 +10,14 @@ import { Button } from './ui/Button';
 import { Badge, EmptyState, Loading, type BadgeTone } from './ui/Feedback';
 import { Input } from './ui/Fields';
 import { Drawer } from './ui/Overlays';
+import './product-directories.css';
 
 const operatorCoverage = {
   BROWSER_SINGLE_NODE: '网页单节点', WORKER_SINGLE_OPERATOR: 'Worker 单算子', REMOTE_PRESET_NODE: '预设远程节点',
 };
 const runtimeNames = { native: 'Native', qgis: 'QGIS', remote_http: '远程 HTTP' };
 
-function OperatorDirectory({ operators }: { operators: readonly OperatorCapability[] }) {
+function OperatorDirectory({ operators, heading: Heading }: { operators: readonly OperatorCapability[]; heading: 'h2' | 'h3' }) {
   const [query, setQuery] = useState('');
   const [limit, setLimit] = useState(20);
   const [refresh, setRefresh] = useState(0);
@@ -55,7 +56,7 @@ function OperatorDirectory({ operators }: { operators: readonly OperatorCapabili
       const validation = item.validation;
       const status = validation.status === 'PASSED' ? '通过' : validation.status === 'STALE' ? '需复验' : '暂无记录';
       return <article className="capability-item" key={`${item.operatorId}@${item.version}`}>
-        <h3>{item.title}</h3>
+        <Heading>{item.title}</Heading>
         <p translate="no" className="capability-identity">{item.operatorId}@{item.version}</p>
         <dl className="argument-list">
           <div><dt>独立调用</dt><dd>{item.confirmationSupported ? '已准入' : '未准入'}</dd></div>
@@ -83,7 +84,7 @@ function OperatorDirectory({ operators }: { operators: readonly OperatorCapabili
   </>;
 }
 
-export function CapabilityDrawer({ capabilities, businessCapabilities, examples, onBusinessCapability, onExample, onWorkflow, onClose }: {
+export function CapabilityDrawer({ capabilities, businessCapabilities, examples, onBusinessCapability, onExample, onWorkflow, onClose, embedded = false }: {
   capabilities: Capabilities;
   businessCapabilities: BusinessCapability[];
   examples: ProductUiProfile['examples'];
@@ -91,6 +92,7 @@ export function CapabilityDrawer({ capabilities, businessCapabilities, examples,
   onExample: (prompt: string) => void;
   onWorkflow?: (model: WorkflowModel) => void;
   onClose: () => void;
+  embedded?: boolean;
 }) {
   const ui = productUi();
   const [query, setQuery] = useState('');
@@ -102,18 +104,19 @@ export function CapabilityDrawer({ capabilities, businessCapabilities, examples,
     return `${displayName} ${description}`.toLocaleLowerCase().includes(term);
   });
   const scenarios = businessCapabilities.filter(item => `${item.title} ${item.description} ${item.scenario}`.toLocaleLowerCase().includes(term));
-  return <Drawer title="能力目录" isOpen dismissOnOutsidePress onOpenChange={open => { if (!open) onClose(); }}>
+  const Heading = embedded ? 'h2' : 'h3';
+  const content = <>
     {!!capabilities.operators?.length && <div className="capability-search" role="group" aria-label="能力目录类型">
       <button type="button" aria-pressed={!showOperators} onClick={() => setShowOperators(false)}>工作流</button>
       <button type="button" aria-pressed={showOperators} onClick={() => setShowOperators(true)}>算子</button>
     </div>}
-    {showOperators ? <OperatorDirectory operators={capabilities.operators ?? []} /> : <>
+    {showOperators ? <OperatorDirectory operators={capabilities.operators ?? []} heading={Heading} /> : <>
     <div className="capability-search">
       <Input ref={search} label="搜索工作流" type="search" value={query} onChange={event => setQuery(event.target.value)} />
     </div>
     {models.length === 0 && scenarios.length === 0 && <EmptyState description="没有匹配的工作流。" action={term &&
       <Button variant="text" onPress={() => { setQuery(''); search.current?.focus(); }}>清除关键词</Button>} />}
-    {scenarios.length > 0 && <section className="capability-item"><h3>业务场景</h3><div className="capability-examples">
+    {scenarios.length > 0 && <section className="capability-item"><Heading>业务场景</Heading><div className="capability-examples">
       {scenarios.map(({ ref, title }) => <button type="button" key={`${ref.id}@${ref.version}`} aria-haspopup="dialog" onClick={() => onBusinessCapability(ref.id, ref.version)}>{title}<Icon name="arrow-right" /></button>)}
     </div></section>}
     {models.map(model => {
@@ -122,7 +125,7 @@ export function CapabilityDrawer({ capabilities, businessCapabilities, examples,
       const outputs = (model.finalOutputs ?? []).flatMap(item => typeof item === 'string' ? [item] : item.name ? [item.name] : []);
       return <article className="capability-item" key={model.modelId}>
         <div className="capability-heading">
-          <h3>{name}</h3>
+          <Heading>{name}</Heading>
           {onWorkflow && <Button aria-label={`在会话中使用${name}`} isDisabled={!modelIdentity(model)} onPress={() => onWorkflow(model)}>在会话中使用</Button>}
         </div>
         <p>{presentation.description}</p>
@@ -138,10 +141,14 @@ export function CapabilityDrawer({ capabilities, businessCapabilities, examples,
       </article>;
     })}
     {!term && <>
-      {Object.keys(ui.cases).length > 0 && <section><h3>案例与执行档位</h3><dl className="argument-list">{Object.entries(ui.cases).map(([id, item]) => <div key={id}><dt>{item.label}</dt><dd>{Object.values(item.profiles).join(' · ')}</dd></div>)}</dl></section>}
-      {examples.length > 0 && <section><h3>推荐问题</h3><div className="capability-examples">{examples.map(example => <button type="button" key={example.id} onClick={() => onExample(example.prompt)}>{example.title}<Icon name="arrow-up-right" /></button>)}</div></section>}
+      {Object.keys(ui.cases).length > 0 && <section><Heading>案例与执行档位</Heading><dl className="argument-list">{Object.entries(ui.cases).map(([id, item]) => <div key={id}><dt>{item.label}</dt><dd>{Object.values(item.profiles).join(' · ')}</dd></div>)}</dl></section>}
+      {examples.length > 0 && <section><Heading>推荐问题</Heading><div className="capability-examples">{examples.map(example => <button type="button" key={example.id} onClick={() => onExample(example.prompt)}>{example.title}<Icon name="arrow-up-right" /></button>)}</div></section>}
     </>}
     </>}
+  </>;
+  if (embedded) return <section className="capability-directory">{content}</section>;
+  return <Drawer title="能力目录" isOpen dismissOnOutsidePress onOpenChange={open => { if (!open) onClose(); }}>
+    {content}
   </Drawer>;
 }
 

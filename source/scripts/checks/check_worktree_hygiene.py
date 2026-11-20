@@ -112,6 +112,7 @@ def _activity_plan_violations(root: Path) -> list[str]:
         "data-knowledge-design",
         "data-knowledge-improvement",
         "groundwater-agent-v2",
+        "groundwater-agent-v2.1",
         "knowledge-data-foundation",
         "repository-assessment",
         "ui-interaction-spec",
