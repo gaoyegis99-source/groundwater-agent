@@ -28,8 +28,16 @@ test("exact task binding combines with general knowledge; defaults exclude bound
     await expect(page.locator("#evidence")).not.toContainText(`${id} bound`);
 
     await page.getByText("数据范围（可选）").click();
-    await page.getByRole("button", { name: "打开数据集列表" }).click();
-    await page.getByRole("option", { name: new RegExp(dataset.title) }).click();
+    const openDatasets = page.getByRole("button", { name: "打开数据集列表" });
+    // A scroll from the click's auto-positioning can dismiss the listbox after it opens.
+    await openDatasets.evaluate(async button => {
+      button.scrollIntoView({ block: "center" });
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+    });
+    await openDatasets.click();
+    const datasets = page.getByRole("listbox", { name: /数据集/ });
+    await expect(datasets).toBeVisible();
+    await datasets.getByRole("option", { name: `${dataset.title} ${dataset.datasetId}`, exact: true }).click();
     await page.getByRole("combobox", { name: "不可变版本", exact: true }).selectOption(version.versionId);
     await expect(page.getByLabel("语义修订")).toHaveValue(version.semanticId);
     await page.getByLabel("适用范围", { exact: true }).selectOption("combined");

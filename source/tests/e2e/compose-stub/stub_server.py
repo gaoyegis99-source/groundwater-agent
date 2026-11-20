@@ -824,6 +824,10 @@ def _submit_reply(value, items):
 _WATER_LEVEL_QUESTION = "监测表只有“水位（米）”一列，帮我分析这列水位。"
 _WATER_LEVEL_DEPTH_REPLY = "这列是从井口向下量的埋深，请先说明换算方法。"
 _WATER_LEVEL_ELEVATION_REPLY = "这列是基于统一基准的水位高程，请先说明比较方法。"
+_PUBLISHED_RESULT_EVIDENCE = re.compile(
+    r"请将已发布(汇总|对照汇总)登记为任务成果证据。AgentRun: ([\w-]+)，WorkflowRun: ([\w-]+)。",
+)
+_PUBLISHED_RESULT_REVIEW = "确认完成：统计汇总可用于复核"
 
 
 def _task_collaboration_action(text: str) -> str | None:
@@ -851,6 +855,10 @@ def _intent_router_action(body, *, chat):
         )
     else:
         text = str(content)
+    if _PUBLISHED_RESULT_EVIDENCE.fullmatch(text):
+        return None, "REVIEW_RESULT|CONTINUE|NONE"
+    if text == _PUBLISHED_RESULT_REVIEW:
+        return None, "REVIEW_RESULT|REVIEW|NONE"
     if task_action := _task_collaboration_action(text):
         intent = "REVIEW_RESULT" if task_action == "REVIEW" else "DESIGN"
         return None, f"{intent}|{task_action}|NONE"
@@ -1028,11 +1036,8 @@ def provider_action(body, *, chat):
         "",
     )
     current_text = json.dumps(user_text, ensure_ascii=False)
-    result_evidence = re.fullmatch(
-        r"请将已发布(汇总|对照汇总)登记为任务成果证据。AgentRun: ([\w-]+)，WorkflowRun: ([\w-]+)。",
-        user_text,
-    ) if isinstance(user_text, str) else None
-    if (result_evidence or user_text == "确认完成：统计汇总可用于复核") and "update_task" in names:
+    result_evidence = _PUBLISHED_RESULT_EVIDENCE.fullmatch(user_text) if isinstance(user_text, str) else None
+    if (result_evidence or user_text == _PUBLISHED_RESULT_REVIEW) and "update_task" in names:
         recent = items[
             max(i for i, item in enumerate(items) if item.get("role") == "user") + 1:
         ]

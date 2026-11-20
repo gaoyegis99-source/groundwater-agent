@@ -6,6 +6,17 @@ async function assertNoSeriousAxe(page: Page) {
   expect(result.violations.filter(item => ["critical", "serious"].includes(item.impact ?? ""))).toEqual([]);
 }
 
+async function confirmLifecycleChange(page: Page, versionId: string, buttonName: string, status: "ACTIVE" | "WITHDRAWN") {
+  const path = `/knowledge/v3/versions/${encodeURIComponent(versionId)}/lifecycle`;
+  const receipt = page.waitForResponse(response =>
+    new URL(response.url()).pathname === path && response.request().method() === "POST",
+  );
+  await page.getByRole("button", { name: buttonName, exact: true }).click();
+  const response = await receipt;
+  expect(response.status()).toBe(200);
+  expect(await response.json()).toMatchObject({ versionId, status });
+}
+
 test("imports, retrieves, compares immutable versions, withdraws and restores", async ({ page, request }) => {
   const id = `browser-${Date.now()}`;
   const caps = await (await request.get("/knowledge/v3/capabilities")).json();
@@ -48,6 +59,9 @@ test("imports, retrieves, compares immutable versions, withdraws and restores", 
   await page.getByRole("button", { name: "搜索", exact: true }).click();
   await page.locator(".catalog").getByRole("button", { name: new RegExp(id) }).click();
   await expect(page.locator("#version-body")).toContainText("1.0.1");
+  const revisedVersionId = await page.getByRole("combobox", { name: "查看版本", exact: true }).inputValue();
+  expect(revisedVersionId).toBeTruthy();
+  expect(revisedVersionId).not.toBe(originalVersionId);
   await page.getByLabel("比较版本").selectOption(originalVersionId);
   await expect(page.getByRole("heading", { name: "版本差异" })).toBeVisible();
   await expect(page.getByRole("cell", { name: /内容版本/ })).toBeVisible();
@@ -64,12 +78,13 @@ test("imports, retrieves, compares immutable versions, withdraws and restores", 
   await page.getByText("生命周期与变更记录", { exact: true }).click();
   await page.getByRole("button", { name: "撤回此版本" }).click();
   await page.getByLabel("原因").fill("浏览器测试撤回");
-  await page.getByRole("button", { name: "确认撤回" }).click();
-  await expect(page.locator("#version-body")).toContainText("已撤回");
+  const versionStatus = page.locator("#version-body .version-summary");
+  await confirmLifecycleChange(page, revisedVersionId, "确认撤回", "WITHDRAWN");
+  await expect(versionStatus.getByText("已撤回", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "恢复此版本" }).click();
   await page.getByLabel("原因").fill("浏览器测试恢复");
-  await page.getByRole("button", { name: "确认恢复" }).click();
-  await expect(page.locator("#version-body")).toContainText("有效");
+  await confirmLifecycleChange(page, revisedVersionId, "确认恢复", "ACTIVE");
+  await expect(versionStatus.getByText("有效", { exact: true })).toBeVisible();
 });
 
 test("invalid package is rejected before execution", async ({ page }) => {

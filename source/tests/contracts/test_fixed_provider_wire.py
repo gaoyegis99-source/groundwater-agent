@@ -91,8 +91,11 @@ def test_fixed_deepseek_router_uses_v11_semantic_literal(
         (GOAL, "DESIGN|CREATE|NONE"),
         (AMENDMENT, "DESIGN|REVISE|NONE"),
         ("确认完成：是否可用\n确认完成：仅使用公开资料", "REVIEW_RESULT|REVIEW|NONE"),
+        ("请将已发布汇总登记为任务成果证据。AgentRun: agent-123，WorkflowRun: run-123。", "REVIEW_RESULT|CONTINUE|NONE"),
+        ("请将已发布对照汇总登记为任务成果证据。AgentRun: agent-456，WorkflowRun: run-456。", "REVIEW_RESULT|CONTINUE|NONE"),
+        ("确认完成：统计汇总可用于复核", "REVIEW_RESULT|REVIEW|NONE"),
     ],
-    ids=["create", "revise", "review"],
+    ids=["create", "revise", "review", "published-evidence", "comparison-evidence", "published-review"],
 )
 def test_fixed_router_preserves_task_collaboration_actions(fixed_provider, chat, message, expected):
     conversation = "messages" if chat else "input"
