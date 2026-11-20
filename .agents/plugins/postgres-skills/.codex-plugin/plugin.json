@@ -1,0 +1,7 @@
+{
+  "name": "postgres-skills",
+  "description": "Single plugin with intelligent routing — generic PG always available, Azure skills gated by connection detection",
+  "version": "0.3.0",
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json"
+}

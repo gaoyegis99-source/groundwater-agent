@@ -1,6 +1,0 @@
-Command: ['/home/mtd/.cache/groundwater-v6/toolchains/v6-d2879b157dedc56a/bin/python', '-m', 'pytest', '-p', 'no:cacheprovider', '--basetemp', '/tmp/groundwater-assessment-__sj_5gc/pytest', '-q', 'tests/contracts', 'tests/assembler', 'services/executor/tests/test_remote_http.py', 'services/executor/tests/test_schema_contract.py', 'kernel/tests/test_internal_modules.py', 'kernel/tests/test_settings.py', 'services/knowledge-next/tests/test_retrieval_budget.py', 'services/data/tests/test_json_schema_validation.py']
-Isolated temporary root: /tmp/groundwater-assessment-__sj_5gc
-ERROR: file or directory not found: services/data/tests/test_json_schema_validation.py
-
-
-no tests ran in 0.00s

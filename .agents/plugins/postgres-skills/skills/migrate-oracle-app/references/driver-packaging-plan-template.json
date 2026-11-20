@@ -1,0 +1,18 @@
+{
+  "jarExecutable": "jar",
+  "archives": [
+    {
+      "id": "deployment-zip",
+      "path": "target/application.zip",
+      "descriptors": [
+        {
+          "sourcePath": "src/assembly/server.xml",
+          "entry": "server.xml",
+          "runtimeDriverPatterns": [
+            "server/resources/lib/postgresql-*.jar"
+          ]
+        }
+      ]
+    }
+  ]
+}

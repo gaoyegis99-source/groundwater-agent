@@ -12,7 +12,7 @@
 | 科研验收与归档 | [科研验收](operations/acceptance-gates.md)、[地下水研究证据链](capabilities/groundwater-research-evidence.md) |
 | 部署、依赖和密钥 | [部署维护](operations/deployment/README.md)、[Groundwater 实时监控](operations/live-monitor.md) |
 | 代码与文件整理 | [仓库目录与归属](maintenance/repository-layout.md)、[命令目录](maintenance/command-directory.md) |
-| 历史工程计划 | [工程计划归档](../../plans/README.md) |
+| 工程计划 | [Groundwater Agent V2 实施提示词与历史归档](../../plans/README.md) |
 
 能力服务说明：
 

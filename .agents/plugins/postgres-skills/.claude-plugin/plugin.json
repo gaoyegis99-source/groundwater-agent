@@ -1,0 +1,22 @@
+{
+  "name": "postgres-skills",
+  "displayName": "Postgres Skills",
+  "description": "Expert PostgreSQL skills with connection-aware guidance and integrated database tools",
+  "version": "0.3.0",
+  "author": {
+    "name": "Microsoft",
+    "url": "https://github.com/microsoft"
+  },
+  "homepage": "https://github.com/microsoft/postgres-skills",
+  "repository": "https://github.com/microsoft/postgres-skills",
+  "license": "MIT",
+  "keywords": [
+    "postgresql",
+    "database",
+    "azure",
+    "pgvector",
+    "rag",
+    "apache-age",
+    "graph"
+  ]
+}

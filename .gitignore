@@ -1,5 +1,6 @@
 /deliveries/
 /worktrees/
+/output/playwright/
 /.pytest_cache/
 /source/data/logs/
 /source/data/tasks.sqlite3*

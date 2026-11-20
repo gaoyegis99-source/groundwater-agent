@@ -1,0 +1,13 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "postgres-mcp": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@microsoft/postgres-mcp@latest", "run", "--no-telemetry"],
+      "env": {
+        "POSTGRES_MCP_QUERY_TIMEOUT_MS": "540000"
+      }
+    }
+  }
+}

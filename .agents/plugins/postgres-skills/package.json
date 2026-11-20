@@ -1,0 +1,20 @@
+{
+  "name": "postgres-skills",
+  "version": "0.3.0",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/test-target-writes-policy.test.mjs tests/test-target-writes-docs.test.mjs tests/validate-migration-artifacts.test.mjs tests/run-metrics.test.mjs tests/maven-wave-runner.test.mjs tests/docker-desktop-policy.test.mjs tests/unused-artifact-policy.test.mjs tests/detect-migration-scope.test.mjs tests/driver-packaging.test.mjs tests/oracle-ddl-index.test.mjs tests/postgres-provider-policy.test.mjs tests/migration-runtime.test.mjs tests/java-test-preflight.test.mjs tests/postgres-ddl-index.test.mjs tests/coding-notes.test.mjs",
+    "validate:artifacts": "node skills/migrate-oracle-app/scripts/validate-migration-artifacts.mjs",
+    "format:run-metrics": "node skills/migrate-oracle-app/scripts/format-run-metrics.mjs",
+    "maven:waves": "node skills/migrate-oracle-app/scripts/run-maven-waves.mjs",
+    "runtime": "node skills/migrate-oracle-app/scripts/migration-runtime.mjs",
+    "java:preflight": "node skills/migrate-oracle-app/scripts/java-test-preflight.mjs",
+    "detect:scope": "node skills/migrate-oracle-app/scripts/detect-migration-scope.mjs",
+    "inspect:driver-packaging": "node skills/migrate-oracle-app/scripts/inspect-driver-packaging.mjs",
+    "index:oracle-ddl": "node skills/migrate-oracle-app/scripts/index-oracle-ddl.mjs",
+    "index:postgres-ddl": "node skills/migrate-oracle-app/scripts/index-postgres-ddl.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

@@ -111,6 +111,7 @@ def _activity_plan_violations(root: Path) -> list[str]:
     retained = {
         "data-knowledge-design",
         "data-knowledge-improvement",
+        "groundwater-agent-v2",
         "knowledge-data-foundation",
         "repository-assessment",
         "ui-interaction-spec",

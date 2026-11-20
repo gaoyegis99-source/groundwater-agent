@@ -1,0 +1,57 @@
+{
+  "runId": "<current-migration-run-id>",
+  "actorId": "primary",
+  "runtimePhase": "conversion",
+  "javaPreflight": {
+    "testSourceRoots": ["src/test/java"]
+  },
+  "finalize": false,
+  "dockerEnvironment": {
+    "runId": "<current-migration-run-id>",
+    "containerId": "<full-run-owned-container-id>",
+    "imageId": "<immutable-image-id>",
+    "configurationDigest": "<bootstrap-configuration-sha256>",
+    "database": "migration_test"
+  },
+  "mavenExecutable": "mvn",
+  "javaExecutable": "java",
+  "jarExecutable": "jar",
+  "surefireVersion": "3.5.5",
+  "failsafeVersion": "3.5.5",
+  "jacocoVersion": "0.8.13",
+  "dependencyPluginVersion": "3.8.1",
+  "mavenArgs": [],
+  "artifactRoot": ".github/migrate-oracle-app/conversions/coverage/waves",
+  "classFiles": "target/classes",
+  "sourceFiles": "src/main/java",
+  "finalHtmlDirectory": ".github/migrate-oracle-app/conversions/coverage/html",
+  "createUnitTests": true,
+  "createIntegrationTests": true,
+  "unitWaves": [
+    { "id": "unit-1", "wave": 1, "runner": "surefire", "tests": ["com.example.MigrationUnitTest"] },
+    { "id": "unit-2", "wave": 2, "runner": "surefire", "kind": "validation", "fullSuite": true, "tests": [] }
+  ],
+  "integrationWaves": [
+    { "id": "integration-1", "wave": 1, "runner": "failsafe", "tests": ["com.example.MigrationDatabaseIT"] },
+    { "id": "integration-2", "wave": 2, "runner": "failsafe", "kind": "validation", "fullSuite": true, "tests": [] }
+  ],
+  "fullSuiteRuns": [
+    { "id": "full-unit-suite", "runner": "surefire", "tests": [] },
+    { "id": "full-integration-suite", "runner": "failsafe", "tests": [] }
+  ],
+  "prePackageChecks": [
+    {
+      "id": "temporary-shim-not-main",
+      "path": "src/main/java/com/example/TemporaryShim.java",
+      "expect": "absent"
+    }
+  ],
+  "archives": [
+    {
+      "id": "war",
+      "path": "target/app.war",
+      "required": ["WEB-INF/lib/postgresql-*.jar"],
+      "forbidden": ["WEB-INF/classes/com/example/TemporaryShim.class"]
+    }
+  ]
+}

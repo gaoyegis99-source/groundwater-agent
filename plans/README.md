@@ -1,10 +1,13 @@
-# Groundwater V6 工程计划归档
+# Groundwater V6 工程计划
+
+Groundwater Agent V2 的阶段任务、执行顺序和审查模板见[本地实施提示词](groundwater-agent-v2/prompts/README.md)。
+
+## 历史归档
 
 系统级工程完善计划已结项。原进度台账记录了 14 项已通过的任务，涵盖架构边界、Agent 运行机制、Data 与 Knowledge、Workflow 与 Executor、Web 工作台、测试与性能。验收结果对应当时的源码和环境。
 
 - [系统工程任务卡、验收矩阵与进度台账](https://github.com/gaoyegis99-source/groundwater-agent/tree/3968bc43f5a341dfb03066dc5aa4c4d49de182cd/plans/01_SYSTEM_ENGINEERING)
 - [更早的计划、审计与验证报告](https://github.com/gaoyegis99-source/groundwater-agent/tree/19175f592697999b895d6d3ebdb25c6d06d39455/plans)
+- [知识与数据设计、仓库评估、工作流编排及界面参考图](https://github.com/gaoyegis99-source/groundwater-agent/tree/ca473970e1b8c02ed5ecdca7906f9621a50a58cf/plans)
 
-现行开发和验收入口见[执行手册](../source/docs/operations/execution-playbook.md)。本地验收日志放在 XDG state，运行数据放在 XDG data。
-
-工程记录见[知识与数据](knowledge-data-foundation/progress/PROGRESS.md)和[工作流编排](workflow-composition-standard/README.md)。界面参考图见[设计参考目录](ui-interaction-spec/design-references/)。
+本地可用 `git show ca47397:plans/README.md` 查看归档索引。现行开发和验收入口见[执行手册](../source/docs/operations/execution-playbook.md)。本地验收日志放在 XDG state，运行数据放在 XDG data。
