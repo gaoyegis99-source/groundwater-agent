@@ -1,0 +1,2176 @@
+{
+  "schemaVersion": "knowledge-package.v1",
+  "projectId": "local-data",
+  "idempotencyKey": "gw-clean-2-1-7d375c5b295ed747ffab08c9",
+  "documents": [
+    {
+      "knowledgeId": "gw-clean-water-source",
+      "kind": "definition",
+      "title": "地下水水源地、含水层与含水系统",
+      "summary": "地下水水源地是围绕取水井群或泉口等设施组织的开发利用单元。含水层是能够储存并传输地下水的地质体；含水系统把相互联系的含水层、弱透水层、补给区、径流通道和排泄边界作为整体分析，用于解释供水来源及开采响应。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "地下水水源地是围绕取水井群或泉口等设施组织的开发利用单元。含水层是能够储存并传输地下水的地质体；含水系统把相互联系的含水层、弱透水层、补给区、径流通道和排泄边界作为整体分析，用于解释供水来源及开采响应。\n\n应用：分析水源地时，需要同时描述取水工程和支撑它的含水系统。行政边界、保护区边界、研究范围与水文地质边界分别承担不同作用。\n\n辨析：水源地是开发利用单元，含水层是地质单元，含水系统是水文地质分析单元；三者的边界可能不同。\n\n常见问法：水源地和含水层有什么区别；评价范围应该怎么确定。\n\n相关概念：补给径流排泄、水文地质概念模型、地下水水量均衡。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-porous",
+      "kind": "definition",
+      "title": "孔隙含水系统",
+      "summary": "孔隙含水系统主要利用砂、砾石等介质颗粒之间的孔隙储存和传导地下水。颗粒组成、孔隙连通性、层厚及夹层分布共同影响储水、导水和污染物迁移。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "孔隙含水系统主要利用砂、砾石等介质颗粒之间的孔隙储存和传导地下水。颗粒组成、孔隙连通性、层厚及夹层分布共同影响储水、导水和污染物迁移。\n\n应用：傍河孔隙水源地通常需要联合分析井群开采、河水入渗、侧向径流以及弱透水夹层的影响。\n\n辨析：孔隙水指赋存于孔隙中的水；孔隙含水系统还包括介质、边界及补排过程。\n\n常见问法：孔隙型水源地有什么特点；为什么砂砾石含水层容易形成高产井。\n\n相关概念：渗透系数、河流地下水交换、补给径流排泄。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-fractured",
+      "kind": "definition",
+      "title": "裂隙含水系统",
+      "summary": "裂隙含水系统的地下水运动受裂隙开度、延伸、连通性及岩体结构控制。主要导水通道可能集中在少数连通裂隙中，不同位置的出水能力和污染物迁移速度可有明显差异。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "裂隙含水系统的地下水运动受裂隙开度、延伸、连通性及岩体结构控制。主要导水通道可能集中在少数连通裂隙中，不同位置的出水能力和污染物迁移速度可有明显差异。\n\n应用：描述裂隙水源地时，应识别主要导水构造以及裂隙与基质之间的交换。等效参数需对应实际研究尺度。\n\n辨析：裂隙发育程度与连通性是不同属性；裂隙多并不必然形成连续的高导水通道。\n\n常见问法：裂隙型水源地为什么空间差异大；裂隙连通性有什么作用。\n\n相关概念：裂隙—基质双重介质、渗透系数、水文地质概念模型。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-karst",
+      "kind": "definition",
+      "title": "岩溶含水系统",
+      "summary": "岩溶含水系统中的溶隙、溶洞和管道形成多尺度储水与导水空间。集中入渗和管道连通可使局部水量、水质对外部输入响应较快；深循环和储存交换又可能产生长时间滞后。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "岩溶含水系统中的溶隙、溶洞和管道形成多尺度储水与导水空间。集中入渗和管道连通可使局部水量、水质对外部输入响应较快；深循环和储存交换又可能产生长时间滞后。\n\n应用：岩溶水源保护应结合泉域补给区、河流渗漏段和主要径流通道。泉口附近的状况只是整个泉域过程的一部分。\n\n辨析：泉域是向特定泉或泉组汇流的地下水系统范围，不能作为所有岩溶含水系统的同义词。\n\n常见问法：岩溶水源为什么容易受远处污染影响；泉口保护为什么要考虑整个泉域。\n\n相关概念：泉流与水质的滞后响应、污染源—迁移途径—受体、裂隙—基质双重介质。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-confined-unconfined",
+      "kind": "definition",
+      "title": "潜水与承压水",
+      "summary": "潜水具有自由水面，水面处压力近似等于大气压力；承压水受上覆弱透水或隔水层约束，在井中达到平衡后的水位高于所取含水层顶板。两者的储水响应和补给途径不同，应结合水头与地层结构判断。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "潜水具有自由水面，水面处压力近似等于大气压力；承压水受上覆弱透水或隔水层约束，在井中达到平衡后的水位高于所取含水层顶板。两者的储水响应和补给途径不同，应结合水头与地层结构判断。\n\n应用：在上下叠置的含水系统中，应分别关注各层水位及层间水头差，同时识别弱透水层缺失部位和混合开采井。\n\n辨析：浅层、深层描述位置；潜水、承压水描述赋存与压力条件。承压水也不一定形成自流井。\n\n常见问法：潜水和承压水有什么区别；深层水为什么也会受到浅层污染影响。\n\n相关概念：水头、水位高程与地下水埋深、层间越流与混合开采、同井同层同步监测。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-recharge-flow-discharge",
+      "kind": "definition",
+      "title": "补给径流排泄",
+      "summary": "补给是水进入地下水系统的过程，径流是地下水在含水介质中的运动，排泄是水离开地下水系统的过程。降水入渗、河流渗漏、边界侧向流入可形成补给；泉流、河流基流、蒸散和人工开采可形成排泄。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [
+        "补径排"
+      ],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "补给是水进入地下水系统的过程，径流是地下水在含水介质中的运动，排泄是水离开地下水系统的过程。降水入渗、河流渗漏、边界侧向流入可形成补给；泉流、河流基流、蒸散和人工开采可形成排泄。\n\n应用：解释水位、水量和水质变化时，先确定控制体内有哪些补排通道，再分析各通道随季节、工程和开采发生的变化。\n\n辨析：补给量、含水层内的径流量和可开采量含义不同，不能直接相互代用。\n\n常见问法：地下水从哪里来又流到哪里去；什么是补径排条件。\n\n相关概念：地下水水量均衡、河流地下水交换、开采扰动与降落漏斗。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-head-depth",
+      "kind": "definition",
+      "title": "水头、水位高程与地下水埋深",
+      "summary": "水头由位置水头和压力水头等组成，地下水分析中通常忽略速度水头。非抽水、达到水力平衡且层位明确的井，其水面高程可表征所连通层位的水头。水面高程等于测量参照点高程减去向下量得的测深；地面以下埋深还需把参照点换算到地面。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "水头由位置水头和压力水头等组成，地下水分析中通常忽略速度水头。非抽水、达到水力平衡且层位明确的井，其水面高程可表征所连通层位的水头。水面高程等于测量参照点高程减去向下量得的测深；地面以下埋深还需把参照点换算到地面。\n\n应用：比较前统一高程基准、井口与地面高差、滤水层位和抽水状态。盐度或温度造成明显密度差时，需采用一致的水头表示方式。\n\n辨析：水位高程、地面以下埋深、井口测深和压力水头须分别表达；比较前先统一参照点。\n\n常见问法：水位下降和埋深增加是一个意思吗；水位和埋深怎么区分。\n\n相关概念：水力坡度、同井同层同步监测、潜水与承压水。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-gradient",
+      "kind": "definition",
+      "title": "水力坡度",
+      "summary": "水力坡度描述单位距离上的水头变化，量纲为一。它与介质的导水性质共同控制地下水通量。在各向同性介质中，水流沿水头降低方向运动；各向异性介质中的流向可偏离水头梯度方向。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [
+        "水力梯度"
+      ],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "水力坡度描述单位距离上的水头变化，量纲为一。它与介质的导水性质共同控制地下水通量。在各向同性介质中，水流沿水头降低方向运动；各向异性介质中的流向可偏离水头梯度方向。\n\n应用：利用同层、同期且高程基准一致的水头分析流动条件。构造裂隙、各向异性和边界交换会影响实际流动路径。\n\n辨析：水力坡度是水头变化与距离之比，不是流速；流速还受介质导水性及有效孔隙度影响。\n\n常见问法：水力坡度表示什么；地下水为什么向某个方向流动。\n\n相关概念：水头、水位高程与地下水埋深、渗透系数、污染物迁移与转化。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-conductivity",
+      "kind": "definition",
+      "title": "渗透系数",
+      "summary": "渗透系数K表征给定流体条件下介质传导水的能力，受孔隙或裂隙结构以及流体密度、黏度影响。它常以m/d或m/s表示。均质含水层的导水系数T等于K乘以饱和厚度；非均质层需沿厚度对K积分。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [
+        "水力传导系数"
+      ],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "渗透系数K表征给定流体条件下介质传导水的能力，受孔隙或裂隙结构以及流体密度、黏度影响。它常以m/d或m/s表示。均质含水层的导水系数T等于K乘以饱和厚度；非均质层需沿厚度对K积分。\n\n应用：参数宜对应实际取水层位及尺度。地表砂层的透水性与深部生产含水层的导水能力应分别描述。\n\n辨析：渗透系数K的量纲为长度/时间；固有渗透率的量纲为面积，导水系数T还包含含水层厚度。\n\n常见问法：渗透系数大说明什么；地表是砂层能否说明深层导水好。\n\n相关概念：水力坡度、孔隙含水系统、裂隙含水系统、模型率定与验证。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-balance",
+      "kind": "definition",
+      "title": "地下水水量均衡",
+      "summary": "地下水水量均衡是同一控制体、同一时段内的水量守恒关系：储量变化等于总补给减去总排泄。总排泄包含人工开采时，不能再次扣除开采量。持续负均衡表示该核算范围内的储量减少。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [
+        "地下水水均衡"
+      ],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "地下水水量均衡是同一控制体、同一时段内的水量守恒关系：储量变化等于总补给减去总排泄。总排泄包含人工开采时，不能再次扣除开采量。持续负均衡表示该核算范围内的储量减少。\n\n应用：统一时段与边界，分别核算自然补排、人工取水、回归补给和储量变化，并与地下水动态对照。总开采量与耗水量不能混用。\n\n辨析：正、负均衡对应规定控制体和时段的储量变化；接近零也不能单独判定生态影响可接受。\n\n常见问法：负均衡是什么意思；水位回升为什么还可能存在水量压力。\n\n相关概念：补给径流排泄、地下水储量、补给量与可开采量、空间时间与统计口径一致性、开采扰动与降落漏斗。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-resource-yield",
+      "kind": "definition",
+      "title": "地下水储量、补给量与可开采量",
+      "summary": "地下水储量表示含水系统中储存的水量；补给量表示一定时段进入系统的水量；可开采量表示在给定水文、工程和环境约束下可利用的水量。开采会改变补给、自然排泄和储量，因此不能仅凭天然补给量或储量确定持续供水能力。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "地下水储量表示含水系统中储存的水量；补给量表示一定时段进入系统的水量；可开采量表示在给定水文、工程和环境约束下可利用的水量。开采会改变补给、自然排泄和储量，因此不能仅凭天然补给量或储量确定持续供水能力。\n\n应用：判断持续供水能力，应同时考虑补给、自然排泄、开采引起的环境效应和管理约束，不能仅看储存水量大小。\n\n辨析：储量是存量，补给量是时段水量，可开采量受约束；许可取水量属于另一个管理口径。\n\n常见问法：地下水储量大就可以多抽吗；补给量和可开采量有什么区别。\n\n相关概念：地下水水量均衡、取水量供水量与工程能力、生态水位与环境响应。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-supply-capacity",
+      "kind": "definition",
+      "title": "取水量供水量与工程能力",
+      "summary": "取水量是从地下水系统抽取或截取的水量，供水量是向服务对象提供的水量，工程能力反映取水、输水和处理设施可承担的规模。输配损失及运行方式会使取水量与供水量不同。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "取水量是从地下水系统抽取或截取的水量，供水量是向服务对象提供的水量，工程能力反映取水、输水和处理设施可承担的规模。输配损失及运行方式会使取水量与供水量不同。\n\n应用：评价供水保障时分别核算水源可用水量、工程能力、许可条件与需求，识别实际限制供水的环节。\n\n辨析：设计能力、实际取水量和实际供水量分别表达工程上限、取水行为和供给结果。\n\n常见问法：供水量能直接当开采量吗；设计能力和实际供水为什么不同。\n\n相关概念：地下水储量、补给量与可开采量、供水保障与开发压力、井群开采调度。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-coupling",
+      "kind": "knowledge",
+      "title": "水位水量水质耦合",
+      "summary": "开采或补给变化会调整地下水水头，进而改变边界交换、补给来源比例和溶质迁移路径。水动力变化还可能影响混合及水岩反应条件，使水质响应与水位、水量变化相互关联。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "开采或补给变化会调整地下水水头，进而改变边界交换、补给来源比例和溶质迁移路径。水动力变化还可能影响混合及水岩反应条件，使水质响应与水位、水量变化相互关联。\n\n应用：解释水质变化时，联合考察水位、开采、补给和化学组分。不同含水系统的响应方向和时间尺度可能不同。\n\n辨析：量、水位、质之间存在联系，但不要求同步或同向变化；单纯相关性不能确定作用方向。\n\n常见问法：抽水为什么会影响水质；水量和水质之间有什么联系。\n\n相关概念：开采扰动与降落漏斗、层间越流与混合开采、污染物迁移与转化、水化学诊断与来源识别。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-pumping",
+      "kind": "knowledge",
+      "title": "开采扰动与降落漏斗",
+      "summary": "开采使井周水头降低并改变水力梯度，多井影响可相互叠加形成降落漏斗。抽取的水可由储量释放、补给增加和自然排泄减少提供，其比例随时间及边界条件改变。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "开采使井周水头降低并改变水力梯度，多井影响可相互叠加形成降落漏斗。抽取的水可由储量释放、补给增加和自然排泄减少提供，其比例随时间及边界条件改变。\n\n应用：分析井群布局、开采历时、含水层结构及补给边界，并区分含水层降深与井内附加水头损失。生态影响还可能发生在井群以外的河流或泉域。\n\n辨析：降深是相对参照水位的变化；漏斗是空间水头形态。抽水井中的降深还可能含井损。\n\n常见问法：降落漏斗是怎么形成的；增加抽水量会带来哪些变化。\n\n相关概念：地下水水量均衡、河流地下水交换、井群开采调度、水位恢复率。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-river-exchange",
+      "kind": "knowledge",
+      "title": "河流地下水交换",
+      "summary": "河流与地下水之间的交换取决于水头关系、河床导水条件和连通程度。傍河开采可改变交换方向或强度，引起河流渗漏增加，或地下水向河流排泄减少。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "河流与地下水之间的交换取决于水头关系、河床导水条件和连通程度。傍河开采可改变交换方向或强度，引起河流渗漏增加，或地下水向河流排泄减少。\n\n应用：评价河道衬砌、调水或傍河开采影响时，同时分析补给变化、地表水生态需求和输入水质。\n\n辨析：开采引起的河流耗减可能来自入渗增加，也可能来自地下水向河流排泄减少，二者需分别核算。\n\n常见问法：河道硬化为什么会影响地下水；傍河开采能增加补给吗。\n\n相关概念：开采扰动与降落漏斗、地下水水量均衡、生态水位与环境响应。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-leakage",
+      "kind": "knowledge",
+      "title": "层间越流与混合开采",
+      "summary": "不同含水层之间存在水头差且具有透水通道时，可发生层间水量交换。弱透水层缺失、裂隙连通或跨层井筒均可能成为通道。深层开采降低水头后，浅层水及其中的溶质可能向下迁移。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "不同含水层之间存在水头差且具有透水通道时，可发生层间水量交换。弱透水层缺失、裂隙连通或跨层井筒均可能成为通道。深层开采降低水头后，浅层水及其中的溶质可能向下迁移。\n\n应用：诊断越流时联合检查分层水位、隔水层结构、井管及滤水段位置，并对浅深层水化学进行对照。\n\n辨析：天然层间越流与井筒串层是不同交换机制；混合井样品不能直接代表其中某一个含水层。\n\n常见问法：浅层污染怎么进入深层水；混合开采井为什么需要重点关注。\n\n相关概念：潜水与承压水、同井同层同步监测、水位水量水质耦合。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-dual-porosity",
+      "kind": "knowledge",
+      "title": "裂隙—基质双重介质",
+      "summary": "裂隙与岩体基质可具有不同的导水、储水和溶质储存能力。快速裂隙通道与较慢交换区域相互作用，可能形成早期快速突破和后期浓度拖尾。污染物先扩散进入基质，裂隙浓度下降后又可反向扩散，延长恢复过程。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "裂隙与岩体基质可具有不同的导水、储水和溶质储存能力。快速裂隙通道与较慢交换区域相互作用，可能形成早期快速突破和后期浓度拖尾。污染物先扩散进入基质，裂隙浓度下降后又可反向扩散，延长恢复过程。\n\n应用：出现快速突破后持续拖尾时，可结合裂隙连通和基质交换分析；模型结构应与介质实际流动方式匹配。\n\n辨析：双重介质是概化思路；是否允许基质承担明显的区域流动，应由介质特征和具体模型假设决定。\n\n常见问法：为什么污染来得快却恢复慢；双重介质模型解决什么问题。\n\n相关概念：裂隙含水系统、污染物迁移与转化、泉流与水质的滞后响应。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-transport",
+      "kind": "knowledge",
+      "title": "污染物迁移与转化",
+      "summary": "对流使溶质随地下水运动，弥散和扩散使浓度在空间重新分布，吸附与解吸影响溶质在水相和固相间的分配，化学或生物反应则可能改变组分形态及数量。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "对流使溶质随地下水运动，弥散和扩散使浓度在空间重新分布，吸附与解吸影响溶质在水相和固相间的分配，化学或生物反应则可能改变组分形态及数量。\n\n应用：解释污染羽位置、迁移速度和拖尾时，需要同时考虑流场、介质、污染物性质和反应条件。浓度降低也可能来自稀释或混合。\n\n辨析：浓度变化、污染物形态变化和总质量变化分别回答不同问题；吸附可能暂存污染物而非消除污染物。\n\n常见问法：污染物在地下水中怎么迁移；浓度下降是否就是污染物减少。\n\n相关概念：水力坡度、裂隙—基质双重介质、暴露风险与污染削减。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-nitrate-basis",
+      "kind": "knowledge",
+      "title": "硝酸盐与硝酸盐氮",
+      "summary": "硝酸盐按硝酸根NO₃⁻的质量计量；硝酸盐氮NO3-N按其中氮元素的质量计量。采用相对分子质量62和14时，相同质量浓度单位下，按硝酸根计的浓度约为以氮计浓度的4.43倍；反向换算乘以14/62。换算只是计量方式改变，不表示污染物发生转化。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "硝酸盐按硝酸根NO₃⁻的质量计量；硝酸盐氮NO3-N按其中氮元素的质量计量。采用相对分子质量62和14时，相同质量浓度单位下，按硝酸根计的浓度约为以氮计浓度的4.43倍；反向换算乘以14/62。换算只是计量方式改变，不表示污染物发生转化。\n\n应用：比较检测值、模型值和控制阈值时，先统一化学计量口径，再核对单位。名称中省略“以氮计”时，应从检测项目定义中明确。\n\n辨析：按硝酸根计与以氮计的数值不能直接比较；单位相同仍需核对检测项目的计量基准。\n\n常见问法：硝酸盐和硝酸盐氮是不是一回事；两个硝酸盐数值为什么不能直接比较。\n\n相关概念：水化学诊断与来源识别、空间时间与统计口径一致性、水质类别风险等级与可持续性。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-sulfate",
+      "kind": "knowledge",
+      "title": "硫酸盐的自然来源与外源输入",
+      "summary": "地下水中的硫酸盐可来自含硫矿物溶解、硫化物氧化等地质过程，也可随矿坑水或其他外源输入进入系统。人为活动可能改变自然反应条件，来源与触发因素需分别识别；后续浓度还受混合和氧化还原过程影响。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "地下水中的硫酸盐可来自含硫矿物溶解、硫化物氧化等地质过程，也可随矿坑水或其他外源输入进入系统。人为活动可能改变自然反应条件，来源与触发因素需分别识别；后续浓度还受混合和氧化还原过程影响。\n\n应用：来源分析可结合地层条件、水化学组合、同位素及水力联系，区分来源构成与迁移通道。\n\n辨析：矿坑水是可能的输入水体，硫酸盐是水中组分；硫酸盐升高本身不能唯一确定来源。\n\n常见问法：硫酸盐高一定是污染吗；矿坑水如何影响岩溶泉水。\n\n相关概念：水化学诊断与来源识别、岩溶含水系统、污染源—迁移途径—受体。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-spring-response",
+      "kind": "knowledge",
+      "title": "泉流与水质的滞后响应",
+      "summary": "泉流量综合反映泉域补给、储存和排泄过程。不同径流通道和储存空间会使降水、区域开采及污染输入在泉口表现出不同响应时间；停止输入后的系统恢复也可能持续较长时间。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "泉流量综合反映泉域补给、储存和排泄过程。不同径流通道和储存空间会使降水、区域开采及污染输入在泉口表现出不同响应时间；停止输入后的系统恢复也可能持续较长时间。\n\n应用：解释泉口变化时，应联合分析降水、区域取水、泉流和水化学序列，并区分单泉与泉组。\n\n辨析：流量、水位与不同化学组分可以具有不同滞后时间；一次事件不能确定统一的响应周期。\n\n常见问法：为什么降雨后泉流不是马上增加；污染源停止后泉水为什么还会受影响。\n\n相关概念：岩溶含水系统、裂隙—基质双重介质、长期趋势与季节波动。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-ecological-response",
+      "kind": "knowledge",
+      "title": "生态水位与环境响应",
+      "summary": "地下水与河流、湿地及植被根系之间的水分联系，会随水位和排泄条件改变。开采造成的地下水下降可能影响基流、湿地补水及植被可利用水分。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "地下水与河流、湿地及植被根系之间的水分联系，会随水位和排泄条件改变。开采造成的地下水下降可能影响基流、湿地补水及植被可利用水分。\n\n应用：生态水位分析应针对具体生态受体、季节和空间位置，建立水位变化与生态响应之间的联系，并据此设置管理约束。\n\n辨析：生态水位与工程运行水位服务于不同目标；生态控制值应明确受体、地点、季节及允许持续时长。\n\n常见问法：水位下降如何影响湿地；生态水位应该怎样确定。\n\n相关概念：河流地下水交换、开采扰动与降落漏斗、管理目标与约束条件。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-monitoring",
+      "kind": "knowledge",
+      "title": "同井同层同步监测",
+      "summary": "水位、水质和开采记录在相同井点、相应层位及可比时段同步获取，有助于区分开采、补给和外源输入造成的变化。混合井样品反映多个进水层混合后的结果。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "水位、水质和开采记录在相同井点、相应层位及可比时段同步获取，有助于区分开采、补给和外源输入造成的变化。混合井样品反映多个进水层混合后的结果。\n\n应用：监测方案可围绕补给区、主要径流通道、生产井群和风险源布点，同时记录井结构、测量基准、运行状态和采样条件。\n\n辨析：生产井运行水位、停泵静水位和专用观测井水位的测量条件不同，不能直接拼接解释。\n\n常见问法：怎样监测才能解释水位和水质关系；混合井样品能代表哪一层。\n\n相关概念：水头、水位高程与地下水埋深、层间越流与混合开采、水化学诊断与来源识别、长期趋势与季节波动。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-trend-season",
+      "kind": "knowledge",
+      "title": "长期趋势与季节波动",
+      "summary": "地下水动态常叠加长期变化、季节补给、用水周期和短时扰动。单次升降只能说明相邻观测之间的变化，长期趋势需要具有可比性的连续时序支持。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "地下水动态常叠加长期变化、季节补给、用水周期和短时扰动。单次升降只能说明相邻观测之间的变化，长期趋势需要具有可比性的连续时序支持。\n\n应用：分析时可对同季节或相同运行条件进行比较，并结合降水、取水和维护记录解释变化。\n\n辨析：趋势、周期和突变应分别判断；季节性回升并不自动改变长期下降趋势。\n\n常见问法：一次水位回升能说明恢复了吗；如何区分季节波动和长期下降。\n\n相关概念：同井同层同步监测、地下水水量均衡、泉流与水质的滞后响应、空间时间与统计口径一致性。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-scale",
+      "kind": "knowledge",
+      "title": "空间时间与统计口径一致性",
+      "summary": "比较需要明确评价对象、空间边界、观测时期、指标定义和统计分母。井数比例、检测项次数比例及单点时间序列分别表达不同信息。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "比较需要明确评价对象、空间边界、观测时期、指标定义和统计分母。井数比例、检测项次数比例及单点时间序列分别表达不同信息。\n\n应用：跨区域、跨时期或跨方法比较时，先建立可比对象；样本组成改变时，将变化分解为真实状态变化与统计对象变化。\n\n辨析：井数达标率、样次数达标率和检测项次数达标率的分母不同，必须保留各自定义。\n\n常见问法：两个达标率为什么不一样；不同水源地的结果怎么比较。\n\n相关概念：水质类别风险等级与可持续性、硝酸盐与硝酸盐氮、取水原水、供水水质与区域地下水水质。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-outlet-region",
+      "kind": "knowledge",
+      "title": "取水原水、供水水质与区域地下水水质",
+      "summary": "单井原水反映该井取水层段的水质，井群混合原水取决于各井浓度和供水比例，处理后供水还受到处理工艺影响。区域调查井描述不同位置、层位的地下水状态，不能直接替代取水口或用户端的水质判断。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "单井原水反映该井取水层段的水质，井群混合原水取决于各井浓度和供水比例，处理后供水还受到处理工艺影响。区域调查井描述不同位置、层位的地下水状态，不能直接替代取水口或用户端的水质判断。\n\n应用：先明确采样点位于取水、混合、处理还是输配环节，再按对应用途解释。将区域调查与生产井监测联系起来，用于识别可能进入供水通道的变化。\n\n辨析：取水原水、混合原水、处理后出厂水和管网末梢水处于不同环节，评价对象与要求需匹配。\n\n常见问法：出水口达标为什么还要管补给区；区域井超标就说明供水口超标吗。\n\n相关概念：同井同层同步监测、水质类别风险等级与可持续性、污染源—迁移途径—受体、暴露风险与污染削减。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-hydrochemistry",
+      "kind": "knowledge",
+      "title": "水化学诊断与来源识别",
+      "summary": "水化学组分及其组合可以帮助识别水岩作用、不同水体混合和外源输入；同位素提供补给和来源分析的补充信息。化学特征需放在含水层结构与水流通道中解释。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "水化学组分及其组合可以帮助识别水岩作用、不同水体混合和外源输入；同位素提供补给和来源分析的补充信息。化学特征需放在含水层结构与水流通道中解释。\n\n应用：来源判断宜综合化学、同位素、土地利用和水动力信息，区分相关特征、可能过程与具体来源贡献。\n\n辨析：相关性、离子比值或单一同位素特征通常不能唯一确定来源；来源比例还依赖端元及过程假设。\n\n常见问法：怎么判断是自然本底还是人为影响；离子相关性能说明污染来源吗。\n\n相关概念：硫酸盐的自然来源与外源输入、硝酸盐与硝酸盐氮、水位水量水质耦合、污染物迁移与转化。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-conceptual-model",
+      "kind": "knowledge",
+      "title": "水文地质概念模型",
+      "summary": "概念模型将复杂地下水系统概括为可分析的含水层结构、边界、补排通道、污染源和受体关系。它决定后续数值模型表达哪些过程、使用哪些输入及如何解释结果。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "概念模型将复杂地下水系统概括为可分析的含水层结构、边界、补排通道、污染源和受体关系。它决定后续数值模型表达哪些过程、使用哪些输入及如何解释结果。\n\n应用：建模前明确分析目标和尺度，优先保留控制结果的主要过程；模型差异较大时，也应回到概念模型检查结构假设。\n\n辨析：概念模型描述系统结构和主导过程；网格、求解器和参数表属于数值实现层面的选择。\n\n常见问法：数值模拟前为什么要建概念模型；概念模型需要包含什么。\n\n相关概念：地下水水源地、含水层与含水系统、补给径流排泄、模型率定与验证、机理模型与数据驱动模型。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-physical-data",
+      "kind": "knowledge",
+      "title": "机理模型与数据驱动模型",
+      "summary": "机理模型通过水流和溶质迁移过程描述系统响应；数据驱动模型从输入与响应数据中学习映射关系。两类方法可在过程约束、参数估计或预测校正等环节结合。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "机理模型通过水流和溶质迁移过程描述系统响应；数据驱动模型从输入与响应数据中学习映射关系。两类方法可在过程约束、参数估计或预测校正等环节结合。\n\n应用：方法选择取决于分析目标、资料长度、空间结构和情景变化范围。外推到新的开采或污染条件时，应重点评估模型的适用范围。\n\n辨析：数值求解是一种计算方式，不是机理模型的专属同义词；混合方法也需要独立检验。\n\n常见问法：机理模型和数据模型怎么选；什么是机理数据双驱动。\n\n相关概念：水文地质概念模型、迁移学习、替代模型、模型率定与验证。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-calibration",
+      "kind": "knowledge",
+      "title": "模型率定与验证",
+      "summary": "模型率定利用观测调整参数，使模型响应与资料相匹配；独立检验使用未参与拟合或选择参数的数据，考察模型的预测表现。水头、流量、水量收支和浓度等检查具有互补作用，多组参数可能得到相近拟合。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "模型率定利用观测调整参数，使模型响应与资料相匹配；独立检验使用未参与拟合或选择参数的数据，考察模型的预测表现。水头、流量、水量收支和浓度等检查具有互补作用，多组参数可能得到相近拟合。\n\n应用：根据预测用途选择空间、时间或情景检验，检查参数合理性、残差分布与关键过程。保留独立资料，并单独讨论外推范围及模型结构的不确定性。\n\n辨析：率定拟合好不能证明预测情景可靠；这里的验证指独立检验，不代表模型在所有情景下成立。\n\n常见问法：拟合很好就说明模型可靠吗；率定和验证有什么区别。\n\n相关概念：水文地质概念模型、敏感性与不确定性、渗透系数、空间交叉验证。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-uncertainty",
+      "kind": "knowledge",
+      "title": "敏感性与不确定性",
+      "summary": "敏感性分析考察输入或假设改变时结果如何响应；不确定性分析进一步描述对输入、参数或模型结构认识不足所造成的结果范围。情景分析用于比较指定条件组合。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "敏感性分析考察输入或假设改变时结果如何响应；不确定性分析进一步描述对输入、参数或模型结构认识不足所造成的结果范围。情景分析用于比较指定条件组合。\n\n应用：重要结论可围绕补给、污染负荷、需求、参数和边界开展变化分析，识别哪些因素最影响方案选择。\n\n辨析：局部不敏感不等于结果确定；情景间差异也不等同于具备概率含义的不确定区间。\n\n常见问法：敏感性分析和不确定性分析有什么区别；参数变一点结果会变多少。\n\n相关概念：模型率定与验证、方案稳健性与算法收敛、管理目标与约束条件。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-transfer",
+      "kind": "knowledge",
+      "title": "迁移学习",
+      "summary": "迁移学习把源域学习到的参数、表示或规律用于目标域，以改善目标任务。在地下水资料较少时，可以尝试从具有可比含水条件、气候和开采方式的区域迁移，并通过适配或微调建立目标域模型。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [
+        "Transfer Learning"
+      ],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "迁移学习把源域学习到的参数、表示或规律用于目标域，以改善目标任务。在地下水资料较少时，可以尝试从具有可比含水条件、气候和开采方式的区域迁移，并通过适配或微调建立目标域模型。\n\n应用：先统一变量含义、单位与预测目标，再与仅使用目标域资料的基线比较。若目标域独立检验变差，应重新选择源域、适配方式或取消迁移。\n\n辨析：源域和目标域是迁移中的角色；资料多不保证可迁移，应检查负迁移及目标域表现。\n\n常见问法：监测资料少时能否借用别处模型；迁移学习适用于什么条件。\n\n相关概念：机理模型与数据驱动模型、空间交叉验证、模型率定与验证。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-surrogate",
+      "kind": "knowledge",
+      "title": "替代模型",
+      "summary": "替代模型学习高成本模型输入与输出之间的关系，以较低计算成本近似其响应，适用于需要反复评价候选方案的优化和敏感性分析。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [
+        "代理模型"
+      ],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "替代模型学习高成本模型输入与输出之间的关系，以较低计算成本近似其响应，适用于需要反复评价候选方案的优化和敏感性分析。\n\n应用：训练样本覆盖拟搜索的输入范围，使用独立样本检查误差。对接近约束边界或拟推荐的方案，用原模型复算；超出训练范围的候选方案需补样或单独评估。\n\n辨析：替代模型的近似误差与原模型对真实系统的误差是两层问题，复算只能检查前者。\n\n常见问法：为什么优化要用替代模型；快速模型能代替所有数值计算吗。\n\n相关概念：机理模型与数据驱动模型、模型率定与验证、方案稳健性与算法收敛、管理目标与约束条件。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-spatial-validation",
+      "kind": "knowledge",
+      "title": "空间交叉验证",
+      "summary": "空间交叉验证按地区或空间分组划分训练与验证样本，用于检验模型向未参与训练的地区推广时的表现。邻近样本常具有相似性，随机划分与空间划分检验的难度不同。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [
+        "空间分组交叉验证"
+      ],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "空间交叉验证按地区或空间分组划分训练与验证样本，用于检验模型向未参与训练的地区推广时的表现。邻近样本常具有相似性，随机划分与空间划分检验的难度不同。\n\n应用：预测目标是跨地区应用时，采用与该目标一致的分组方式，并使预处理及模型拟合限于训练数据。\n\n辨析：空间分组用于检验空间推广；预测未来时还需按时间划分，不能用空间划分代替全部验证。\n\n常见问法：为什么随机划分效果好却跨地区失效；空间交叉验证有什么用。\n\n相关概念：迁移学习、模型率定与验证、机理模型与数据驱动模型。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-source-path-receptor",
+      "kind": "knowledge",
+      "title": "污染源—迁移途径—受体",
+      "summary": "污染风险分析将污染物输入、迁移过程和受影响对象连接起来。污染源说明污染物从何处、以何种强度进入；途径说明经过哪些介质与水流通道；受体可以是取水井、泉口、供水人群或地下水依赖生态系统。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [
+        "源—途径—受体"
+      ],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "污染风险分析将污染物输入、迁移过程和受影响对象连接起来。污染源说明污染物从何处、以何种强度进入；途径说明经过哪些介质与水流通道；受体可以是取水井、泉口、供水人群或地下水依赖生态系统。\n\n应用：逐一明确输入、通道、迁移时间及受体用途，再确定优先监测和管控位置。文中出现“源径汇”时，应先明确“汇”指取水受体还是水文排泄项。\n\n辨析：受体是需保护的人群、供水设施或生态对象；水文模型中的汇是排泄项，两者不能直接等同。\n\n常见问法：如何系统分析地下水污染风险；源径汇是什么意思。\n\n相关概念：地下水脆弱性、污染物迁移与转化、源头控制途径阻断与受体保护、取水原水、供水水质与区域地下水水质。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-vulnerability",
+      "kind": "knowledge",
+      "title": "地下水脆弱性",
+      "summary": "地下水脆弱性描述特定评价框架下地下水受到污染影响的相对容易程度。固有脆弱性强调埋深、覆盖层、补给和含水介质等条件；特定脆弱性进一步考虑污染物性质与迁移转化。评价方法的定义和适用介质需先明确。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [
+        "含水层脆弱性"
+      ],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "地下水脆弱性描述特定评价框架下地下水受到污染影响的相对容易程度。固有脆弱性强调埋深、覆盖层、补给和含水介质等条件；特定脆弱性进一步考虑污染物性质与迁移转化。评价方法的定义和适用介质需先明确。\n\n应用：DRASTIC和EPIK是脆弱性评价方法，选用时需匹配含水系统及评价目标。风险分析还需结合实际污染负荷、受体及影响后果。\n\n辨析：固有脆弱性侧重介质和补给条件；特定脆弱性还考虑污染物性质。高脆弱性不等于已经污染。\n\n常见问法：脆弱性高是不是已经污染了；脆弱性和风险有什么区别。\n\n相关概念：污染源—迁移途径—受体、岩溶含水系统、源头控制途径阻断与受体保护。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-quality-risk-sustainability",
+      "kind": "knowledge",
+      "title": "水质类别风险等级与可持续性",
+      "summary": "水质类别描述所测水质指标与选定分类规则的关系；风险等级关注不利事件或影响的可能性与后果；可持续性综合考虑资源、水质和开采后系统响应等维度。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "水质类别描述所测水质指标与选定分类规则的关系；风险等级关注不利事件或影响的可能性与后果；可持续性综合考虑资源、水质和开采后系统响应等维度。\n\n应用：解释结果前先明确评价体系、评价对象和时间。一个水源地可以在不同体系中得到不同等级，因为各体系回答的问题不同。\n\n辨析：水质类别、健康或生态风险等级及可持续性得分属于不同评价结果；综合高分不能替代关键单项约束。\n\n常见问法：水质不好为什么综合评分还较高；风险等级和可持续性等级有什么区别。\n\n相关概念：可持续利用综合评价、污染源—迁移途径—受体、取水原水、供水水质与区域地下水水质。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-indicator-system",
+      "kind": "knowledge",
+      "title": "可持续利用综合评价",
+      "summary": "水源地可持续利用评价可从资源供给、水质状况和补给恢复能力组织指标。共性指标用于表达各类水源地共有的问题，类型指标用于反映孔隙、裂隙和岩溶介质差异。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "水源地可持续利用评价可从资源供给、水质状况和补给恢复能力组织指标。共性指标用于表达各类水源地共有的问题，类型指标用于反映孔隙、裂隙和岩溶介质差异。\n\n应用：先明确用途、单元和时段，再选择含义清楚、可获取且互补的指标。分别说明指标方向、标准化、权重、聚合及分级规则；对不可被其他高分抵消的关键约束单独检查。\n\n辨析：指标结构应服务评价目标；资源、水质、恢复能力是一种组织方式，不能直接当作统一适用的法定体系。\n\n常见问法：可持续利用应评价哪些方面；三类水源地能否采用同一套指标。\n\n相关概念：供水保障与开发压力、水位恢复率、指标标准化与赋权、水质类别风险等级与可持续性。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-supply-security",
+      "kind": "knowledge",
+      "title": "供水保障与开发压力",
+      "summary": "供水保障分析可供水量与目标需求是否匹配；开发压力分析实际开采相对于可开采条件的强度。开采系数常按同期实际开采量与可开采量之比表达，需明确分母定义、时段和水量单位。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "供水保障分析可供水量与目标需求是否匹配；开发压力分析实际开采相对于可开采条件的强度。开采系数常按同期实际开采量与可开采量之比表达，需明确分母定义、时段和水量单位。\n\n应用：核算水源可用量、工程能力、需求与管理约束，识别限制环节。名为“供水保证率”的指标可能采用不同定义，计算前应区分供需满足比与统计保证频率。\n\n辨析：同期可供水量与需求量之比是供需满足程度；供水保证频率需要跨时段或概率统计定义。\n\n常见问法：供水满足需求就可持续吗；开采系数反映什么。\n\n相关概念：地下水储量、补给量与可开采量、取水量供水量与工程能力、地下水水量均衡。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-recovery-rate",
+      "kind": "knowledge",
+      "title": "水位恢复率",
+      "summary": "停采或减采后的水位恢复程度，可用规定时刻已恢复降深占初始降深的比例表示：R(t)=(s₀−sₜ)/s₀×100%。其中s₀为停止或减少开采时相对背景水位的初始降深，sₜ为历时t后的残余降深，且s₀须大于零。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "停采或减采后的水位恢复程度，可用规定时刻已恢复降深占初始降深的比例表示：R(t)=(s₀−sₜ)/s₀×100%。其中s₀为停止或减少开采时相对背景水位的初始降深，sₜ为历时t后的残余降深，且s₀须大于零。\n\n应用：同时给出背景水位、恢复历时及周边井运行条件。背景水位随降雨或其他开采变化时，应评估其影响；s₀为零时不计算该比例，异常值需回查参照与观测条件。\n\n辨析：恢复程度必须附带恢复历时、初始降深和背景条件；停泵后的压力恢复不能直接换算为储量恢复。\n\n常见问法：停泵后恢复快说明什么；不同恢复时长的结果能直接比较吗。\n\n相关概念：开采扰动与降落漏斗、渗透系数、可持续利用综合评价、同井同层同步监测。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-weights",
+      "kind": "knowledge",
+      "title": "指标标准化与赋权",
+      "summary": "标准化将指标转换到可综合的尺度，并明确正向、负向或适宜区间。赋权反映指标在评价中的相对作用：AHP组织成对判断，熵权利用样本差异信息，CRITIC综合指标变异与相关关系。组合赋权需明确组合规则。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "标准化将指标转换到可综合的尺度，并明确正向、负向或适宜区间。赋权反映指标在评价中的相对作用：AHP组织成对判断，熵权利用样本差异信息，CRITIC综合指标变异与相关关系。组合赋权需明确组合规则。\n\n应用：核对量纲、缺测、常量指标、相关性及样本代表性，避免重复计权。层级权重应归一化，并检验权重变化是否改变分级或方案选择。\n\n辨析：AHP、熵权和CRITIC是不同赋权方法；数据差异较大不自动意味着该指标的管理重要性更高。\n\n常见问法：为什么需要标准化和赋权；权重改变会影响评价结论吗。\n\n相关概念：可持续利用综合评价、敏感性与不确定性、水质类别风险等级与可持续性。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-dpsir",
+      "kind": "knowledge",
+      "title": "DPSIR安全评价框架",
+      "summary": "DPSIR以驱动力、压力、状态、影响和响应组织环境问题。它把社会需求、开发与污染压力、地下水状态、供水和生态影响以及管理行动联系起来。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [
+        "DPSIR"
+      ],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "DPSIR以驱动力、压力、状态、影响和响应组织环境问题。它把社会需求、开发与污染压力、地下水状态、供水和生态影响以及管理行动联系起来。\n\n应用：用于饮用水源安全分析时，可据此梳理问题形成过程及管理响应，并结合水源地类型设置具体指标。\n\n辨析：DPSIR组织问题关系，本身不提供权重、阈值或唯一评分公式，也不直接证明因果关系。\n\n常见问法：DPSIR是什么意思；如何把管理措施纳入水源安全评价。\n\n相关概念：污染源—迁移途径—受体、可持续利用综合评价、源头控制途径阻断与受体保护。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-objectives-constraints",
+      "kind": "knowledge",
+      "title": "管理目标与约束条件",
+      "summary": "管理目标表示希望改善的表现，如增加供水或降低生态与水质风险；约束条件限定可接受的方案范围，如工程能力、取水条件和最低供水要求。目标权衡发生在可行方案之间。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "管理目标表示希望改善的表现，如增加供水或降低生态与水质风险；约束条件限定可接受的方案范围，如工程能力、取水条件和最低供水要求。目标权衡发生在可行方案之间。\n\n应用：组织优化任务时，分别列出可调变量、目标、约束和评价时段，并明确哪些阈值由管理要求给定，哪些属于分析情景。\n\n辨析：可调变量是可采取的操作，目标是优劣标准，硬约束是可行条件；三者应独立列明。\n\n常见问法：目标和约束有什么区别；开采优化需要先确定哪些条件。\n\n相关概念：Pareto方案与权衡、井群开采调度、基准情景与相对改善。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-pareto",
+      "kind": "knowledge",
+      "title": "Pareto方案与权衡",
+      "summary": "对于已评价的可行方案，如果不存在另一方案在所有目标上至少同样好、并在至少一个目标上更好，则该方案在该集合中是非支配解。Pareto前沿描述整个可行域中的非支配目标组合；数值优化通常得到它的近似。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "对于已评价的可行方案，如果不存在另一方案在所有目标上至少同样好、并在至少一个目标上更好，则该方案在该集合中是非支配解。Pareto前沿描述整个可行域中的非支配目标组合；数值优化通常得到它的近似。\n\n应用：比较供水优先、生态优先、水质优先与综合平衡方案时，说明每类方案获得的收益和承担的代价。\n\n辨析：样本中的非支配解不等于已经证明的全局Pareto最优解；最终选择仍需表达管理偏好。\n\n常见问法：为什么优化不是只给一个最优值；Pareto前沿有什么用。\n\n相关概念：管理目标与约束条件、方案稳健性与算法收敛、井群开采调度。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-well-scheduling",
+      "kind": "knowledge",
+      "title": "井群开采调度",
+      "summary": "井群调度通过调整各井开采强度和运行时序，在供水需求、井间干扰、水质差异及环境约束之间进行协调。单井特征不同，同样总取水量可以形成不同的影响分布。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "井群调度通过调整各井开采强度和运行时序，在供水需求、井间干扰、水质差异及环境约束之间进行协调。单井特征不同，同样总取水量可以形成不同的影响分布。\n\n应用：优化需考虑井位、滤水层位、工程能力、运行时长和约束。空间上共享同一模型网格的井，还需明确网格流量如何分配到单井。\n\n辨析：轮采可以改变局部影响和运行时序，不能据此假定总取水量或长期环境压力已经下降。\n\n常见问法：总量相同为什么还要优化井群；轮采能够解决什么问题。\n\n相关概念：开采扰动与降落漏斗、管理目标与约束条件、暴露风险与污染削减。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-exposure-removal",
+      "kind": "knowledge",
+      "title": "暴露风险与污染削减",
+      "summary": "井群混合原水浓度可按C混=Σ(QᵢCᵢ)/ΣQᵢ计算，其中Qᵢ与Cᵢ需对应同一时段，且总水量大于零。该关系要求按一致水量口径混合，且混合过程中无显著反应或去除。降低高浓度井占比可改善混合浓度，但未必减少含水层中的污染物质量。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "井群混合原水浓度可按C混=Σ(QᵢCᵢ)/ΣQᵢ计算，其中Qᵢ与Cᵢ需对应同一时段，且总水量大于零。该关系要求按一致水量口径混合，且混合过程中无显著反应或去除。降低高浓度井占比可改善混合浓度，但未必减少含水层中的污染物质量。\n\n应用：若输入为平均浓度，应检查是否能代表对应输送水量。处理、反应和时间变化需另行计算；健康或生态风险还取决于污染物性质、暴露方式及持续时间。\n\n辨析：混合浓度改善、暴露降低和含水层污染物质量削减是三种不同效果，应分别计算和解释。\n\n常见问法：混合水质改善是否说明含水层修复了；少抽高浓度井为什么能改善供水。\n\n相关概念：井群开采调度、污染物迁移与转化、取水原水、供水水质与区域地下水水质。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-robustness",
+      "kind": "knowledge",
+      "title": "方案稳健性与算法收敛",
+      "summary": "算法收敛关注搜索结果是否随迭代趋于稳定；重复性关注不同随机运行的差异；方案稳健性关注补给、需求、负荷或参数变化后，方案是否仍满足约束并保持可接受表现。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "算法收敛关注搜索结果是否随迭代趋于稳定；重复性关注不同随机运行的差异；方案稳健性关注补给、需求、负荷或参数变化后，方案是否仍满足约束并保持可接受表现。\n\n应用：HV衡量非支配解集相对参考点覆盖的目标空间体积，IGD衡量参考前沿到近似解集的距离。比较时统一目标方向、尺度及参考设置；经验参考前沿只支持相对比较，指标趋稳不等于证明全局最优。\n\n辨析：多随机种子检验搜索重复性，多水文与需求情景检验方案稳健性；二者不能相互替代。\n\n常见问法：跑够迭代次数就算收敛吗；最优方案换一个情景还能用吗。\n\n相关概念：Pareto方案与权衡、敏感性与不确定性、替代模型。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-baseline",
+      "kind": "knowledge",
+      "title": "基准情景与相对改善",
+      "summary": "基准情景为比较提供参照，可采用现状运行、指定开采条件或其他明确情景。不同参照状态会影响降深、风险和改善率的数值含义。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "基准情景为比较提供参照，可采用现状运行、指定开采条件或其他明确情景。不同参照状态会影响降深、风险和改善率的数值含义。\n\n应用：统一区域、时段、背景条件和指标口径，先报告绝对变化，再按预先定义的正负方向计算相对改善。基准接近零时优先解释绝对差值。\n\n辨析：相对改善取决于基准；基准为零或接近零时，百分比改善可能无定义或不稳定。\n\n常见问法：生态降深减少是相对什么说的；不同方案的改善率怎样比较。\n\n相关概念：管理目标与约束条件、空间时间与统计口径一致性、方案稳健性与算法收敛。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-reduce-augment",
+      "kind": "knowledge",
+      "title": "限采增源",
+      "summary": "限采增源面向资源供给难以持续支撑现有开采的情况，通过降低开采压力、保护补给条件和优化多水源供给，改善长期水量收支。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "限采增源面向资源供给难以持续支撑现有开采的情况，通过降低开采压力、保护补给条件和优化多水源供给，改善长期水量收支。\n\n应用：结合水量均衡、地下水动态、供水需求和替代水源选择措施。人工补给需分析补给水质、地层适宜性、水岩反应和受体影响，防止增源过程引入新的水质问题。\n\n辨析：替代供水减少地下水需求，补给措施改变地下水输入；二者作用路径不同，应分别核算。\n\n常见问法：持续负均衡应该怎样管理；限采增源包括哪些措施。\n\n相关概念：地下水水量均衡、供水保障与开发压力、井群开采调度。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-season-storage",
+      "kind": "knowledge",
+      "title": "丰枯调蓄",
+      "summary": "丰枯调蓄利用含水系统的储水和调节能力，缓解补给与供水需求在季节或年际上的错配。管理重点是补给、储水和取水时序的协调。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [
+        "蓄丰济枯"
+      ],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "丰枯调蓄利用含水系统的储水和调节能力，缓解补给与供水需求在季节或年际上的错配。管理重点是补给、储水和取水时序的协调。\n\n应用：适用于具有相应调蓄空间且可满足水位、水质和开采约束的系统，应同时评估调蓄周期与恢复条件。\n\n辨析：短期可调蓄水量与长期可持续供水量不同；地下水库也不意味着存在独立、封闭的地下空腔。\n\n常见问法：丰水期有水枯水期不够怎么办；地下水库利用模式是什么意思。\n\n相关概念：地下水储量、补给量与可开采量、水位恢复率、井群开采调度。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-risk-control",
+      "kind": "knowledge",
+      "title": "源头控制途径阻断与受体保护",
+      "summary": "源头控制减少污染输入，途径阻断降低污染向地下水及取水工程迁移的可能，受体保护通过监测、取水调整或处理保障使用目标。三类措施可以组合。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "源头控制减少污染输入，途径阻断降低污染向地下水及取水工程迁移的可能，受体保护通过监测、取水调整或处理保障使用目标。三类措施可以组合。\n\n应用：根据污染物性质、介质连通性、迁移时间和受体位置确定优先环节，并持续跟踪实施效果。\n\n辨析：控源、阻断和受体保护作用于不同环节；末端处理改善供水，通常不代表含水层污染已经消除。\n\n常见问法：地下水污染应该先控源还是修复；如何选择防控技术组合。\n\n相关概念：污染源—迁移途径—受体、地下水脆弱性、井群开采调度。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-level-quantity",
+      "kind": "knowledge",
+      "title": "水位水量协同管理",
+      "summary": "水量控制限制开采规模，水位控制关注含水系统及环境的实际响应。将二者结合，可以使开采调节同时考虑总量、局部降深、层间联系和生态影响。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [
+        "水位水量双控"
+      ],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "水量控制限制开采规模，水位控制关注含水系统及环境的实际响应。将二者结合，可以使开采调节同时考虑总量、局部降深、层间联系和生态影响。\n\n应用：当相同开采总量在不同位置产生不同影响时，采用分区控制、井群调度和动态监测共同调整运行。\n\n辨析：水量合规与水位响应可接受需分别判断；区域总量合适仍可能出现局部过度降深。\n\n常见问法：只控制总取水量为什么还不够；水位水量协同管理是什么。\n\n相关概念：开采扰动与降落漏斗、生态水位与环境响应、井群开采调度。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-emergency",
+      "kind": "knowledge",
+      "title": "应急供水",
+      "summary": "应急供水面向污染事件、工程故障或突发短缺造成的供水中断，通过备用水源、需求调节、替代供给和运行组织维持必要服务。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "应急供水面向污染事件、工程故障或突发短缺造成的供水中断，通过备用水源、需求调节、替代供给和运行组织维持必要服务。\n\n应用：方案需明确触发条件、可调用能力、响应时间、持续时长和恢复条件，并保持备用设施可用。\n\n辨析：备用水源的名义规模与事件发生时的可调用能力不同，需结合水质、工程状态和响应时长。\n\n常见问法：主水源突然不能用怎么办；备用水源应考虑什么。\n\n相关概念：供水保障与开发压力、源头控制途径阻断与受体保护、管理目标与约束条件。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-intent-explain",
+      "kind": "rule",
+      "title": "概念解释：意图理解",
+      "summary": "理解专业名词和概念之间的关系。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "理解专业名词和概念之间的关系。\n\n常见表达：什么是负均衡；用通俗的话解释水力坡度；水位恢复率怎么算，先讲公式。\n\n识别条件：请求定义、通俗解释或概念用途。\n\n区分要点：有明确A与B比较对象时，以comparison为主；已有具体结果需要解释时，以interpret为主。\n\n按任务需要补足：术语、解释深度。\n\n回应方式：先给一句核心定义，再用水源地场景解释，补充最容易混淆的概念。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-intent-mechanism",
+      "kind": "rule",
+      "title": "成因分析：意图理解",
+      "summary": "理解某种现象的形成过程及可能驱动因素。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "理解某种现象的形成过程及可能驱动因素。\n\n常见表达：抽水为什么影响水质；泉水硫酸盐为什么会升高；浅层污染怎么进入深层。\n\n识别条件：询问现象为何发生、有哪些可能驱动过程。\n\n区分要点：对已有指标或模型输出问“说明什么”时优先interpret；一般机制讨论不自动启动计算。\n\n按任务需要补足：现象、水源类型、含水层、时段、已知条件。\n\n回应方式：按水动力变化、输入与迁移、化学过程组织解释；多个可能机制并存时说明如何区分。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-intent-comparison",
+      "kind": "rule",
+      "title": "概念或方法对比：意图理解",
+      "summary": "识别选项差异并判断其适用场景。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "识别选项差异并判断其适用场景。\n\n常见表达：潜水和承压水有什么区别；机理模型和数据模型怎么选；比较限采增源与丰枯调蓄。\n\n识别条件：要求比较两个以上明确对象，或选择方法与模式。\n\n区分要点：术语解释可作为比较的步骤；缺少比较对象时先结合上下文补全。\n\n按任务需要补足：比较对象、关注维度、应用场景。\n\n回应方式：按用途、输入、优势和适用条件并列比较，最后结合用户场景给出选择理由。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-intent-interpret",
+      "kind": "rule",
+      "title": "结果解释：意图理解",
+      "summary": "理解已有结果的业务含义和形成原因。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "理解已有结果的业务含义和形成原因。\n\n常见表达：综合分较高为什么还有风险；水位回升能说明恢复了吗；优化后浓度降低说明什么。\n\n识别条件：用户提供或引用结果，要求解释其含义、原因或管理意义。\n\n区分要点：“这个结果怎么算”可能在问公式，也可能要求重算；依据完整句意确定。\n\n按任务需要补足：结果指标、评价对象、时期、基准情景、分项表现。\n\n回应方式：先解释该指标回答什么问题，再联系分项与过程，说明结果对当前管理意味着什么。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-intent-assessment",
+      "kind": "rule",
+      "title": "评价设计：意图理解",
+      "summary": "确定评价步骤、资料需求和方法。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "确定评价步骤、资料需求和方法。\n\n常见表达：怎么评价水源地可持续性；需要准备哪些指标；风险筛查应该怎么做。\n\n识别条件：要求设计评价思路、指标、资料清单或步骤。\n\n区分要点：单独“帮我评估”不足以决定执行计算；结合数据、输出目标和任务要求判断。\n\n按任务需要补足：评价目标、水源类型、评价范围、时段、可用资料。\n\n回应方式：把目标拆成指标和资料需求，说明量化、比较与综合分析步骤，突出类型差异。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-intent-management",
+      "kind": "rule",
+      "title": "管理方案建议：意图理解",
+      "summary": "形成管理选项并理解其权衡。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "形成管理选项并理解其权衡。\n\n常见表达：怎样兼顾供水和生态；负均衡该怎么治理；是否应该调整井群。\n\n识别条件：请求管理选项、措施组合及实施条件。\n\n区分要点：提出方案建议与启动优化计算分别处理；执行范围由用户具体要求确定。\n\n按任务需要补足：主要问题、供水需求、可调整条件、约束、时间尺度。\n\n回应方式：识别主导约束，提出相应利用模式或井群方案，并说明预期收益与代价。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-intent-calculate",
+      "kind": "rule",
+      "title": "数据分析或计算：意图理解",
+      "summary": "对指定数据执行明确的分析。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "对指定数据执行明确的分析。\n\n常见表达：用这些数据计算水量均衡；帮我计算评价得分；对监测数据做趋势分析。\n\n识别条件：要求对明确数据计算、统计、分析或运行模型，并得到结果。\n\n区分要点：“解释怎么算”通常是explain或assessment；出现“不要计算”时保留被允许的解释任务。\n\n按任务需要补足：数据对象、字段含义、单位、统计口径、时间范围、计算方法。\n\n回应方式：使用已明确的数据和计算口径完成分析；缺少会改变数值结果的关键参数时指出具体缺项。明确区分输入值、计算结果和解释，不把示例值当作实际数据。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-intent-workflow",
+      "kind": "rule",
+      "title": "流程编排：意图理解",
+      "summary": "将多步专业分析组织为可配置流程。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "将多步专业分析组织为可配置流程。\n\n常见表达：把模拟和评价连成工作流；生成可编辑的分析流程；先率定再比较情景。\n\n识别条件：要求把多个步骤编排成流程，明确输入输出及依赖。\n\n区分要点：询问“有哪些步骤”通常是assessment；创建流程与实际运行流程的要求需分别理解。\n\n按任务需要补足：输入资料、分析步骤、输出目标、步骤依赖、参数来源。\n\n回应方式：按输入、处理、输出组织步骤，明确前后依赖；暂不能确定的输入保留为待填写项。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-intent-status",
+      "kind": "rule",
+      "title": "运行状态查询：意图理解",
+      "summary": "了解某次实际任务的进展或结果状态。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "了解某次实际任务的进展或结果状态。\n\n常见表达：分析做完了吗；刚才的任务到哪一步了；那次计算为什么失败。\n\n识别条件：询问一个已发生或正在进行的实际任务的进展、失败原因或结果位置。\n\n区分要点：从任务状态获取事实；知识库只能帮助解释状态，不能提供某次任务的实时进度。\n\n按任务需要补足：所指任务、期望了解的状态。\n\n回应方式：依据所指任务的实际状态回答已完成步骤、当前进度和失败信息；没有状态信息时说明未知，不从专业知识推断运行结果。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-intent-followup",
+      "kind": "rule",
+      "title": "上下文承接：意图理解",
+      "summary": "继承仍成立的上下文，并替换本轮明确改变的对象、时段、目标或条件。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "继承仍成立的上下文，并替换本轮明确改变的对象、时段、目标或条件。\n\n常见表达：那裂隙型呢；换成枯水期会怎样；只考虑水质的话呢。\n\n回应方式：先找清指代对象，再识别变化项；新要求覆盖与之冲突的旧条件，其余条件继续沿用。存在多个可能指代时，只澄清会改变答案的部分。\n\n“那裂隙型呢”只指定变化项，主任务应从前文继承；前文缺失时不强行归类。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-intent-no-execution",
+      "kind": "rule",
+      "title": "只解释不执行：意图理解",
+      "summary": "限定本轮只提供解释、比较或结果解读。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "限定本轮只提供解释、比较或结果解读。\n\n常见表达：先讲原理，不要计算；比较方法就行，不用跑模型；不要重新算，只解释刚才的结果。\n\n回应方式：根据否定词的作用范围确定被禁止的操作，保留允许的主任务。“不要用A，改用B计算”只排除方法A，不等于禁止所有计算。\n\n“不要用熵权，改用给定权重计算”仍是计算任务，否定只作用于指定方法。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    },
+    {
+      "knowledgeId": "gw-clean-intent-clarify",
+      "kind": "rule",
+      "title": "缺失信息与歧义处理：意图理解",
+      "summary": "补足会改变分析路径的对象、目标或口径，同时继续完成已有信息足以支持的部分。",
+      "contentVersion": "2.1.0",
+      "language": "zh-CN",
+      "aliases": [],
+      "sources": [
+        {
+          "sourceId": "gw-refined-domain-knowledge",
+          "kind": "DOMAIN_DEFINITION",
+          "title": "地下水水源地专业知识整理",
+          "publisher": "Groundwater 知识整理",
+          "url": null,
+          "version": "2.1.0",
+          "publishedAt": "2026-11-20",
+          "accessedAt": null,
+          "reviewAfter": "2027-11-20",
+          "validThrough": null,
+          "lifecycleStatus": "ACTIVE"
+        }
+      ],
+      "units": [
+        {
+          "unitId": "knowledge",
+          "content": "补足会改变分析路径的对象、目标或口径，同时继续完成已有信息足以支持的部分。\n\n常见表达：帮我评估一下；这个安全吗；看看水位有没有问题。\n\n回应方式：先利用上下文确定对象和用户想得到的结果；只有不同理解会改变答案或执行动作时，才提出最小必要问题。一般概念解释无需先收齐计算参数。\n\n任务理解顺序：理解整句目标与已有上下文；解析否定范围和本轮变化项；确定一个或多个主任务及顺序；仅补足影响结果或执行的关键信息。\n\n复合任务按用户要求排序，例如先解释计量口径、再换算数据；不强制把一句话归入单一意图。",
+          "sourceRefs": [
+            "gw-refined-domain-knowledge"
+          ]
+        }
+      ]
+    }
+  ]
+}
