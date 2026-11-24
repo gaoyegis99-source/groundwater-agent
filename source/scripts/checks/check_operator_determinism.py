@@ -83,7 +83,7 @@ def main():
                     [
                         sys.executable,
                         "-m",
-                        "moperators.runtime.task",
+                        "moperators.runtime.entrypoint",
                         str(payload),
                         str(result),
                     ],

@@ -15,6 +15,7 @@ from .timeline import close_activities_connection, project_activities
 from .types import StoredRunState, UsageDelta
 from ...application.task_api import (
     commit_updates,
+    preparation_in_connection,
     refresh_task,
     save_preparation_connection,
 )
@@ -311,6 +312,7 @@ def finish_run(
     memory_update: MemoryUpdate | None = None,
     workflow_draft: dict | None = None,
     preparation: tuple[str, tuple[dict[str, object], ...]] | None = None,
+    clarification_preparation: dict[str, object] | None = None,
     failed_activity_id: str | None = None,
     diagnostics: dict | None = None,
     task_updates: list | None = None,
@@ -397,6 +399,14 @@ def finish_run(
             metrics["total_tokens"], metrics["duration_ms"],
         )
         commit_updates(connection, run, task_updates)
+        if clarification_preparation is not None:
+            existing = preparation_in_connection(
+                connection, run.session_id, current_goal_revision=run.goal_revision,
+            )
+            if existing is None or existing["agent_run_id"] != run.agent_run_id:
+                preparation = (
+                    f"clarification-boundary:{run.agent_run_id}", (clarification_preparation,),
+                )
         if preparation is not None:
             tool_call_id, snapshots = preparation
             save_preparation_connection(

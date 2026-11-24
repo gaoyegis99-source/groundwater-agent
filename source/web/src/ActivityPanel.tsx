@@ -45,8 +45,8 @@ function ActivityTime({ createdAt, startedAt, finishedAt, duration }: {
 
 export interface CurrentTaskView { name: string; stage: string; action?: string; run?: () => void; research?: TaskContext }
 
-export function ActivityPanel({ turn, snapshotAt, connected, task, children }: {
-  turn: Turn; snapshotAt: string; connected: boolean; task?: CurrentTaskView; children?: ReactNode;
+export function ActivityPanel({ turn, snapshotAt, connected, task, analysisResultCount, children }: {
+  turn: Turn; snapshotAt: string; connected: boolean; task?: CurrentTaskView; analysisResultCount?: number | null; children?: ReactNode;
 }) {
   const active = ['ROUTING', 'QUEUED', 'RUNNING', 'WAITING_CONFIRMATION', 'WAITING_EXECUTION'].includes(turn.status);
   const needsAttention = ['FAILED', 'TIMED_OUT'].includes(turn.status);
@@ -90,6 +90,12 @@ export function ActivityPanel({ turn, snapshotAt, connected, task, children }: {
   const recentUpdates = publicProgress.filter(item => item.code !== 'CASE_MATCHED'
     && !(planReady && confirmation?.status === 'PENDING' && item.code === 'WAITING_CONFIRMATION' && item.status === 'RUNNING')).slice(-2);
   const executionTime = executing?.startedAt ? elapsed(executing.startedAt, null, now) : null;
+  function describeProgress(item: NonNullable<Turn['progressUpdates']>[number]) {
+    if (analysisResultCount !== undefined && item.code === 'EXECUTION_SUCCEEDED') {
+      return analysisResultCount === null ? '执行成功，分析成果已发布。' : `执行成功，已发布 ${analysisResultCount} 份分析成果。`;
+    }
+    return progressDescription(item);
+  }
   return <section className={`activity-panel ${active ? 'is-active' : 'is-terminal'}`} aria-label={task ? '当前研究任务' : undefined} data-task-card={task ? true : undefined} data-testid="activity-panel" data-agent-run-id={turn.agentRunId}>
     {task && <>
       <div className="task-card-heading"><h2>{task.name}</h2><span role="status"><span className="task-stage-label" key={task.stage}>{task.stage}</span></span></div>
@@ -103,7 +109,7 @@ export function ActivityPanel({ turn, snapshotAt, connected, task, children }: {
     <div className={task ? 'task-update-row' : undefined}>
     {task && recentUpdates.length > 0 && <div className="recent-updates"><h3>最近更新</h3>
       <ul aria-live="polite">{recentUpdates.map(item => <li key={item.progressId}>{item.code === 'WAITING_CONFIRMATION' && item.status === 'INTERRUPTED'
-        ? '本次执行确认已结束。' : progressDescription(item)}</li>)}</ul></div>}
+        ? '本次执行确认已结束。' : describeProgress(item)}</li>)}</ul></div>}
     <button className="activity-toggle" aria-expanded={expanded} aria-controls={contentId} onClick={() => setDisclosure({ key: disclosureKey, expanded: !expanded })}>
       <Icon name={expanded ? 'arrow-down' : 'arrow-right'} />{task ? '执行记录' : <><strong>{summary}</strong>
       {active && <span className="activity-phase" role="status"><span className="task-stage-label" key={phase}>{phase}</span></span>}
@@ -117,7 +123,7 @@ export function ActivityPanel({ turn, snapshotAt, connected, task, children }: {
       {routingLabel(turn) && <p className="routing-status">{routingLabel(turn)}</p>}
       {progress.length > 0 && <><h3 className="activity-section-title">流程里程碑</h3><ol className="activity-list progress-list" aria-label="流程里程碑">{progress.map(item => <li key={item.progressId} data-progress-id={item.progressId} data-tone={activityTone(item.status)}>
         <div><strong>{progressLabel(item)}</strong><Badge tone={activityTone(item.status)}>{item.status === 'INTERRUPTED' ? '已中断' : statusLabel[item.status] ?? '状态待核实'}</Badge></div>
-        <p className="muted">{progressDescription(item)}</p>
+        <p className="muted">{describeProgress(item)}</p>
         <ActivityTime {...item} duration={item.finishedAt || item.status === 'RUNNING' ? elapsed(item.startedAt, item.finishedAt, now) : null} />
       </li>)}</ol></>}
       {publicProgress.length > progress.length && <button className="text-button" onClick={() => setShowAllFor(disclosureKey)}>查看全部 {publicProgress.length} 个步骤</button>}

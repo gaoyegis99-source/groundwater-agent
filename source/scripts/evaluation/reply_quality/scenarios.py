@@ -9,7 +9,7 @@ import httpx
 
 from scripts.evaluation.evaluate_agent import request
 
-from .definitions import PROJECT
+from .definitions import PROJECT, SINGLE_COLUMN_DESCRIBE_OPERATOR, TABLE_DESCRIBE_OPERATOR
 
 
 class _ConfirmationArgumentsMismatchError(AssertionError):
@@ -219,15 +219,21 @@ def _draft_card_context(
     ):
         raise AssertionError("WORKFLOW_DRAFT_IDENTITY_MISMATCH")
     nodes = workflow["nodes"]
+    describe_operator = (
+        TABLE_DESCRIBE_OPERATOR
+        if TABLE_DESCRIBE_OPERATOR in release_identity["draft_operators"]
+        else SINGLE_COLUMN_DESCRIBE_OPERATOR
+    )
+    expected_operators = {"table.sort", describe_operator}
     if (
         len(nodes) != 2
         or {node["operator_id"] for node in nodes}
-        != {"table.sort", "statistics.describe"}
+        != expected_operators
     ):
         raise AssertionError("WORKFLOW_DRAFT_OPERATOR_ORDER_MISMATCH")
     sort = next(node for node in nodes if node["operator_id"] == "table.sort")
     describe = next(
-        node for node in nodes if node["operator_id"] == "statistics.describe"
+        node for node in nodes if node["operator_id"] == describe_operator
     )
     source_input = sort["inputs"].get("data", {}).get("workflow_input")
     rules_input = sort["inputs"].get("rules", {}).get("workflow_input")
@@ -249,7 +255,7 @@ def _draft_card_context(
         {item["node_id"] for item in operators}
         != {sort["node_id"], describe["node_id"]}
         or {item["operator_id"] for item in operators}
-        != {"table.sort", "statistics.describe"}
+        != expected_operators
         or any(
             item["operator_id"]
             != next(node for node in nodes if node["node_id"] == item["node_id"])[
@@ -307,7 +313,12 @@ def _draft_card_context(
     unresolved = "\n".join(payload["unresolved_items"])
     if not all(term in unresolved for term in ("排序", "规则")):
         raise AssertionError("WORKFLOW_DRAFT_UNRESOLVED_ITEM_MISSING")
-    if "axis" in payload["parameter_values"] and (
+    if describe_operator == TABLE_DESCRIBE_OPERATOR:
+        binding = describe.get("parameters", {}).get("infer_numeric_strings", {})
+        parameter = binding.get("workflow_parameter")
+        if not parameter or payload["parameter_values"].get(parameter) is not True:
+            raise AssertionError("WORKFLOW_DRAFT_NUMERIC_INFERENCE_MISSING")
+    elif "axis" in payload["parameter_values"] and (
         payload["parameter_values"]["axis"] != "columns"
         or not any(
             source["name"] == "axis"

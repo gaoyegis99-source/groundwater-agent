@@ -95,13 +95,14 @@ export interface ControlProposal {
   decisionRequestId: string | null; createdAt: string; decidedAt: string | null;
 }
 export interface ControlMessage {
-  requestId: string; message: string; responseKind: IntentDecision;
-  semanticIntent: SemanticIntent;
+  requestId: string; message: string; responseKind: IntentDecision | null;
+  semanticIntent: SemanticIntent | null;
   controlIntent: ControlIntent | null; clarificationReason: ClarificationReason | null;
   statusSnapshot: 'IDLE' | 'ANALYZING' | 'EXECUTING' | 'WAITING_CONFIRMATION' | 'RUNNING' | 'WAITING_EXECUTION' | 'COMPLETE' | 'FAILED' | 'CANCELLED';
   waitingReason: 'ANALYSIS_IN_PROGRESS' | 'EXECUTION_IN_PROGRESS' | 'CONFIRMATION_REQUIRED' | null;
   results: ResourceReference[];
-  status: 'CONTROL_PENDING' | 'CONTROL_COMPLETE'; createdAt: string;
+  status: 'CONTROL_PENDING' | 'CONTROL_COMPLETE' | 'ROUTING_REQUESTED' | 'ROUTING_RUNNING' | 'FAILED';
+  errorCode?: string; createdAt: string;
 }
 export type MessageRequest = PublicApiComponents['schemas']['kernel__MessageCreate'];
 export interface RoutingMetrics {
@@ -346,7 +347,7 @@ export interface ResourceDetail {
   versionId: string; datasetId: string; publicationId: string; semanticId: string; currentVersion?: string; project?: string; tags?: string[]; title: string; createdAt?: string; inputVersions: string[];
   descriptor: { rowCount?: number | null; profile?: DatasetProfile;
     fields?: { fieldId: string; name: string; type: string; nullCount?: number; profile?: FieldProfileFacts }[];
-    policy?: string; provenance?: Record<string, string> };
+    policy?: string; provenance?: Record<string, string>; raster?: unknown };
   semantics: Partial<PublicApiComponents['schemas']['data__Semantics']>;
   objects: { objectId: string; size: number; checksum: string; role: 'raw' | 'query'; format: string; mediaType: string; sourceChecksum?: string }[];
 }

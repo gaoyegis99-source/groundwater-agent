@@ -48,6 +48,8 @@ def _authorize_model_decision(
     """Derive runtime policy using semantics; never trust model-granted authority."""
     if value.response_kind == "CONTROL" or value.control_intent is not None:
         raise ValueError("AGENT_INTENT_ROUTING_INVALID")
+    if value.response_kind == "DIALOGUE" and value.semantic_intent == "STATUS_QUERY":
+        return value.model_copy(update={"dialogue_policy": "READ_ONLY", "task_action": "NONE"})
     has_task = task_context is not None
     default_actions = (
         {"NONE", "REVISE", "CONTINUE", "REVIEW"} if has_task else {"NONE", "CREATE"}
@@ -60,10 +62,12 @@ def _authorize_model_decision(
         ):
             allowed_actions = set(candidates)
     if value.task_action not in allowed_actions:
+        # These intents have a fixed response mode in the decision contract.
+        has_fixed_mode = value.semantic_intent in {"EXECUTE_ON_DATA", "CREATE_WORKFLOW"}
         return IntentDecisionV4.from_python(
             response_kind="NEEDS_CLARIFICATION",
-            semantic_intent=value.semantic_intent,
-            task_action=value.task_action,
+            semantic_intent="UNKNOWN" if has_fixed_mode else value.semantic_intent,
+            task_action="NONE" if has_fixed_mode else value.task_action,
             dialogue_policy=None,
             control_intent=None,
             clarification_reason="TASK_CONFLICT",

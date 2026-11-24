@@ -12,6 +12,7 @@ from ..errors import (
     AgentRunError,
     UpstreamServiceError,
 )
+from ..workflow_selection import selected_model
 from .case_resolver import load_explicit_model_tool_request
 from .persistence import load_request_context
 from .models import (
@@ -39,6 +40,7 @@ from .result_processing import (
     ResultProcessingError,
     prepare_interruption,
 )
+from .preparation_tool import preset_clarification_snapshot
 from .reply import render_submitted_reply
 from .workflow_draft import prepare_workflow_draft
 from .sdk_execution import (
@@ -310,6 +312,7 @@ def record_final(
     memory_update: MemoryUpdate | None,
 ) -> AgentRun:
     workflow_preparation = None
+    clarification_preparation = None
     try:
         context = load_request_context(deps.database, run.agent_run_id)
         final_output = result.final_output
@@ -352,6 +355,7 @@ def record_final(
                 deps.settings,
                 draft_id,
                 user_goal=context["draft_message"],
+                check_authoring_contract=context["mode"] == "WORKFLOW_DRAFT",
             )
             if draft_input is not None
             else None
@@ -436,6 +440,15 @@ def record_final(
                     },
                 ),
             )
+        elif (
+            context.get("dialogue_policy") == "EXECUTION_PROPOSAL"
+            and (selection := context.get("workflow_selection")) is not None
+            and submitted.unresolved_items
+            and not facts["has_action"]
+        ):
+            clarification_preparation = preset_clarification_snapshot(
+                selection, selected_model(selection, deps.settings.models),
+            )
     except AgentRunError as caught:
         fail_with_usage(
             deps,
@@ -467,6 +480,7 @@ def record_final(
         memory_update=memory_update,
         workflow_draft=workflow_draft,
         preparation=workflow_preparation,
+        clarification_preparation=clarification_preparation,
         task_updates=result.context_wrapper.context.get("task_updates", [])
         if status == "COMPLETE"
         else [],

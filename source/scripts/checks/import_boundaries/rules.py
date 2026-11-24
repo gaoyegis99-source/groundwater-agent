@@ -616,6 +616,7 @@ CROSS_OWNER_TRANSACTION_COMMANDS = {
                 "workflow_drafts",
                 "confirmations",
                 "message_requests",
+                "messages",
                 "sessions",
                 "session_events",
             }

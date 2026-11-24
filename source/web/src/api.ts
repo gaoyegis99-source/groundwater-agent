@@ -457,6 +457,7 @@ const errorDescriptions: Record<string, string> = {
   AGENT_BUDGET_EXCEEDED: '本轮已达到处理预算，尚未形成有效回复。请缩小问题范围或分步提问。',
   AGENT_OBSERVATION_LOOP: '本轮重复查阅了相同资料，系统已停止继续处理。请调整问题后重新提交。',
   AGENT_INTENT_ROUTING_INVALID: '未能可靠判断这条消息的目标。请补充希望分析现有资料、比较可行方法，还是整理可复用流程。',
+  MESSAGE_GOAL_CHANGED: '识别需求期间会话目标已变化。请核对当前方案后重新发送。',
   AGENT_SDK_CONFIGURATION_INVALID: '智能助手服务配置有误，需要维护人员检查设置后才能继续。',
   OBSERVATION_RESOURCE_NOT_FOUND: '需要查阅的资料或知识内容不存在，请返回目录重新核对。',
   OBSERVATION_ARGUMENTS_INVALID: '查阅资料时使用的参数未通过检查，请核对资料和查询范围。',

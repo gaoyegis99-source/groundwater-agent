@@ -225,7 +225,8 @@ def load_product_ui(
         presentation = model_profiles[model["modelId"]]
         if not isinstance(presentation, dict):
             raise ValueError("PRODUCT_UI_MODELS_INVALID")
-        require_fields(presentation, MODEL_FIELDS | ({"resultOverview", "continuation", "inputCaseTag", "publishedOutputStep"} & presentation.keys()), "PRODUCT_UI_MODEL_FIELDS_INVALID")
+        optional_fields = {"resultOverview", "continuation", "inputCaseTag", "inputCaseParameters", "caseRequest", "publishedOutputStep"}
+        require_fields(presentation, MODEL_FIELDS | (optional_fields & presentation.keys()), "PRODUCT_UI_MODEL_FIELDS_INVALID")
         for key in ("displayName", "description", "applicability"):
             _nonempty(presentation[key])
         for key in ("inputs", "parameterOverrides"):
@@ -235,6 +236,34 @@ def load_product_ui(
         data_parameters = set(model["inputBindings"].values())
         if set(presentation["inputs"]) != data_parameters or set(presentation["parameterOverrides"]) - set(properties):
             raise ValueError("PRODUCT_UI_INPUTS_INVALID")
+        case_parameters = presentation.get("inputCaseParameters")
+        if case_parameters is not None:
+            case_arguments = {
+                **model["defaultParameters"],
+                **case_parameters,
+                **dict.fromkeys(data_parameters, "pending-version"),
+            }
+            if ("inputCaseTag" not in presentation or not data_parameters
+                or data_parameters & case_parameters.keys()
+                or not Draft202012Validator(model["tool"]["inputSchema"]).is_valid(case_arguments)):
+                raise ValueError("PRODUCT_UI_CASE_PARAMETERS_INVALID")
+        case_request = presentation.get("caseRequest")
+        if case_request is not None:
+            pattern = case_request["pattern"]
+            if ("inputCaseTag" not in presentation or not data_parameters
+                or not pattern.startswith("^") or not pattern.endswith("$")):
+                raise ValueError("PRODUCT_UI_CASE_REQUEST_INVALID")
+            try:
+                re.compile(pattern)
+                for name, switch in case_request["switches"].items():
+                    re.compile(switch["pattern"])
+                    required = set(switch["required"])
+                    if (properties.get(name, {}).get("type") != "boolean"
+                        or len(required) != len(switch["required"])
+                        or required - (properties.keys() - data_parameters - {name})):
+                        raise ValueError("PRODUCT_UI_CASE_REQUEST_INVALID")
+            except re.error as error:
+                raise ValueError("PRODUCT_UI_CASE_REQUEST_INVALID") from error
         workflow_inputs = {item["name"]: item for item in model["workflow"]["inputs"]}
         reverse_bindings = {parameter: input_name for input_name, parameter in model["inputBindings"].items()}
         for parameter, value in presentation["inputs"].items():
@@ -287,6 +316,11 @@ def load_product_ui(
                 or len(set(visuals)) != len(visuals)
                 or (categorical is not None and categorical not in visuals)):
                 raise ValueError("PRODUCT_UI_RESULT_OVERVIEW_INVALID")
+            for group in overview.get("inactiveGroups", []):
+                outputs = set(group["outputs"])
+                if (properties.get(group["parameter"], {}).get("type") != "boolean"
+                    or len(outputs) != len(group["outputs"]) or outputs - set(output_names)):
+                    raise ValueError("PRODUCT_UI_RESULT_OVERVIEW_INVALID")
         step = presentation.get("publishedOutputStep")
         if step is not None:
             target = next((item for item in models if item["modelId"] == step["targetModel"]), None)

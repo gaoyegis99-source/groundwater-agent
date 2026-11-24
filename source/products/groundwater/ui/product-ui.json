@@ -51,6 +51,10 @@
         {"label": "对比期", "parameters": ["comparisonStart", "comparisonEnd"]}
       ],
       "resultOverview": {
+        "inactiveGroups": [
+          {"parameter": "seasonalTrendEnabled", "label": "季节趋势", "outputs": ["seasonal-trends", "seasonal-trend-summary"]},
+          {"parameter": "thresholdEventsEnabled", "label": "阈值事件", "outputs": ["threshold-classification", "threshold-events", "threshold-event-summary"]}
+        ],
         "description": "逐井趋势及基准期与对比期的变化。",
         "sections": [
           {

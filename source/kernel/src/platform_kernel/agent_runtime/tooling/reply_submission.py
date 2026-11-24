@@ -12,6 +12,11 @@ from platform_workflow_compiler.graph import input_members
 from pydantic import ValidationError as PydanticValidationError
 
 from ...errors import AgentRunError
+from ..draft_authoring_contract import (
+    DraftAuthoringContractError,
+    draft_authoring_repair_instruction,
+    validate_draft_authoring_contract,
+)
 from ..governance import governance
 from ..mode import AgentModeCapabilities, allows_operator_proposal
 from ..models import SubmittedReplyV6, reply_validation_diagnostics
@@ -374,6 +379,26 @@ class ReplySubmission:
             if sequence_issue is not None:
                 code, path = sequence_issue
                 raise WorkflowValidationError(code, path)
+            request = self.request_context or {}
+            goal = request.get("current_message")
+            if request.get("mode") == "WORKFLOW_DRAFT" and isinstance(goal, str):
+                validate_draft_authoring_contract(draft, goal, {
+                    version_id
+                    for version_id, data_ref in control.get("data_evidence", {}).items()
+                    if data_ref["format"] == "csv"
+                })
+        except DraftAuthoringContractError as error:
+            if stage_protocol_retry(self.database, context):
+                return {
+                    "status": "RETRY_REQUIRED",
+                    "reason": "AGENT_WORKFLOW_DRAFT_INVALID",
+                    "issues": error.issues,
+                    "instruction": (
+                        "Call submit_reply once more after correcting workflow_draft. "
+                        + draft_authoring_repair_instruction(error.issues)
+                    ),
+                }
+            raise AgentRunError("AGENT_MODEL_OUTPUT_INVALID", diagnostics=error.diagnostics) from error
         except WorkflowValidationError as error:
             issue = {"code": error.code, "path": error.path}
             # The compiler correctly rejects a disconnected downstream node as

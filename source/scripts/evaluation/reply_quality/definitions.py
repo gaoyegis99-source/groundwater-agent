@@ -78,6 +78,8 @@ EXPECTED_DOMAIN_PACKAGE = {
     "version": "6.2.0",
     "checksum": "sha256:9862f88dd7cce5bcdcf58dd008edb6465bcfde031d97548785a66eb3e14c5fc3",
 }
+SINGLE_COLUMN_DESCRIBE_OPERATOR = "statistics.describe"
+TABLE_DESCRIBE_OPERATOR = "statistics.describe_columns"
 EXPECTED_DATA_FIXTURE_CHECKSUM = (
     "sha256:86c257568bc21eda70434b523f13670da614a8444e01a968058bab96d3f4bf6a"
 )

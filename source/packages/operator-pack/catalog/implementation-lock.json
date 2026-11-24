@@ -1323,6 +1323,32 @@
         "src/moperators/static_implementations.py"
       ]
     },
+    "statistics.describe_columns@1.0.0": {
+      "implementationRevision": "sha256:1b47fe29d01ab798caad913a43edaa5450a4c6e82a662f54fa5a3bf7b9f0dcce",
+      "sourceDigest": "sha256:5e0bf44effe8bb2bfdca2c7ba5c8ef124fdc22670b3dc5b9cda6af123eebfd5e",
+      "sourceFiles": [
+        "src/moperators/additional_implementations.py",
+        "src/moperators/fixture_inspection.py",
+        "src/moperators/operators/analysis.py",
+        "src/moperators/operators/analysis_common.py",
+        "src/moperators/operators/expressions.py",
+        "src/moperators/operators/extension_common.py",
+        "src/moperators/operators/gru_attention.py",
+        "src/moperators/operators/linear_trend.py",
+        "src/moperators/operators/mann_kendall.py",
+        "src/moperators/operators/native.py",
+        "src/moperators/operators/seasonal_mann_kendall.py",
+        "src/moperators/operators/statistics_describe_columns.py",
+        "src/moperators/operators/statistics_pettitt.py",
+        "src/moperators/operators/table_document_common_v1.py",
+        "src/moperators/operators/transfer_common.py",
+        "src/moperators/operators/transfer_data.py",
+        "src/moperators/operators/transfer_spatial.py",
+        "src/moperators/runtime/entrypoint.py",
+        "src/moperators/runtime/task.py",
+        "src/moperators/static_implementations.py"
+      ]
+    },
     "statistics.linear_trend@1.0.0": {
       "implementationRevision": "sha256:1ef5cc783fc656301aca0d076c2776926de5d15236095160f9339de376674fd0",
       "sourceDigest": "sha256:a8c2a894305818329a5b0190983ebd899196bbe10b130b01bc3449a819494a70",

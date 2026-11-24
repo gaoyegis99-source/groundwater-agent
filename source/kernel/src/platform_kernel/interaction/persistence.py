@@ -100,6 +100,7 @@ def get_session(database: Path, session_id: str) -> SessionRecord:
             "LEFT JOIN agent_requests r ON r.agent_run_id=COALESCE(s.pending_agent_run_id,s.agent_run_id) "
             "LEFT JOIN message_requests mr ON mr.session_id=s.session_id AND mr.goal_revision=s.goal_revision "
             "AND mr.routing_status NOT IN ('CONTROL_PENDING','CONTROL_COMPLETE') "
+            "AND NOT (mr.routing_source='MODEL' AND mr.routing_status IN ('ROUTING_REQUESTED','ROUTING_RUNNING')) "
             "WHERE s.session_id = ?", (session_id,)
         ).fetchone()
     if row is None:

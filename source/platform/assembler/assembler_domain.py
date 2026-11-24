@@ -164,7 +164,40 @@ def _load_operator_catalog(root: Path) -> tuple[dict[tuple[str, str], dict], str
         }
     if not operators or set(lock["operators"]) != {f"{op}@{version}" for op, version in operators}:
         raise ValueError("OPERATOR_CATALOG_SIZE_INVALID")
-    mapping_path = pack_root / "src" / "moperators" / "static_implementations.py"
+    registry_root = pack_root / "src" / "moperators"
+    original_registry = registry_root / "static_implementations.py"
+    registries = [original_registry]
+    mapped = _operator_registrations(original_registry)
+    additional_registry = registry_root / "additional_implementations.py"
+    if additional_registry.is_file():
+        additional = _operator_registrations(additional_registry)
+        if not mapped.isdisjoint(additional):
+            raise ValueError("OPERATOR_STATIC_MAPPING_INVALID")
+        registry_source = additional_registry.relative_to(pack_root).as_posix()
+        entrypoint_source = "src/moperators/runtime/entrypoint.py"
+        for operator_id, version in additional:
+            locked = lock["operators"].get(f"{operator_id}@{version}")
+            if locked is None or not {registry_source, entrypoint_source} <= set(locked["sourceFiles"]):
+                raise ValueError("OPERATOR_STATIC_MAPPING_INVALID")
+        mapped |= additional
+        registries.append(additional_registry)
+    if mapped != set(operators):
+        raise ValueError("OPERATOR_STATIC_MAPPING_INVALID")
+    digest = {
+        "operators": {
+            f"{key[0]}@{key[1]}": {
+                "manifest": value,
+                "implementationRevision": value["implementationRevision"],
+            }
+            for key, value in sorted(operators.items())
+        },
+        "staticMappingChecksum": "sha256:"
+        + hashlib.sha256(b"\0".join(path.read_bytes() for path in registries)).hexdigest(),
+    }
+    return operators, _checksum(digest)
+
+
+def _operator_registrations(mapping_path: Path) -> set[tuple[str, str]]:
     tree = ast.parse(
         mapping_path.read_text(encoding="utf-8"), filename=str(mapping_path)
     )
@@ -181,23 +214,16 @@ def _load_operator_catalog(root: Path) -> tuple[dict[tuple[str, str], dict], str
     if not isinstance(mapping, ast.Dict):
         raise ValueError("OPERATOR_STATIC_MAPPING_INVALID")
     try:
-        mapped = {ast.literal_eval(key) for key in mapping.keys}
+        keys = [ast.literal_eval(key) for key in mapping.keys]
     except (TypeError, ValueError) as cause:
         raise ValueError("OPERATOR_STATIC_MAPPING_INVALID") from cause
-    if mapped != set(operators):
+    if any(
+        not isinstance(key, tuple) or len(key) != 2
+        or any(not isinstance(item, str) or not item for item in key)
+        for key in keys
+    ) or len(set(keys)) != len(keys):
         raise ValueError("OPERATOR_STATIC_MAPPING_INVALID")
-    digest = {
-        "operators": {
-            f"{key[0]}@{key[1]}": {
-                "manifest": value,
-                "implementationRevision": value["implementationRevision"],
-            }
-            for key, value in sorted(operators.items())
-        },
-        "staticMappingChecksum": "sha256:"
-        + hashlib.sha256(mapping_path.read_bytes()).hexdigest(),
-    }
-    return operators, _checksum(digest)
+    return set(keys)
 
 def _compile_workflows(
     domain: DomainPackage, operators: dict[tuple[str, str], dict]

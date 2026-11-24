@@ -1,6 +1,7 @@
 """Persisted selections for a preset model in a conversation turn."""
 
 import json
+import math
 
 from .contracts import DataVersionRefV2
 
@@ -44,12 +45,34 @@ def bind_workflow_selection(selection: dict, model: ExecutableModelDefinition, r
     }}
 
 
+def _same_selected_value(expected: object, actual: object) -> bool:
+    """Compare JSON values without treating booleans as numbers."""
+    if isinstance(expected, (int, float)) and not isinstance(expected, bool):
+        return (
+            isinstance(actual, (int, float))
+            and not isinstance(actual, bool)
+            and expected == actual
+            and (expected != 0 or math.copysign(1, expected) == math.copysign(1, actual))
+        )
+    if isinstance(expected, dict) and isinstance(actual, dict):
+        return expected.keys() == actual.keys() and all(
+            _same_selected_value(value, actual[key]) for key, value in expected.items()
+        )
+    if isinstance(expected, list) and isinstance(actual, list):
+        return len(expected) == len(actual) and all(
+            _same_selected_value(left, right) for left, right in zip(expected, actual, strict=True)
+        )
+    return type(expected) is type(actual) and expected == actual
+
+
 def require_selected_arguments(selection: dict | None, arguments: dict, references: dict | None = None) -> None:
     if selection is None:
         return
     parameters = {**selection["parameters"], **{name: ref["version_id"] for name, ref in selection["inputs"].items()}}
-    if any(name not in arguments or json.dumps(arguments[name], sort_keys=True) != json.dumps(value, sort_keys=True)
-           for name, value in parameters.items()):
+    if any(
+        name not in arguments or not _same_selected_value(value, arguments[name])
+        for name, value in parameters.items()
+    ):
         raise ValueError("WORKFLOW_SELECTION_ARGUMENTS_CHANGED")
     if references is not None:
         for name, expected in selection["inputs"].items():

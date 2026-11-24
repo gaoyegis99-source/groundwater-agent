@@ -1,0 +1,260 @@
+{
+  "description": "Compute counts, bounds, mean, population standard deviation and quartiles for every numeric column of the full staged table. Use inferNumericStrings=true after table.sort on a CSV-derived table to recognize numeric text across the full column. Excluded columns are explicit. Inference does not assign field meaning or units.",
+  "domain": "statistics",
+  "errorCodes": [
+    "BLOCKED_BY_ENVIRONMENT",
+    "FIELD_REQUIRED",
+    "FORMAT_UNSUPPORTED",
+    "HEADER_INVALID",
+    "INPUT_INVALID",
+    "INPUT_METADATA_INVALID",
+    "NON_NUMERIC_VALUE",
+    "NO_NUMERIC_COLUMNS",
+    "NUMERIC_RANGE_OVERFLOW",
+    "PARAMETER_INVALID",
+    "OUTPUT_VALIDATION_FAILED"
+  ],
+  "examples": [
+    {
+      "clientRequestId": "example-describe-columns",
+      "inputs": {
+        "data": {
+          "artifactId": "art_example_01"
+        }
+      },
+      "mode": "ASYNC",
+      "operator": {
+        "id": "statistics.describe_columns",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "inferNumericStrings": true
+      },
+      "schemaVersion": "operator-execution-request.v1"
+    }
+  ],
+  "id": "statistics.describe_columns",
+  "inputs": [
+    {
+      "cardinality": "one",
+      "formats": [
+        "arrow-ipc-file",
+        "csv",
+        "parquet"
+      ],
+      "mediaTypes": [
+        "application/vnd.apache.arrow.file",
+        "text/csv",
+        "application/vnd.apache.parquet"
+      ],
+      "name": "data",
+      "required": true
+    }
+  ],
+  "memoryLimitBytes": 8589934592,
+  "outputs": [
+    {
+      "kind": "value",
+      "maxBytes": 1048576,
+      "name": "summary",
+      "schema": {
+        "additionalProperties": false,
+        "properties": {
+          "columns": {
+            "additionalProperties": {
+              "additionalProperties": false,
+              "properties": {
+                "numericBasis": {
+                  "enum": [
+                    "PHYSICAL_TYPE",
+                    "INFERRED_NUMERIC_TEXT"
+                  ]
+                },
+                "statistics": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "count": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "max": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "mean": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "median": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "min": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "nonFiniteCount": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "nullCount": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "q1": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "q3": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "rowCount": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "stddev": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "rowCount",
+                    "count",
+                    "nullCount",
+                    "nonFiniteCount",
+                    "min",
+                    "max",
+                    "mean",
+                    "stddev",
+                    "q1",
+                    "median",
+                    "q3"
+                  ],
+                  "type": "object"
+                }
+              },
+              "required": [
+                "numericBasis",
+                "statistics"
+              ],
+              "type": "object"
+            },
+            "minProperties": 1,
+            "type": "object"
+          },
+          "conventions": {
+            "additionalProperties": false,
+            "properties": {
+              "declaredNulls": {
+                "const": "excluded-and-counted"
+              },
+              "nonFiniteValues": {
+                "const": "excluded-and-counted"
+              },
+              "quantiles": {
+                "const": "linear-interpolation"
+              },
+              "stddev": {
+                "const": "population-ddof-0"
+              }
+            },
+            "required": [
+              "declaredNulls",
+              "nonFiniteValues",
+              "stddev",
+              "quantiles"
+            ],
+            "type": "object"
+          },
+          "excludedColumns": {
+            "additionalProperties": {
+              "enum": [
+                "NON_NUMERIC_TYPE",
+                "NUMERIC_INFERENCE_DISABLED",
+                "TEXT_NOT_NUMERIC"
+              ]
+            },
+            "type": "object"
+          },
+          "schemaVersion": {
+            "const": "statistics-describe-columns.v1"
+          },
+          "scope": {
+            "additionalProperties": false,
+            "properties": {
+              "basis": {
+                "const": "FULL_STAGED_INPUT"
+              },
+              "inputFormat": {
+                "enum": [
+                  "csv",
+                  "parquet",
+                  "arrow-ipc-file"
+                ]
+              },
+              "rowCount": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "basis",
+              "inputFormat",
+              "rowCount"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "scope",
+          "conventions",
+          "columns",
+          "excludedColumns"
+        ],
+        "type": "object"
+      }
+    }
+  ],
+  "parametersSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "inferNumericStrings": {
+        "default": false,
+        "description": "Enable for CSV-derived sorted tables when the request asks to infer numeric columns. Leading-zero integer codes and mixed text are excluded.",
+        "type": "boolean"
+      }
+    },
+    "type": "object"
+  },
+  "runtime": "native",
+  "tags": [
+    "statistics",
+    "table",
+    "capability:descriptive-statistics",
+    "descriptive statistics",
+    "quartiles",
+    "描述统计",
+    "各数值列",
+    "整表统计",
+    "四分位数"
+  ],
+  "timeoutSeconds": 1800,
+  "title": "Describe all numeric table columns",
+  "version": "1.0.0"
+}

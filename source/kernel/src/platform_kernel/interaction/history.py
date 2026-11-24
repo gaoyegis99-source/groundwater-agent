@@ -62,6 +62,8 @@ def list_sessions(
                LEFT JOIN message_requests mr
                  ON mr.session_id=s.session_id AND mr.goal_revision=s.goal_revision
                 AND mr.routing_status NOT IN ('CONTROL_PENDING','CONTROL_COMPLETE')
+                AND NOT (mr.routing_source='MODEL'
+                         AND mr.routing_status IN ('ROUTING_REQUESTED','ROUTING_RUNNING'))
                WHERE s.project_id=? AND s.owner_subject=?
                  AND ((?=1 AND s.archived_at IS NOT NULL)
                       OR (?=0 AND s.archived_at IS NULL))
@@ -110,6 +112,8 @@ def session_view(database: Path, project_id: str, session_id: str) -> SessionVie
                LEFT JOIN message_requests AS mr
                  ON mr.session_id=s.session_id AND mr.goal_revision=s.goal_revision
                 AND mr.routing_status NOT IN ('CONTROL_PENDING','CONTROL_COMPLETE')
+                AND NOT (mr.routing_source='MODEL'
+                         AND mr.routing_status IN ('ROUTING_REQUESTED','ROUTING_RUNNING'))
                WHERE s.session_id = ? AND s.project_id = ?""",
             (session_id, project_id),
         ).fetchone()
@@ -195,6 +199,8 @@ def message_history(database: Path, project_id: str, session_id: str,
                 """SELECT * FROM message_requests
                    WHERE session_id=? AND goal_revision=?
                      AND routing_status NOT IN ('CONTROL_PENDING','CONTROL_COMPLETE')
+                     AND NOT (routing_source='MODEL'
+                              AND routing_status IN ('ROUTING_REQUESTED','ROUTING_RUNNING'))
                    ORDER BY rowid DESC LIMIT 1""",
                 (session_id, revision),
             ).fetchone()

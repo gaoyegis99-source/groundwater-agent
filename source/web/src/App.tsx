@@ -32,6 +32,8 @@ import './conversation-tasks.css';
 import { ProjectTaskHistory } from './ProjectTaskHistory';
 import { ProductDirectoryPage, ProductNavigation, readProductDirectory, type ProductDestination } from './ProductWorkspaceNavigation';
 import { SessionWorkContext, SessionWorkScope, useSessionWorkContext } from './SessionWorkContext';
+import { preparationDisplay, preparationIssues } from './preparation-display';
+import { caseRequestFields, caseRequestParameters } from './case-request';
 import { readWorkItemRoute, sessionFromWorkItem, useWorkItemHash, workItemReturnId } from './work-item-route';
 
 const WorkspacePanel = lazy(() => import('./WorkspacePanel').then(module => ({ default: module.WorkspacePanel })));
@@ -320,9 +322,11 @@ export default function App() {
   }, [activeId, storageScope, history?.goalRevision, preparation?.preparationId,
     preparation?.revision, preparation?.disposition, preparation?.freshForCurrentTurn, snapshotCurrent]);
 
+  const preparationView = history && snapshotCurrent ? preparationDisplay(history) : null;
+  const activePreparation = preparationView?.actionable ? preparationView.preparation : null;
   const selectedModel = workflow && capabilities?.models.find(model => matchesModel(workflow, model));
-  const preparationForSelection = workflow && snapshotCurrent && preparation?.freshForCurrentTurn
-    ? preparation.entries.filter(entry => entry.targetId === workflow.target.modelId && entry.targetVersion === workflow.target.modelVersion
+  const preparationForSelection = workflow && activePreparation
+    ? activePreparation.entries.filter(entry => entry.targetId === workflow.target.modelId && entry.targetVersion === workflow.target.modelVersion
       && Object.entries(workflow.parameters).every(([name, value]) => entry.parameters[name] === value)
       && Object.entries(workflow.bindings).every(([name, key]) => {
         const item = attachments.find(ref => workflowFileKey(ref) === key);
@@ -527,6 +531,51 @@ export default function App() {
   const activeSummary = sessions.find(item => item.sessionId === activeId);
   const activeTask = sessionTask(history, activeId);
   const activeHistory = history?.sessionId === activeId ? history : null;
+  const dismissedCaseRequest = useRef<{ scope: string; sessionId: string; message: string } | null>(null);
+  const mayPrepareCase = !workflow && !attachments.length && !busy && !submission && !awaitingConfirmation
+    && canResearch && !capabilityError && configuredServices.has('data') && (!activeId || snapshotCurrent);
+  function findCaseForMessage(message: string) {
+    if (!mayPrepareCase) return undefined;
+    const matches = capabilities?.models.flatMap(model => {
+      const profile = ui.models[model.modelId];
+      const request = profile?.caseRequest;
+      const target = modelIdentity(model);
+      if (!profile?.inputCaseTag || !request || !target) return [];
+      const parameters = caseRequestParameters(request, message);
+      return parameters ? [{ target, parameters, request, dataInputs: Object.keys(profile.inputs) }] : [];
+    });
+    return matches?.length === 1 ? matches[0] : undefined;
+  }
+  const historicalCaseRequest = mayPrepareCase && !draft.trim() && activePreparation
+    ? activeHistory?.items.slice().reverse().find(item => item.goalRevision === activePreparation.goalRevision && item.role === 'user')?.content
+    : undefined;
+  const historicalCase = historicalCaseRequest ? findCaseForMessage(historicalCaseRequest) : undefined;
+  const canResumeCase = historicalCase && activePreparation?.entries.some(entry => entry.status === 'BLOCKED'
+    && entry.targetId === historicalCase.target.modelId && entry.targetVersion === historicalCase.target.modelVersion
+    && !Object.keys(entry.inputs).length && preparationIssues(entry).some(issue =>
+      issue.kind === 'MISSING_DATA' && issue.input && historicalCase.dataInputs.includes(issue.input)));
+  const caseMissing = workflow && selectedModel ? caseRequestFields(workflow, ui.models[selectedModel.modelId]?.caseRequest).missing : [];
+  const caseInputMissing = workflow?.casePreparation && selectedModel?.dataInputParameters?.some(name =>
+    !attachments.some(item => workflowFileKey(item) === workflow.bindings[name]));
+  const caseCannotSend = !awaitingConfirmation && (caseMissing.length > 0 || caseInputMissing);
+
+  function prepareCase(message: string) {
+    const match = findCaseForMessage(message);
+    if (!match) return false;
+    setTemplateChange(null);
+    updateDraft(message);
+    setWorkflow({ target: match.target, bindings: {}, parameters: match.parameters, casePreparation: true });
+    return true;
+  }
+
+  function sendComposer() {
+    if (!canSend || caseCannotSend) return;
+    const dismissed = dismissedCaseRequest.current;
+    dismissedCaseRequest.current = null;
+    const bypassCase = dismissed?.scope === storageScope && dismissed.sessionId === activeId && dismissed.message === draft;
+    if (!bypassCase && prepareCase(draft)) return;
+    void send();
+  }
   const confirmationWriteDisabled = !canResearch || !snapshotCurrent || connection === 'disconnected';
   const taskReviewDisabled = confirmationWriteDisabled || !!submission;
   function focusComposerFromWorkbench() {
@@ -645,7 +694,7 @@ export default function App() {
     selection={workflow} model={selectedModel || undefined} attachments={attachments} prepared={preparationForSelection || undefined}
     project={project} expanded={workspace.routeTab === 'inputs'} onResource={openInputResource}
     onKnowledge={configuredServices.has('knowledge-next') ? showKnowledge : undefined}
-    onApplyCandidates={configuredServices.has('data') && canResearch && !capabilityError ? candidates => {
+    onApplyCandidates={configuredServices.has('data') && canResearch && !capabilityError ? (candidates, caseParameters) => {
       const bound = new Set(Object.values(workflow.bindings));
       const apply = Object.entries(candidates).filter(([, candidate]) =>
         !attachments.some(item => dataObjectKey(item) === dataObjectKey(candidate)
@@ -654,11 +703,18 @@ export default function App() {
         setSessionFeedback({ scope: storageScope, text: '已保留绑定中的语义修订。请逐项核对有冲突的候选资料。' });
       }
       setAttachments(previous => appendResourceItems(previous, apply.map(([, item]) => item)));
-      setWorkflow({ ...workflow, bindings: { ...workflow.bindings, ...Object.fromEntries(
-        apply.map(([name, item]) => [name, workflowFileKey(item)]),
-      ) } });
+      setWorkflow({
+        ...workflow,
+        bindings: { ...workflow.bindings, ...Object.fromEntries(apply.map(([name, item]) => [name, workflowFileKey(item)])) },
+        parameters: caseParameters && apply.length === Object.keys(candidates).length
+          ? { ...caseParameters, ...workflow.parameters } : workflow.parameters,
+      });
     } : undefined}
-    onChange={value => { setBindingTarget(undefined); setWorkflow(value); }}
+    onChange={value => {
+      if (!value && workflow.casePreparation) dismissedCaseRequest.current = { scope: storageScope, sessionId: activeId, message: draft };
+      setBindingTarget(undefined);
+      setWorkflow(value);
+    }}
     onPick={pickWorkflowInput} />;
   const projectTitle = project ? `项目：${project}` : '正在连接项目…';
   const signOut = capabilities?.authenticationRequired !== false &&
@@ -800,7 +856,7 @@ export default function App() {
         <SessionWorkContext key={`${storageScope}/${activeId}`} state={workSession.state}
           refresh={workSession.refresh} openOnEntry={!!workItemReturnId(hash)}
           draftInputs={attachments}
-          prepared={snapshotCurrent && preparation?.freshForCurrentTurn ? preparation.entries : undefined}
+          prepared={activePreparation?.entries}
           confirmation={snapshotCurrent && latestConfirmation?.goalRevision === lastTurn?.goalRevision ? latestConfirmation : undefined}
           onOpenData={reference => {
             rememberDetailOrigin();
@@ -882,6 +938,9 @@ export default function App() {
           </div>}
         </div>
         <div className="composer" data-testid="composer">
+          {historicalCaseRequest && historicalCase && canResumeCase && <div className="workflow-suggestions">
+            <button type="button" onClick={() => prepareCase(historicalCaseRequest)}>{historicalCase.request.actionLabel}</button>
+          </div>}
           {(workspace.routeTab !== 'inputs' && workflowPreparation || undoTemplate || attachments.length > 0) &&
             <div className="composer-context">
               {workspace.routeTab !== 'inputs' && workflowPreparation}
@@ -892,16 +951,17 @@ export default function App() {
         <MessageComposer key={activeId} inputRef={composer} value={draft} selection={false} busy={busy}
             contextId={showWorkItems && activeId ? 'session-work-scope' : undefined}
             submitting={pending && pendingLabel === '正在提交消息'}
-            canSend={canSend && canResearch && (!workflow || !!selectedModel)}
+            canSend={canSend && canResearch && !caseCannotSend && (!workflow || !!selectedModel)}
             feedback={capabilityError && history?.items.length ? '业务服务尚未连接，暂不能发送。'
               : composerFeedback ? `${composerFeedback} · 草稿会保留` : capabilities && !canResearch ? '当前身份只有查看权限' : undefined}
             announceFeedback={pending || Boolean(capabilityError && history?.items.length)}
             unavailableReason={capabilityError ? '业务服务尚未连接，暂不能发送。'
               : !capabilities ? '正在验证身份与连接项目' : !canResearch ? '当前身份只有查看权限'
                 : !project ? '正在连接项目' : submission ? '请先确认上一条消息的发送结果'
+                  : caseInputMissing ? '请先绑定所需资料' : caseMissing.length ? '请先补充业务参数'
                   : composerFeedback ? `${composerFeedback} · 草稿会保留` : undefined}
-            onChange={value => { setTemplateChange(null); updateDraft(value); }} onSend={() => void send()} tools={<>
-              {activeId && busy && <button disabled={!canResearch || (!draft.trim() && !attachments.length && !workflow)} onClick={() => enqueue()}>稍后发送</button>}
+            onChange={value => { setTemplateChange(null); updateDraft(value); }} onSend={sendComposer} tools={<>
+              {activeId && busy && <button disabled={!canResearch || !!caseCannotSend || (!draft.trim() && !attachments.length && !workflow)} onClick={() => enqueue()}>稍后发送</button>}
               {canResearch && !!capabilities?.models.length && <button type="button" className="composer-workflow-button" aria-haspopup="dialog" onClick={openCapabilities}><Icon name="layers" />工作流</button>}
               {researchWorkspace && destinations.has('data') && canResearch && <button type="button" className="icon-button composer-data-button"
                 aria-label="选择已有资料" title="选择已有资料" aria-haspopup="dialog" onClick={() => openDatabase()}><Icon name="folder" /></button>}

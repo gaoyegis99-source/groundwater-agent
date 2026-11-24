@@ -22,6 +22,7 @@ from ...tool_progress import (
     validate_builtin_progress_intent,
 )
 from ..governance import advance_from_discovery, governance, non_submit_enabled
+from ..draft_authoring_contract import DraftAuthoringContractError, draft_authoring_repair_instruction
 from ..evidence import TURN_EVIDENCE_TOOLS
 from ..models import Utf8String, WorkflowDraftInput
 from ..workflow_draft import prepare_workflow_draft
@@ -192,24 +193,45 @@ def add_workflow_validation(tools, settings, request_context):
                 draft, evidence_items, settings,
                 request_context.get("workflow_draft_id") or context.context["agent_run_id"],
                 user_goal=request_context["current_message"],
+                check_authoring_contract=governance(context.context)["mode"] == "WORKFLOW_DRAFT",
             )
+        except DraftAuthoringContractError as error:
+            return {
+                "status": "INVALID",
+                **(error.diagnostics or {}),
+                "issues": error.issues,
+                "instruction": draft_authoring_repair_instruction(error.issues),
+            }
         except AgentRunError as error:
             if str(error) != "AGENT_WORKFLOW_DRAFT_INVALID":
                 raise
             return {"status": "INVALID", **(error.diagnostics or {})}
-        if check := prepared.get("composition_check"):
+        check = prepared.get("composition_check")
+        if check and (
+            check["status"] == "VALIDATED"
+            or governance(context.context)["mode"] != "WORKFLOW_DRAFT"
+        ):
             return check
-        return {
-            "status": "INCOMPLETE",
-            "missing_inputs": prepared["missing_inputs"],
-            "unresolved_items": draft.unresolved_items,
+
+        missing = prepared["missing_inputs"]
+        unresolved = draft.unresolved_items
+        result = {
+            "status": "INCOMPLETE" if missing or unresolved or check is None else "DRAFT_ONLY",
+            "missing_inputs": missing,
+            "unresolved_items": unresolved,
         }
+        if check is not None:
+            # A compiled draft can be saved before its execution is eligible.
+            result.update(execution_allowed=False, composition_check=check)
+        return result
 
     tools.append(FunctionTool(
         name="validate_workflow",
         description=(
             "Validate the same structured draft accepted by submit_reply against current "
             "operator and Data evidence. Returns missing inputs or diagnostics. "
+            "For workflow authoring, an incomplete or draft-only graph can be saved. "
+            "Its composition_check reports execution eligibility separately. "
             "No execution, data changes or confirmation are created."
         ),
         params_json_schema=WorkflowDraftInput.model_json_schema(),

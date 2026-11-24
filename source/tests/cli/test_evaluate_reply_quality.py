@@ -17,6 +17,7 @@ from scripts.evaluation.reply_quality import (
     reports,
     scenarios,
 )
+from scripts.lib.wire_json import from_wire_json, to_wire_json
 
 
 def _environment(monkeypatch, provider: str = "minimax") -> None:
@@ -601,8 +602,16 @@ def test_confirmation_requires_exact_release_identity_and_arguments() -> None:
         )
 
 
-def test_draft_oracle_accepts_arbitrary_valid_output_name() -> None:
+@pytest.mark.parametrize(("describe", "parameter_name"), [
+    ("statistics.describe", "axis"),
+    ("statistics.describe_columns", "read_numeric_text"),
+    ("statistics.describe_columns", "inferNumericStrings"),
+])
+def test_draft_oracle_accepts_arbitrary_valid_output_name(describe: str, parameter_name: str) -> None:
     release = _release_identity()
+    new_describe = describe != "statistics.describe"
+    if new_describe:
+        release["draft_operators"][describe] = release["draft_operators"].pop("statistics.describe")
     resource = {
         "kind": "data_version",
         "service": "data-primary",
@@ -627,7 +636,7 @@ def test_draft_oracle_accepts_arbitrary_valid_output_name() -> None:
         },
         {
             "node_id": "describe",
-            "operator_id": "statistics.describe",
+            "operator_id": describe,
             "operator_version": "1.0.0",
             "inputs": {
                 "data": {"node_output": {"node_id": "sort", "port": "data"}},
@@ -697,6 +706,14 @@ def test_draft_oracle_accepts_arbitrary_valid_output_name() -> None:
         "parameter_sources": [],
         "limitations": [],
     }
+    if new_describe:
+        nodes[1]["parameters"] = {
+            "infer_numeric_strings": {"workflow_parameter": parameter_name},
+        }
+        payload["parameter_values"] = {parameter_name: True}
+        payload["parameter_sources"] = [
+            {"name": parameter_name, "source": "DATA", "explanation": "排序后的数据保留原表数值文本。"},
+        ]
     context = scenarios._draft_card_context(
         {
             "schema_version": "workflow-draft-resource.v1",
@@ -707,7 +724,7 @@ def test_draft_oracle_accepts_arbitrary_valid_output_name() -> None:
             "status": "COMPLETE",
             "error_code": None,
             "diagnostics": None,
-            "payload": payload,
+            "payload": from_wire_json(to_wire_json(payload)),
         },
         {"resource": resource},
         {

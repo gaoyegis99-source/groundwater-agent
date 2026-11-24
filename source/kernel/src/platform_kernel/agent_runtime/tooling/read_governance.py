@@ -357,6 +357,17 @@ def _schema_repair_instruction(name: str, diagnostics: dict[str, Any], schema: d
     issues = diagnostics.get("issues")
     if name == "discover_datasets" and isinstance(issues, list):
         if any(
+            isinstance(issue, dict) and (
+                issue.get("path") == "/tags" or str(issue.get("path")).startswith("/tags/")
+            )
+            for issue in issues
+        ):
+            return (
+                "Call discover_datasets once more. Keep the existing query and omit tags "
+                "if no tag filter was requested. If tags are needed, use a JSON array of "
+                "strings containing the exact tag values. Do not pass a string or an object."
+            )
+        if any(
             isinstance(issue, dict) and issue.get("path") in {"/spatial_extent", "/time_window"}
             for issue in issues
         ):

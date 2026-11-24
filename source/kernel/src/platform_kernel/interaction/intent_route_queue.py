@@ -8,7 +8,7 @@ from typing import TypedDict
 
 from ..database import connect_database, scheduler_store_writable, utc_now
 from ..errors import scheduler_write
-from .message_request_common import IntentRouteRequest, route_from_row
+from .message_request_common import IntentRouteRequest, awaits_goal_reservation, route_from_row
 
 
 class IntentRoutingMetrics(TypedDict):
@@ -85,17 +85,17 @@ def claim_intent_route(database: Path, agent_run_id: str) -> IntentRouteRequest 
         ).rowcount
         if claimed == 0:
             return None
-        if connection.execute(
-            """UPDATE sessions SET agent_start_state='ROUTING_RUNNING'
-               WHERE pending_agent_run_id=? AND agent_start_state='ROUTING_REQUESTED'""",
-            (agent_run_id,),
-        ).rowcount != 1:
-            raise ValueError("INTENT_ROUTE_SESSION_STATE_INVALID")
         row = connection.execute(
             """SELECT r.*,s.project_id FROM message_requests AS r
                JOIN sessions AS s ON s.session_id=r.session_id
                WHERE r.agent_run_id=?""", (agent_run_id,),
         ).fetchone()
+        if not awaits_goal_reservation(row) and connection.execute(
+            """UPDATE sessions SET agent_start_state='ROUTING_RUNNING'
+               WHERE pending_agent_run_id=? AND agent_start_state='ROUTING_REQUESTED'""",
+            (agent_run_id,),
+        ).rowcount != 1:
+            raise ValueError("INTENT_ROUTE_SESSION_STATE_INVALID")
         return route_from_row(row)
 
 

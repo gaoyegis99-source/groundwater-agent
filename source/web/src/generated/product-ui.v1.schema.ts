@@ -253,6 +253,35 @@ export default {
         "resultOverview": {"$ref": "#/$defs/resultOverview"},
         "continuation": {"$ref": "#/$defs/continuation"},
         "inputCaseTag": {"$ref": "#/$defs/text"},
+        "caseRequest": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["pattern", "actionLabel", "switches"],
+          "properties": {
+            "pattern": {"$ref": "#/$defs/text"},
+            "actionLabel": {"$ref": "#/$defs/text"},
+            "switches": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["pattern", "required"],
+                "properties": {
+                  "pattern": {"$ref": "#/$defs/text"},
+                  "required": {"type": "array", "items": {"$ref": "#/$defs/text"}},
+                  "hint": {"$ref": "#/$defs/text"}
+                }
+              }
+            }
+          }
+        },
+        "inputCaseParameters": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "anyOf": [{"type": "string"}, {"type": "number"}, {"type": "boolean"}]
+          }
+        },
         "publishedOutputStep": {
           "type": "object",
           "additionalProperties": false,
@@ -297,6 +326,19 @@ export default {
           }
         },
         "visuals": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/text"}},
+        "inactiveGroups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["parameter", "label", "outputs"],
+            "properties": {
+              "parameter": {"$ref": "#/$defs/text"},
+              "label": {"$ref": "#/$defs/text"},
+              "outputs": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/text"}}
+            }
+          }
+        },
         "sections": {
           "type": "array",
           "minItems": 1,

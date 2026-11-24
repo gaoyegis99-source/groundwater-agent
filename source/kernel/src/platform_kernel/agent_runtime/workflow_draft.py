@@ -9,6 +9,7 @@ from platform_workflow_compiler.composition import definition_digest
 from platform_workflow_compiler.composition.execution import CompositionValidationError
 
 from ..errors import AgentRunError
+from .draft_authoring_contract import validate_draft_authoring_contract
 from .evidence import collect_turn_evidence
 from .input_roles import verify_input_roles
 from .models import WorkflowDataReference, WorkflowDraftInput
@@ -101,6 +102,7 @@ def _without_unset_optional_parameters(
 
 def prepare_workflow_draft(
     draft: WorkflowDraftInput, items: list[dict], settings, draft_id: str, *, user_goal: str,
+    check_authoring_contract: bool = False,
 ) -> dict:
     try:
         evidence = collect_turn_evidence(items)
@@ -156,6 +158,10 @@ def prepare_workflow_draft(
         for index, operator in enumerate(compiled["operators"]):
             if (operator["operator_id"], operator["operator_version"], operator["implementation_revision"]) not in evidence.operators:
                 raise WorkflowValidationError("WORKFLOW_DRAFT_OPERATOR_READ_REQUIRED", f"/graph/nodes/{index}")
+        if check_authoring_contract:
+            validate_draft_authoring_contract(draft, user_goal, {
+                ref.version_id for ref in evidence.data_versions.values() if ref.format_id == "csv"
+            })
     except WorkflowValidationError as error:
         raise AgentRunError("AGENT_WORKFLOW_DRAFT_INVALID", diagnostics={
             "kind": "WORKFLOW_VALIDATION", "code": error.code, "path": error.path,

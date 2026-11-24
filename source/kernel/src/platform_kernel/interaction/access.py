@@ -232,9 +232,13 @@ def require_turn_capacity_connection(
 
     del subject, session_id
     pending = connection.execute(
-        "SELECT COUNT(*) FROM sessions WHERE project_id=? "
-        "AND pending_agent_run_id IS NOT NULL",
-        (project_id,),
+        """SELECT
+               (SELECT COUNT(*) FROM sessions WHERE project_id=?
+                  AND pending_agent_run_id IS NOT NULL)
+             + (SELECT COUNT(*) FROM message_requests r JOIN sessions s USING (session_id)
+                 WHERE s.project_id=? AND r.requested_mode='AUTO' AND r.routing_source='MODEL'
+                   AND r.routing_status IN ('ROUTING_REQUESTED','ROUTING_RUNNING'))""",
+        (project_id, project_id),
     ).fetchone()[0]
     if pending >= max_pending:
         raise CapacityLimitError("PROJECT_AGENT_QUEUE_FULL")

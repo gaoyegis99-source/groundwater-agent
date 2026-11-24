@@ -12,7 +12,7 @@ from agents import (
 )
 
 from ...errors import AgentRunError
-from ...settings import ObservationToolDefinition
+from ...settings import ExecutableModelDefinition, ObservationToolDefinition
 from ..governance import finalization_error, governance
 from .types import ExecutionUsage
 from .usage_ports import ActivityRecorder, UsageLedgerPort
@@ -23,7 +23,7 @@ from .usage_output_validation import (
     response_function_calls,
     validate_terminal_output,
 )
-from .usage_protocol_repair import rejected_call_repair_input
+from .usage_protocol_repair import _PreparedApprovalRepairMixin, rejected_call_repair_input
 from .usage_settlement import settle_output
 from .usage import _ZERO_USAGE, _add_usage
 from .usage_context_views import _ContextViewCaptureMixin
@@ -38,6 +38,7 @@ from .usage_tools import _ToolUsageCaptureMixin
 class _RunUsageCapture(
     _ContextViewCaptureMixin,
     _ModelStartCaptureMixin,
+    _PreparedApprovalRepairMixin,
     _ProviderUsageCaptureMixin,
     _ToolUsageCaptureMixin,
     RunHooks,
@@ -93,6 +94,10 @@ class _RunUsageCapture(
         self.active_input_items: list[TResponseInputItem] = []
         self.work_item_input: TResponseInputItem | None = None
         self.work_item_manifest_blocks: list[dict[str, object]] = []
+        self.approval_models: dict[str, ExecutableModelDefinition] = {}
+        self.explicit_model_tool_request: object = None
+        self.has_workflow_selection = False
+        self.prepared_retry_tool: str | None = None
 
     def record_activity(self, activity: dict[str, Any]) -> None:
         self.activity_recorder.record(activity)
@@ -141,6 +146,7 @@ class _RunUsageCapture(
 
     async def on_llm_end(self, context, agent, response) -> None:
         calls = response_function_calls(response)
+        self._check_prepared_retry_tool(context, calls)
         repairing_missing_tool = False
         allow_minimax_final_text = False
         if isinstance(context.context, dict) and "governance" in context.context:
@@ -256,7 +262,7 @@ class _RunUsageCapture(
                 )
                 self.active_context_view_id = settlement.active_context_view_id
                 self.model_activity = settlement.model_activity
-                raise _ProtocolRepairRequiredError(repair_input, response)
+                raise _ProtocolRepairRequiredError(repair_input)
             if (
                 not calls
                 and not repairing_missing_tool
@@ -407,7 +413,7 @@ class _RunUsageCapture(
                         )
                         self.active_context_view_id = settlement.active_context_view_id
                         self.model_activity = settlement.model_activity
-                        raise _ProtocolRepairRequiredError(repair_input, response)
+                        raise _ProtocolRepairRequiredError(repair_input)
                     if replayed_disabled and self.provider != "minimax":
                         # Other Providers treat a disabled declared tool as a
                         # governance/budget violation. MiniMax can replay a tool
@@ -485,6 +491,8 @@ class _RunUsageCapture(
             allow_minimax_final_text=allow_minimax_final_text,
             response=response,
         )
+        if not repairing_missing_tool and len(calls) == 1:
+            self._check_prepared_approval(context, agent, response, calls[0])
         settlement = settle_output(
             usage_ledger=self.usage_ledger,
             active_context_view_id=self.active_context_view_id,

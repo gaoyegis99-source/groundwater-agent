@@ -69,6 +69,7 @@
     "raster.slope@1.0.0",
     "raster.statistics@1.0.0",
     "raster.zonal_statistics@1.0.0",
+    "statistics.describe_columns@1.0.0",
     "table.deduplicate@1.0.0",
     "table.filter@1.0.0",
     "table.join@1.0.0",
@@ -147,7 +148,7 @@
   ],
   "uiProfile": {
     "path": "ui/product-ui-porous.v1.json",
-    "checksum": "sha256:7b6554c54e4d57a6392ea427de8ec937464dddbbd3a5c1d6c885a3ee8b572091"
+    "checksum": "sha256:786b6875ef3bf93499f485a73ef6e32630af18f93ae733882d1e895ca062eb30"
   },
   "workflowPlatform": {
     "path": "workflows/workflow-platform.v1.json",

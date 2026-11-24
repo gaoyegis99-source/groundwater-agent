@@ -10,6 +10,7 @@ export interface WorkflowSelection {
   bindings: Record<string, string>;
   parameters: Record<string, string | number | boolean | null>;
   continuation?: { runId: string; outputName: string };
+  casePreparation?: true;
 }
 
 export function modelIdentity(model: WorkflowModel): WorkflowIdentity | null {
@@ -29,7 +30,8 @@ export function isWorkflowSelection(value: unknown): value is WorkflowSelection 
     && !!selection.parameters && typeof selection.parameters === 'object' && Object.values(selection.parameters).every(item =>
       item === null || typeof item === 'string' || typeof item === 'boolean' || (typeof item === 'number' && Number.isFinite(item)))
     && (selection.continuation === undefined || (!!selection.continuation && typeof selection.continuation.runId === 'string'
-      && typeof selection.continuation.outputName === 'string'));
+      && typeof selection.continuation.outputName === 'string'))
+    && (selection.casePreparation === undefined || selection.casePreparation === true);
 }
 
 export function storedWorkflowSelection(scope: string, session: string) {

@@ -11,6 +11,7 @@ OPAQUE_MAPS = frozenset(
         "default_parameters",
         "locator",
         "metadata",
+        "parameter_values",
         "provenance",
         "rows",
     }

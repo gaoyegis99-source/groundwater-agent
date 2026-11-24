@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import { ConfirmationCard, ResultCard } from './ChatCards';
 import { productUi } from './product-ui';
@@ -314,8 +314,34 @@ it('uses a business label instead of exposing an unfamiliar model identity', () 
   expect(screen.queryByText('internal.experimental-model')).not.toBeInTheDocument();
 });
 
+it('shows the well counts and actual grid from the exact published flow outputs', async () => {
+  const task = taskFixture({ modelId: 'groundwater.flow-field', status: 'SUCCEEDED', stage: null, outputCount: 4 });
+  const outputs = ['summary', 'snapshot', 'snapshot-diagnostics', 'head-raster'].map(name => dataRef({ versionId: name, outputName: name }));
+  const descriptors = {
+    snapshot: { rowCount: 58 },
+    'snapshot-diagnostics': { rowCount: 1147 },
+    'head-raster': { raster: { grid: { transform: [370858, 11816.5299, 0, 1354366, 0, -11978.5661] } } },
+  };
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    const versionId = url.split('/')[5] as keyof typeof descriptors | 'summary';
+    return Response.json(versionId === 'summary'
+      ? { resultKind: 'MODEL_DERIVED_NOT_OBSERVED', hydraulicConductivityMetersPerDay: 10 }
+      : dataDetail({ versionId, descriptor: descriptors[versionId] }));
+  }));
+  const result: Result = { ...task, status: 'COMPLETE', remoteOutputs: outputs };
+  render(<ResultCard task={task} result={result} project="demo" onResource={vi.fn()} runArguments={{ pixelSize: 12000 }} />);
+  const value = (label: string) => within(screen.getByText(label, { exact: true }).parentElement!).getByRole('definition');
+  await screen.findByText('参与插值井数');
+  expect(value('参与插值井数')).toHaveTextContent(/^58$/);
+  expect(value('被排除井数')).toHaveTextContent(/^1,089$/);
+  expect(value('目标像元大小')).toHaveTextContent(/^12,000 m$/);
+  expect(value('实际分辨率（X × Y）')).toHaveTextContent(/^11,816.53 × 11,978.57 m$/);
+  expect(value('水力传导系数')).toHaveTextContent(/^10 m\/d$/);
+  expect(screen.queryByText('导水系数')).not.toBeInTheDocument();
+});
+
 it.each([
-  ['groundwater.flow-field', 'summary', { resultKind: 'MODEL_DERIVED_NOT_OBSERVED', validCellCount: 120, hydraulicConductivityMetersPerDay: 4, effectivePorosity: 0.25 }, '有效网格数', '120'],
+  ['groundwater.flow-field', 'summary', { resultKind: 'MODEL_DERIVED_NOT_OBSERVED', validCellCount: 120, hydraulicConductivityMetersPerDay: 4, effectivePorosity: 0.25 }, '流速有效网格数', '120'],
   ['groundwater.kriging', 'kriging-summary', { schemaVersion: 'kriging-summary.v1', loo: { rmse: 0.3, evaluatedCount: 13, notEvaluatedCount: 1 }, valueUnit: 'm', variance: { unit: 'm^2' } }, '留一验证 RMSE', '0.3 m'],
   ['groundwater.drastic', 'drastic-summary', { schemaVersion: 'groundwater-drastic-summary.v1', classes: [{ code: 1, label: '中等', ratioOfClassificationValid: 0.75 }], counts: { classificationValidCellCount: 16, outputNoDataCellCount: 4 } }, '中等', '75 %'],
 ] as const)('shows the published figures and diagnostic indicators for %s', async (modelId, outputName, payload, label, value) => {

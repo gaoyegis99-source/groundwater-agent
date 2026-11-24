@@ -239,7 +239,7 @@ def test_groundwater_compiles_v12_research_outputs() -> None:
     assert kernel["schemaVersion"] == "kernel-config.v8"
     authoring = kernel["workflowAuthoring"]
     assert authoring["operatorCatalogDigest"] == executor["operatorCatalogDigest"]
-    assert len(authoring["operators"]) == 113
+    assert len(authoring["operators"]) == 114
     selected = {
         f"{item['id']}@{item['version']}" for item in authoring["composition"]["operators"]
     }
@@ -252,11 +252,13 @@ def test_groundwater_compiles_v12_research_outputs() -> None:
         for node in model["workflow"]["nodes"]
     }
     outside_presets = all_operators - preset_operators
-    assert len(outside_presets) == 59
+    assert len(outside_presets) == 60
+    assert "statistics.describe_columns@1.0.0" in outside_presets
     assert selected == outside_presets | {
         "table.filter@1.0.0", "crs.reproject@1.0.0", "data.convert@1.0.0",
     }
     assert authoring["composition"] == executor["workflowComposition"]
+    assert authoring["composition"]["resourceLimits"]["maxNodes"] == 12
     assert all("implementationRevision" in item for item in authoring["operators"])
     bindings = {
         row["serviceId"]: row["allowedOperations"]

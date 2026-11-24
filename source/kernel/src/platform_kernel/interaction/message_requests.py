@@ -18,6 +18,7 @@ from ..workflow_selection import bind_workflow_selection, selected_model
 from .control_persistence import validate_correction
 from .control_intents import rule_intent
 from .control_proposal_commands import create_control_request, create_status_request
+from .control_proposal_queries import has_active_control_proposal
 from .message_request_common import (
     materialize_workflow_draft,
     receipt_from_row,
@@ -90,12 +91,7 @@ def create_message_request(
             if requested_mode == "AUTO" and not normalized_references
             else None
         )
-        pending_control = connection.execute(
-            """SELECT 1 FROM control_proposals WHERE session_id=?
-               AND status IN ('PENDING','CONFIRMED') LIMIT 1""",
-            (session_id,),
-        ).fetchone()
-        if pending_control is not None and fast_intent != "STATUS_QUERY":
+        if fast_intent != "STATUS_QUERY" and has_active_control_proposal(connection, session_id):
             raise ConfirmationConflictError("CONTROL_PROPOSAL_PENDING")
         if fast_intent == "STATUS_QUERY":
             row = create_status_request(
@@ -143,18 +139,37 @@ def create_message_request(
         agent_run_id = str(uuid4())
         workflow_draft_id = str(uuid4()) if requested_mode == "WORKFLOW_DRAFT" else None
         mode = None if requested_mode == "AUTO" else requested_mode
+        deferred = (
+            requested_mode == "AUTO" and not normalized_references
+            and corrects_agent_run_id is None
+            and connection.execute(
+                """SELECT 1 FROM confirmations
+                   WHERE session_id=? AND goal_revision=? AND status='PENDING' LIMIT 1""",
+                (session_id, session["goal_revision"]),
+            ).fetchone() is not None
+        )
+        superseded = None
+        if deferred:
+            if session["pending_agent_run_id"] or connection.execute(
+                """SELECT 1 FROM message_requests
+                   WHERE session_id=? AND routing_source='MODEL'
+                     AND routing_status IN ('ROUTING_REQUESTED','ROUTING_RUNNING') LIMIT 1""",
+                (session_id,),
+            ).fetchone() is not None:
+                raise ConfirmationConflictError("AGENT_EXECUTION_IN_PROGRESS")
         dialogue_policy = (
             "EXECUTION_PROPOSAL" if workflow_selection is not None
             else "READ_ONLY" if requested_mode == "DIALOGUE" else None
         )
-        superseded = reserve_turn_connection(
-            connection, session_id, message, agent_run_id, project_id, mode=mode,
-            workflow_draft_id=workflow_draft_id,
-            start_state="ROUTING_REQUESTED" if requested_mode == "AUTO" else "REQUESTED",
-            request_id=request_id, requested_mode=requested_mode,
-            dialogue_policy=dialogue_policy,
-            supersede_confirmation=requested_mode != "AUTO",
-        )
+        if not deferred:
+            superseded = reserve_turn_connection(
+                connection, session_id, message, agent_run_id, project_id, mode=mode,
+                workflow_draft_id=workflow_draft_id,
+                start_state="ROUTING_REQUESTED" if requested_mode == "AUTO" else "REQUESTED",
+                request_id=request_id, requested_mode=requested_mode,
+                dialogue_policy=dialogue_policy,
+                supersede_confirmation=requested_mode != "AUTO",
+            )
         goal_revision = session["goal_revision"] + 1
         created_at = utc_now()
         routing_status = "ROUTING_REQUESTED" if requested_mode == "AUTO" else "DECIDED"
@@ -173,7 +188,7 @@ def create_message_request(
                          NULL,NULL,NULL,NULL,?)""",
             (
                 agent_run_id, session_id, request_id, goal_revision, message, references_json,
-                requested_mode, "AUTO" if requested_mode == "AUTO" else "EXPLICIT",
+                requested_mode, "MODEL" if deferred else "AUTO" if requested_mode == "AUTO" else "EXPLICIT",
                 workflow_draft_id, corrects_request_id, routing_status,
                 None if requested_mode == "AUTO" else requested_mode,
                 dialogue_policy,

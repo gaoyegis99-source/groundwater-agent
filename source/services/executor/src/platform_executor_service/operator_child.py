@@ -21,7 +21,7 @@ def main() -> None:
     resource.setrlimit(resource.RLIMIT_FSIZE, (args.memory_bytes, args.memory_bytes))
     os.execv(
         sys.executable,
-        [sys.executable, "-m", "moperators.runtime.task", args.payload, args.result],
+        [sys.executable, "-m", "moperators.runtime.entrypoint", args.payload, args.result],
     )
 
 

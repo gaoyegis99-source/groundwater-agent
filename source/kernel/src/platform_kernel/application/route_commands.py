@@ -7,14 +7,17 @@ from pathlib import Path
 from uuid import uuid4
 
 from ..database import append_event, connect_database, duration_ms, utc_now
-from ..errors import ResourceNotFoundError
+from ..errors import ConfirmationConflictError, ResourceNotFoundError
+from ..interaction.control_proposal_queries import has_active_control_proposal
 from ..interaction.message_request_common import (
     INTENT_DECISIONS,
+    awaits_goal_reservation,
     has_business_capability_options,
     materialize_workflow_draft,
     response_from_row,
     supersede_pending_confirmation,
 )
+from ..interaction.persistence import reserve_turn_connection
 from .transaction_commands import transaction_command
 
 
@@ -25,6 +28,7 @@ from .transaction_commands import transaction_command
         "workflow_drafts",
         "confirmations",
         "message_requests",
+        "messages",
         "sessions",
         "session_events",
     ),
@@ -72,9 +76,7 @@ def resolve_intent_route(
     finished_at = utc_now()
     with connect_database(database) as connection:
         connection.execute("BEGIN IMMEDIATE")
-        row = connection.execute(
-            "SELECT * FROM message_requests WHERE agent_run_id=?", (agent_run_id,)
-        ).fetchone()
+        row = _route_with_session(connection, agent_run_id)
         if row is None:
             raise ResourceNotFoundError("MESSAGE_REQUEST_NOT_FOUND")
         if semantic_intent == "EXECUTE_ON_DATA" and has_business_capability_options(connection, agent_run_id):
@@ -89,28 +91,46 @@ def resolve_intent_route(
             return response_from_row(row)
         if row["requested_mode"] != "AUTO" or row["routing_status"] != "ROUTING_RUNNING":
             raise ValueError("INTENT_ROUTE_STATE_INVALID")
+        deferred = awaits_goal_reservation(row)
+        status_query = (
+            deferred and response_kind == "DIALOGUE" and semantic_intent == "STATUS_QUERY"
+            and dialogue_policy == "READ_ONLY"
+        )
         mode = "DIALOGUE" if response_kind == "NEEDS_CLARIFICATION" else response_kind
         workflow_draft_id = str(uuid4()) if mode == "WORKFLOW_DRAFT" else None
-        created_at = utc_now()
-        connection.execute(
-            "INSERT INTO agent_requests VALUES (?,?,?,?)",
-            (agent_run_id, mode, workflow_draft_id, dialogue_policy),
-        )
-        materialize_workflow_draft(
-            connection,
-            session_id=row["session_id"],
-            request_id=row["request_id"],
-            message=row["message"],
-            goal_revision=row["goal_revision"],
-            agent_run_id=agent_run_id,
-            workflow_draft_id=workflow_draft_id,
-            created_at=created_at,
-        )
-        supersede_pending_confirmation(connection, row["session_id"])
+        if status_query:
+            task_action = "NONE"
+        else:
+            if deferred:
+                if row["archived_at"] is not None or row["current_goal_revision"] + 1 != row["goal_revision"]:
+                    raise ConfirmationConflictError("MESSAGE_GOAL_CHANGED")
+                if has_active_control_proposal(connection, row["session_id"]):
+                    raise ConfirmationConflictError("CONTROL_PROPOSAL_PENDING")
+                reserve_turn_connection(
+                    connection, row["session_id"], row["message"], agent_run_id, row["project_id"],
+                    mode=None, start_state="ROUTING_RUNNING", request_id=row["request_id"],
+                    requested_mode="AUTO",
+                )
+            connection.execute(
+                "INSERT INTO agent_requests VALUES (?,?,?,?)",
+                (agent_run_id, mode, workflow_draft_id, dialogue_policy),
+            )
+            materialize_workflow_draft(
+                connection,
+                session_id=row["session_id"],
+                request_id=row["request_id"],
+                message=row["message"],
+                goal_revision=row["goal_revision"],
+                agent_run_id=agent_run_id,
+                workflow_draft_id=workflow_draft_id,
+                created_at=finished_at,
+            )
+            if not deferred:
+                supersede_pending_confirmation(connection, row["session_id"])
         route_duration = duration_ms(row["created_at"], finished_at)
         connection.execute(
             """UPDATE message_requests
-               SET routing_status='DECIDED',intent_decision=?,dialogue_policy=?,
+               SET routing_status=?,intent_decision=?,dialogue_policy=?,
                    semantic_intent=?,task_action=?,control_intent=?,
                    clarification_reason=?,resolved_mode=?,routing_source=?,
                    clarification_required=?,workflow_draft_id=?,route_provider=?,
@@ -119,6 +139,7 @@ def resolve_intent_route(
                    route_finished_at=?,route_duration_ms=?,error_code=NULL
                WHERE agent_run_id=?""",
             (
+                "CONTROL_COMPLETE" if status_query else "DECIDED",
                 response_kind,
                 dialogue_policy,
                 semantic_intent,
@@ -141,7 +162,7 @@ def resolve_intent_route(
                 agent_run_id,
             ),
         )
-        if connection.execute(
+        if not status_query and connection.execute(
             """UPDATE sessions SET agent_start_state='REQUESTED'
                WHERE session_id=? AND pending_agent_run_id=?
                  AND agent_start_state='ROUTING_RUNNING'""",
@@ -155,7 +176,7 @@ def resolve_intent_route(
             {
                 "request_id": row["request_id"],
                 "agent_run_id": agent_run_id,
-                "goal_revision": row["goal_revision"],
+                "goal_revision": row["current_goal_revision"] if status_query else row["goal_revision"],
                 "response_kind": response_kind,
                 "semantic_intent": semantic_intent,
                 "task_action": task_action,
@@ -198,26 +219,26 @@ def fail_intent_route(
     finished_at = utc_now()
     with connect_database(database) as connection:
         connection.execute("BEGIN IMMEDIATE")
-        row = connection.execute(
-            "SELECT * FROM message_requests WHERE agent_run_id=?", (agent_run_id,)
-        ).fetchone()
+        row = _route_with_session(connection, agent_run_id)
         if row is None:
             raise ResourceNotFoundError("MESSAGE_REQUEST_NOT_FOUND")
-        if row["routing_status"] == "FAILED":
+        if row["routing_status"] in {"FAILED", "CONTROL_COMPLETE"}:
             if row["error_code"] != error_code:
                 raise ValueError("INTENT_ROUTE_STATE_INVALID")
             return response_from_row(row)
         if row["requested_mode"] != "AUTO" or row["routing_status"] != "ROUTING_RUNNING":
             raise ValueError("INTENT_ROUTE_STATE_INVALID")
+        deferred = awaits_goal_reservation(row)
         route_duration = duration_ms(row["created_at"], finished_at)
         run_duration = duration_ms(row["route_started_at"], finished_at)
         connection.execute(
             """UPDATE message_requests
-               SET routing_status='FAILED',route_provider=?,route_model=?,route_trace_id=?,
+               SET routing_status=?,route_provider=?,route_model=?,route_trace_id=?,
                    route_input_tokens=?,route_output_tokens=?,route_total_tokens=?,
                    route_provider_requests=?,route_finished_at=?,route_duration_ms=?,
                    error_code=? WHERE agent_run_id=?""",
             (
+                "CONTROL_COMPLETE" if deferred else "FAILED",
                 provider,
                 model,
                 trace_id,
@@ -231,6 +252,21 @@ def fail_intent_route(
                 agent_run_id,
             ),
         )
+        append_event(
+            connection,
+            row["session_id"],
+            "intent_routing.failed",
+            {
+                "request_id": row["request_id"],
+                "agent_run_id": agent_run_id,
+                "goal_revision": row["current_goal_revision"] if deferred else row["goal_revision"],
+                "error_code": error_code,
+                "provider": provider,
+                "model": model,
+            },
+        )
+        if deferred:
+            return response_from_row(_route_with_session(connection, agent_run_id))
         connection.execute(
             """INSERT INTO agent_runs(
                    agent_run_id,session_id,project_id,goal_revision,provider,model,
@@ -265,19 +301,6 @@ def fail_intent_route(
         append_event(
             connection,
             row["session_id"],
-            "intent_routing.failed",
-            {
-                "request_id": row["request_id"],
-                "agent_run_id": agent_run_id,
-                "goal_revision": row["goal_revision"],
-                "error_code": error_code,
-                "provider": provider,
-                "model": model,
-            },
-        )
-        append_event(
-            connection,
-            row["session_id"],
             "agent.failed",
             {
                 "agent_run_id": agent_run_id,
@@ -290,3 +313,12 @@ def fail_intent_route(
                 "SELECT * FROM message_requests WHERE agent_run_id=?", (agent_run_id,)
             ).fetchone()
         )
+
+
+def _route_with_session(connection, agent_run_id: str):
+    return connection.execute(
+        """SELECT r.*,s.project_id,s.goal_revision AS current_goal_revision,s.archived_at
+           FROM message_requests AS r JOIN sessions AS s USING (session_id)
+           WHERE r.agent_run_id=?""",
+        (agent_run_id,),
+    ).fetchone()

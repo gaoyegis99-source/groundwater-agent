@@ -5,6 +5,7 @@ from collections import deque
 from contextlib import aclosing
 from datetime import datetime, timezone
 import logging
+from typing import TypedDict
 
 from .agent_runtime.case_resolver import (
     matches_execution_case_request,
@@ -14,7 +15,7 @@ from .agent_runtime.owner import AgentRuntimeOwner
 from .agent_runtime.persistence.context import load_route_context_sources
 from .change_signal import CommitSignal
 from .errors import (
-    AgentRunError, SchedulerStoreReadonlyError, UpstreamServiceError,
+    AgentRunError, ConfirmationConflictError, SchedulerStoreReadonlyError, UpstreamServiceError,
     WriteLockUnavailableError,
 )
 from .interaction.control_intents import rule_intent
@@ -30,6 +31,16 @@ from .task_supervisor import KernelTaskSupervisor
 IDLE_WAIT_SECONDS = 1.0
 TRACE_PRUNE_INTERVAL_SECONDS = 3600.0
 _LOGGER = logging.getLogger(__name__)
+
+
+class _RouteUsage(TypedDict):
+    provider: str
+    model: str
+    trace_id: str
+    input_tokens: int
+    output_tokens: int
+    total_tokens: int
+    provider_requests: int
 
 
 class KernelRuntime:
@@ -361,18 +372,21 @@ class KernelRuntime:
                 provider_requests=error.provider_request_count,
             )
             return
-        self.interaction.resolve_route(
-            agent_run_id,
-            result.intent,
-            provider=result.provider,
-            model=result.model,
-            trace_id=result.trace_id,
-            input_tokens=result.usage.input_tokens,
-            output_tokens=result.usage.output_tokens,
-            total_tokens=result.usage.total_tokens,
-            provider_requests=result.provider_request_count,
-            routing_source=routing_source,
-        )
+        route_usage: _RouteUsage = {
+            "provider": result.provider,
+            "model": result.model,
+            "trace_id": result.trace_id,
+            "input_tokens": result.usage.input_tokens,
+            "output_tokens": result.usage.output_tokens,
+            "total_tokens": result.usage.total_tokens,
+            "provider_requests": result.provider_request_count,
+        }
+        try:
+            self.interaction.resolve_route(
+                agent_run_id, result.intent, routing_source=routing_source, **route_usage,
+            )
+        except ConfirmationConflictError as error:
+            self.interaction.fail_route(agent_run_id, str(error), **route_usage)
 
     async def _run_decision(self) -> None:
         await self.interaction.tick()

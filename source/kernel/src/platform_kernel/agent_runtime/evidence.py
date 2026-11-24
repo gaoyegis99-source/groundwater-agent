@@ -25,6 +25,7 @@ class TurnEvidence:
     prepared_arguments: dict[
         str, list[tuple[dict[str, object], str]]
     ]
+    prepared_candidate_counts: dict[str, int]
     prepared_targets: frozenset[str]
     semantic_checksums: dict[str, str]
     data_descriptions: dict[str, dict]
@@ -272,6 +273,7 @@ def collect_turn_evidence(input_items: list[dict[str, Any]]) -> TurnEvidence:
             target: [candidate for _, candidate in checks.values() if candidate is not None]
             for target, checks in latest_checks.items()
         },
+        prepared_candidate_counts={target: len(checks) for target, checks in latest_checks.items()},
         prepared_targets=frozenset(prepared_targets),
         semantic_checksums=semantic_checksums,
         data_descriptions=data_descriptions,

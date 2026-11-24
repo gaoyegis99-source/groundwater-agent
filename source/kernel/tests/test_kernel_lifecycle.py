@@ -17,7 +17,7 @@ import pytest
 
 from platform_kernel.api import create_app
 from platform_kernel.composition import PlatformApplication
-from platform_kernel.database import connect_database
+from platform_kernel.database import connect_database, read_session_events
 from platform_kernel.errors import AgentRunError
 from platform_kernel.agent_runtime.models import AgentPlanStepV2
 from platform_kernel.agent_runtime.persistence import save_plan
@@ -411,25 +411,48 @@ def test_agent_calls_only_executor_and_replays_result_resources(
     assert "map-image-1" not in resume_manifest
 
 
+@pytest.mark.parametrize("repair_result", ["unchanged", "corrected", "different_tool", "ambiguous"])
 def test_explicit_preparation_rejects_later_argument_drift(
-    tmp_path, kernel_settings
+    tmp_path, kernel_settings, repair_result,
 ) -> None:
+    corrects_proposal = repair_result == "corrected"
+    expected_arguments = {"resource_id": "resource-1", "axis": "columns"}
+    drift = {**expected_arguments, "axis": "rows"}
+
+    def repair(call):
+        instruction = json.loads(call.input[-1]["output"])
+        assert instruction["reason"] == "TASK_PREPARATION_REQUIRED"
+        assert instruction["prepared_arguments"] == expected_arguments
+        assert call.model_settings.tool_choice == "run_summary"
+        if repair_result == "different_tool":
+            return _prepare("a")
+        return ModelStep(output=[function_call(
+            "run_summary", expected_arguments if corrects_proposal else drift,
+            call_id="proposal-after-repair",
+        )])
+
     model = ScriptedModel([
         _inspect(),
         _prepare(),
+        *([_prepare("a")] if repair_result == "ambiguous" else []),
         ModelStep(output=[_plan(["run_summary"])]),
         ModelStep(output=[function_call(
-            "run_summary",
-            {"resource_id": "resource-1", "axis": "rows"},
+            "run_summary", drift,
             call_id="changed-after-prepare",
         )]),
+        ModelStep.respond(repair),
+        *([ModelStep(output=[_final()])] if corrects_proposal else []),
     ])
+    submitted = []
 
-    def no_executor(request):
-        raise AssertionError(f"unexpected executor request: {request.url}")
+    def executor(request):
+        if request.method == "POST":
+            submitted.append(json.loads(request.content))
+            return httpx.Response(202, json=_job(submitted[-1]["requestId"], "QUEUED"))
+        return httpx.Response(200, json=_job(submitted[-1]["requestId"], "SUCCEEDED"))
 
     application, app = _application(
-        tmp_path, kernel_settings, model, no_executor
+        tmp_path, kernel_settings, model, executor,
     )
     client = TestClient(app)
     session_id = client.post(
@@ -437,13 +460,56 @@ def test_explicit_preparation_rejects_later_argument_drift(
     ).json()["sessionId"]
     _, response = _turn(client, application, session_id, "run")
 
-    assert response.json()["agentSteps"][-1] == "FAILED"
-    assert response.json()["preparation"]["status"] == "READY"
-    assert response.json()["preparation"]["entries"][0]["targetId"] == "groundwater.summary"
+    state = response.json()
+    assert len(model.calls) == 5
+    assert state["preparation"]["status"] == "READY"
+    assert state["preparation"]["entries"][0]["targetId"] == "groundwater.summary"
+    assert state["workflowRunIds"] == [] and submitted == []
+    if repair_result == "ambiguous":
+        assert len(state["preparation"]["entries"]) == 2
+        assert state["agentSteps"][-1] == "FAILED"
+        assert state["confirmation"] is None
+        return
+    assert len(state["preparation"]["entries"]) == 1
     with connect_database(application.database) as connection:
-        assert connection.execute(
-            "SELECT COUNT(*) FROM confirmations"
-        ).fetchone()[0] == 0
+        attempts = [tuple(row) for row in connection.execute(
+            "SELECT stage,attempt,outcome,error_class FROM provider_requests "
+            "WHERE stage LIKE 'AGENT_INITIAL:%' ORDER BY created_at,rowid"
+        )]
+        assert connection.execute("SELECT COUNT(*) FROM confirmations").fetchone()[0] == int(corrects_proposal)
+    assert attempts[-2][1:] == (1, "FAILED", "PROTOCOL_OR_SCHEMA_INVALID")
+    assert attempts[-1][0] == attempts[-2][0]
+    assert attempts[-1][1:] == (
+        (2, "SUCCEEDED", None) if corrects_proposal else
+        (2, "FAILED", "PROTOCOL_OR_SCHEMA_INVALID")
+    )
+    if not corrects_proposal:
+        assert state["agentSteps"][-1] == "FAILED"
+        assert state["confirmation"] is None
+        issue = (
+            {"path": "/tool_calls", "type": "prepared_tool_mismatch"}
+            if repair_result == "different_tool" else
+            {"path": "/axis", "type": "prepared_argument_mismatch"}
+        )
+        with connect_database(application.database) as connection:
+            failure, = read_session_events(
+                connection, session_id, "agent.failed", agent_run_ids=(state["agentRunId"],),
+            )
+        assert failure["data"]["diagnostics"] == {
+            "reason": "TASK_PREPARATION_REQUIRED", "issues": [issue],
+        }
+        return
+
+    assert state["agentSteps"][-1] == "WAITING_CONFIRMATION"
+    confirmation = state["confirmation"]
+    assert confirmation["actions"][0]["arguments"] == expected_arguments
+    approved = client.post(
+        f"/api/v12/sessions/{session_id}/confirm",
+        json={"confirmationId": confirmation["confirmationId"]},
+    )
+    assert approved.status_code == 202
+    assert _tick(application) == (state["agentRunId"],)
+    assert [job["arguments"] for job in submitted] == [expected_arguments]
 
 
 @pytest.mark.parametrize(
@@ -525,6 +591,98 @@ def test_ungrouped_summary_preserves_prepared_arguments(
     assert [job["arguments"] for job in submitted] == [expected_arguments]
     finished = client.get(f"/api/v12/sessions/{session_id}").json()
     assert finished["agentSteps"][-1] == "COMPLETE"
+
+
+@pytest.mark.parametrize(
+    ("options", "structured", "expected_options"),
+    [
+        ({"detailEnabled": False, "detailLimit": 2}, False, {"detailEnabled": False}),
+        ({"detailLimit": 2}, False, {"detailEnabled": False}),
+        ({"detailEnabled": True, "detailLimit": 2}, False, {"detailEnabled": True, "detailLimit": 2}),
+        ({"detailEnabled": False, "detailLimit": 2}, True, {"detailEnabled": False, "detailLimit": 2}),
+        ({"detailEnabled": False, "detailLimit": 0}, False, None),
+        ({"detailEnabled": True}, False, None),
+    ],
+)
+def test_default_off_model_options_follow_prepared_arguments(
+    tmp_path, kernel_settings, options, structured, expected_options,
+) -> None:
+    def conditional_options(settings):
+        model = settings.models[0]
+        schema = {
+            **model.input_schema,
+            "properties": {
+                **model.input_schema["properties"],
+                "detailEnabled": {"type": "boolean"},
+                "detailLimit": {"type": "integer", "minimum": 1},
+            },
+            "allOf": [{
+                "if": {
+                    "properties": {"detailEnabled": {"const": True}},
+                    "required": ["detailEnabled"],
+                },
+                "then": {"required": ["detailLimit"]},
+            }],
+        }
+        checksum = "sha256:" + hashlib.sha256(
+            json.dumps(schema, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+        return replace(settings, models=(replace(
+            model, input_schema=schema, input_schema_checksum=checksum,
+            default_parameters={**model.default_parameters, "detailEnabled": False},
+        ),))
+
+    arguments = {"resource_id": "resource-1", **options}
+    model = ScriptedModel([
+        _inspect(),
+        ModelStep(output=[function_call("prepare_task_inputs", {
+            "target_tool": "run_summary", "arguments": arguments,
+        }, call_id="prepare-options")]),
+        ModelStep(output=[_plan(["run_summary"])]),
+        ModelStep(output=[function_call("run_summary", arguments, call_id="run-options")]),
+        ModelStep(output=[_final()]),
+    ])
+    submitted = []
+
+    def executor(request):
+        if request.method == "POST":
+            submitted.append(json.loads(request.content))
+            return httpx.Response(202, json=_job(submitted[-1]["requestId"], "QUEUED"))
+        return httpx.Response(200, json=_job(submitted[-1]["requestId"], "SUCCEEDED"))
+
+    application, app = _application(
+        tmp_path, kernel_settings, model, executor, settings_transform=conditional_options,
+    )
+    client = TestClient(app)
+    session_id = client.post("/api/v12/sessions", json={"projectId": "p"}).json()["sessionId"]
+    message = "run"
+    if structured:
+        message = "调用工具 run_summary\n[Model execution] " + json.dumps({
+            "tool": "run_summary", "arguments": arguments,
+        })
+    _, response = _turn(client, application, session_id, message)
+    state = response.json()
+    assert state["workflowRunIds"] == []
+    assert submitted == []
+    preparation, = state["preparation"]["entries"]
+    if expected_options is None:
+        assert preparation["status"] == "BLOCKED"
+        assert state["confirmation"] is None
+        return
+
+    assert preparation["status"] == "READY"
+    assert preparation["parameters"] == {"axis": "columns", **expected_options}
+    assert state["agentSteps"][-1] == "WAITING_CONFIRMATION"
+    confirmation = state["confirmation"]
+    expected = {"resource_id": "resource-1", "axis": "columns", **expected_options}
+    assert confirmation["actions"][0]["arguments"] == expected
+    approved = client.post(f"/api/v12/sessions/{session_id}/confirm", json={
+        "confirmationId": confirmation["confirmationId"],
+    })
+    assert approved.status_code == 202
+    assert _tick(application) == (state["agentRunId"],)
+    assert [job["arguments"] for job in submitted] == [expected]
+    assert client.get(f"/api/v12/sessions/{session_id}").json()["agentSteps"][-1] == "COMPLETE"
 
 
 def test_minimax_aliases_are_canonicalized_at_preparation_and_confirmation(

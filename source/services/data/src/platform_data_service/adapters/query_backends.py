@@ -1,4 +1,4 @@
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timezone
 from decimal import Decimal
 import math
 import duckdb
@@ -110,13 +110,28 @@ class DuckBackend:
                     + " LIMIT ?"
                 )
                 row_limit = min(settings.result_rows, plan.get("row_limit", settings.result_rows))
-                cursor = db.execute(sql, [*params, row_limit + 1])
-                fields = [{"id": x[0], "type": str(x[1])} for x in cursor.description]
+                result = db.sql(sql, params=[*params, row_limit + 1])
+                fields = [
+                    {"id": name, "type": str(dtype)}
+                    for name, dtype in zip(result.columns, result.types, strict=True)
+                ]
+                zoned = [field["type"] == "TIMESTAMP WITH TIME ZONE" for field in fields]
+                if any(zoned):
+                    # DuckDB's Python decoder requires pytz for zoned timestamps.
+                    # Project the final values as naive UTC after filtering and ordering.
+                    columns = [
+                        f"timezone('UTC', {name}) AS {name}" if is_zoned else name
+                        for name, is_zoned in zip(map(quoted, result.columns), zoned, strict=True)
+                    ]
+                    result = result.project(", ".join(columns))
                 rows, size = [], 0
                 from .database import canonical
 
-                while row := cursor.fetchone():
-                    converted = [scalar(x) for x in row]
+                while row := result.fetchone():
+                    converted = [
+                        scalar(value.replace(tzinfo=timezone.utc) if is_zoned and value is not None else value)
+                        for value, is_zoned in zip(row, zoned, strict=True)
+                    ]
                     size += len(canonical(converted).encode())
                     if size > settings.result_bytes:
                         raise DataProblemError("QUERY_RESULT_BUDGET", 413)

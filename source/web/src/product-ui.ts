@@ -17,7 +17,13 @@ export interface ResultOverview {
   regressionMetrics?: string;
   insight?: { kind: 'darcy' | 'kriging' | 'drastic' | 'calibration' | 'trend' | 'map' | 'statistics'; output: string; schemaVersion?: string; categoricalVisual?: string };
   visuals?: string[];
+  inactiveGroups?: { parameter: string; label: string; outputs: string[] }[];
   sections: { label: string; outputs: string[] }[];
+}
+export interface CaseRequest {
+  pattern: string;
+  actionLabel: string;
+  switches: Record<string, { pattern: string; required: string[]; hint?: string }>;
 }
 export interface ModelPresentation {
   displayName: string; description: string; applicability: string;
@@ -27,6 +33,8 @@ export interface ModelPresentation {
   resultOverview?: ResultOverview;
   continuation?: WorkflowContinuation;
   inputCaseTag?: string;
+  inputCaseParameters?: Record<string, string | number | boolean>;
+  caseRequest?: CaseRequest;
   publishedOutputStep?: { output: string; targetModel: string; targetInput: string; arguments: Record<string, unknown> };
 }
 interface CapabilityReference { id: string; version: string; checksum: string }
@@ -122,13 +130,20 @@ export function decodeProductUi(value: unknown): ProductUiProfile {
     const resultOverview = item.resultOverview as ResultOverview | undefined;
     const continuation = item.continuation as WorkflowContinuation | undefined;
     const inputCaseTag = item.inputCaseTag as string | undefined;
+    const inputCaseParameters = item.inputCaseParameters as ModelPresentation['inputCaseParameters'];
+    const caseRequest = item.caseRequest as CaseRequest | undefined;
     const publishedOutputStep = item.publishedOutputStep as ModelPresentation['publishedOutputStep'];
-    exact(item, ['displayName', 'description', 'applicability', 'inputs', 'parameterOverrides', 'confirmationSummary', ...(resultOverview ? ['resultOverview'] : []), ...(continuation ? ['continuation'] : []), ...(inputCaseTag ? ['inputCaseTag'] : []), ...(publishedOutputStep ? ['publishedOutputStep'] : [])]);
+    if ((inputCaseParameters || caseRequest) && !inputCaseTag) throw new TypeError('PRODUCT_UI_INVALID');
+    if (caseRequest) {
+      if (!caseRequest.pattern.startsWith('^') || !caseRequest.pattern.endsWith('$')) throw new TypeError('PRODUCT_UI_INVALID');
+      for (const pattern of [caseRequest.pattern, ...Object.values(caseRequest.switches).map(item => item.pattern)]) new RegExp(pattern);
+    }
+    exact(item, ['displayName', 'description', 'applicability', 'inputs', 'parameterOverrides', 'confirmationSummary', ...(resultOverview ? ['resultOverview'] : []), ...(continuation ? ['continuation'] : []), ...(inputCaseTag ? ['inputCaseTag'] : []), ...(inputCaseParameters ? ['inputCaseParameters'] : []), ...(caseRequest ? ['caseRequest'] : []), ...(publishedOutputStep ? ['publishedOutputStep'] : [])]);
     const inputs = Object.fromEntries(Object.entries(object(item.inputs)).map(([name, inputRaw]) => { const input = object(inputRaw); exact(input, ['label', 'description', 'formats']); if (!Array.isArray(input.formats) || input.formats.some(format => typeof format !== 'string')) throw new TypeError('PRODUCT_UI_INVALID'); return [name, { label: text(input.label), description: text(input.description), formats: input.formats as string[] }]; }));
     const parameterOverrides = Object.fromEntries(Object.entries(object(item.parameterOverrides)).map(([name, rawValue]) => [name, parameter(rawValue)]));
     if (!Array.isArray(item.confirmationSummary)) throw new TypeError('PRODUCT_UI_INVALID');
     const confirmationSummary = item.confirmationSummary.map(rawSummary => { const summary = object(rawSummary); exact(summary, ['label', 'parameters']); if (!Array.isArray(summary.parameters) || summary.parameters.some(name => typeof name !== 'string')) throw new TypeError('PRODUCT_UI_INVALID'); return { label: text(summary.label), parameters: summary.parameters as string[] }; });
-    return [id, { displayName: text(item.displayName), description: text(item.description), applicability: text(item.applicability), inputs, parameterOverrides, confirmationSummary, ...(resultOverview && { resultOverview }), ...(continuation && { continuation }), ...(inputCaseTag && { inputCaseTag }), ...(publishedOutputStep && { publishedOutputStep }) }];
+    return [id, { displayName: text(item.displayName), description: text(item.description), applicability: text(item.applicability), inputs, parameterOverrides, confirmationSummary, ...(resultOverview && { resultOverview }), ...(continuation && { continuation }), ...(inputCaseTag && { inputCaseTag }), ...(inputCaseParameters && { inputCaseParameters }), ...(caseRequest && { caseRequest }), ...(publishedOutputStep && { publishedOutputStep }) }];
   }));
   const parameterNames = Object.fromEntries(Object.entries(object(root.parameterNames)).map(([name, raw]) => [name, parameter(raw)]));
   const parameterStages = Object.fromEntries(Object.entries(object(root.parameterStages)).map(([name, raw]) => { const item = object(raw); exact(item, ['label', 'group']); return [name, { label: text(item.label), group: text(item.group) }]; }));

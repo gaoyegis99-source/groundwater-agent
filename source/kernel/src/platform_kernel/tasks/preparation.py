@@ -211,7 +211,12 @@ def preparation_in_connection(
     elif row["agent_status"] == "WAITING_CONFIRMATION":
         value["disposition"] = "WAITING_CONFIRMATION"
     elif row["agent_status"] == "COMPLETE":
-        value["disposition"] = "CONSUMED"
+        # The reply can be complete while an executable model still needs input.
+        awaiting_input = not actions and any(
+            entry["target_kind"] == "EXECUTABLE_MODEL" and entry["status"] == "BLOCKED"
+            for entry in value["entries"]
+        )
+        value["disposition"] = "ACTIVE" if awaiting_input else "CONSUMED"
     elif action_statuses.intersection({"APPROVED", "QUEUED", "RUNNING"}):
         value["disposition"] = "EXECUTING"
     elif actions:

@@ -276,7 +276,7 @@ def test_directory_pages_all_operators_and_marks_four_many_operators(catalog):
             query="请基于规则文件完成稳定排序后再分析",
         )["items"]
     }
-    assert "statistics.describe" in {
+    assert {"statistics.describe", "statistics.describe_columns"} <= {
         item["operator_id"]
         for item in list_operators(
             catalog,
@@ -293,7 +293,7 @@ def test_directory_pages_all_operators_and_marks_four_many_operators(catalog):
             catalog,
             capability="descriptive-statistics",
         )["items"]
-    ] == ["statistics.describe"]
+    ] == ["statistics.describe", "statistics.describe_columns"]
     assert (
         get_operator(catalog, "statistics.describe", "1.0.0")["binding_rules"][
             "value_outputs_feed_nodes"

@@ -11,6 +11,7 @@ import { ApiError, readDataVersion } from './api';
 import { argumentLabel, taskModelName, outputName } from './card-presentation';
 import { ResourceLink } from './ResourceLink';
 import { selectSessionUi, type ResultsRead } from './ui-selectors';
+import { inactiveResultGroups } from './result-presentation';
 import { productUi, type WorkflowContinuation } from './product-ui';
 import { Select } from './ui/Fields';
 import { Badge, Loading } from './ui/Feedback';
@@ -168,13 +169,24 @@ export function TurnTimeline(props: Props) {
     </details>}
     {turns.map(({ turn, turnUi }) => {
       const isCurrent = turn.goalRevision === history.goalRevision;
-      const reply = turn.reply;
       const draftId = turn.workflowDraftId;
       const draft = draftId ? props.drafts[draftId] : undefined;
       const draftRead = draftId ? props.draftReads[draftId] : undefined;
       const confirmations = turn.confirmations.filter(item => item.agentRunId === turn.agentRunId && item.goalRevision === turn.goalRevision);
       const currentConfirmation = confirmations.find(item => item.confirmationId === props.currentConfirmationId);
       const runs = turn.executionTasks.filter(item => item.agentRunId === turn.agentRunId && item.goalRevision === turn.goalRevision);
+      const publishedRuns = runs.filter(run => run.isLatestAttempt !== false && run.status === 'SUCCEEDED' && run.outputCount > 0);
+      const published = publishedRuns.map(run => ({ run, view: turnUi.workflowRuns.find(item => item.workflowRunId === run.workflowRunId) }));
+      const hasInactiveBranches = published.some(({ run, view }) => inactiveResultGroups(run.modelId, view?.runArguments).length > 0);
+      const analysisResultCount = !hasInactiveBranches ? undefined
+        : published.every(({ run, view }) => view?.publishedOutputCount === run.outputCount)
+          ? published.reduce((total, { view }) => total + (view?.outputs.length ?? 0), 0) : null;
+      const executionSummary = turn.reply?.executionSummary;
+      const reply = analysisResultCount !== undefined && turn.reply && executionSummary
+        && /^已完成 \d+ 项分析；生成 \d+ 份结果，可在分析结果中查看或下载。$/.test(executionSummary.markdown)
+        ? { ...turn.reply, executionSummary: { ...executionSummary, markdown: analysisResultCount === null
+          ? '分析成果已发布，可在成果中查看或下载。' : `已发布 ${analysisResultCount} 份分析成果，可在成果中查看或下载。` } }
+        : turn.reply;
       const images = turnUi.workflowRuns.filter(run => runs.some(item => item.workflowRunId === run.workflowRunId))
         .flatMap(run => run.outputAccess.filter(output => output.actions.includes('preview')
           && ['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(output.reference.mediaType)).map(output => output.reference));
@@ -186,6 +198,10 @@ export function TurnTimeline(props: Props) {
       const date = started ? new Date(started) : null;
       const time = date && Number.isFinite(date.getTime()) ? date : null;
       const status = turnUi.status;
+      const clarificationRecovery = isCurrent && props.canWrite && turn.status === 'FAILED'
+        && turn.clarificationRequired && turn.clarificationReason === 'TASK_CONFLICT'
+        ? '请在消息框说明要继续的任务，或补充本次的工作目标。'
+        : undefined;
       const resultCards = <>
             {!visible(turn.goalRevision) && runs.some(run => run.outputCount > 0) &&
               <button type="button" className="text-button" onClick={() => setExpandedRounds(current => new Set([...current, turn.goalRevision]))}>核验并查看本轮成果</button>}
@@ -194,12 +210,10 @@ export function TurnTimeline(props: Props) {
             {runs.filter(run => !isCurrent || !props.task || !['RUNNING', 'QUEUED'].includes(run.status)).map(run => {
               const result = turnUi.workflowRuns.find(item => item.workflowRunId === run.workflowRunId);
               const recovery = result?.status.actions.includes('check-recovery') && !props.busy ? props.onRecover : undefined;
-              const args = confirmations.find(item => item.confirmationId === run.confirmationId)?.actions
-                .find(action => action.toolCallId === run.toolCallId)?.arguments;
               const card = <ResultCard key={run.workflowRunId} task={run} presentation={result}
                 project={props.project} onResource={ref => props.onResource(ref.versionId, ref)}
                 onAttach={props.onAttach} onContinue={props.onContinue} onCompare={props.onCompare}
-                onPrepareContinuation={props.onPrepareContinuation} targetTime={(args?.targetTime ?? args?.['map-month.targetTime']) as string | undefined}
+                onPrepareContinuation={props.onPrepareContinuation} runArguments={result?.runArguments}
                 onRecover={recovery} verificationErrors={check.errors} retryVerification={check.retry}
                 verificationDeferred={!visible(turn.goalRevision)}
                 continuationVersionId={props.continuationVersionId} continueDisabled={props.continueDisabled} />;
@@ -236,7 +250,8 @@ export function TurnTimeline(props: Props) {
           <img className="assistant-avatar" src={props.assistant.image} alt="" width={28} height={28} />
           <div className="assistant-body">
             <p className="message-byline">{props.assistant.name}</p>
-            <ActivityPanel turn={turn} snapshotAt={history.snapshotAt} connected={props.connected} task={isCurrent ? props.task : undefined}>
+            <ActivityPanel turn={turn} snapshotAt={history.snapshotAt} connected={props.connected} task={isCurrent ? props.task : undefined}
+              analysisResultCount={analysisResultCount}>
               {isCurrent && currentConfirmation && props.confirmationCard}
               {isCurrent && props.task && !currentConfirmation && frozen && <div className="task-scope">
                 {inputRefs.length === 1 && <ResourceLink id={inputRefs[0].versionId} reference={inputRefs[0]} project={props.project} onResource={props.onInputResource} />}
@@ -279,7 +294,7 @@ export function TurnTimeline(props: Props) {
             })()}
             {!isCurrent && resultCards}
             {turn.errorCode && <ErrorNotice title="本轮未完成" code={turn.errorCode}
-              agentDiagnostics={turn.diagnostics} agentMetrics={turn.agentMetrics} />}
+              recovery={clarificationRecovery} agentDiagnostics={turn.diagnostics} agentMetrics={turn.agentMetrics} />}
             {confirmations.filter(item => item !== currentConfirmation).map(confirmation =>
               <HistoricalConfirmation key={confirmation.confirmationId} confirmation={confirmation} history={history} busy={props.busy}
                 verificationSession={props.verificationSession} onDecision={() => {}} onResource={props.onInputResource}

@@ -2,7 +2,7 @@ import { act, fireEvent, render, renderHook, screen, waitFor, within } from '@te
 import { beforeEach, expect, it, vi } from 'vitest';
 import { resolveWorkspaceState, WorkspacePanel } from './WorkspacePanel';
 import { capabilitiesFixture, dataDetail, dataRef, historyFixture, replyFixture, taskFixture } from './test-fixtures';
-import type { Confirmation, Result, TaskContext } from './types';
+import type { Confirmation, Result, TaskContext, TaskPreparation } from './types';
 import { scopedStorageKey } from './browser-scope';
 import { useWorkspaceController } from './use-workspace-controller';
 
@@ -244,6 +244,61 @@ it('does not count a consumed preparation as an active prepared input', () => {
   expect(screen.getByText('尚未添加数据')).toBeInTheDocument();
 });
 
+it('shows the lifecycle of preparation after an earlier candidate failed', () => {
+  const selectedInput = dataRef({ datasetId: 'selected-input', versionId: 'selected-version' });
+  const rejectedInput = dataRef({ datasetId: 'earlier-input', versionId: 'earlier-version' });
+  const preparation: TaskPreparation = {
+    schemaVersion: 'task-preparation.v1', preparationId: 'mixed-preparation', revision: 3,
+    sessionId: 'session-1', agentRunId: 'agent-1', goalRevision: 1, taskId: null,
+    baseTaskRevision: null, status: 'BLOCKED', freshForCurrentTurn: true, disposition: 'WAITING_CONFIRMATION',
+    entries: [
+      { targetKind: 'EXECUTABLE_MODEL', targetId: 'groundwater.summary', targetVersion: '1.0.0',
+        status: 'BLOCKED', selectionPolicy: 'PINNED', inputs: { versionId: rejectedInput },
+        knowledgeRefs: [], parameters: { axis: 'bad-axis' }, parameterSources: {}, checks: [],
+        blockingIssues: [{ code: 'MODEL_ARGUMENTS_INVALID', kind: 'INVALID_PARAMETER', parameter: 'axis' }],
+        blockingReasons: ['MODEL_ARGUMENTS_INVALID'] },
+      { targetKind: 'EXECUTABLE_MODEL', targetId: 'groundwater.summary', targetVersion: '1.0.0',
+        status: 'READY', selectionPolicy: 'PINNED', inputs: { versionId: selectedInput },
+        knowledgeRefs: [], parameters: { axis: 'columns' }, parameterSources: {}, checks: [], blockingReasons: [] },
+    ],
+  };
+  const confirmation: Confirmation = {
+    confirmationId: 'confirmation-1', goalRevision: 1, agentRunId: 'agent-1', status: 'PENDING',
+    reason: null, decision: null, decisionState: null, revision: 1,
+    actions: [{ toolCallId: 'summary', tool: 'run_summary', modelId: 'groundwater.summary', modelVersion: '1.0.0',
+      workflowId: 'summary', workflowVersion: '1.0.0', arguments: { axis: 'columns' },
+      inputReferences: { versionId: selectedInput } }],
+  };
+  const props = { results: [], activeId: 'session-1', collapsed: false,
+    onToggle: vi.fn(), onJump: vi.fn(), onEdit: vi.fn() };
+  const waiting = historyFixture({ preparation, turns: [{ status: 'WAITING_CONFIRMATION', confirmations: [confirmation] }] });
+  const view = render(<WorkspacePanel {...props} history={waiting} routedTab="inputs" />);
+
+  expect(screen.getByText('输入准备 · 等待确认')).toBeVisible();
+  expect(screen.queryByRole('heading', { name: /已准备/ })).not.toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: /已冻结/ })).toBeVisible();
+  fireEvent.click(screen.getByText('输入准备 · 等待确认'));
+  expect(screen.getByText('未通过检查')).toBeVisible();
+  expect(screen.queryByRole('button', { name: '补充参数' })).not.toBeInTheDocument();
+
+  view.rerender(<WorkspacePanel {...props} history={waiting} routedTab="parameters" />);
+  expect(screen.getByText('准备参数 · 等待确认')).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: '编辑当前参数' }));
+  expect(props.onEdit).toHaveBeenCalledExactlyOnceWith('confirmation-1');
+
+  const completed = historyFixture({
+    preparation: { ...preparation, disposition: 'CONSUMED' },
+    turns: [{ status: 'COMPLETE', confirmations: [{ ...confirmation, status: 'CONFIRMED' }],
+      executionTasks: [taskFixture({ status: 'SUCCEEDED', outputCount: 1 })] }],
+  });
+  view.rerender(<WorkspacePanel {...props} history={completed} routedTab="parameters" />);
+  expect(screen.getByText('准备参数 · 本轮准备已结束')).toBeVisible();
+  expect(screen.queryByRole('button', { name: '编辑当前参数' })).not.toBeInTheDocument();
+  view.rerender(<WorkspacePanel {...props} history={completed} routedTab="tasks" />);
+  expect(screen.getByText('输入准备 · 本轮准备已结束')).toBeVisible();
+  expect(screen.queryByText(/需要本轮重新核验|有分析需要补充/)).not.toBeInTheDocument();
+});
+
 it('displays verified Data facts and discards a late version read after a session switch', async () => {
   let release!: (response: Response) => void;
   const ref = dataRef();
@@ -295,4 +350,20 @@ it('shows the explicitly bound approval and exact output on each workflow attemp
   fireEvent.click(newer.getByRole('button', { name: '汇总结果' }));
   expect(earlier.queryByRole('button', { name: '汇总结果' })).not.toBeInTheDocument();
   expect(open).toHaveBeenCalledExactlyOnceWith(output.versionId, output);
+});
+
+it('excludes only the optional monitoring branch disabled in the owning confirmation', () => {
+  const run = taskFixture({ modelId: 'groundwater.monitoring-trend', status: 'SUCCEEDED', outputCount: 4 });
+  const names = ['aggregated-series', 'seasonal-trends', 'seasonal-trend-summary', 'threshold-events'];
+  const result: Result = { ...run, status: 'COMPLETE', remoteOutputs: names.map(outputName => dataRef({ outputName, versionId: outputName })) };
+  const confirmation: Confirmation = { confirmationId: run.confirmationId!, goalRevision: run.goalRevision, agentRunId: run.agentRunId,
+    status: 'CONFIRMED', reason: null, decision: 'CONFIRM', decisionState: null,
+    actions: [{ toolCallId: run.toolCallId, tool: 'run_monitoring_trend', modelId: run.modelId, modelVersion: run.modelVersion,
+      workflowId: run.workflowId, workflowVersion: run.workflowVersion, arguments: { seasonalTrendEnabled: false, thresholdEventsEnabled: true } }] };
+  const history = historyFixture({ turns: [{ executionTasks: [run], confirmations: [confirmation] }] });
+  render(<WorkspacePanel history={history} results={[result]} activeId="session-1"
+    routedTab="results" collapsed={false} onToggle={vi.fn()} onJump={vi.fn()} />);
+  expect(screen.getByRole('tab', { name: /^成果\s*2$/ })).toBeVisible();
+  expect(screen.getByText('阈值事件明细')).toBeVisible();
+  expect(screen.queryByText('季节趋势检验摘要')).not.toBeInTheDocument();
 });

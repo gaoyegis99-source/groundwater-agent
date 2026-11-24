@@ -1,5 +1,6 @@
 from dataclasses import replace
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta, timezone
 import hashlib
 import io
 import json
@@ -10,6 +11,8 @@ import threading
 import zipfile
 
 from openpyxl import Workbook
+import pyarrow as pa
+import pyarrow.parquet as pq
 import pytest
 from shapely import to_wkb
 from shapely.geometry import Point
@@ -791,6 +794,55 @@ def test_table_inspection_uses_query_worker_and_returns_bounded_sample(
     assert data["coverage"] == {
         "sourceRows": 6, "matchedRows": 6, "calculation": "all_matching_rows",
     }
+
+
+def test_query_and_inspection_preserve_timezone_aware_observations(client, worker):
+    source_timezone = timezone(timedelta(hours=8))
+    timestamps = pa.array(
+        [
+            datetime(2022, 11, 1, 0, 30, tzinfo=source_timezone),
+            datetime(2022, 12, 1, 0, 30, 0, 123456, tzinfo=source_timezone),
+            datetime(2022, 12, 1, 0, 30, 0, 123456, tzinfo=source_timezone),
+            None,
+        ],
+        type=pa.timestamp("us", tz="Asia/Shanghai"),
+    )
+    source = io.BytesIO()
+    pq.write_table(pa.table({"observed": timestamps, "reading": [1, 2, 3, 4]}), source)
+    output = publish(
+        client, worker,
+        [{"name": "table", "title": "时区观测", "format": "parquet", "policy": "FILE_QUERYABLE"}],
+        content=source.getvalue(),
+    )
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        pending = pool.submit(
+            client.post, "/internal/tools/v4/inspect_data_table",
+            json={"callId": "inspect-temporal", "projectId": "local-data",
+                  "arguments": {"version_id": output["versionId"]}},
+        )
+        for _ in range(200):
+            if worker.once():
+                break
+            time.sleep(0.01)
+        else:
+            raise AssertionError("inspection query was not queued")
+        inspected = pending.result(timeout=10)
+
+    assert inspected.status_code == 200, inspected.text
+    early = "2022-10-31T16:30:00+00:00"
+    late = "2022-11-30T16:30:00.123456+00:00"
+    assert inspected.json()["data"]["sampleRows"] == [[early, 1], [late, 2], [late, 3], [None, 4]]
+
+    rows = query(client, worker, output["versionId"], sort=[{"field": "f0", "direction": "desc"}])
+    assert rows["result"]["fields"][0] == {"fieldId": "f0", "type": "TIMESTAMP WITH TIME ZONE"}
+    assert rows["result"]["rows"] == [[late, 2], [late, 3], [early, 1], [None, 4]]
+
+    aggregates = query(
+        client, worker, output["versionId"],
+        aggregates=[{"function": "max", "field": "f0", "alias": "latest"},
+                    {"function": "sum", "field": "f1", "alias": "total"}],
+    )
+    assert aggregates["result"]["rows"] == [[late, 10]]
 
 
 def test_version_inspection_exposes_physical_field_id_at_the_tool_boundary(

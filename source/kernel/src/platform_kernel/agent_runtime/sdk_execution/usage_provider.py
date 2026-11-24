@@ -6,13 +6,13 @@ import time
 
 from agents import TResponseInputItem
 
-class _ProtocolRepairRequiredError(Exception):
-    """Carry one rejected Provider response to a safe outer retry."""
 
-    def __init__(self, repair_input: list[TResponseInputItem], response: object) -> None:
+class _ProtocolRepairRequiredError(Exception):
+    """Carry the authorized continuation for a rejected Provider response."""
+
+    def __init__(self, repair_input: list[TResponseInputItem]) -> None:
         super().__init__("PROTOCOL_REPAIR_REQUIRED")
         self.repair_input = repair_input
-        self.response = response
 
 
 class _ProviderUsageCaptureMixin:

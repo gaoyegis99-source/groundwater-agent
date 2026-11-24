@@ -6,6 +6,7 @@ import math
 import re
 import unicodedata
 from collections import Counter
+from collections.abc import Iterator
 
 from .contracts import DataVersionRefV2
 from .errors import ConfirmationConflictError
@@ -117,6 +118,15 @@ def _value(specification: dict, rule: dict, matched: re.Match) -> str | int | fl
     return text
 
 
+def _parameter_matches(pattern: str, message: str) -> Iterator[re.Match[str]]:
+    for match in re.finditer(pattern, message, re.IGNORECASE):
+        start = match.start()
+        # A configured alias must not start inside another ASCII parameter name.
+        if start and re.fullmatch(r"[A-Za-z0-9_]{2}", message[start - 1:start + 1]):
+            continue
+        yield match
+
+
 def _interpret_parameters(option: dict, message: str, *, reply: bool = False) -> tuple[dict, dict, list[str], str | None]:
     parameters = {**option["modelDefaults"], **option["fixedParameters"]}
     sources = {
@@ -131,7 +141,7 @@ def _interpret_parameters(option: dict, message: str, *, reply: bool = False) ->
         units = set()
         rules = spec["patterns"] + (spec.get("replyPatterns", []) if reply else [])
         for rule in rules:
-            for match in re.finditer(rule["pattern"], message, re.IGNORECASE):
+            for match in _parameter_matches(rule["pattern"], message):
                 try:
                     values.add(_value(spec, rule, match))
                 except (KeyError, TypeError, ValueError):
@@ -270,7 +280,7 @@ def _is_parameter_reply(option: dict, message: str) -> bool:
         match.span()
         for spec in option["textParameters"]
         for rule in spec["patterns"] + spec.get("replyPatterns", [])
-        for match in re.finditer(rule["pattern"], message, re.IGNORECASE)
+        for match in _parameter_matches(rule["pattern"], message)
     )
     end = 0
     for start, stop in spans:

@@ -28,7 +28,11 @@ from .evidence import _data_reference
 from .governance import governance
 from ..workflow_selection import require_selected_arguments, selected_model
 from .observation_client import ObservationClient
-from .provider_arguments import normalize_model_arguments, omit_unset_field_arguments
+from .provider_arguments import (
+    normalize_model_arguments,
+    omit_disabled_model_options,
+    omit_unset_field_arguments,
+)
 from .rule_preparation import RULE_REQUEST_SCHEMA, prepare_operator_rules
 
 
@@ -93,6 +97,10 @@ def build_preparation_tool(
                 request = {**request, "arguments": supplied}
                 require_selected_arguments(workflow_selection, arguments)
                 validate(arguments, model.input_schema)
+                if workflow_selection is None and explicit_model_tool_request is None:
+                    arguments = omit_disabled_model_options(arguments, model)
+                    supplied = {name: value for name, value in supplied.items() if name in arguments}
+                    request = {**request, "arguments": supplied}
             if inspect_definition is None:
                 raise ValueError("PREPARATION_INSPECTOR_UNAVAILABLE")
             inspect_service = services_by_name.get(inspect_definition.service)
@@ -1479,6 +1487,58 @@ def _ready_snapshot(
         "blocking_reasons": list(dict.fromkeys(blocking_reasons)),
         "blocking_issues": blocking_issues,
     }
+
+
+def preset_clarification_snapshot(
+    selection: dict,
+    model: ExecutableModelDefinition,
+) -> dict[str, object] | None:
+    """Record only missing bindings that can be determined without a Data read."""
+    capability = selection.get("business_capability")
+    supplied = selection["parameters"]
+    selected_inputs = selection["inputs"]
+    parameters = {**model.default_parameters, **supplied}
+    if capability is None:
+        required_parameters = [
+            name for name in model.input_schema.get("required", [])
+            if name not in model.data_input_parameters
+        ]
+    else:
+        required_parameters = [
+            item["name"] for item in capability["requiredParameters"]
+            if item["name"] not in capability["metadataParameters"]
+        ]
+    missing_inputs = [name for name in model.data_input_parameters if name not in selected_inputs]
+    missing_parameters = [name for name in required_parameters if name not in parameters]
+    if not missing_inputs and not missing_parameters:
+        return None
+
+    parameter_error = "MODEL_ARGUMENTS_INVALID" if capability is None else "CAPABILITY_PARAMETER_REQUIRED"
+    snapshot = _blocked_snapshot(
+        {"target_tool": model.tool_name, "arguments": supplied},
+        {model.tool_name: model},
+        parameter_error,
+        blocking_reasons=[
+            *(f"PREPARATION_DATA_INPUT_MISSING:{name}" for name in missing_inputs),
+            *(f"{parameter_error}:/{name}:required" for name in missing_parameters),
+        ],
+        blocking_issues=[
+            *(
+                {"code": "PREPARATION_DATA_INPUT_MISSING", "kind": "MISSING_DATA", "input": name}
+                for name in missing_inputs
+            ),
+            *(
+                {"code": parameter_error, "kind": "MISSING_PARAMETER", "parameter": name}
+                for name in missing_parameters
+            ),
+        ],
+    )
+    sources = {} if capability is None else capability["argumentSources"]
+    snapshot["parameter_sources"] = {
+        name: sources.get(name, "USER" if name in supplied else "MODEL_DEFAULT")
+        for name in parameters
+    }
+    return snapshot
 
 
 def _blocked_snapshot(

@@ -354,6 +354,10 @@ a technical default does not establish project units, CRS, provenance or a scien
 Expose only outputs the user requested. In a sequential request such as "first A, then B",
 the result is normally B. If the user explicitly asks for A's intermediate result as well, expose
 it as a separate named output and still feed it into B through the required graph edge.
+For descriptive statistics across all numeric columns, select an operator with a whole-table
+result contract. When an inspected CSV source and the preceding operation yield numeric text,
+bind the applicable text-inference parameter described by the operator contract. State the inference
+limit in limitations and use Data or Knowledge for explicit field meaning and units.
 Bind an input only when its data_ref dataset_id, version_id, semantic_id, object_id, checksum,
 media_type, format and size_bytes all match inspect_data_version in this Turn. Otherwise leave the
 external input unbound. An unbound required external input still needs its exact graph.inputs

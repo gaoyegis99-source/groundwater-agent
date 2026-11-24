@@ -14,9 +14,10 @@ export async function readWorkflowInputCandidates(
     const tags = item.tags ?? [];
     const roles = tags.filter(value => value.startsWith('input:'));
     const batches = tags.filter(value => value.startsWith('case-batch:'));
-    const parameter = `${roles[0]?.slice('input:'.length)}VersionId`;
-    return roles.length === 1 && batches.length === 1 && Object.hasOwn(inputs, parameter)
-      && item.currentVersion ? [{ parameter, batch: batches[0], item, version: item.currentVersion }] : [];
+    if (roles.length !== 1 || batches.length !== 1 || !item.currentVersion) return [];
+    const role = roles[0].slice('input:'.length);
+    const parameter = Object.hasOwn(inputs, role) ? role : `${role}VersionId`;
+    return Object.hasOwn(inputs, parameter) ? [{ parameter, batch: batches[0], item, version: item.currentVersion }] : [];
   });
   if (new Set(rows.map(row => row.batch)).size !== 1) return {};
   const candidates: Record<string, ResourceItem> = {};

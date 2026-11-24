@@ -7,6 +7,8 @@ import logging
 import math
 import re
 
+from jsonschema.validators import validator_for
+
 from ..settings import ExecutableModelDefinition
 
 _JSON_NUMBER = re.compile(
@@ -310,3 +312,51 @@ def omit_unset_field_arguments(
         if unset:
             omitted.add(name)
     return {name: value for name, value in arguments.items() if name not in omitted}
+
+
+def omit_disabled_model_options(
+    arguments: dict[str, object], model: ExecutableModelDefinition,
+) -> dict[str, object]:
+    """Project unbound proposals using simple, default-off model switches."""
+    schema = model.input_schema
+    rules = schema.get("allOf")
+    if not isinstance(rules, list) or not rules:
+        return arguments
+    disabled: set[str] = set()
+    protected = {
+        *schema.get("required", []), *model.default_parameters,
+        *model.data_input_parameters, *(field.parameter for field in model.field_requirements),
+    }
+    for rule in rules:
+        if not isinstance(rule, dict) or rule.keys() != {"if", "then"}:
+            return arguments
+        condition, consequent = rule["if"], rule["then"]
+        if not isinstance(condition, dict) or condition.keys() != {"properties", "required"}:
+            return arguments
+        switches = condition["required"]
+        if not isinstance(switches, list) or len(switches) != 1 or not isinstance(switches[0], str):
+            return arguments
+        switch = switches[0]
+        properties = condition["properties"]
+        if not isinstance(properties, dict) or properties.keys() != {switch}:
+            return arguments
+        predicate = properties[switch]
+        if not isinstance(predicate, dict) or predicate.keys() != {"const"} or predicate["const"] is not True:
+            return arguments
+        if not isinstance(consequent, dict) or consequent.keys() != {"required"}:
+            return arguments
+        names = consequent["required"]
+        if not isinstance(names, list) or not all(isinstance(name, str) for name in names):
+            return arguments
+        if model.default_parameters.get(switch) is False and arguments.get(switch) is False:
+            disabled.update(names)
+        else:
+            protected.update(names)
+    omitted = disabled - protected
+    if not omitted.intersection(arguments):
+        return arguments
+    projected = {name: value for name, value in arguments.items() if name not in omitted}
+    validator = validator_for(schema)(schema)
+    if validator.is_valid(arguments) and validator.is_valid(projected):
+        return projected
+    return arguments

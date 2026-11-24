@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError } from './api';
 import { readWorkflowInputCandidates } from './workflow-input-candidates';
 import { ResourceLink } from './ResourceLink';
 import { preparationCheckFacts, preparationIssues } from './preparation-display';
-import { argumentLabel, modelName } from './card-presentation';
+import { argumentLabel, modelName, parameterPresentation } from './card-presentation';
+import { caseRequestFields } from './case-request';
 import { productUi } from './product-ui';
 import type { KnowledgeReference, ResourceItem, ResourceReference, TaskPreparationEntry } from './types';
 import { workflowFileKey, type WorkflowModel, type WorkflowSelection } from './workflow-selection';
@@ -19,7 +20,7 @@ export function WorkflowPreparation({ selection, model, attachments, prepared, p
   selection: WorkflowSelection; model?: WorkflowModel; attachments: ResourceItem[]; prepared?: TaskPreparationEntry;
   project: string; expanded?: boolean; onResource: (id: string, reference?: ResourceReference) => void;
   onKnowledge?: (reference: KnowledgeReference) => void;
-  onApplyCandidates?: (candidates: Record<string, ResourceItem>) => void;
+  onApplyCandidates?: (candidates: Record<string, ResourceItem>, parameters?: WorkflowSelection['parameters']) => void;
   onChange: (value: WorkflowSelection | null) => void; onPick: (name: string, formats: string[]) => void;
 }) {
   const profile = productUi().models[selection.target.modelId];
@@ -33,8 +34,8 @@ export function WorkflowPreparation({ selection, model, attachments, prepared, p
   const [matchFailed, setMatchFailed] = useState(false);
   const matchRequest = useRef<AbortController | undefined>(undefined);
   useEffect(() => () => matchRequest.current?.abort(), []);
-  async function matchCase() {
-    if (!profile.inputCaseTag) return;
+  const matchCase = useCallback(async () => {
+    if (!profile?.inputCaseTag) return;
     const controller = new AbortController();
     matchRequest.current?.abort();
     matchRequest.current = controller;
@@ -51,8 +52,22 @@ export function WorkflowPreparation({ selection, model, attachments, prepared, p
     } finally {
       if (!controller.signal.aborted) setMatching(false);
     }
-  }
+  }, [profile]);
+  const boundCount = inputs.filter(([name]) => names.has(selection.bindings[name])).length;
+  const autoMatch = selection.casePreparation && !!model && !!onApplyCandidates && boundCount === 0;
+  useEffect(() => {
+    if (autoMatch) void matchCase();
+  }, [autoMatch, matchCase]);
   const suggestions = Object.entries(candidates ?? {}).filter(([name]) => name !== lockedInput && !names.has(selection.bindings[name]));
+  const completeCase = inputs.length > 0 && inputs.every(([name]) => {
+    const candidate = candidates?.[name];
+    if (!candidate) return false;
+    const bound = selection.bindings[name];
+    return names.has(bound) ? workflowFileKey(candidate) === bound : name !== lockedInput;
+  });
+  const caseParameters = completeCase && profile?.inputCaseParameters &&
+    Object.keys(profile.inputCaseParameters).some(name => !Object.hasOwn(selection.parameters, name))
+    ? profile.inputCaseParameters : undefined;
   const [compare, setCompare] = useState<string>();
   const issues = prepared ? preparationIssues(prepared) : [];
   const problems = (name: string) => prepared?.checks.filter(check =>
@@ -75,30 +90,38 @@ export function WorkflowPreparation({ selection, model, attachments, prepared, p
   const [open, setOpen] = useState<boolean>();
 
 
-  const boundCount = inputs.filter(([name]) => names.has(selection.bindings[name])).length;
   const dataNames = new Set(inputs.map(([name]) => name));
   const required = model?.inputSchema?.required?.filter(name => !dataNames.has(name)) ?? [];
+  const business = caseRequestFields(selection, profile?.caseRequest);
   const parameters = [...new Set([
     ...required, ...(profile?.confirmationSummary.flatMap(summary => summary.parameters) ?? []),
+    ...business.fields,
+    ...Object.keys(profile?.inputCaseParameters ?? {}).filter(name => Object.hasOwn(selection.parameters, name)),
   ])].filter(name => !dataNames.has(name));
   const defaults = model?.defaultParameters ?? {};
-  const missing = required.filter(name => !Object.hasOwn(selection.parameters, name) && !Object.hasOwn(defaults, name) && !Object.hasOwn(prepared?.parameters ?? {}, name));
+  const missing = [...required.filter(name => !Object.hasOwn(selection.parameters, name) && !Object.hasOwn(defaults, name) && !Object.hasOwn(prepared?.parameters ?? {}, name)),
+    ...business.missing];
   return <section id="workflow-preparation" tabIndex={-1} className="workflow-selection" aria-label="选中的工作流">
     <div className="workflow-selection-heading"><strong>{modelName(selection.target.modelId)}</strong>
       <button type="button" className="text-button" onClick={() => onChange(null)}>移除工作流</button></div>
     {!model ? <p role="status">此工作流的装配版本已变化，请重新选择。</p> :
-      <details open={open ?? (expanded || prepared?.status === 'BLOCKED')} onToggle={event => setOpen(event.currentTarget.open)}><summary>资料已绑定 {boundCount}/{inputs.length}{missing.length ? ` · 缺少 ${missing.length} 个必填参数` : ''}{prepared ? prepared.status === 'READY' ? ' · 最近一次准备检查已通过' : ' · 需要补充或核验' : ''}</summary>
+      <details open={open ?? (expanded || selection.casePreparation || prepared?.status === 'BLOCKED')} onToggle={event => setOpen(event.currentTarget.open)}><summary>资料已绑定 {boundCount}/{inputs.length}{missing.length ? ` · 缺少 ${missing.length} 个必填参数` : ''}{prepared ? prepared.status === 'READY' ? ' · 最近一次准备检查已通过' : ' · 需要补充或核验' : ''}</summary>
         {profile.inputCaseTag && onApplyCandidates && <div className="workflow-suggestions">
           <button type="button" disabled={matching} onClick={() => void matchCase()}>{matching ? '正在核对案例资料…' : '匹配案例资料'}</button>
           {matchFailed && <p role="status">暂时无法读取完整案例目录，可重试或逐项选资料。</p>}
-          {candidates && (suggestions.length ? <div>
-            <ul>{suggestions.map(([name, item]) => <li key={name}>{profile.inputs[name].label} · {item.name}
+          {candidates && (suggestions.length || caseParameters ? <div>
+            {suggestions.length > 0 && <ul>{suggestions.map(([name, item]) => <li key={name}>{profile.inputs[name].label} · {item.name}
               <button type="button" className="text-button" onClick={() => setCandidates(current =>
                 Object.fromEntries(Object.entries(current ?? {}).filter(([key]) => key !== name)))}>移除此候选</button>
-            </li>)}</ul>
-            <button type="button" onClick={() => { onApplyCandidates(Object.fromEntries(suggestions)); setCandidates(undefined); }}>应用 {suggestions.length} 份候选资料</button>
+            </li>)}</ul>}
+            {caseParameters && <p>案例参数可修改，已填写的参数会保留。</p>}
+            <button type="button" onClick={() => { onApplyCandidates(Object.fromEntries(suggestions), caseParameters); setCandidates(undefined); }}>
+              {suggestions.length ? `应用 ${suggestions.length} 份候选资料${caseParameters ? '和案例参数' : ''}` : '填入案例参数'}
+            </button>
           </div> : <p role="status">当前未找到可应用的唯一角色候选。</p>)}
         </div>}
+        {business.missing.length > 0 && <p role="status">请补充{business.missing.map(name => argumentLabel(name, model.modelId)).join('、')}。
+          {business.hints.join(' ')}</p>}
         <div className="workflow-selection-fields">
           {[...new Set(orderedInputs.map(([, input]) => inputs.length > 8 ? group(input.formats) : '输入资料'))].map(label => <fieldset key={label}>
             <legend>{label}</legend>
@@ -132,7 +155,7 @@ export function WorkflowPreparation({ selection, model, attachments, prepared, p
           {parameters.length > 0 && <fieldset><legend>关键参数</legend>
             {parameters.map(name => {
               const schema = model.inputSchema?.properties?.[name];
-              const value = selection.parameters[name] ?? prepared?.parameters[name] ?? defaults[name];
+              const value = business.missing.includes(name) ? undefined : selection.parameters[name] ?? prepared?.parameters[name] ?? defaults[name];
               const label = argumentLabel(name, model.modelId);
               const origin = Object.hasOwn(selection.parameters, name) ? '用户草稿' : prepared?.parameterSources?.[name] ? '本轮准备' : Object.hasOwn(defaults, name) ? '模型默认值' : null;
               const set = (next: string | number | boolean | null | undefined) => {
@@ -146,7 +169,7 @@ export function WorkflowPreparation({ selection, model, attachments, prepared, p
               return <label className="workflow-parameter" data-needs-input={missing.includes(name) || needsAttention(name)} key={name}>{label}{(missing.includes(name) || needsAttention(name)) && <small>{issueText(name) ?? '需要填写参数'}</small>}{origin && <small>{origin}</small>}
                 {problems(name).map((check, index) => <small key={index}>{preparationCheckFacts(check) ?? '请核对取值'}</small>)}
                 {options ? <select value={String(value ?? '')} onChange={event => set(options.find(option => String(option) === event.target.value))}>
-                  <option value="">待设置</option>{options.map(option => <option key={String(option)} value={String(option)}>{typeof option === 'boolean' ? option ? '启用' : '关闭' : option}</option>)}
+                  <option value="">待设置</option>{options.map(option => <option key={String(option)} value={String(option)}>{typeof option === 'boolean' ? option ? '启用' : '关闭' : parameterPresentation(name, model.modelId).values?.[String(option)] ?? option}</option>)}
                 </select> : typeof schema?.type === 'string' && ['number', 'integer', 'string'].includes(schema.type) ?
                   <input type={schema.type === 'string' ? 'text' : 'number'} step={schema.type === 'integer' ? 1 : 'any'}
                     value={typeof value === 'number' || typeof value === 'string' ? value : ''}

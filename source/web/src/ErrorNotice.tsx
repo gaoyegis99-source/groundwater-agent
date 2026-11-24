@@ -4,11 +4,11 @@ import type { AgentDiagnostics, AgentMetrics, WorkflowValidationDiagnostics } fr
 import { ErrorState } from './ui/Feedback';
 
 type Props = {
-  title?: string; diagnostics?: WorkflowValidationDiagnostics | null;
+  title?: string; recovery?: string; diagnostics?: WorkflowValidationDiagnostics | null;
   agentDiagnostics?: AgentDiagnostics | null; agentMetrics?: AgentMetrics | null;
 } & ({ error: ApiError | string; code?: never } | { code: string; error?: never });
 
-export function ErrorNotice({ error, code, title, diagnostics, agentDiagnostics, agentMetrics }: Props) {
+export function ErrorNotice({ error, code, title, recovery, diagnostics, agentDiagnostics, agentMetrics }: Props) {
   const message = diagnostics ? errorCodeMessage(diagnostics.code) : code !== undefined ? errorCodeMessage(code) : typeof error === 'string' ? error : errorMessage(error);
   const details = [
     code ?? (error instanceof ApiError ? `${error.code}\nHTTP ${error.status === 0 ? '未收到响应' : error.status}` : null),
@@ -22,6 +22,7 @@ export function ErrorNotice({ error, code, title, diagnostics, agentDiagnostics,
   ].filter((value): value is string => value !== null);
   const node = diagnostics && /^\/graph\/nodes\/(\d+)(?:\/|$)/.exec(diagnostics.path);
   return <ErrorState className="error-notice" title={title} description={message}>
+    {recovery && <p>{recovery}</p>}
     {diagnostics && <p>{node ? `请核对第 ${Number(node[1]) + 1} 步，` : ''}调整编排要求后，可重新提交草稿。</p>}
     {!!details.length && <details className="technical-details"><summary>技术详情</summary><pre>{details.join('\n')}</pre>
       {diagnostics && <p><code>{diagnostics.path || '（草稿根对象）'}</code> · {diagnostics.code}</p>}

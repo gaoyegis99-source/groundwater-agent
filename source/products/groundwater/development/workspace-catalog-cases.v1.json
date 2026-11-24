@@ -1,0 +1,206 @@
+{
+  "schemaVersion": "groundwater-workspace-catalog-cases.v1",
+  "cases": {
+    "groundwater.kriging": {
+      "nature": "REAL_DERIVED_TEST_SAMPLE",
+      "inputs": {
+        "versionId": {
+          "versionId": "4b27d364fddb43bc9c466e157c9e3adc",
+          "sha256": "sha256:6fe084dedc63ccbdc474afcc542e26eae219f7e1c3b643fb07ffd96d13bdb649"
+        }
+      },
+      "previousResultVersionId": "16c8c8b4cd7f48e69a7de60fc7e7c814"
+    },
+    "groundwater.rule-classification": {
+      "nature": "SYNTHETIC_TEST_ONLY",
+      "inputs": {
+        "dataVersionId": {
+          "versionId": "970600cba1d743c59cc02c846ed80617",
+          "sha256": "sha256:c8ee674992e754a5ca461c1b79239f642e382a090c5c747285da4c65eba59bdc"
+        },
+        "rulesVersionId": {
+          "versionId": "dd674520fe4643b8bea8251c00731830",
+          "sha256": "sha256:f75633ff139f09fb0982a42ac448046e9c36f9eeea21227a150dc8b3bce11d5f"
+        },
+        "bindingsVersionId": {
+          "versionId": "60561d2e46af4d58b42ff8427c0d7ef6",
+          "sha256": "sha256:03e9108c72fa175cbcb9748ea31e717956eb6199d4b6d34276f7de7b589369e6"
+        }
+      },
+      "previousResultVersionId": "4289d10ac5c944e1a1edfaae41ff9b95"
+    },
+    "groundwater.drastic": {
+      "nature": "SYNTHETIC_TEST_ONLY",
+      "inputs": {
+        "depthVersionId": {
+          "versionId": "ba8d1b386b304e41bb0d84b38a3736f7",
+          "sha256": "sha256:7d18cf2666922a5d71f74c980d2c7adca72dd00149f37fc4c42dbcb4bd3eaaa4"
+        },
+        "rechargeVersionId": {
+          "versionId": "ba8d1b386b304e41bb0d84b38a3736f7",
+          "sha256": "sha256:7d18cf2666922a5d71f74c980d2c7adca72dd00149f37fc4c42dbcb4bd3eaaa4"
+        },
+        "aquiferMediaVersionId": {
+          "versionId": "ba8d1b386b304e41bb0d84b38a3736f7",
+          "sha256": "sha256:7d18cf2666922a5d71f74c980d2c7adca72dd00149f37fc4c42dbcb4bd3eaaa4"
+        },
+        "soilMediaVersionId": {
+          "versionId": "ba8d1b386b304e41bb0d84b38a3736f7",
+          "sha256": "sha256:7d18cf2666922a5d71f74c980d2c7adca72dd00149f37fc4c42dbcb4bd3eaaa4"
+        },
+        "topographyVersionId": {
+          "versionId": "ba8d1b386b304e41bb0d84b38a3736f7",
+          "sha256": "sha256:7d18cf2666922a5d71f74c980d2c7adca72dd00149f37fc4c42dbcb4bd3eaaa4"
+        },
+        "vadoseImpactVersionId": {
+          "versionId": "ba8d1b386b304e41bb0d84b38a3736f7",
+          "sha256": "sha256:7d18cf2666922a5d71f74c980d2c7adca72dd00149f37fc4c42dbcb4bd3eaaa4"
+        },
+        "hydraulicConductivityVersionId": {
+          "versionId": "ba8d1b386b304e41bb0d84b38a3736f7",
+          "sha256": "sha256:7d18cf2666922a5d71f74c980d2c7adca72dd00149f37fc4c42dbcb4bd3eaaa4"
+        },
+        "configVersionId": {
+          "versionId": "8e6f3e94987740529e5b5683ed4988a2",
+          "sha256": "sha256:5e4a966b4e8c2501d6bbe94db9ee439b60fd8af95779132f4d7986a4656a065e"
+        }
+      },
+      "note": "七个因子沿用同一份合成测试栅格，只验证评分、权重和发布流程。",
+      "previousResultVersionId": "b3048a442fd444d8a0738900b80d4f8e"
+    },
+    "groundwater.summary": {
+      "nature": "SYNTHETIC_TEST_ONLY",
+      "inputs": {
+        "versionId": {
+          "versionId": "390dbd89b67244f4aa88688b4b08aef3",
+          "sha256": "sha256:3b39ec860af3f9d77c2784ba612d9f9f09ed18f6cbba971e6f2d67a75bb75bce"
+        }
+      },
+      "previousResultVersionId": "5407dbd823734975b7e29a63cddf9a87"
+    },
+    "groundwater.monitoring-coverage": {
+      "nature": "SYNTHETIC_TEST_ONLY",
+      "inputs": {
+        "versionId": {
+          "versionId": "98162727c42f4c7bb3aac4906b755b3a",
+          "sha256": "sha256:a2e1f9308a95f722a4d8a6cdd268a750d7a6f7d0c90a9f212cd9791666fb59bb"
+        }
+      }
+    },
+    "groundwater.render-map": {
+      "nature": "SYNTHETIC_TEST_ONLY",
+      "inputs": {
+        "sourceVersionId": {
+          "versionId": "98162727c42f4c7bb3aac4906b755b3a",
+          "sha256": "sha256:a2e1f9308a95f722a4d8a6cdd268a750d7a6f7d0c90a9f212cd9791666fb59bb"
+        }
+      }
+    },
+    "groundwater.source-sustainability": {
+      "nature": "SYNTHETIC_TEST_ONLY",
+      "inputs": {
+        "assessmentVersionId": {
+          "versionId": "e99e6ff323a1437e8f3da22f1ea446f0",
+          "sha256": "sha256:9644f4d22dbd6e1cfd75325b771a0363d8abbb2c50c1fb03334b394599adb6ad"
+        }
+      },
+      "note": "腰站堡模拟场地的已准备评价输入，保留原始模拟声明。"
+    },
+    "groundwater.porous-simulation": {
+      "nature": "SYNTHETIC_TEST_ONLY",
+      "inputs": {
+        "projectPackageVersionId": {
+          "versionId": "d4dae499f14c4566917f8858f15e4bae",
+          "sha256": "sha256:6526a1e260b781cc17663396f3e4d8a48f2b6b5128cfc786e749d1e2ae70dff1"
+        }
+      },
+      "previousResultVersionId": "e766fcef335942859e0bb2b3e1662e22"
+    },
+    "groundwater.porous-calibration": {
+      "nature": "SYNTHETIC_TEST_ONLY",
+      "inputs": {
+        "projectPackageVersionId": {
+          "versionId": "d4dae499f14c4566917f8858f15e4bae",
+          "sha256": "sha256:6526a1e260b781cc17663396f3e4d8a48f2b6b5128cfc786e749d1e2ae70dff1"
+        },
+        "calibrationObservationsVersionId": {
+          "versionId": "1d7c74709bf64aafbd6e123cebd3dfe0",
+          "sha256": "sha256:613169d991c02bf9fb8f9663f0c367bd102b01a132e1f2750405034de3577f91"
+        }
+      },
+      "previousResultVersionId": "872a8b43543842f7b0bfe77bca4e9145"
+    },
+    "groundwater.porous-scenario-comparison": {
+      "nature": "SYNTHETIC_TEST_ONLY",
+      "inputs": {
+        "scenarioPackageVersionId": {
+          "versionId": "ed211e4c05894e1ba8a6c1f7228d7fc0",
+          "sha256": "sha256:742a811b325439f8001219fc5d93f4cf547a663d0fcf9f5d5431c0a3e3e4b575"
+        }
+      },
+      "previousResultVersionId": "4f51f12231714b7b886d1084eb7ffcf4"
+    },
+    "groundwater.porous-map": {
+      "nature": "SYNTHETIC_TEST_ONLY",
+      "inputs": {
+        "geoTiffVersionId": {
+          "versionId": "2d2e8c02564a4334849ada91ba6fb316",
+          "sha256": "sha256:690a02fcac72282ef235d3cd4af1996137273f1e34850e5b0cff6986010b2d07"
+        }
+      }
+    },
+    "groundwater.porous-inversion-training": {
+      "nature": "SYNTHETIC_TEST_ONLY",
+      "inputs": {
+        "inversionTrainingVersionId": {
+          "versionId": "b08e094943154af9ad886002b6ae7c7e",
+          "sha256": "sha256:b0cd3c433cb3fcbdbe14476fc3d42404728e8886daba417b2c4c30f7d46456c4"
+        }
+      },
+      "previousResultVersionId": "cd0ca2215f8a482dad32ce3c05903178"
+    },
+    "groundwater.porous-inversion-sampling": {
+      "nature": "SYNTHETIC_TEST_ONLY",
+      "inputs": {
+        "inversionWeightsVersionId": {
+          "versionId": "cd0ca2215f8a482dad32ce3c05903178",
+          "sha256": "sha256:c2609da502d6aa2dafe10652e7702fa7775063a3ea6945231f5df149072a8eb7"
+        },
+        "inversionSamplingVersionId": {
+          "versionId": "fc308c008afc46ca8b8941e0968bb04f",
+          "sha256": "sha256:e65f05148c21d6bc7233cade9f2a60c4bd3890f65b615d3d9202fb57c92dab07"
+        }
+      },
+      "previousResultVersionId": "eb44f4385fea4c75be4afbe540a7533d"
+    },
+    "groundwater.porous-agricultural-inversion": {
+      "nature": "SYNTHETIC_TEST_ONLY",
+      "inputs": {
+        "agriculturalDataVersionId": {
+          "versionId": "19a405953fda460695f0c2aaba2413ff",
+          "sha256": "sha256:a7ffaa1f71785b4815049e0f73b732134eae23b3d09c1fd8e2bfd258f15f7a31"
+        }
+      },
+      "previousResultVersionId": "3ffbda58067b43d6a2f63f25d8ccc0fb"
+    },
+    "groundwater.sustainability-input-preparation": {
+      "nature": "SYNTHETIC_TEST_ONLY",
+      "inputs": {
+        "simulationEvidenceVersionId": {
+          "versionId": "2fecfda661064a8a909f922e5be5c2b1",
+          "sha256": "sha256:27621a304ebf92121a51229d3226d14155a34b2a3891b00cb37e99090e3df92b"
+        },
+        "monitoringEvidenceVersionId": {
+          "versionId": "7072f010fbdb47f2b486682a89f84ee5",
+          "sha256": "sha256:894e8d9f4ab1bc1227890c3c56122e55180aef0e4a401b79707b138d2b902874"
+        },
+        "managementEvidenceVersionId": {
+          "versionId": "44f52d3cabf64ff38ebebb172a2bbe2b",
+          "sha256": "sha256:bad208eea113e574d66cc05f57779d7d352724c0bf5118b8b88218c52a007b45"
+        }
+      },
+      "note": "腰站堡模拟场地的同一核算时段，使用已配套的水量、监测和管理证据。",
+      "previousResultVersionId": "e99e6ff323a1437e8f3da22f1ea446f0"
+    }
+  }
+}

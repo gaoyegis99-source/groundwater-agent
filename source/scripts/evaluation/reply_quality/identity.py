@@ -17,7 +17,9 @@ from .definitions import (
     PROJECT,
     REQUIRED_ENVIRONMENT,
     ROOT,
+    SINGLE_COLUMN_DESCRIBE_OPERATOR,
     SUPPORTED_PROVIDERS,
+    TABLE_DESCRIBE_OPERATOR,
     _canonical_json,
     _sha256,
 )
@@ -96,15 +98,24 @@ def load_release_identity(config_path: Path) -> dict:
         for item in config["models"]
     }
     authoring = config["workflowAuthoring"]
+    composition_operators = {
+        item["id"] for item in authoring.get("composition", {}).get("operators", [])
+    }
+    describe = (
+        TABLE_DESCRIBE_OPERATOR
+        if TABLE_DESCRIBE_OPERATOR in composition_operators
+        else SINGLE_COLUMN_DESCRIBE_OPERATOR
+    )
+    required_ids = {"table.sort", describe}
     required_operators = {
         item["id"]: {
             "version": item["version"],
             "implementationRevision": item["implementationRevision"],
         }
         for item in authoring["operators"]
-        if item["id"] in {"table.sort", "statistics.describe"}
+        if item["id"] in required_ids
     }
-    if set(required_operators) != {"table.sort", "statistics.describe"}:
+    if set(required_operators) != required_ids:
         raise ValueError("REPLY_QUALITY_AUTHORING_IDENTITY_MISMATCH")
     return {
         "domain_package": dict(EXPECTED_DOMAIN_PACKAGE),

@@ -19,6 +19,11 @@
     ],
     "raster.align_grid@1.0.0": [
       "src/moperators/operators/raster_reference_grid.py"
+    ],
+    "statistics.describe_columns@1.0.0": [
+      "src/moperators/additional_implementations.py",
+      "src/moperators/operators/statistics_describe_columns.py",
+      "src/moperators/runtime/entrypoint.py"
     ]
   }
 }

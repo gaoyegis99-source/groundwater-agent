@@ -57,22 +57,28 @@ def test_catalog_lock_smokes_and_static_mapping_are_complete() -> None:
     assert ("cartography.render-png", "1.0.0") in identities
     assert not any(identity.startswith("mapfactory.") for identity, _ in identities)
     assert {("raster.reproject", "1.1.0"), ("raster.align_grid", "1.0.0")} <= identities
-    assert len(identities) == 113
-    assert sum(item.runtime == "native" for item in catalog.operators) == 86
+    assert ("statistics.describe_columns", "1.0.0") in identities
+    assert len(identities) == 114
+    assert sum(item.runtime == "native" for item in catalog.operators) == 87
     assert sum(item.runtime == "qgis" for item in catalog.operators) == 15
     assert sum(item.runtime == "remote_http" for item in catalog.operators) == 12
     assert set(catalog.smoke_cases) == identities
-    mapping_source = PACK_ROOT / "src" / "moperators" / "static_implementations.py"
-    tree = ast.parse(mapping_source.read_text(encoding="utf-8"))
-    mapping = next(
-        node.value
-        for node in tree.body
-        if isinstance(node, ast.AnnAssign)
-        and isinstance(node.target, ast.Name)
-        and node.target.id == "IMPLEMENTATIONS"
-    )
-    assert isinstance(mapping, ast.Dict)
-    assert {ast.literal_eval(key) for key in mapping.keys} == identities
+    mappings = set()
+    for filename in ("static_implementations.py", "additional_implementations.py"):
+        mapping_source = PACK_ROOT / "src" / "moperators" / filename
+        tree = ast.parse(mapping_source.read_text(encoding="utf-8"))
+        mapping = next(
+            node.value
+            for node in tree.body
+            if isinstance(node, ast.AnnAssign)
+            and isinstance(node.target, ast.Name)
+            and node.target.id == "IMPLEMENTATIONS"
+        )
+        assert isinstance(mapping, ast.Dict)
+        registered = {ast.literal_eval(key) for key in mapping.keys}
+        assert mappings.isdisjoint(registered)
+        mappings.update(registered)
+    assert mappings == identities
 
 
 def test_pack_contains_no_service_control_plane() -> None:

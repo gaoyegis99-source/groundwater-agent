@@ -182,7 +182,7 @@ def execute_operator_task(
     *,
     task_command: Sequence[str] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Execute one operator through the production ``runtime.task`` module."""
+    """Execute one operator through the production Worker entry point."""
 
     directory.mkdir(parents=True, exist_ok=True)
     output_directory = directory / "outputs"
@@ -203,7 +203,7 @@ def execute_operator_task(
         [
             *command,
             "-m",
-            "moperators.runtime.task",
+            "moperators.runtime.entrypoint",
             str(request_path),
             str(result_path),
         ],

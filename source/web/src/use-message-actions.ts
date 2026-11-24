@@ -139,6 +139,7 @@ export function useMessageActions({
   const runtimeBusy = isBusy(history);
   const pendingControl = history?.controlProposals?.some(item => ['PENDING', 'CONFIRMED'].includes(item.status)) ?? false;
   const busy = pending || runtimeBusy || pendingControl || loading || !!currentUncertain;
+  const checkingFollowup = history?.controlMessages?.some(item => item.status === 'ROUTING_REQUESTED' || item.status === 'ROUTING_RUNNING') ?? false;
   const lastTurn = history?.turns.find(turn => turn.goalRevision === history.goalRevision);
   const stopControls = history?.sessionId === activeId ? history.controlRequests : undefined;
   const stopping = (pendingStop?.sessionId === activeId && pendingStop.scope === storageScope
@@ -190,21 +191,28 @@ export function useMessageActions({
     if (storageScope) sessionStorage.setItem(scopedStorageKey(storageScope, 'draft-attachments', activeId), JSON.stringify(attachments));
   }, [activeId, attachments, storageScope]);
   useEffect(() => {
-    if (submission && history?.turns.some(turn => turn.requestId === submission.body.requestId)) acceptSubmission(activeId, submission);
+    if (!submission || history?.sessionId !== activeId) return;
+    const requestId = submission.body.requestId;
+    const control = history?.controlMessages?.find(item => item.requestId === requestId);
+    if (control || history?.turns.some(turn => turn.requestId === requestId)) {
+      acceptSubmission(activeId, submission, true, control?.status !== 'CONTROL_COMPLETE' && control?.status !== 'CONTROL_PENDING');
+    }
   }, [history, submission, activeId]);
   useEffect(() => {
-    if (submission) return;
+    if (submission || history?.sessionId !== activeId) return;
     const sent = savedSubmissionForKey(storageScope, 'routing-draft', activeId);
     if (sent === null) return;
     const turn = history?.turns.find(item => item.requestId === sent.body.requestId);
-    if (!turn || !['FAILED', 'DECIDED', 'START_REQUESTED'].includes(turn.routingStatus ?? '')) return;
-    if (turn.routingStatus === 'FAILED' && !draftRef.current && sent.draftText !== null) {
+    const control = history?.controlMessages?.find(item => item.requestId === sent.body.requestId);
+    const status = control?.status ?? turn?.routingStatus;
+    if (!status || !['FAILED', 'DECIDED', 'START_REQUESTED', 'CONTROL_COMPLETE', 'CONTROL_PENDING'].includes(status)) return;
+    if (status === 'FAILED' && !draftRef.current && sent.draftText !== null) {
       updateDraft(sent.draftText); setAttachments(sent.attachments);
     }
     sessionStorage.removeItem(scopedStorageKey(storageScope, 'routing-draft', activeId));
   }, [history, submission, activeId, storageScope]);
 
-  function acceptSubmission(id: string, sent: SavedSubmission, updateView = true) {
+  function acceptSubmission(id: string, sent: SavedSubmission, updateView = true, trackRouting = true) {
     const sameSession = activeStorageScope.current === storageScope && activeRef.current === id;
     if (sent.queueItemId) {
       const remaining = readQueue(storageScope, id).filter(item => item.id !== sent.queueItemId);
@@ -216,7 +224,7 @@ export function useMessageActions({
     ) : new Set<string>();
     const remaining = (item: ResourceItem) => retained.has(workflowFileKey(item))
       || !sent.attachments.some(resource => workflowFileKey(resource) === workflowFileKey(item));
-    if (sent.body.requestedMode === 'AUTO' && sent.draftText !== null) sessionStorage.setItem(scopedStorageKey(storageScope, 'routing-draft', id), JSON.stringify(sent));
+    if (trackRouting && sent.body.requestedMode === 'AUTO' && sent.draftText !== null) sessionStorage.setItem(scopedStorageKey(storageScope, 'routing-draft', id), JSON.stringify(sent));
     if (sent.draftText !== null) {
       if (sessionStorage.getItem(scopedStorageKey(storageScope, 'draft', id)) === sent.draftText) sessionStorage.removeItem(scopedStorageKey(storageScope, 'draft', id));
     }
@@ -270,20 +278,21 @@ export function useMessageActions({
   }
   const awaitingConfirmation = lastTurn?.confirmations.some(item => item.status === 'PENDING') ?? false;
   useEffect(() => {
-    if (!activeId || busy || stopping || awaitingConfirmation || submission || error || !connected || !queue.length || queueSending.current) return;
+    if (!activeId || busy || checkingFollowup || stopping || awaitingConfirmation || submission || error || !connected || !queue.length || queueSending.current) return;
     const head = queue[0];
     if (head.resultCheckBlocked || (!head.text.trim() && !head.attachments.length)) return;
     // A persisted ID means the previous POST may have reached Kernel. Recover the
     // receipt first and offer only the existing request for an explicit retry.
     if (head.requestId) {
       const sent: SavedSubmission = { queueItemId: head.id, body: queuedRequest(head, head.requestId), draftText: null, attachments: head.attachments };
-      if (history?.turns.some(turn => turn.requestId === head.requestId)) acceptSubmission(activeId, sent);
+      if (history?.turns.some(turn => turn.requestId === head.requestId) ||
+          history?.controlMessages?.some(item => item.requestId === head.requestId)) acceptSubmission(activeId, sent);
       else { setSubmission(sent); saveSubmission(storageScope, activeId, sent); }
       return;
     }
     queueSending.current = true;
     void send({ queueItemId: head.id, body: queuedRequest(head, newRequestId()), draftText: null, attachments: head.attachments }, undefined, true);
-  }, [activeId, busy, stopping, awaitingConfirmation, submission, error, connected, queue]);
+  }, [activeId, busy, checkingFollowup, stopping, awaitingConfirmation, submission, error, connected, queue]);
   function updateDraft(value: string) { setDraft(value); if (storageScope) sessionStorage.setItem(scopedStorageKey(storageScope, 'draft', activeId), value); }
   function navigate(id: string) { window.location.hash = `/sessions/${id}`; }
   async function createSession(operation: number, initialDraft?: { text: string; attachments: ResourceItem[]; submission?: SavedSubmission; workflow?: WorkflowSelection }) {
@@ -326,17 +335,20 @@ export function useMessageActions({
   }
   async function send(retry?: SavedSubmission, suggestedMessage?: string, firstQueuedAttempt = false) {
     if (suggestedMessage && optionSubmission.current) return;
-    const selected = suggestedMessage ? null : workflow;
+    const caseStatus = workflow?.casePreparation && awaitingConfirmation && isStatusQuery(suggestedMessage ?? draft);
+    const selected = suggestedMessage || caseStatus ? null : workflow;
+    const submittedAttachments = suggestedMessage || caseStatus ? [] : attachments;
     const message = suggestedMessage ?? (draft.trim() || (selected ? '请准备所选工作流。' : attachments.length ? '请处理已附加的数据。' : ''));
-    const controlAllowed = isNaturalControl(message, attachments.length > 0 || !!selected)
-      && (!pendingControl || isStatusQuery(message, attachments.length > 0));
-    if ((!retry && ((busy && !controlAllowed) || submission)) || pending || !project || !isViewingConversation(activeId)) return;
+    const hasDraftAttachments = !caseStatus && attachments.length > 0;
+    const controlAllowed = isNaturalControl(message, hasDraftAttachments || !!selected)
+      && (!pendingControl || isStatusQuery(message, hasDraftAttachments));
+    if ((!retry && (((busy || checkingFollowup) && !controlAllowed) || submission)) || pending || !project || !isViewingConversation(activeId)) return;
     if (!retry && !message) return;
     const sent: SavedSubmission = retry ?? {
       body: { ...messageBody(message),
-        ...(selected && { requestedMode: 'DIALOGUE' as const, workflowSelection: workflowSelectionBody(selected, attachments) }),
-        ...(!suggestedMessage && attachments.length ? { inputReferences: inputReferences(attachments) } : {}) },
-      draftText: suggestedMessage ? null : draft, attachments: suggestedMessage ? [] : attachments,
+        ...(selected && { requestedMode: 'DIALOGUE' as const, workflowSelection: workflowSelectionBody(selected, submittedAttachments) }),
+        ...(submittedAttachments.length ? { inputReferences: inputReferences(submittedAttachments) } : {}) },
+      draftText: suggestedMessage ? null : draft, attachments: submittedAttachments,
     };
     const checksResult = sent.attachments.some(item => item.resultProvenance !== undefined);
     if (checksResult && resultCheck.current) return;
@@ -404,8 +416,10 @@ export function useMessageActions({
         sessionStorage.removeItem(scopedStorageKey(storageScope, 'draft-attachments'));
         saveWorkflowSelection(storageScope, '', null);
       }
-      await callApi('kernel_create_message', `/sessions/${id}/messages`, sent.body, validation?.signal);
-      acceptSubmission(id, sent, current());
+      const receipt = await callApi('kernel_create_message', `/sessions/${id}/messages`, sent.body, validation?.signal);
+      if (savedSubmission(storageScope, id)?.body.requestId === sent.body.requestId) {
+        acceptSubmission(id, sent, current(), receipt.routingStatus !== 'CONTROL_COMPLETE' && receipt.routingStatus !== 'CONTROL_PENDING');
+      }
     } catch (caught) {
       if (validation?.signal.aborted) return;
       if (!(caught instanceof ApiError)) throw caught;
@@ -511,7 +525,9 @@ export function useMessageActions({
     clearExternalError();
   }
 
-  const canSend = !pending && (!busy || (isNaturalControl(draft, attachments.length > 0 || !!workflow) && (!pendingControl || isStatusQuery(draft, attachments.length > 0))))
+  const caseStatus = workflow?.casePreparation && awaitingConfirmation && isStatusQuery(draft);
+  const canSend = !pending && (!(busy || checkingFollowup) || caseStatus
+    || (isNaturalControl(draft, attachments.length > 0 || !!workflow) && (!pendingControl || isStatusQuery(draft, attachments.length > 0))))
     && !submission && !!project && (!!draft.trim() || !!attachments.length || !!workflow);
 
   return {

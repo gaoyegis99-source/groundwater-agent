@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 
 
@@ -42,10 +43,18 @@ def test_usage_ports_do_not_depend_on_intent_router_or_prompt_bodies() -> None:
 
 def test_usage_capture_delegates_output_validation_repair_and_settlement() -> None:
     capture = (SDK / "usage_capture.py").read_text(encoding="utf-8")
-
-    assert "from .usage_output_validation import" in capture
-    assert "from .usage_protocol_repair import rejected_call_repair_input" in capture
-    assert "from .usage_settlement import settle_output" in capture
+    local_imports = {
+        (node.module, symbol.name)
+        for node in ast.parse(capture).body
+        if isinstance(node, ast.ImportFrom) and node.level == 1
+        for symbol in node.names
+    }
+    assert {
+        ("usage_output_validation", "validate_terminal_output"),
+        ("usage_protocol_repair", "rejected_call_repair_input"),
+        ("usage_protocol_repair", "_PreparedApprovalRepairMixin"),
+        ("usage_settlement", "settle_output"),
+    } <= local_imports
     assert "def _rejected_call_repair_input" not in capture
     for name in (
         "usage_output_validation.py",

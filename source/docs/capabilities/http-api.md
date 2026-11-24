@@ -155,6 +155,8 @@ with GroundwaterClient(
 
 `POST .../messages` 是用户消息统一入口。请求可带 `inputReferences`，每项为完整 `DataVersionRefV2`，最多 20 项，按用户选择顺序保存并按 `versionId/objectId` 唯一。正文与引用分别持久化；引用属于幂等载荷的一部分。AUTO 请求由规则和 Intent Router 决定模式；DIALOGUE 与 WORKFLOW_DRAFT 是显式模式。相同 Session/request ID 与完全相同载荷幂等返回原回执，载荷变化冲突。项目默认有 8 个 Agent 并发槽和 100 个等待位；队列满返回 429、稳定代码和 `Retry-After`。公开 API 没有直接创建 Job、节点执行或绕过 Confirmation 的接口。
 
+等待执行确认期间，无附件的普通 AUTO 消息先完成意图路由。此时 POST 回执中的 `goalRevision` 是候选轮次号，当前轮次以 GET 会话或消息历史为准。纯进度查询在 `controlMessages` 返回服务端状态，原方案仍可确认。历史可用同一 `requestId` 恢复正在识别或失败的请求。可进入新轮次的请求在服务端核对当前目标和确认状态后入场。
+
 业务接口使用 Kernel 本地账号的密码会话或个人 API Token。浏览器写操作同时要求 CSRF Token；Gateway 只把 Kernel 已验证的项目身份传给内部 Data/Knowledge 服务。项目角色为 `admin/researcher/viewer`。非项目成员返回 404，项目成员权限不足返回 403，未认证返回 401。
 `/api/v12/health` 仅为无身份的存活检查，不提供业务数据。
 

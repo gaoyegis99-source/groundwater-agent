@@ -681,7 +681,8 @@ def test_resume_budgets_real_items_not_run_state_metadata(kernel_settings, overs
         assert "recovery_metadata" not in json.dumps(model.calls[-1].input)
 
 
-def test_minimax_resume_discards_model_authored_execution_claims(kernel_settings):
+@pytest.mark.parametrize("wire_error", [False, True])
+def test_minimax_resume_discards_model_authored_execution_claims(kernel_settings, wire_error):
     malformed_execution_reply = function_call("submit_reply", {
         "conclusion": {"text": "模型声称完成", "citations": []},
         "details": [{
@@ -694,17 +695,27 @@ def test_minimax_resume_discards_model_authored_execution_claims(kernel_settings
         "interaction_options": [],
         "workflow_draft": None,
     }, call_id="execution-reply")
-    model = ScriptedModel([
+    steps = [
         ModelStep(output=[function_call(
             "run_summary", {"resource_id": "a"}, call_id="run",
-        )]),
-        ModelStep(output=[malformed_execution_reply]),
-    ])
+        )], usage=Usage(input_tokens=5, output_tokens=1, total_tokens=6)),
+    ]
+    if wire_error:
+        steps.append(ModelStep(
+            output=[malformed_execution_reply.model_copy(update={"arguments": "{"})],
+            usage=Usage(input_tokens=2, output_tokens=1, total_tokens=3),
+        ))
+    steps.append(ModelStep(
+        output=[malformed_execution_reply],
+        usage=Usage(input_tokens=3, output_tokens=1, total_tokens=4),
+    ))
+    model = ScriptedModel(steps)
     application = _application(
         kernel_settings,
         model,
         capabilities="summary",
         policy="EXECUTION_PROPOSAL",
+        window=131072,
         settings_changes={
             "agent_provider": "minimax",
             "agent_protocol": "chat_completions",
@@ -741,6 +752,19 @@ def test_minimax_resume_discards_model_authored_execution_claims(kernel_settings
         "interaction_options": [],
         "workflow_draft": None,
     }
+    assert execution.usage.total_tokens == (7 if wire_error else 4)
+    assert len(model.calls) == len(steps)
+    if wire_error:
+        assert model.calls[-1].model_settings.tool_choice == "submit_reply"
+        with connect_database(application.database) as connection:
+            attempts = [tuple(row) for row in connection.execute(
+                "SELECT attempt,outcome,error_class FROM provider_requests "
+                "WHERE agent_run_id='run' AND stage='AGENT_RESUME:1' ORDER BY attempt"
+            )]
+        assert attempts == [
+            (1, "FAILED", "PROTOCOL_OR_SCHEMA_INVALID"),
+            (2, "SUCCEEDED", None),
+        ]
 
 
 def test_resume_rejects_modified_governance_policy(kernel_settings):

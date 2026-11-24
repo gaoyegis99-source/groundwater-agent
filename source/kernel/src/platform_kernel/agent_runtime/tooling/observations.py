@@ -41,6 +41,12 @@ def _observation_description(
                 "Inspect one queryable CSV or Parquet Data version. Pass only "
                 "version_id; never pass object_id or dataset_id."
             )
+        if definition.name == "discover_datasets":
+            return (
+                "Find authorized Data by title, terms or supported filters. "
+                "For a known title pass it in query. Omit unused optional filters. "
+                "If tags are requested, send a JSON array of exact strings."
+            )
         if definition.name == "retrieve_evidence":
             return "Search Knowledge. On STALE, retrieve again."
         if definition.name == "read_evidence":
@@ -130,7 +136,7 @@ def _normalize_observation_arguments(
                 if name in properties
                 and not (
                     tool_name == "discover_datasets"
-                    and name in {"spatial_extent", "time_window"}
+                    and name in {"spatial_extent", "time_window", "tags"}
                     and name not in required
                     and (value is None or (name == "time_window" and value == []))
                 )

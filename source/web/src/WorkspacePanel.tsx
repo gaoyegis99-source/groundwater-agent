@@ -1,4 +1,4 @@
-import { preparationCheckFacts, preparationIssues } from './preparation-display';
+import { preparationCheckFacts, preparationDisplay, preparationEntryLabel, preparationIssues } from './preparation-display';
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ApiError, contentUrl, errorCodeMessage, readDataVersion } from './api';
 import { agentTokenUsageLabel, canConfirm, isComposedConfirmation, needsExecutionInputs, statusLabel, taskLabel } from './chat-state';
@@ -60,12 +60,6 @@ export function resolveWorkspaceState(history: History | null, hasSelectedSessio
   return { taskStatus: '本轮回答已完成', turnStatus: '本轮回答已生成', tone: 'success', recommendedTab: 'tasks' };
 }
 
-function isCurrentPreparation(history: History) {
-  const preparation = history.preparation;
-  return !!preparation && preparation.sessionId === history.sessionId && preparation.goalRevision === history.goalRevision
-    && preparation.freshForCurrentTurn && ['ACTIVE', 'WAITING_CONFIRMATION', 'EXECUTING'].includes(preparation.disposition);
-}
-
 function referenceKey(item: ResourceReference) {
   return JSON.stringify([item.kind, item.service, item.datasetId, item.versionId, item.objectId, item.semanticId, item.checksum, item.format, item.mediaType, item.sizeBytes]);
 }
@@ -94,17 +88,16 @@ const preparationCheckLabels: Record<string, string> = {
 };
 
 export function PreparationDetails({ history, dataAvailable = true, onData, onVersion, onUseCurrentVersion, onParameter }: { history: History; dataAvailable?: boolean; onData: (formats: string[], input?: MethodInput) => void; onVersion: (id: string, reference: ResourceReference) => void; onUseCurrentVersion?: (id: string, datasetId: string) => void; onParameter: (name: string) => void }) {
-  const preparation = history.preparation;
-  if (!preparation || preparation.sessionId !== history.sessionId) return null;
-  const current = isCurrentPreparation(history);
-  const actionable = current && ['ACTIVE', 'WAITING_CONFIRMATION'].includes(preparation.disposition);
+  const display = preparationDisplay(history);
+  if (!display) return null;
+  const { preparation, actionable, label } = display;
   const entries = preparation.entries;
-  return <details open={current} className="workspace-preparation">
-    <summary>输入准备 · {!current ? '需要本轮重新核验' : preparation.status === 'READY' ? '合同可提案' : preparation.status === 'BLOCKED' ? '有分析需要补充' : '状态待核实'}</summary>
-    <p className="muted">准备修订 {preparation.revision} · {current ? '本轮核验' : `第 ${preparation.goalRevision} 轮记录`}</p>
+  return <details open={actionable} className="workspace-preparation">
+    <summary>输入准备 · {label}</summary>
+    <p className="muted">准备修订 {preparation.revision} · {actionable ? '本轮核验' : `第 ${preparation.goalRevision} 轮记录`}</p>
     {entries.map((entry, entryIndex) => <section key={`${entry.targetId}/${entryIndex}`}>
-      <h4>{modelName(entry.targetId)} <Badge tone={!current ? 'neutral' : entry.status === 'READY' ? 'success' : 'warning'}>
-        {!current ? '历史记录' : entry.status === 'READY' ? '可提案' : entry.status === 'BLOCKED' ? '待补充' : '状态待核实'}
+      <h4>{modelName(entry.targetId)} <Badge tone={!actionable ? 'neutral' : entry.status === 'READY' ? 'success' : 'warning'}>
+        {preparationEntryLabel(entry.status, actionable)}
       </Badge></h4>
       {Object.entries(entry.inputs).length > 0 && <dl className="preparation-input-roles">
         {Object.entries(entry.inputs).map(([role, reference]) => <div key={role}>
@@ -121,18 +114,18 @@ export function PreparationDetails({ history, dataAvailable = true, onData, onVe
     const facts = preparationCheckFacts(check);
     return <div className="preparation-check" key={`${check.kind}/${check.input ?? 'global'}/${index}`}>
       <div className="preparation-check-heading">
-        <Badge tone={!current ? 'neutral' : check.status === 'PASS' ? 'success' : check.status === 'FAIL' ? 'error' : 'warning'}>
+        <Badge tone={!actionable ? 'neutral' : check.status === 'PASS' ? 'success' : check.status === 'FAIL' ? 'error' : 'warning'}>
           {check.status === 'PASS' ? '通过' : check.status === 'UNKNOWN' ? '待判断' : check.status === 'FAIL' ? '失败' : '状态待核实'}
         </Badge>
         <strong>{check.input ? `${argumentLabel(check.input, entry.targetId)} · ` : ''}{preparationCheckLabels[check.kind] ?? check.kind}</strong>
       </div>
       {facts && <p className="muted">{facts}</p>}
-      {check.kind === 'UTC_TIME_FIELD' && check.status !== 'PASS' && <>
+      {actionable && check.kind === 'UTC_TIME_FIELD' && check.status !== 'PASS' && <>
         <p className="muted">请核对 UTC 类型的时间戳和资料的 UTC 时区声明。</p>
         {dataAvailable && input && <button type="button" onClick={() => onVersion(input.versionId, input)}>核对时间字段和时区</button>}
       </>}
       {actionable && dataAvailable && check.currentVersion && check.status === 'FAIL' && input && onUseCurrentVersion && <button onClick={() => onUseCurrentVersion(check.currentVersion!, input.datasetId)}>使用当前版本</button>}
-      {needsAdmin && input && <><p className="muted">需要 Data 管理员补充字段、单位、CRS 或时间语义。</p>{dataAvailable && <button onClick={() => onVersion(input.versionId, input)}>查看数据详情</button>}</>}
+      {actionable && needsAdmin && input && <><p className="muted">需要 Data 管理员补充字段、单位、CRS 或时间语义。</p>{dataAvailable && <button onClick={() => onVersion(input.versionId, input)}>查看数据详情</button>}</>}
     </div>;
   })}{preparationIssues(entry).map((issue, index) => {
     const formats = issue.input ? productUi().models[entry.targetId]?.inputs[issue.input]?.formats ?? [] : [];
@@ -142,7 +135,7 @@ export function PreparationDetails({ history, dataAvailable = true, onData, onVe
     return <div className="preparation-blocker" key={`${issue.code}/${issue.path ?? issue.input ?? issue.parameter ?? index}`}><span>
       {businessIssue
         ? `${issue.parameter ? `${argumentLabel(issue.parameter, entry.targetId)} · ` : ''}${errorCodeMessage(issue.code)}`
-        : `阻塞：${issue.code}${issue.path ? ` · ${issue.path}` : ''}`}
+        : `${actionable ? '阻塞' : '检查问题'}：${issue.code}${issue.path ? ` · ${issue.path}` : ''}`}
     </span>
       {actionable && issue.kind === 'MISSING_DATA' && dataAvailable && <button onClick={() => onData(formats, input)}>选择所需数据</button>}
       {actionable && (issue.kind === 'MISSING_PARAMETER' || issue.kind === 'INVALID_PARAMETER') && issue.parameter && <button onClick={() => onParameter(issue.parameter!)}>补充参数</button>}
@@ -182,23 +175,25 @@ export function WorkspacePanel({ history, results, resultsRead = { status: 'load
   const editing = confirmations.find(item => item.confirmationId === editingConfirmationId && !isComposedConfirmation(item)) ?? null;
   const attached = uniqueReferences(history?.items.filter(item => item.role === 'user').flatMap(item => item.inputReferences ?? []) ?? []);
   const frozen = uniqueReferences(confirmations.flatMap(item => item.actions.flatMap(action => Object.values(action.inputReferences ?? {}))));
-  const preparationEntries = history?.preparation?.entries ?? [];
-  const preparationActive = history && isCurrentPreparation(history);
+  const preparation = history && preparationDisplay(history);
+  const preparationEntries = preparation?.preparation.entries ?? [];
+  const preparationActive = preparation?.actionable;
   const prepared = preparationActive ? uniqueReferences(preparationEntries.flatMap(entry => Object.values(entry.inputs))) : [];
   const preparedParameterCount = preparationActive ? new Set(preparationEntries.flatMap(entry => Object.keys(entry.parameters))).size : 0;
   const task = sessionTask(history, activeId || history?.sessionId || '');
   const taskOutputs = task?.progress.results ?? [];
+  const runViews = selectSessionUi({ sessionId: activeId || history?.sessionId || '', history,
+    results: resultsRead, freshness: 'unverified' }).turns.flatMap(turn => turn.workflowRuns);
+  const inactiveOutputKeys = new Set(runViews.flatMap(run => run.inactiveOutputs.map(referenceKey)));
   const outputs = resultsRead.status === 'loaded' ? uniqueReferences([
     ...[...resultsRead.items].reverse().filter(result => ['COMPLETE', 'SUCCEEDED'].includes(result.status)).flatMap(result => result.remoteOutputs.filter(isResourceReference)),
     ...taskOutputs.filter(isResourceReference),
-  ]) : [];
+  ]).filter(reference => !inactiveOutputKeys.has(referenceKey(reference))) : [];
   const selectedOutput = selectedResourceReference?.versionId === selectedResourceId ? selectedResourceReference
     : outputs.find(output => output.versionId === selectedResourceId);
   const publishedOutput = selectedOutput && outputs.some(item => referenceKey(item) === referenceKey(selectedOutput)) ? selectedOutput : null;
   const outputIdentity = JSON.stringify([storageScope, activeId, selectedOutput ?? null]);
   const state = resolveWorkspaceState(history && { ...history, task }, Boolean(activeId));
-  const runViews = selectSessionUi({ sessionId: activeId || history?.sessionId || '', history,
-    results: resultsRead, freshness: 'unverified' }).turns.flatMap(turn => turn.workflowRuns);
   const runById = new Map(runViews.map(run => [run.workflowRunId, run]));
   const executionRecords = (history?.turns.flatMap(item => item.executionTasks
     .filter(run => run.agentRunId === item.agentRunId && run.goalRevision === item.goalRevision)
@@ -479,7 +474,16 @@ export function WorkspacePanel({ history, results, resultsRead = { status: 'load
       {tab === 'parameters' && <div role="tabpanel" tabIndex={0} aria-labelledby="workspace-tab-parameters" id="workspace-parameters">{editing && capabilities ? <ConfirmationEditor confirmation={editing} stale={editing.confirmationId !== pendingConfirmation?.confirmationId} capabilities={capabilities} project={project} busy={busy || confirmationWriteDisabled} focusField={confirmationFocus?.field} suggestedValue={confirmationFocus?.value} onClose={onEditClose} onSave={actions => onRevision(editing, actions)} /> : <section className="workspace-section">
         <SectionTitle>执行确认复核</SectionTitle>
         {confirmationReview}
-        {history?.preparation && preparationEntries.some(entry => Object.keys(entry.parameters).length > 0) && <details><summary>准备参数 · {!isCurrentPreparation(history) ? '需要本轮重新核验' : history.preparation.status === 'READY' ? '已通过合同检查' : '存在阻塞'}</summary>{preparationEntries.map((entry, entryIndex) => <div key={`${entry.targetId}/${entryIndex}`}><strong>{modelName(entry.targetId)}</strong><dl className="argument-list">{Object.entries(entry.parameters).map(([name, value]) => <div key={name}><dt>{argumentLabel(name, entry.targetId)}</dt><dd><ArgumentValue value={value} name={name} modelId={entry.targetId} /> · {entry.parameterSources[name] ?? '来源未记录'}</dd></div>)}</dl></div>)}</details>}{pendingConfirmation && <div className="workspace-confirmation-summary">
+        {preparation && preparationEntries.some(entry => Object.keys(entry.parameters).length > 0) && <details>
+          <summary>准备参数 · {preparation.parameterLabel}</summary>
+          {preparationEntries.map((entry, entryIndex) => <div key={`${entry.targetId}/${entryIndex}`}>
+            <strong>{modelName(entry.targetId)}</strong> <Badge tone="neutral">{preparationEntryLabel(entry.status, preparation.actionable)}</Badge>
+            <dl className="argument-list">{Object.entries(entry.parameters).map(([name, value]) => <div key={name}>
+              <dt>{argumentLabel(name, entry.targetId)}</dt>
+              <dd><ArgumentValue value={value} name={name} modelId={entry.targetId} /> · {entry.parameterSources[name] ?? '来源未记录'}</dd>
+            </div>)}</dl>
+          </div>)}
+        </details>}{pendingConfirmation && <div className="workspace-confirmation-summary">
           {!confirmationReview && <>
             <strong>待确认 · 修订 {pendingConfirmation.revision ?? 1}</strong>
             <p>{isComposedConfirmation(pendingConfirmation) ? '组合工作流' : pendingConfirmation.actions.map(action => modelName(action.modelId)).join('、')}</p>
@@ -585,7 +589,7 @@ export function WorkspacePanel({ history, results, resultsRead = { status: 'load
       {resultRun && overview && hasAnalysisSummary && <details open={analysisOpen} onToggle={event => setClosedAnalysis(event.currentTarget.open ? null : resultRun.workflowRunId)}>
         <summary>查看本次运行的科学指标</summary>
         {analysisOpen && <RunInsights key={resultRun.workflowRunId} overview={overview} project={project} outputs={resultRun.outputs}
-          onResource={onResource} />}
+          runArguments={resultRun.runArguments} onResource={onResource} />}
       </details>}
       {!!resource.semantics.limitations?.length && <div className="result-review-limits"><strong>适用限制</strong><ul>{resource.semantics.limitations.map((limit, index) => <li key={index}>{limit}</li>)}</ul></div>}
       <dl className="result-review-verification">
@@ -614,10 +618,11 @@ export function WorkspacePanel({ history, results, resultsRead = { status: 'load
   </Panel></>;
 }
 
-function RunInsights({ overview, outputs, project, onResource }: {
+function RunInsights({ overview, outputs, project, runArguments, onResource }: {
   overview: NonNullable<ReturnType<typeof productUi>['models'][string]['resultOverview']>;
   outputs: readonly ResourceReference[];
   project: string;
+  runArguments?: Record<string, unknown>;
   onResource: (id: string, reference?: ResourceReference) => void;
 }) {
   const insight = overview.insight;
@@ -635,7 +640,9 @@ function RunInsights({ overview, outputs, project, onResource }: {
       {outputName(ref.outputName ?? '')} · {shortVersion(ref.versionId)}
     </button>)}</div>
     <Suspense fallback={<Loading>正在加载科学指标…</Loading>}>
-      <ResultInsights overview={insight} summary={summary} trend={trend} visuals={[]} project={project} />
+      <ResultInsights overview={insight} summary={summary} trend={trend} visuals={[]} project={project}
+        runArguments={runArguments} snapshot={namedOutput('snapshot')} snapshotDiagnostics={namedOutput('snapshot-diagnostics')}
+        headRaster={namedOutput('head-raster')} />
     </Suspense>
   </div>;
 }

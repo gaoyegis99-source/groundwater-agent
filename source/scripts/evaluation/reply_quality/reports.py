@@ -10,7 +10,9 @@ from .definitions import (
     EXPECTED_MODEL_IDS,
     REPETITIONS,
     REVIEW_DIMENSIONS,
+    SINGLE_COLUMN_DESCRIBE_OPERATOR,
     SUPPORTED_PROVIDERS,
+    TABLE_DESCRIBE_OPERATOR,
     _canonical_json,
     _sha256,
 )
@@ -326,7 +328,10 @@ def _validate_bound_report(report: dict, *, statuses: set[str]) -> None:
         or set(release.get("execution_contracts", {}))
         != {item.get("tool") for item in release_models}
         or set(release.get("draft_operators", {}))
-        != {"table.sort", "statistics.describe"}
+        not in (
+            {"table.sort", SINGLE_COLUMN_DESCRIBE_OPERATOR},
+            {"table.sort", TABLE_DESCRIBE_OPERATOR},
+        )
         or not isinstance(gates, dict)
         or set(gates) != AUTOMATIC_GATES
         or any(

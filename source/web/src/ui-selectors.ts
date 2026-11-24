@@ -1,6 +1,7 @@
 import { canConfirm, isBusy } from './chat-state';
 import type { components } from './generated/public-api-v12';
 import { isResourceReference } from './resource-item';
+import { frozenRunArguments, inactiveResultGroups, isInactiveOutput } from './result-presentation';
 import type { Activity, ExecutionTask, History, ResourceReference, Result, TaskContext, Turn, WorkflowDraft } from './types';
 
 type Schemas = components['schemas'];
@@ -267,16 +268,20 @@ function selectRunUi(
   resultsStatus: ResultsRead['status'],
   verifiedOutputs: ReadonlySet<string>,
   canCheckRecovery: boolean,
+  runArguments: Record<string, unknown> | undefined,
 ) {
   const runActions: Action[] = ['view'];
   if (canCheckRecovery && run.isLatestAttempt === true && run.confirmationId && !run.blockedByWorkflowRunId
     && ['FAILED', 'TIMED_OUT', 'CANCELLED'].includes(run.status)) runActions.push('check-recovery');
 
-  const outputs: readonly ResourceReference[] = run.status === 'SUCCEEDED' && run.outputCount > 0
+  const publishedOutputs: readonly ResourceReference[] = run.status === 'SUCCEEDED' && run.outputCount > 0
     && result?.workflowRunId === run.workflowRunId && result.agentRunId === run.agentRunId
     && result.toolCallId === run.toolCallId && result.goalRevision === run.goalRevision
     && result.status === 'COMPLETE' && result.remoteOutputs.length === run.outputCount
     && result.remoteOutputs.every(isResourceReference) ? result.remoteOutputs : [];
+  const inactiveBranches = run.status === 'SUCCEEDED' ? inactiveResultGroups(run.modelId, runArguments) : [];
+  const inactiveOutputs = publishedOutputs.filter(reference => isInactiveOutput(inactiveBranches, reference.outputName));
+  const outputs = publishedOutputs.filter(reference => !isInactiveOutput(inactiveBranches, reference.outputName));
 
   const outputAccess = outputs.map<{ reference: ResourceReference; actions: readonly Action[] }>(reference => ({
     reference,
@@ -284,7 +289,7 @@ function selectRunUi(
   }));
 
   let publication: UiStatus;
-  if (outputs.length > 0) {
+  if (publishedOutputs.length > 0) {
     publication = display(null, ['已取得发布成果', 'success', '已同步此执行的精确成果引用。'], outputAccess.every(item => item.actions.length > 0) ? outputActions : []);
   } else if (run.status === 'SUCCEEDED' && run.outputCount > 0) {
     publication = lookup(resultsReadStates, resultsStatus, resultsStatus === 'loading' ? [] : ['refresh']);
@@ -304,6 +309,9 @@ function selectRunUi(
       : display(run.communicationError, ['执行状态待核对', 'warning', '与执行服务通信异常，显示最近记录。'], ['refresh']),
     publication,
     scientificValidation: display(null, ['科学验证状态未提供', 'neutral', '当前运行未提供通用科学验证结论。']),
+    runArguments,
+    inactiveOutputs,
+    publishedOutputCount: publishedOutputs.length,
     outputs,
     outputAccess,
   };
@@ -365,7 +373,8 @@ function selectTurnUi(
         replacesConfirmationId: confirmation.replacesConfirmationId ?? null,
       };
     }),
-    workflowRuns: turn.executionTasks.map(run => selectRunUi(run, results.get(run.workflowRunId), resultsStatus, verifiedOutputs, canCheckRecovery)),
+    workflowRuns: turn.executionTasks.map(run => selectRunUi(run, results.get(run.workflowRunId), resultsStatus, verifiedOutputs,
+      canCheckRecovery, frozenRunArguments(turn, run))),
   };
 }
 

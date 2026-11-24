@@ -12,7 +12,11 @@ from jsonschema import ValidationError, validate
 from ..errors import AgentRunError
 from ..settings import ExecutableModelDefinition
 from .persistence import load_replayed_action
-from .provider_arguments import normalize_model_tool_arguments, omit_unset_field_arguments
+from .provider_arguments import (
+    normalize_model_tool_arguments,
+    omit_disabled_model_options,
+    omit_unset_field_arguments,
+)
 
 
 def provider_model_input_schema(
@@ -61,6 +65,7 @@ def build_model_tool(
     *,
     provider: str = "deepseek",
     explicit_model_tool_request: object = None,
+    has_workflow_selection: bool = False,
 ) -> FunctionTool:
     async def invoke(context: ToolContext[dict[str, Any]], arguments_json: str):
         try:
@@ -78,6 +83,11 @@ def build_model_tool(
         action = load_replayed_action(
             database, context.context["agent_run_id"], context.tool_call_id
         )
+        if (
+            action is not None and action.arguments != arguments
+            and not has_workflow_selection and explicit_model_tool_request is None
+        ):
+            arguments = omit_disabled_model_options(arguments, model)
         if action is None or action.arguments != arguments:
             raise AgentRunError("AGENT_ACTION_REPLAY_INVALID")
         if action.status not in {"COMPLETE", "FAILED"}:

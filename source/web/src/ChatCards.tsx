@@ -10,6 +10,7 @@ import { CopyMessage } from './MessageContent';
 import type { Action, Capabilities, Confirmation, ExecutionTask, History, KnowledgeReference, ResourceReference, Result, WorkflowDraftPayload } from './types';
 import { productUi, type WorkflowContinuation } from './product-ui';
 import { record, ResultInsights, usePublishedJson } from './ResultInsights';
+import { inactiveResultGroups, isInactiveOutput } from './result-presentation';
 import { Badge } from './ui/Feedback';
 
 function confirmationProfile(confirmation: Confirmation, history: History | null) {
@@ -317,9 +318,9 @@ function describeRegressionMetrics({ rmse, baselineRmse, count, unit }: NonNulla
   };
 }
 
-export function ResultCard({ idPrefix = 'result', task, result, presentation, project, onResource, onAttach, onContinue, onCompare, continueDisabled = false, continuationVersionId = null, onPrepareContinuation, targetTime, onRecover, verificationErrors, retryVerification, verificationDeferred }: { idPrefix?: string; task: ExecutionTask; result?: Result; presentation?: ResultPresentation; project: string; onResource: (item: ResourceReference) => void; onAttach?: (item: ResourceReference) => void; onContinue?: (item: ResourceReference) => void; onCompare?: (item: ResourceReference) => void; continueDisabled?: boolean; continuationVersionId?: string | null;
+export function ResultCard({ idPrefix = 'result', task, result, presentation, project, onResource, onAttach, onContinue, onCompare, continueDisabled = false, continuationVersionId = null, onPrepareContinuation, runArguments, onRecover, verificationErrors, retryVerification, verificationDeferred }: { idPrefix?: string; task: ExecutionTask; result?: Result; presentation?: ResultPresentation; project: string; onResource: (item: ResourceReference) => void; onAttach?: (item: ResourceReference) => void; onContinue?: (item: ResourceReference) => void; onCompare?: (item: ResourceReference) => void; continueDisabled?: boolean; continuationVersionId?: string | null;
   onPrepareContinuation?: (runId: string, policy: WorkflowContinuation, ref: ResourceReference) => void;
-  targetTime?: string;
+  runArguments?: Record<string, unknown>;
   onRecover?: (workflowRunId: string) => void;
   verificationErrors?: Record<string, number>;
   retryVerification?: (reference: ResourceReference) => void;
@@ -329,8 +330,10 @@ export function ResultCard({ idPrefix = 'result', task, result, presentation, pr
   const matchingResult = task.status === 'SUCCEEDED' && result?.workflowRunId === task.workflowRunId
     && result.agentRunId === task.agentRunId && result.goalRevision === task.goalRevision && result.toolCallId === task.toolCallId
     && ['COMPLETE', 'SUCCEEDED'].includes(result.status) && result.remoteOutputs.length === task.outputCount;
-  const outputs = presentation?.outputAccess ?? (matchingResult
-    ? result.remoteOutputs.map(reference => ({ reference, actions: ['preview', 'download'] })) : []);
+  const inactiveBranches = task.status === 'SUCCEEDED' ? inactiveResultGroups(task.modelId, runArguments) : [];
+  const outputs = (presentation?.outputAccess ?? (matchingResult
+    ? result.remoteOutputs.map(reference => ({ reference, actions: ['preview', 'download'] })) : []))
+    .filter(({ reference }) => !isInactiveOutput(inactiveBranches, reference.outputName));
   const configured = task.status === 'SUCCEEDED' ? productUi().models[task.modelId]?.resultOverview : undefined;
   const overview = configured?.sections[0].outputs.some(name => outputs.some(({ reference }) => reference.outputName === name))
     ? configured : undefined;
@@ -403,6 +406,9 @@ export function ResultCard({ idPrefix = 'result', task, result, presentation, pr
       <div><dt>科学验证</dt><dd>{presentation.scientificValidation?.label ?? '科学验证状态未提供'}</dd></div>
     </dl>}
     {task.status === 'SUCCEEDED' && (task.attempt ?? 1) > 1 && <p className="recovery-success">已通过第 {task.attempt} 次执行恢复</p>}
+    {inactiveBranches.length > 0 && <p className="muted">
+      {inactiveBranches.map(branch => `${branch.label} · 未启用`).join('，')}
+    </p>}
     {overview && primary && sections ? <>
       {!overview.insight && !summary && <p className="result-description">{overview.description}</p>}
       {summary && <div className="result-metrics">
@@ -410,7 +416,8 @@ export function ResultCard({ idPrefix = 'result', task, result, presentation, pr
         <dl>{summary.values.map(({ label, value }) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
       </div>}
       {overview.insight && <ResultInsights key={task.workflowRunId} overview={overview.insight}
-        summary={verified(overview.insight.output)} trend={trend} visuals={visuals} project={project} targetTime={targetTime} />}
+        summary={verified(overview.insight.output)} trend={trend} visuals={visuals} project={project} runArguments={runArguments}
+        snapshot={verified('snapshot')} snapshotDiagnostics={verified('snapshot-diagnostics')} headRaster={verified('head-raster')} />}
       {mainTable && <PrimaryTable key={mainTable.objectId} reference={mainTable} />}
       {primary.outputs.length > 0 && <section className="result-primary" aria-label={primary.label}><h3>{primary.label}</h3>{primary.outputs.map(renderOutput)}</section>}
       {[...sections.slice(1), { label: '其他成果', outputs: extra }].filter(section => section.outputs.length > 0).map(section =>
@@ -419,7 +426,8 @@ export function ResultCard({ idPrefix = 'result', task, result, presentation, pr
           {section.outputs.map(renderOutput)}
         </details>)}
       <CopyMessage label="复制结果摘要" text={() => [
-        `${name}已完成，共发布 ${outputs.length} 份成果。`, overview.description, summary?.comparison,
+        `${name}已完成，共发布 ${outputs.length} 份分析成果。`, overview.description, summary?.comparison,
+        ...inactiveBranches.map(branch => `${branch.label}未启用。`),
         summary?.values.map(({ label, value }) => `${label} ${value}`).join(' · '),
         ...primary.outputs.map(({ reference }) => reference.outputName ? `- ${outputName(reference.outputName)}` : '- 结果文件'),
       ].filter(Boolean).join('\n')} />

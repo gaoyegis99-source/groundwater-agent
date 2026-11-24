@@ -11,6 +11,14 @@ from ..database import connect_database
 from ..errors import ResourceNotFoundError
 
 
+def has_active_control_proposal(connection: sqlite3.Connection, session_id: str) -> bool:
+    return connection.execute(
+        """SELECT 1 FROM control_proposals WHERE session_id=?
+           AND status IN ('PENDING','CONFIRMED') LIMIT 1""",
+        (session_id,),
+    ).fetchone() is not None
+
+
 def proposal_view(row: sqlite3.Row) -> dict[str, object]:
     return {
         key: row[key]
@@ -110,8 +118,10 @@ def list_control_messages_connection(
 ) -> list[dict[str, object]]:
     rows = connection.execute(
         """SELECT * FROM message_requests
-           WHERE session_id=? AND routing_source='RULE'
-             AND routing_status IN ('CONTROL_PENDING','CONTROL_COMPLETE')
+           WHERE session_id=? AND (
+                  routing_status IN ('CONTROL_PENDING','CONTROL_COMPLETE')
+                  OR (routing_source='MODEL' AND routing_status IN ('ROUTING_REQUESTED','ROUTING_RUNNING'))
+           )
            ORDER BY rowid""",
         (session_id,),
     ).fetchall()
@@ -129,7 +139,8 @@ def list_control_messages_connection(
             "status_snapshot": snapshot["state"],
             "waiting_reason": snapshot["waiting_reason"],
             "results": snapshot["results"],
-            "status": row["routing_status"],
+            "status": "FAILED" if row["error_code"] is not None else row["routing_status"],
+            **({"error_code": row["error_code"]} if row["error_code"] is not None else {}),
             "created_at": row["created_at"],
         }
         for row in rows

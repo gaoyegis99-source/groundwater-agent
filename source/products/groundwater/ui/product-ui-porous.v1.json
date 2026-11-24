@@ -108,6 +108,40 @@
   "models": {
     "groundwater.monitoring-trend": {
       "displayName": "监测趋势",
+      "inputCaseTag": "case:groundwater-monitoring-trend",
+      "caseRequest": {
+        "pattern": "^(?:(?:请|麻烦)\\s*)?(?:(?:帮我|为我|我想(?:要)?|我要)\\s*)?(?:要\\s*)?分析(?:一下)?\\s*(?:地下水)?(?:监测趋势|水位(?:变化)?趋势)(?:\\s*[,，]?\\s*(?:并且?|同时)?\\s*(?:检查|分析|识别)\\s*(?:季节(?:趋势|变化)|阈值(?:事件|超限))(?:\\s*(?:和|及|与|、|[,，])\\s*(?:季节(?:趋势|变化)|阈值(?:事件|超限)))?)?\\s*[。.!！]?$",
+        "actionLabel": "查找监测趋势案例",
+        "switches": {
+          "seasonalTrendEnabled": {
+            "pattern": "季节(?:趋势|变化)",
+            "required": [
+              "seasonFrequency"
+            ]
+          },
+          "thresholdEventsEnabled": {
+            "pattern": "阈值(?:事件|超限)",
+            "required": [
+              "eventComparison",
+              "eventThreshold"
+            ],
+            "hint": "事件阈值沿用所选观测值字段的单位。"
+          }
+        }
+      },
+      "inputCaseParameters": {
+        "groupField": "well",
+        "timeField": "time",
+        "valueField": "hydraulic_head_m",
+        "frequency": "month",
+        "aggregation": "mean",
+        "expectedStart": "2025-01-01",
+        "expectedEnd": "2025-12-01",
+        "baselineStart": "2025-01-01",
+        "baselineEnd": "2025-06-01",
+        "comparisonStart": "2025-07-01",
+        "comparisonEnd": "2025-12-01"
+      },
       "description": "按监测对象和时间分析完整性、缺测段、趋势、变化点、异常及阈值事件。",
       "applicability": "适用于带分组、时间和数值字段的长期监测表；季节趋势和阈值事件需显式启用并提供分析参数。",
       "inputs": {
@@ -161,6 +195,10 @@
         }
       ],
       "resultOverview": {
+        "inactiveGroups": [
+          {"parameter": "seasonalTrendEnabled", "label": "季节趋势", "outputs": ["seasonal-trends", "seasonal-trend-summary"]},
+          {"parameter": "thresholdEventsEnabled", "label": "阈值事件", "outputs": ["threshold-classification", "threshold-events", "threshold-event-summary"]}
+        ],
         "description": "逐井趋势及基准期与对比期的变化。",
         "sections": [
           {
@@ -203,6 +241,21 @@
     },
     "groundwater.flow-field": {
       "displayName": "地下水流场",
+      "inputCaseTag": "case:groundwater-flow-field",
+      "inputCaseParameters": {
+        "wellField": "well_id",
+        "timeField": "time",
+        "xField": "x",
+        "yField": "y",
+        "referenceElevationField": "reference_elevation_m",
+        "depthToWaterField": "depth_to_water_m",
+        "targetTime": "2024-05-29T00:00:00Z",
+        "sourceCrs": "EPSG:5070",
+        "targetCrs": "EPSG:5070",
+        "pixelSize": 10000,
+        "hydraulicConductivityMetersPerDay": 10,
+        "effectivePorosity": 0.25
+      },
       "description": "根据参考高程减地下水埋深计算水头，插值后推导水力梯度、达西通量与孔隙流速；这些结果不是流速观测。",
       "applicability": "适用于含井位、同一垂向基准的参考高程与埋深、观测时间的监测表；目标坐标系必须为米制投影，并需提供渗透系数和有效孔隙度。",
       "inputs": {
@@ -266,6 +319,30 @@
     },
     "groundwater.kriging": {
       "displayName": "克里金插值",
+      "inputCaseTag": "case:groundwater-kriging",
+      "inputCaseParameters": {
+        "exact": true,
+        "extentMaxX": 600000.0,
+        "extentMaxY": 1600000.0,
+        "extentMinX": 350000.0,
+        "extentMinY": 790000.0,
+        "idwPower": 2.0,
+        "krigingType": "ordinary",
+        "minimumNeighbors": 4,
+        "neighborCount": 12,
+        "pixelSize": 10000.0,
+        "sourceCrs": "EPSG:5070",
+        "targetCrs": "EPSG:5070",
+        "valueField": "head_m",
+        "valueUnit": "m NAVD88",
+        "variogramBinCount": 12,
+        "variogramModel": "spherical",
+        "variogramNugget": 0.0,
+        "variogramRange": 250000.0,
+        "variogramSill": 400.0,
+        "xField": "x",
+        "yField": "y"
+      },
       "description": "使用 Ordinary Kriging 或带平面漂移的 Universal Kriging 生成预测栅格和克里金方差，并提供变异函数与留一法诊断。",
       "applicability": "适用于带数值字段和 X/Y 坐标字段的点表；目标坐标系必须为米制投影。变异函数、邻域和点位覆盖会影响结果，外推区域需单独复核，克里金不保证优于 IDW。",
       "inputs": {
@@ -377,6 +454,7 @@
     },
     "groundwater.rule-classification": {
       "displayName": "规则分类",
+      "inputCaseTag": "case:groundwater-rule-classification",
       "description": "使用独立的规则与字段语义绑定，对完整表格逐指标分类，并在全部指标可评价时按最不利类别顺序生成综合类别。",
       "applicability": "适用于已有明确来源、版本、核验状态、单位、口径、类别顺序及开闭或多区间边界的分类规则。未核验规则、缺测、非数值、超范围和规则空隙保持未评价；不自动换算单位或近似双侧规则。",
       "inputs": {
@@ -428,6 +506,7 @@
     },
     "groundwater.drastic": {
       "displayName": "DRASTIC 相对脆弱性评价",
+      "inputCaseTag": "case:groundwater-drastic",
       "description": "对严格对齐的 D、R、A、S、T、I、C 七个因子栅格应用独立配置且有来源的评分规则和权重，输出相对脆弱性指数、等级与审计摘要。",
       "applicability": "适用于已核实单位、口径、band 和 groundwater-drastic-config.v1 的完全同网格七层。任一 NoData 或规则未覆盖都会传播为 NoData；结果是相对脆弱性指数，不是污染概率，也不替代专业验证。",
       "inputs": {
@@ -701,6 +780,12 @@
     },
     "groundwater.summary": {
       "displayName": "数据概览",
+      "inputCaseTag": "case:groundwater-summary",
+      "inputCaseParameters": {
+        "axis": "columns",
+        "column": "hydraulic_head_m",
+        "unit": "m"
+      },
       "description": "对完整输入文件或数组执行描述统计，分别报告有效值、声明空值和非有限值；可按已核实字段做有界分组。",
       "applicability": "表格输入必须选择数值字段，NPY 可按列或展平统计。完整输入不等于目标区域或业务总体，结果不代表总体分布、趋势或因果关系。",
       "inputs": {
@@ -758,6 +843,7 @@
     },
     "groundwater.monitoring-coverage": {
       "displayName": "监测井覆盖",
+      "inputCaseTag": "case:groundwater-monitoring-coverage",
       "description": "计算监测井点的几何凸包，报告重复点、唯一点及按坐标系计算的面积和周长；结果不是含水层边界或地下水影响范围。",
       "applicability": "至少需要三个唯一且不共线的 GeoJSON 点；重复坐标会计数但不改变凸包。地理坐标系采用椭球测地面积和周长，投影坐标系采用平面量测并换算为米。",
       "inputs": {
@@ -787,6 +873,14 @@
     },
     "groundwater.render-map": {
       "displayName": "静态地图",
+      "inputCaseTag": "case:groundwater-render-map",
+      "inputCaseParameters": {
+        "title": "监测井水位（模拟案例）",
+        "valueField": "level",
+        "palette": "viridis",
+        "width": 1024,
+        "height": 768
+      },
       "description": "把一个单文件 GeoJSON、GeoTIFF 或 COG 按源 CRS 和数据范围渲染为 PNG，并报告色标、单位与无数据表达摘要。",
       "applicability": "只绘制一个已存在的空间文件且不重投影；不支持多图层、在线底图、交互地图、地图发布或 PDF。GeoJSON 可选数值字段着色，栅格固定绘制第一波段。",
       "inputs": {
@@ -869,6 +963,7 @@
     },
     "groundwater.source-sustainability": {
       "displayName": "水源地综合评价",
+      "inputCaseTag": "case:groundwater-source-sustainability",
       "description": "把已核实的评价 JSON 委托给部署绑定的外部服务；平台按版本白名单调用并做输入、结构化结果与下载文件的完整性校验，但平台不复现外部评分算法。",
       "applicability": "适用于已按外部服务契约整理的非正式综合评价；依赖服务配置、凭据和可用性，完整性凭据不证明科学有效性，结果不能替代专业复核或行政审批。",
       "inputs": {
@@ -903,6 +998,7 @@
     },
     "groundwater.porous-simulation": {
       "displayName": "孔隙型地下水流与溶质运移",
+      "inputCaseTag": "case:groundwater-porous-simulation",
       "description": "编译孔隙型地下水模型，计算地下水流与溶质运移，汇总结果并生成图件。",
       "applicability": "用于核对合成算例与候选 Linux 服务。现场科学等价待验证。",
       "inputs": {
@@ -946,6 +1042,7 @@
     },
     "groundwater.porous-calibration": {
       "displayName": "孔隙型 PEST 水头率定",
+      "inputCaseTag": "case:groundwater-porous-calibration",
       "description": "用原生 PEST 拟合给定水头观测和全局参数倍率，随后用率定模型重新执行仿真。",
       "applicability": "用于本机科研。现场科学等价待验证。",
       "inputs": {
@@ -997,6 +1094,7 @@
     },
     "groundwater.porous-scenario-comparison": {
       "displayName": "孔隙型情景对比",
+      "inputCaseTag": "case:groundwater-porous-scenario-comparison",
       "description": "以固定模型为基准，计算声明的各个参数情景并汇总差异。",
       "applicability": "用于本机科研。现场科学等价待验证。",
       "inputs": {
@@ -1032,6 +1130,7 @@
     },
     "groundwater.porous-map": {
       "displayName": "孔隙型栅格地图准备",
+      "inputCaseTag": "case:groundwater-porous-map",
       "description": "校验并整理本地 GeoTIFF，发布栅格与坐标参考系信息。",
       "applicability": "用于本机科研。现场科学等价待验证。",
       "inputs": {
@@ -1067,6 +1166,7 @@
     },
     "groundwater.porous-inversion-training": {
       "displayName": "孔隙型反演训练",
+      "inputCaseTag": "case:groundwater-porous-inversion-training",
       "description": "用同批水头、地表形变与参数场训练条件扩散反演模型。",
       "applicability": "用于本机科研。现场科学等价待验证。",
       "inputs": {
@@ -1108,6 +1208,7 @@
     },
     "groundwater.porous-inversion-sampling": {
       "displayName": "孔隙型反演采样",
+      "inputCaseTag": "case:groundwater-porous-inversion-sampling",
       "description": "用已训练权重和明确观测条件采样参数场后验。",
       "applicability": "用于本机科研。现场科学等价待验证。",
       "inputs": {
@@ -1150,6 +1251,7 @@
     },
     "groundwater.porous-agricultural-inversion": {
       "displayName": "孔隙型农业抽水反演",
+      "inputCaseTag": "case:groundwater-porous-agricultural-inversion",
       "description": "以明确的农业抽水记录和监测水头计算响应矩阵，分期率定并独立验证。",
       "applicability": "用于本机科研。现场科学等价待验证。",
       "inputs": {
@@ -1185,6 +1287,7 @@
     },
     "groundwater.sustainability-input-preparation": {
       "displayName": "水源地评价输入准备",
+      "inputCaseTag": "case:groundwater-sustainability-input-preparation",
       "description": "汇总模拟、监测及管理资料，核对同一区域、时段和指标口径，生成候选评价输入与字段来源报告。",
       "applicability": "用于本机科研。现场科学等价待验证。",
       "inputs": {

@@ -1,5 +1,5 @@
 {
-  "catalogDigest": "sha256:3881423fa69deae67a4d31bbab2c202541b8c7ccaf7c1182497da74a67b672ab",
+  "catalogDigest": "sha256:15766f915cbefe35f58bbb38fc983623fc4b570816a565fb110f33de4d0a2b49",
   "operators": [
     {
       "domain": "cartography",
@@ -519,6 +519,14 @@
       "manifestDigest": "sha256:040d0c2021c34aacbe96ff31bec0c4d2ff7f755904ca08bff379c246b5a5589f",
       "runtime": "native",
       "smokeDigest": "sha256:e8e1567016234739a921635643c46b5e129693a0b30ebff38817a7a2f5169e81",
+      "version": "1.0.0"
+    },
+    {
+      "domain": "statistics",
+      "id": "statistics.describe_columns",
+      "manifestDigest": "sha256:08743755ea2a1c65bbb3512f5d842abf770c2a711fc9e25c9cbdb050cdcd46f9",
+      "runtime": "native",
+      "smokeDigest": "sha256:469e303762bffbb0e23620129eddbfd596196586be2eb10544e9c1e52a416ad8",
       "version": "1.0.0"
     },
     {

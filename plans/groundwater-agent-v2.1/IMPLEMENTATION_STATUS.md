@@ -1,5 +1,7 @@
 # Groundwater Agent V2.1 — 实施状态
 
+当前结论见[阶段 8 本地自动验收结项](#阶段-8-本地自动验收结项)。
+
 ## 阶段 0 本地基线
 
 - 核查日期为 2026-11-20。分支为 `main`，HEAD 为 `90be0475fb257157d62c2ca9593c56559dfa24b9`。
@@ -436,19 +438,63 @@ Compose 固定 Provider 原先把显式任务创建当成普通咨询，随后�
 
 发布复验的本地基线为 `main@eaba98e`。`source/services/knowledge-next/ui/e2e/scope-retry.spec.ts` 在点击数据集列表前先滚动，避免点击期间到达的滚动事件关闭弹层。`source/services/knowledge-next/ui/e2e/knowledge.spec.ts` 等待指定版本的撤回和恢复回执，随后核对页面显示的版本状态。在延迟 5.7 秒的受控浏览器复验中，原来先检查页面的断言超时。修订后按组合框角色读取版本，撤回和恢复均通过指定版本的回执核对和页面检查。两处修订已通过实连联合验收。Compose 固定 Provider 另在测试夹具中识别已发布成果登记和评审请求，使场景进入 Kernel 现有的结果评审流程。正式入口和独立 Compose 使用隔离网络、固定 Provider 与临时数据。
 
+本地工作区在 `00c47e5` 上纳入任务冲突恢复。`source/kernel/src/platform_kernel/intent_routing/decision.py` 在当前授权不允许任务动作、且语义绑定执行提案或工作流草稿时，生成符合既有合同的 `NEEDS_CLARIFICATION / UNKNOWN / NONE / TASK_CONFLICT`。以往直接保留执行或草稿语义会触发合同校验错误。`source/kernel/tests/test_intent_routing.py` 通过 HTTP 核对执行和草稿两个场景仅能提交澄清回复。`source/web/src/TurnTimeline.tsx` 与 `source/web/src/ErrorNotice.tsx` 根据会话快照给当前有写权限的用户显示恢复指引，补充目标仍由用户从原消息框提交。`source/web/src/message-routing.test.tsx` 覆盖刷新恢复和普通 `AUTO` 请求。两处修订复用现有公开 API、SQLite 结构、任务写入和执行授权。
+
+等待确认期间的自然语言进度查询已按用户决策改为只读。现有短指令和服务端进度快照继续使用。Kernel 在确认待定时先为无附件的普通 AUTO 请求排队，持久化意图识别回执。查询完成后由 `controlMessages` 投影权威状态，无需启动回答 Agent 或分派作业。新目标在同一事务内复核目标修订和原确认状态后入场。已提交的真实批准可以与只读查询并行，路由失败和过期请求通过原请求 ID 恢复。Web 复用现有状态卡展示识别中、查询结果和路由错误。接口路径、OpenAPI 模型和 SQLite 表结构沿用现有版本。本地工程门禁使用脚本 Provider。真实 DeepSeek Flash 的进度识别和读表澄清按表中的定向回执核对。
+
+变动涉及 Kernel 的 `application/route_commands.py`、`intent_routing/decision.py`、`runtime.py` 和 `interaction/` 下的消息接收、队列、容量和历史投影。架构检查的事务声明纳入目标真正入场时写入的 `messages` 表。Web 变动位于 `use-message-actions.ts`、`ControlProposalCard.tsx`、`types.ts`、`api.ts`，回归位于 `test_intent_routing.py` 和 `message-routing.test.tsx`。查询识别期间的候选轮次与会话权威修订的口径见 [公开 HTTP API](../../source/docs/capabilities/http-api.md)。
+
+预选工作流补验复现了浏览器提交 JSON 整数 0、模型回传 0.0 时出现的 `WORKFLOW_SELECTION_ARGUMENTS_CHANGED`。本轮在 `source/kernel/src/platform_kernel/workflow_selection.py` 按结构和值比较预选参数，接受数值相等的整数和小数表示，仍校验参数类型、数组顺序、有符号零、实际数值及精确资料引用。确认继续冻结实际执行参数。`source/kernel/tests/test_workflow_selection.py` 增加等价表示和差异拒绝用例。API 和数据库结构沿用现有合同。
+
+DeepSeek Flash 的公开监测试跑先复现两项缺口。带时区的读表在 DuckDB 将结果转为 Python 值时依赖未安装的 pytz，导致 Data 返回 503。query_backends.py 在筛选、排序和分页后把带时区的结果列转换为 UTC，并保留物理字段标识和带时区类型。Data 服务回归覆盖带时区预览、微秒精度、空值、排序并列和聚合。公开 API Schema、安装依赖和数据库结构沿用现有版本。
+
+同次试跑还发现，模型能询问水位字段，但直接提交澄清回复时可能未写入准备记录。Kernel 在 preparation_tool.py、run_finalization.py 和 persistence/run_lifecycle.py 根据已选合同记录明确缺少的资料和参数，并与回复一起提交。已有准备记录优先，能从 Data 元数据推导的参数继续走验证工具。test_workflow_selection.py 覆盖缺参、缺资料、已有记录和参数齐全时的行为。
+
+当前轮次的可执行模型在回复结束后仍缺输入时，准备记录保留待补状态。用户在工作台点击补充参数可把缺项填入草稿。原确认、执行授权和实际发布仍由服务端状态决定。
+
+补答按完整参数名解析。事件阈值 eventThreshold 与 MAD 异常阈值 threshold 通过不同参数合同冻结。能力、模型、工作流和资料版本继续使用已安装身份。修改涉及 Kernel 的准备状态投影、业务参数解析及对应回归测试。
+
 ### 本地验收证据
 
 | 范围 | 结果 |
 | --- | --- |
 | `pytest tests/e2e/test_monitoring_work_item.py tests/e2e/test_composed_workflow.py::test_monitoring_trend_capability_requires_user_threshold` | 隔离的原生 PostgreSQL 16.10 下 3 项通过。主旅程使用合成监测资料和脚本 Provider，真实 Kernel、Data、Executor 和原生 Worker。确认前执行作业为 0，发布 21 项成果，跨会话精确复用 1 项。执行、发布和业务验收分别核对。 |
 | `../bin/dev workflow-golden --case monitoring-trend` 和 `--case flow-field` | 监测 Golden 的 21 项产出比对无差异。流场在关闭网络的锁定 GDAL 3.8.4 容器重跑，`groundwater.flow-field@1.1.0` 的 8 项产出比对无差异。 |
+| 监测趋势 Golden 独立复算 | 从冻结合成 Parquet 独立计算月度汇总、完整性与断档、线性趋势、普通及季节 Mann–Kendall 与 Sen 斜率、Pettitt 候选变点、时段对比、MAD 离群和阈值事件。11 张结果表的 316 个字段值与已运行成果一致，21 项产出校验和均复核。装配候选与 Golden 的工作流身份及 10 个节点实现摘要一致。样本的 72 个预期月份中有 12 个观测月、60 个缺测月，最长连续缺测 5 个月。季节 Sen 年斜率为 2.0000，Pettitt 候选变点的 p 值为 0.0610，高于案例的 0.05 阈值。场地统计结论仍需获准观测资料与专家验收。 |
 | PostgreSQL、Executor 和控制面回归 | Data 与 Knowledge 切片 115 项通过、5 项未选，Executor、Worker 和迁移关键切片 11 项通过。覆盖权限撤销、并发修订、过期验收、SSE 恢复、丢失 Worker、超时和取消。局部故障验证覆盖服务不可用、上传断开后的原请求重试、以及发布待定、失败或不可核验时不生成验收令牌。 |
-| 权限与执行边界 | 覆盖跨项目访问拒绝、私有数据与知识权限、工作与会话归属、伪造精确引用、旧确认、提示词要求跳过确认和归档写入限制。固定项目 Gateway 的切换请求被拒绝，界面内多项目切换尚未验收。 |
+| 权限与执行边界 | 覆盖跨项目访问拒绝、私有数据与知识权限、工作与会话归属、伪造精确引用、旧确认、提示词要求跳过确认和归档写入限制。固定项目 Gateway 的异项目请求被拒绝。 |
 | 离线发布材料单项检查 | Native 171 项、Foundation 167 项、Knowledge 100 项、Executor 174 项、干净 XDG 装配根下的合同 191 项通过。13 个 wheel 离线构建和安装校验通过。 |
 | 生产构建浏览器主旅程 | 隔离 Chromium、PostgreSQL 16.10、真实服务及固定 Provider 跑通登录、创建工作及会话、选择权威资料、补参、确认、原生执行和精确发布。通过成果列表分页查看目标摘要，完成验收与跨会话复用，重新登录并通过活动分页找到验收和归档记录。浏览器使用的 226 个资源与生产构建逐文件一致。 |
 | 监测资料质量和结果复验 | 原生 `table.validate@1.0.0` 对精确的合成观测对象检查 12 行站点键非空规则，输出 0 条违规。Data 使用资料版本、语义修订和绑定修订登记质量结果，工作台查到匹配的规则套件版本、运行和检查结果。无检查记录的输出另行显示待核验。浏览器查看冻结资料的精确身份、工作流适用限制和 `RESULT_REVIEW` 快照，再完成 21 项成果发布、验收、复用与归档。 |
+| 真实监测趋势资料入场 | `local-monitoring-trend` 锁定的发布清单、质量摘要和月度观测文件在当前工作区均缺失，真实来源前置校验返回 `REAL_CASE_LOCAL_SOURCE_INVALID`。资料准备、受控语料及监测趋势合同补验 12 项通过。合成样本核对固定案例仅保留两期各满足 24 月的站点，并拒绝混用单位和重复站点月。真实案例配置预设 2018–2021 年与 2022–2025 年，阈值事件为关闭。实际业务验收需要资料授权、确认后的参数和独立参考结果。 |
+| USGS 公开监测趋势补验 | 用 USGS 发布的 NAVD 1988 地下水位高程日值生成发布清单、质量摘要和观测 Parquet。月内日值覆盖至少 80%，两个四年时段每站各至少 24 个有效月。保留 3 口井、273 条月均值。断网复跑的三份输入与首轮逐字节一致，21 项原生结果校验和一致。真实 Kernel、Data、Executor 和原生 Worker 在确认后发布 21 项结果，与独立计算比对时 17 项字节相同，4 项统一日期和数值类型后逐字段一致。阈值事件关闭。业务签收和场地适用性仍待专业复核。 |
 | USGS 公开资料离线场景 | `../bin/dev real-case --case usgs-mrva-flow-field` 校验两份已缓存归档并运行 `groundwater.flow-field@1.1.0`。五个节点完成，七个文件和一个内联摘要的 SHA-256 全部复核。观测资料用于梯度与流向，达西通量和孔隙水流速依赖显式场景参数。场地独立核验与专家评审仍待完成。 |
+| USGS 克里金与 ODNR DRASTIC 公开案例 | `usgs-mrva-kriging` 与 `odnr-franklin-drastic` 使用已缓存且核对过 SHA-256 的公开资料复跑，分别有 5 项与 3 项成果的 SHA-256 与上次回执一致。USGS 栅格重叠 931 个像元，RMSE 为 1.0024 m，1,148 个合并观测位置的留一法 RMSE 为 1.4785 m。ODNR 的 14,700 个有效像元与发布指数及七项权重独立重算结果一致，其余 464 个公开的零指数、零评分像元按工作流规则记为 NoData。场地适用性和业务阈值仍待验收。 |
 | 修订浏览器用例前的 `python -m scripts.operations.test_full_project --product groundwater` | 该轮通过确定性装配、15 项静态预检、Foundation 167、Kernel 1,031、Data 102、Knowledge 100、Executor 174、合同 197、平台与产品 773、Native 171 项和 Web 的 12 条验证命令。平台跳过 5 项。联合实连中 Knowledge 4 项里 2 项通过、2 项失败。数据集弹层在浏览器自动滚动后关闭。撤回场景的页面断言在网关收到知识服务回执前超时，浏览器随后关闭请求。正式入口在该阶段停止，wheel 和最终 Compose 为 NOT_RUN。 |
+| `00c47e5` 正式离线工程发布门禁 | `python -m scripts.operations.test_full_project --product groundwater` 的 `4db3a07c5ef7` 通过全部 14 个阶段，源码指纹和四份主要归档回执的 SHA-256 均已复核。合同 203 项、平台与产品 773 项通过，平台记录 5 项跳过。Data 与 Knowledge 联合验收含恢复和清理。首次离线 wheel 安装缺少运行依赖搜索路径，补充同一物化依赖缓存的 `python/common` 到 `PIP_FIND_LINKS` 后使用 `--resume` 重跑，13 个 wheel 的构建、安装、依赖和导入校验通过。最终 Compose 的六个模型发布 60 项具名成果，任务协作 9 项与实连浏览器 21 项通过，隔离容器、网络和卷已清理。 |
+| 本地任务冲突恢复后的正式离线工程验收 | 同一正式入口的 `3917d7176ac6` 通过 14 个阶段。Kernel 1,033 项、合同 203 项、平台与产品 773 项、原生算子 171 项、Web 单元 566 项通过。Data 与 Knowledge 联合验收 9 类检查及恢复和拆除通过。13 个 wheel 构建和安装验证通过。最终 Compose 六个模型发布 60 项具名成果，任务协作 9 项通过，实连浏览器 21 项均首次通过。9 份归档文件的 SHA-256 已逐一复核，独立检查确认该 Compose 项目的容器、网络和卷均为 0。 |
+| 进度查询改造后的正式离线工程验收 | `9f39528b7983` 通过全部 14 个阶段。Kernel 1,040 项、合同 203 项、平台与产品 773 项、Native 171 项、Web 单元 569 项通过，平台记录 5 项跳过。联合验收的 9 类检查和 13 个 wheel 校验通过。最终 Compose 六个模型发布 60 项具名成果，任务协作 9 项、实连浏览器 21 项通过。9 份归档文件逐项核对 SHA-256，隔离容器、网络和卷已拆除。 |
+| 任务冲突恢复 | 隔离挂载的 Kernel 候选全量 1,033 项通过。Web 候选全量 566 项、类型检查和生产构建通过。1280 与 390 像素浏览器复验显示刷新后指引可恢复，只读账号的失败轮次未显示提交指引。真实 Kernel HTTP 与生产 Web 联合场景注入不合约回复后记录 `TASK_CONFLICT`，当时 Task、确认、草稿和执行均为 0。用户补充明确目标后创建 1 项 Task，保留验收条件原文。该场景使用合成请求及固定 Provider。 |
+| 已有任务时的路由与确认补验 | 真实 Kernel HTTP 的 8 项任务路由测试通过，覆盖继续、修改、过早评审、任务冲突及已允许的评审。另有 2 项通过，核对短状态指令的重试、待确认方案的保留，以及明确改变目标后旧方案失效、服务端拒绝批准。 |
+| 自然语言进度查询 | 意图路由、自然语言控制与运行时控制边界的 59 项 Kernel 测试通过。新增场景先复现路由前提前增加目标修订，再核对长句查询保留冻结方案、请求重放、识别失败、正常更换目标、识别期间重复批准仅登记一个执行，以及另一请求已推进目标或创建审批提案时拒绝晚到的旧请求。Web 回归覆盖识别中继续查看原方案、回执丢失、刷新和失败后恢复草稿。 |
+| 本轮 Kernel 检查 | `../bin/dev check --scope kernel` 的 1,040 项测试、类型检查、Ruff 和架构边界通过。单独扩大 mypy 检查范围至 `runtime.py` 时报告 7 项类型问题，均与 `00c47e5` 原文件的诊断一致。 |
+| 本轮 Web 与合同检查 | `../bin/dev check --scope web` 的 569 项单元测试、类型检查和生产构建通过。`npm --prefix web run test:e2e:build` 的 50 项 Chromium 回归通过。`../bin/dev check --scope contracts` 的运行时 OpenAPI、TypeScript 和 Python 生成合同检查及 203 项合同测试通过。 |
+| 生产构建与 Kernel 进度查询联验 | 在隔离回环网络，Chromium 使用实际生产包、Kernel HTTP 和 SSE，并以固定 Provider 与 Data 夹具准备待确认方案。从消息框发送自然语言进度查询，识别期间仍可批准原方案。刷新后恢复状态卡和可用的确认按钮。通过 API 核对会话仍为原目标修订和原冻结确认，历史业务轮次为 1，WorkflowRun 为 0。 |
+| 本轮本地真实模型进度识别 | 缓存 Qwen3 8B 经 DeepSeek 兼容 Responses 调用实际模型。以固定 Agent 和合成资料准备待确认方案，3 条自然语言追问均通过 Kernel HTTP 验证。原确认内容和会话修订保持一致，执行量为 0。独立的 24 条冻结意图题集完全匹配 19 条，模式正确 21 条、语义正确 20 条，其中 3 条进度题均正确。模型整体选型仍待验收。 |
+| 公开监测案例的真实模型进度查询 | 单项目隔离浏览器中，实际 Qwen3 8B 经 Responses 识别三次连续追问，均返回待确认。刷新后恢复原确认，同一目标修订和冻结参数保持一致，批准前零执行，批准后发布 21 项成果。方案准备由脚本 Provider 完成。 |
+| 预选参数表示 | 隔离候选先复现 3 个等价数字比较的失败。通过 49 项定向回归和 1,051 项全量 Kernel 测试，在生产构建浏览器中用原先冲突的数字组合完成确认、查询进度和发布。单独扩大 mypy 范围至该模块，候选与原模块均报告同一项既有诊断。 |
+| 预选参数修正后的正式离线工程验收 | ded80e91b77b 通过 14 个阶段。核验报告与 9 份归档的 SHA-256 一致。联合验收 9 类检查、6 个模型的 60 项具名成果、21 个浏览器用例及 9 项任务协作检查通过。该轮隔离容器、网络和卷都已拆除。 |
+| DeepSeek Flash 定向实测 | 自设最多 8 次请求，累计 7 次均返回 HTTP 200，共 98,860 token，配置的模型上下文窗口为 100 万 token。真实模型将自然语言进度追问识别为状态查询，刷新后仍保留原确认，执行次数为零。UTC 读表复测通过，水位字段缺失写入结构化准备记录。真实浏览器复测随后因夹具读取了错误的回复字段而中断，修正夹具后的刷新和执行链路用脚本 Provider 复验。 |
+| UTC 读表与预选工作流澄清复验 | 两项隔离修复一起在生产 Web 构建、真实 Kernel、Data、Executor 和原生 Worker 重放 273 条公开观测。UTC 预览返回 5 行，刷新后保持原待补记录，补答后产生冻结确认，进度追问保留原方案，确认前零执行，确认后发布 21 项成果。Kernel 定向回归 144 项通过。Data 新回归与既有定向检查通过，扩展测试中的备份恢复用例使用项目 Docker 启动器复验通过。浏览器使用脚本 Provider，现场业务签收仍待补验。 |
+| 补参交互与独立阈值复验 | 使用 273 条 USGS 公开月度观测完成补答、确认、原生执行、21 项成果发布及测试账号验收。事件阈值 10 米得到 181 个符合条件的月份和 7 段事件，MAD 3.5 与独立计算一致。跨会话复用保持发布对象的精确身份，复用会话新增执行为零。重新登录及归档后保留成果和验收历史。两项隔离修复联合运行 1,056 项 Kernel 回归。现场适用性和专业签收待验收。 |
+| 当前候选正式离线工程验收 | `eb6f398bac32` 通过 14 个阶段。Kernel 1,058 项，Data 103 项，Knowledge 100 项，Executor 174 项，合同 203 项，原生算子 171 项，主 Web 单测 569 项及生产构建浏览器 50 项通过。平台与产品 773 项通过、5 项按原回执跳过。Data 与 Knowledge 联合验收 9 类检查，13 个离线 wheel 校验，最终 Compose 6 个模型的 60 项具名发布、21 项实连浏览器和 9 项任务协作均通过。逐项核对 9 份归档回执，隔离容器、网络和卷均已清理。 |
+| 当前候选公开监测断线与复用 | 生产构建以 273 条公开月度观测和脚本 Provider 执行。单次 SSE 断线至恢复为 3.05 秒。继续询问进度时，原确认内容保持一致，批准前零执行。明确批准后发布 21 项成果，检查四项目标输出的校验和。测试账号签收，同一工作内另一会话精确复用原发布版本，新增执行为零，重新登录和归档仍可追溯。 |
+| 公开水位高程统计补验 | 从封存日值独立复算 273 个站点月。季节 Mann–Kendall、Sen 斜率、Pettitt 变点和 MAD 的结果及摘要核对 1,993 个字段值，21 项原生成果校验和一致，10 个算子节点的实现身份与当前装配一致。场地代表性和专业适用性待评审。 |
+| 固定项目入口浏览器验收 | 在同一个 Chromium 会话中，用两个入口主机名登录两套项目隔离的 Kernel，生产构建分别显示对应项目和成员角色。退出其中一个项目后，另一项目的登录仍有效。只读成员不能创建会话，另一实例的管理员也无法读取对方的会话、历史和成果入口。修改请求中的项目查询或头字段无法切换实例。当前源码的装配和身份补验 17 项通过。部署约定见 [项目与实例](../../source/docs/operations/deployment/container-topology.md#项目与实例)。 |
+| 并发批准与状态查询 | 真实 Kernel HTTP 在批准已登记、执行派发尚未放行时，接收短状态查询和重复批准。状态查询保持目标修订和冻结动作，普通新目标返回 `409 CONFIRMATION_DECISION_IN_PROGRESS`。放行后只有一次持久化批准、一个工作流运行、一条派发记录及一次向模拟 Executor 的提交。短状态原请求重试回执一致。确认、控制和恢复切片 26 项通过。 |
+| 固定项目与多实例边界 | 两个测试项目分别装配，12 个带项目配置的 Kernel、Data、Knowledge、Executor 和初始化服务均采用各自装配的项目标识。两个独立 Kernel 进程通过回环 HTTP 登录、创建及读取各自的工作和会话，异实例身份令牌、工作和会话均被拒绝。单个 Kernel 即使存有同一账号的第二项目成员关系，仍只签发其配置项目及角色，查询、头字段和创建会话中的切换请求均被拒绝。Kernel 身份及装配补验 17 项通过，Web 相关回归 58 项通过。部署按项目配置独立实例和入口。 |
+| 专业计算补验 | 同一源码的独立 QGIS 水文工作流通过，包含确认、计算和成果发布。独立 Pastas 合成基准 7 项通过，留出验证 RMSE 为 0.00596 m。独立 FloPy 环境 4 项通过，另 2 项因缺少锁定的 MODFLOW 6.8.1 发行材料及运行镜像跳过。正式平台切片的 5 项跳过照原回执记录。 |
+| 本地模型回复与选择质量 | 使用同一套 24 条中文意图题。在当前 Kernel 的 DeepSeek 兼容 Responses 路径，缓存的 Qwen 4B、Qwen 8B、DeepSeek-R1 14B 和 Llama 3.1 8B 分别完全匹配 16、19、12 和 9 条。缓存的 Qwen 8B 经 MiniMax 兼容 Chat Completions 完全匹配 15 条，出现 5 条路由错误。各组合均未达到全题通过条件。在 32K 上下文、固定路由输入的真实回复测试里，Qwen 8B 的 Responses 完成 2/6 次澄清，Chat Completions 完成 0/3 次。回复测试中未生成确认、草稿或执行记录。 |
 | 旧基线 `15c0ee8` | 原有平台与产品切片 770 项通过、3 项失败、5 项跳过。当前切片未再发生能力清单、目录权限与 GDAL 三处失败。 |
 | 单独 QGIS 补验 | `test_agent_composes_confirms_executes_and_publishes[hydrology]` 在缓存的 QGIS 3.44.15 锁定镜像上 1 项通过，3 条弃用警告。平台切片的计数保留原报告。另有 4 项独立 MF6 与 Pastas 环境用例跳过。 |
 | 独立 Compose 验收 | 六个装配模型完成执行及发布，包括流场。任务协作 9 项通过，覆盖创建、修订、幂等重放、重启、用户评审证据和纯状态操作零计算。该轮浏览器 20 项通过、1 项失败，固定 Provider 将成果登记路由为只读咨询。修订夹具后，`python -m pytest -q tests/contracts/test_fixed_provider_wire.py` 37 项通过。独立 `--webui-only` 的 21 项浏览器用例通过，覆盖已发布成果登记、评审及归档后重载。 |
@@ -467,17 +513,120 @@ Compose 固定 Provider 原先把显式任务创建当成普通咨询，随后�
 
 | 场景 | 核验结果 |
 | --- | --- |
-| 服务不可用与 Provider 中断 | 隔离 Data、Knowledge 与 Executor 探针核对降级，发布无法核验时无评审令牌。Provider 结果未知、流中断时保留原调用边界。 |
+| 服务不可用与 Provider 中断 | 当前候选逐一停启 Data、Knowledge 与 Executor 的真实容器。停机时就绪接口返回 503，Kernel 保留原确认，查看状态无新增模型请求或作业。发布无法核验时无评审令牌。Provider 结果未知、流中断时保留原调用边界。[停机回执](../../deliveries/groundwater-v2.1-stage8-review-kit/current-candidate-service-outage-2026-11-23.json) |
 | 上传中断、准备缺参、旧确认 | 部分上传断开后原请求重试仅保留一个对象。缺阈值时确认和执行均未建立。旧确认被拒绝。 |
 | Worker 丢失、执行失败、超时和取消 | 覆盖租约丢失、失败、超时、取消及子进程清理。工作状态从服务端快照核对。 |
 | 发布和成果不可用 | 发布未完成、失败或资源撤权时无法取得验收令牌或继续读取精确成果。未关联运行及未发布成果不可挂入。 |
 | 评审令牌、并发与归档 | 覆盖旧令牌、修订冲突、幂等重放及归档后写入拒绝。已发布结果的证据和受权历史可追溯。 |
 | SSE、权限撤销与迁移 | 浏览器断线成功恢复。撤权后活动流关闭，归档中的撤权资源被隐藏。Knowledge 恢复数据对比一致，恢复 Worker 完成新入队任务。迁移演练仅在隔离实例执行。 |
-| 项目、主体和 viewer | 固定项目 Gateway 拒绝异项目，Kernel 拒绝其他主体和 viewer 的未授权动作，伪造身份头不起授权作用。多项目选择仍待验收。 |
+| 项目、主体和 viewer | 固定项目 Gateway 拒绝异项目，Kernel 拒绝其他主体和 viewer 的未授权动作，伪造身份头不起授权作用。当前候选的两套独立部署分别绑定不同项目。同一 Chromium 中，双向读取对方工作、会话、资料、知识导入及成果的 16 项请求均返回 404。[双项目隔离回执](../../deliveries/groundwater-v2.1-stage8-review-kit/current-candidate-two-project-isolation-2026-11-23.json) |
 | Agent 工具与授权 | 普通咨询不获得任务写工具，意图路由按状态下发工具。提示词要求跳过确认或资源校验时服务端未创建越权执行。 |
+
+### 主旅程逐项核对
+
+步骤编号沿用 [阶段 8 主旅程](../groundwater-agent-v2/prompts/09_END_TO_END_ACCEPTANCE.md)。工程证据来自当前候选的正式门禁、服务端监测端到端用例和已记录的本地浏览器样本。
+
+| 步骤 | 已核对的行为 | 待验收 |
+| --- | --- | --- |
+| 1 登录并选择项目 | 按用户决定采用每个实例固定绑定一个项目，通过项目入口选择实例并登录。固定项目登录、成员角色、跨项目拒绝和独立进程隔离均有服务端证据。 | 生产部署的项目入口与真实成员验收。 |
+| 2–4 创建工作、工作内会话和提交需求 | 登录后通过公开 API 创建 WorkItem 和子 Session，在关联会话提交自然语言监测请求。 | 真实业务用户在授权项目完成同一路径。 |
+| 5 Agent 在授权范围理解目标 | 监测路径按精确 Capability/Profile 组装上下文。只读咨询和授权不足时限制工具。DeepSeek Flash 已通过 24 条冻结意图用例，专业回复 24 轮均有通过回执。 | 真实模型在授权场地任务中的选型和业务表现。 |
+| 6–7 发现或选择资料并核对元数据 | 浏览器验证资料上传、选择和回看。监测路径核对 DataVersion、字段语义、单位、时区和时间范围。质量试验把原生规则结果绑定到精确输入。流场路径单独核对 CRS 和垂向基准。 | 获准场地资料的字段、基准与质量规则，并在实际业务旅程中复核。 |
+| 8–10 缺项澄清、用户补答、重新准备 | 阈值缺失时保持 `WAITING_INPUT`，确认及执行记录均为空。收到明确参数后重新校验为 `READY`，保留参数来源。 | 核对业务方批准的真实缺项与参数。 |
+| 11–13 精确确认、执行和发布 | 冻结确认绑定资料身份、模型、工作流和参数。批准后实际 Worker 执行，WorkflowRun 与 Data 发布分别查询。 | 获准现场案例的完整冻结与运行。 |
+| 14 查看质量、限制和来源 | 本地浏览器显示精确来源、档位限制和匹配的输入质量结果，同时标记缺少自身质量记录的成果。 | 按业务规则验证实际成果质量、独立参考与适用范围。 |
+| 15–16 待审核与用户接受 | WorkItem 先进入 `RESULT_REVIEW`。提交范围匹配的评审后才记录接受并完成。 | 实际业务签收和专业评审。 |
+| 17 在新会话中续作 | 新 Session 沿用同一 WorkItem 和已发布成果的运行、发布、具名输出及精确版本引用。 | 真实业务人员跨会话复用。 |
+| 18–19 恢复与归档追溯 | 刷新、SSE 重连、重新登录和服务重启后核对权威快照。归档保留评审、成果和活动，撤权后仍按最新权限投影。 | 联合验证生产部署形态及其实际用户行为。 |
+
+主旅程的观察指标使用已记录的单样本时间和分母。失败旅程及安全边界见上表。工程发布门禁和当前未闭环条件见下节。
 
 ### 风险与退出结论
 
-默认装配缓存曾记录同版 `groundwater.flow-field@1.0.0` 的不同摘要，触发历史身份保护。干净 XDG 装配根下合同通过，正在运行的 Kernel 装配锁未登记该能力。保留缓存及历史身份检查，发布前需核对缓存来源和版本记录。
+当前默认装配指针、版本库中的能力配置和通过验收的候选包对 `groundwater.flow-field@1.0.0` 的摘要一致。以默认指针或正在运行的 Kernel 所挂载的装配包为基线，两次隔离装配均通过。运行中的 Kernel 仍挂载仅登记监测趋势能力的旧装配包。缓存还保留两份采用另一摘要的同版流场装配包，其运行配置差异涉及排除词和 Profile。受查的本地能力配置提交历史中未发现该旧摘要。以旧摘要装配包为基线的隔离复现返回 `BUSINESS_CAPABILITY_IDENTITY_MUTATED`，原指针和历史装配文件均保留。
 
-阶段 8 已获得监测主旅程的服务级、浏览器与结构质量证据。发现 Compose 夹具路由错误后，保留了上一轮完整发布门禁的中断回执及源码指纹。完整发布门禁仍需在包含浏览器用例与夹具修订的源码上复验。多项目选择需要先确定部署形态与成员授权合同。现有 USGS 场景提供公开资料的运行证据。现场质量规则、业务方验收和专家评审仍待完成。
+离线工程门禁 `3917d7176ac6` 覆盖进度查询改造前的候选，源码指纹为 `d5575337e48c8cc82a2355598f8393177b05060e34e7c9bc423b062ce6b92e4c`，正式报告 SHA-256 为 `b83e281d7956fd62ea3fbf4dac1525b3143b3f200a5125537e350cdafa9beefc`。进度查询改造的核对结果见本地验收证据。
+
+离线工程门禁 `9f39528b7983` 覆盖进度查询改造，源码指纹为 `c0ccdacb4987039e525a482ec8f0eab04e2bd1d74a59cb29c6d59546e8224888`，正式报告 SHA-256 为 `d2ec0483e574144358f00f6ac8e2032c729f19aa01e5c1cdd6e93ab1613c99ac`。第一次平台测试的 GDAL 运行路径触发符号链接保护，调整隔离测试环境后续跑通过。之后 Compose 的外部只读观察创建了宿主账号拥有的 SQLite WAL 辅助文件，导致容器写入失败。独立复现确认该行为，原指纹下重新运行 Compose 后通过。预选参数修复已由 ded80e91b77b 验收通过，该轮源码指纹为 457e1045a4bf7d42555d6101467cb096fe2d7fdd58b70802382981bbac6406cc，正式报告 SHA-256 为 d0d653f750161895f3f456a5a1b5894e404d28ceba3c04b10eeb6664188ff235。UTC 读表与结构化澄清由离线工程门禁 `ca8cad13c824` 验收，源码指纹为 `a658ee1a97252022d790dccb28fd9e0dc4083ae76f18bb00e1890387859cfca1`，正式报告 SHA-256 为 `3af5d93f63573d784ba90a628b8d485a5444e90065a363d8ed49eaada2a82dab`。本轮通过 14 个阶段，核对 6 个装配模型、60 项具名发布、21 项浏览器场景和 9 项任务协作场景。
+
+补参与独立阈值修复由离线工程门禁 `eb6f398bac32` 验收，测试时的源码指纹为 `20e77d94af60d873fa5aacdbfda2a18019ec71cb8b08440bf4836b6b90b8636e`，正式报告 SHA-256 为 `4c3feec3da21f196dba515090f3118988d8076ead5eb76929b76f15e4155eaa5`。本地证据目录为 `deliveries/groundwater-v2.1-stage8-eb6f398bac32/`。归档保存正式回执、测试时的源码补丁和独立校验脚本。从基线重建的 33 个变更文件逐项通过摘要核对。本实施状态为测试结束后补录。
+
+阶段 8 的本地工程门禁已通过。部署采用每个实例绑定一个项目，共用宿主机时使用独立入口和数据目录。现场验收仍需获授权资料、业务质量规则、独立参考结果、正式签收与专家评审。生产模型及真实用户体验仍待验收。
+
+2026-11-23，用户决定取消 V2.1 阶段 8 的模型回复人工盲审。生产模型复核使用冻结意图题集和专业回复自动检查回执。DeepSeek Flash 已在路由修复后的同一代码版本上通过 24 条冻结意图用例。[意图汇总](../../deliveries/groundwater-v2.1-stage8-review-kit/deepseek-flash-intent-summary-2026-11-23.md) · [模型复核记录](../../deliveries/groundwater-v2.1-stage8-review-kit/provider-review.md)
+
+意图修复后的离线门禁 `a90fc12ea7e7` 在同一源码指纹下通过全部 14 个阶段。首次最终装配的浏览器遇到 `ERR_NETWORK_CHANGED`，续跑后 21 个实连浏览器用例全部通过。该归档包含草稿预检修正前的源码差异。[工程验收归档](../../deliveries/groundwater-v2.1-stage8-a90fc12ea7e7/README.md)
+
+草稿校验已补充独立的缺项结果与执行资格，保留实际执行的编排检查。修正候选的 `bin/dev check --scope kernel` 通过 1,065 项测试，以及类型、Ruff 和架构边界检查。完整离线工程门禁仍对应草稿修正前的版本。
+
+修正后的 DeepSeek Flash 草稿复测使用 100 万 token 上下文，发出 22 次请求，上限 32 次。两轮保存了排序接描述统计的草稿，核对到精确 Data 版本、排序规则缺项和不可执行状态。两轮均未通过输出检查，第 2 轮实际生成 `summary` 与 `details` 两项，冻结用例要求仅 `summary`。第 3 轮在保存前返回 `AGENT_MODEL_OUTPUT_INVALID`。专业回复的 24 轮中，15 轮通过、3 轮失败、6 轮待测。待测项为批准执行与拒绝执行各 3 轮。[草稿复测回执](../../deliveries/groundwater-v2.1-stage8-review-kit/deepseek-flash-reply-automatic-batch-7-2026-11-23.json) · [模型评测汇总](../../deliveries/groundwater-v2.1-stage8-review-kit/deepseek-flash-reply-automatic-summary-2026-11-23.json)
+
+离线回放复现了草稿生成在两个不同阶段遇到格式错误时，第二个阶段无法进入协议修复的问题。Kernel 现在沿用持久化请求账本判定每阶段的修复资格，并在 SDK 续接时保留治理状态和完整用量。全量 `bin/dev check --scope kernel` 通过 1,068 项测试，以及类型、Ruff 和架构边界检查。首次全量检查发现新增的审批续接用例受限于测试夹具的 3,800 token 窗口。按仓库已有设置扩大该测试的窗口后，全套复验通过。
+
+第 3 轮定向复测实发 10 次，上限 16 次，上下文仍为 100 万 token。第 9 次请求返回格式无效的 `submit_reply` 参数，同一阶段第 2 次请求修复后成功保存草稿。草稿仍因缺少规则保持不可执行。输出为排序中间表和 `statistics.describe.details`，缺少冻结用例要求的 `statistics.describe.summary`，本轮仍未通过。专业回复汇总维持 15 轮通过、3 轮失败、6 轮待测。[第 3 轮复测回执](../../deliveries/groundwater-v2.1-stage8-review-kit/deepseek-flash-reply-automatic-batch-8-2026-11-23.json)
+
+冻结草稿判定只接受一个排序节点和一个描述统计节点。原 CSV 有 30 个数值列，`statistics.describe@1.0.0` 对表格要求指定单列，旧判定接受的图在补齐排序规则后仍会报 `COLUMN_REQUIRED`。本地以排序、转换和逐列统计组成 32 节点草稿，30 列的范围、均值、标准差和分位数均与独立计算一致。旧判定拒绝该图，现有执行组合也受 12 节点预算与算子准入限制。草稿验收与后续可执行成果设计待选择，冻结用例保持原样。[草稿合同复现回执](../../deliveries/groundwater-v2.1-stage8-review-kit/draft-statistics-contract-reproduction-2026-11-23.json)
+
+批准与拒绝执行的冻结用例各完成 3 轮本地 HTTP 回放，使用脚本模型、真实 Kernel、Data、Knowledge、Executor 和 Native Worker。每轮均核对待确认的精确 Data 版本、参数与动作指纹。批准后每轮发布 21 个具名成果版本，三个运行共发布 63 个独立 Data 版本。拒绝后每轮的执行任务、WorkflowRun 与发布结果均为空。回放使用 0 次真实模型请求。[执行决策回放回执](../../deliveries/groundwater-v2.1-stage8-review-kit/execution-decision-offline-2026-11-23.json)
+
+DeepSeek Flash 批准执行三轮共发 28 次请求，上限 36 次，实际每轮为 12、8、8 次，上下文为 100 万 token。第 1 轮的确认参数有 6 个字段与冻结约定不符，评测在批准前拦住。第 2、3 轮的准备快照引用对应的 Data、Knowledge 版本，参数逐项符合冻结约定，之后提交执行提案时返回 `AGENT_MODEL_OUTPUT_INVALID`。公开回执没有给出具体校验字段。三轮均无实际执行及发布。真实模型专业回复汇总为 15 轮通过、6 轮失败、3 轮待测，待测项为拒绝执行三轮。[批准执行实测回执](../../deliveries/groundwater-v2.1-stage8-review-kit/deepseek-flash-reply-automatic-batch-9-2026-11-23.json) · [模型评估汇总](../../deliveries/groundwater-v2.1-stage8-review-kit/deepseek-flash-reply-automatic-summary-2026-11-23.json)
+
+Kernel 在同一模型只有一份当前 `READY` 准备记录时，允许 DeepSeek 在生成确认前按准备参数重新提交一次。多份准备、重复偏差或重提交更换工具时维持严格校验。四条定向回归验证了允许修正与拦截条件。最终 `bin/dev check --scope kernel` 通过 1,071 项测试、类型、Ruff 和架构边界检查。
+
+批准执行第 2 轮定向复测实发 10 次，上限 16 次，均返回 HTTP 200，上下文保持 100 万 token。准备记录为 `READY`，随后生成 `PENDING` 确认。两步均带入 `seasonFrequency=month`、`eventComparison=above` 和 `eventThreshold=1`，相应功能开关均为关闭，因此冻结用例要求这三个参数缺省。提案与准备记录一致，未触发重提交。评测以 `CONFIRMATION_ARGUMENTS_MISMATCH` 在批准前拦截，未执行或发布成果。专业回复累计 134 次真实请求，24 轮中 15 轮通过、6 轮失败、3 轮待测。[第 2 轮定向复测回执](../../deliveries/groundwater-v2.1-stage8-review-kit/deepseek-flash-reply-automatic-batch-10-2026-11-23.json) · [模型评估汇总](../../deliveries/groundwater-v2.1-stage8-review-kit/deepseek-flash-reply-automatic-summary-2026-11-23.json)
+
+Kernel 在生成未绑定的自然语言提案时，根据模型条件和默认关闭的开关省略不用的可选参数。省略前后均校验完整模型合同。明确绑定的参数和已冻结的执行内容按原合同校验。批准、拒绝各 3 轮隔离回放均通过，其中第 2 轮注入了与上次实测相同的参数。批准回放共发布 63 个独立版本，拒绝回放产生 0 项执行和发布。全量 Kernel 测试通过 1,077 项，类型、Ruff 和架构边界检查通过。[离线回放回执](../../deliveries/groundwater-v2.1-stage8-review-kit/execution-decision-disabled-options-offline-2026-11-23.json)
+
+修复后的 DeepSeek Flash 第 2 轮复测通过，实发 10 次，上限 24 次，均返回 HTTP 200，上下文为 100 万 token。第一次准备因未声明字段失败，模型随后重新准备并提交了精确的 Data 版本及确认参数，批准后发布 21 个具名成果。该批结束时累计 144 次真实请求，24 轮中 16 轮通过、5 轮失败、3 轮待测。会话准备快照保留了首次失败候选，整体状态为 `BLOCKED`、处置状态为 `CONSUMED`。当时 Web 在待确认时显示阻塞，准备结束后仍提示重新核验。[第 2 轮通过回执](../../deliveries/groundwater-v2.1-stage8-review-kit/deepseek-flash-reply-automatic-batch-11-2026-11-23.json)
+
+工作台的数据、参数、任务页签和会话工作背景现在按 Kernel 准备处置状态显示。待确认方案通过冻结确认记录查看和编辑，准备结束后可查阅早先检查，只有活动准备提供补充入口。Web 检查通过 572 项测试、类型、构建和 Ruff。工作台版通过 21 项实连浏览器场景，最终源码的生产构建定向复验了混合准备、确认、发布及刷新。实连回放使用固定测试模型，外部模型请求为零。[工作台回放回执](../../deliveries/groundwater-v2.1-stage8-review-kit/preparation-workspace-lifecycle-offline-2026-11-23.json)
+
+DeepSeek Flash 批准执行第 1、3 轮复测均通过。分别实发 13、9 次，共 22 次，上限 24 次，均返回 HTTP 200，上下文为 100 万 token。两轮都先核对精确冻结参数，批准后各发布 21 个具名成果。结合第 2 轮，批准执行三轮全部通过。专业回复累计实发 166 次，24 轮中 18 轮通过、3 轮失败、3 轮待测。失败为草稿三轮，待测为拒绝执行三轮。[第 1、3 轮复测回执](../../deliveries/groundwater-v2.1-stage8-review-kit/deepseek-flash-reply-automatic-batch-12-2026-11-23.json) · [模型评估汇总](../../deliveries/groundwater-v2.1-stage8-review-kit/deepseek-flash-reply-automatic-summary-2026-11-23.json)
+
+DeepSeek Flash 拒绝执行三轮均通过端到端验证。首次 27 次请求完成了冻结参数检查和拒绝会话的终态检查，采集脚本从会话摘要读取决策字段时失败，历史核验判定作废。脚本改为从历史记录读取拒绝决定和理由，离线复现与修正检查通过。第 1 轮复测实发 9 次，用完该批 36 次额度。第 2、3 轮复测实发 10、11 次，合计 21 次，上限 24 次。三轮均核对精确冻结参数、原确认标识、拒绝理由、零执行任务、零 WorkflowRun 和零发布。上下文保持 100 万 token。专业回复累计实发 223 次，24 轮中 21 轮通过、3 轮失败、0 轮待测。失败均为工作流草稿。[拒绝执行第 1 轮回执](../../deliveries/groundwater-v2.1-stage8-review-kit/deepseek-flash-reply-automatic-batch-13-2026-11-23.json) · [第 2、3 轮回执](../../deliveries/groundwater-v2.1-stage8-review-kit/deepseek-flash-reply-automatic-batch-14-2026-11-23.json) · [模型评估汇总](../../deliveries/groundwater-v2.1-stage8-review-kit/deepseek-flash-reply-automatic-summary-2026-11-23.json)
+
+原生 `table.profile@1.0.0` 已对冻结输入、排序后 Parquet、排序后转换的 CSV 及独立推断类型的对照表完成离线比较。前三种输入均得到 0 个数值统计列。对照表的 30 个数值列通过最小值、最大值、均值和总体标准差独立复算，产物缺少第一四分位数、中位数和第三四分位数。[画像算子对照回执](../../deliveries/groundwater-v2.1-stage8-review-kit/draft-table-profile-alternative-offline-2026-11-23.json)
+
+用户确认新增 `statistics.describe_columns@1.0.0`。稳定排序与整表统计组成两个节点，统计节点统一输出 `summary`。113 条既有算子实现锁与先前版本逐项相同。冻结表包含 48 行，30 个数值列的 7 个统计量均与独立计算一致。三轮离线草稿均绑定精确 Data 版本并列出缺少排序规则，保持不可执行。另用合成资料核对排序规则与用户明确选择的文本识别参数均齐备时，两节点通过编译。公开 API 和数据库沿用现有合同。[实现方案](DESCRIPTIVE_STATISTICS_DRAFT.md) · [离线回执](../../deliveries/groundwater-v2.1-stage8-review-kit/whole-table-descriptive-statistics-offline-2026-11-23.json) · [检查记录](../../deliveries/groundwater-v2.1-stage8-review-kit/whole-table-descriptive-statistics-engineering-2026-11-23.json)
+
+候选全量 Kernel 1,077 项、Executor 174 项、原生算子与 Worker 打包 175 项、装配 225 项通过，算子 Smoke、类型、Ruff、架构边界和 Git diff 检查通过。初次 Kernel 有一项重启恢复超时，定向与全量复跑均通过。DRASTIC 测试曾被我误改期望值，恢复原断言后原生套件通过。默认装配缓存存有与前一已验候选不同的 `groundwater.flow-field@1.0.0` 摘要，装配保护在两条测试上拒绝覆盖。在独立缓存使用前一已验装配作为基线，升级检查全量通过。默认缓存保留原状态。
+
+整表算子装配的 DeepSeek Flash 草稿复测使用同一 100 万 token 上下文，3 轮与第 3 轮续测实发 29 次，上限 36 次，均返回 HTTP 200。第 1、3 轮多暴露了排序中间表，第 2 轮未启用数值文本识别。第 3 轮首次读取 Agent 终态超时，续测成功取得草稿，并显示数值文本参数有绑定但缺值。三轮实际保存的草稿均因缺少排序规则保持不可执行。专业回复累计 252 次真实请求，24 轮中 21 轮通过、3 轮失败。各轮使用各自装配回执，阶段 8 尚未满足退出条件。[三轮实测](../../deliveries/groundwater-v2.1-stage8-review-kit/deepseek-flash-reply-automatic-batch-15-2026-11-23.json) · [第 3 轮续测](../../deliveries/groundwater-v2.1-stage8-review-kit/deepseek-flash-reply-automatic-batch-16-2026-11-23.json) · [24 轮汇总](../../deliveries/groundwater-v2.1-stage8-review-kit/deepseek-flash-reply-automatic-summary-2026-11-23.json)
+
+Kernel 将明确的排序后整表统计目标用于草稿预检、提交修正和入库校验。检查只针对已安装的对应节点和本轮观察到的资料。明确要求保留排序表或限制文本识别的选择优先。已声明的 Parquet 类型无需开启文本识别。评测现在保留 `parameterValues` 的精确键。资料发现将 null 的可选标签按缺省处理，非空的错误类型由原 Schema 拒绝并给出数组格式提示。公开 API、数据库、算子和执行权限沿用原合同。[合同修正回放](../../deliveries/groundwater-v2.1-stage8-review-kit/whole-table-draft-contract-repair-offline-2026-11-23.json) · [驼峰参数名和标签回放](../../deliveries/groundwater-v2.1-stage8-review-kit/whole-table-draft-wire-tags-repair-offline-2026-11-23.json)
+
+定向检查 179 项通过。隔离 HTTP 三轮分别注入中间表输出、文本识别缺失及组合问题，修正后通过。最终 `bin/dev check --scope kernel` 通过 1,089 项测试、类型、Ruff 和架构边界检查。并行构建时的重启恢复测试曾超时，串行复跑通过。标签修正说明曾触发 SQL 扫描误判，调整英文措辞后全量检查通过。
+
+本批模型复测与续测合计 31 次，上限 36 次，均返回 HTTP 200，上下文保持 100 万 token。第 1 轮改正标签问题后通过，确认精确 Data 版本、唯一统计摘要、文本识别已开启、排序规则缺项和零执行。24 轮现有 22 轮确认通过。第 2、3 轮均观察到唯一统计摘要和不可执行状态，早先的评测重命名了参数键且未保留原始值，需用修正后的评测补测。专业回复累计 283 次真实请求。[本批初始回执](../../deliveries/groundwater-v2.1-stage8-review-kit/deepseek-flash-reply-automatic-batch-17-2026-11-23.json) · [第 1 轮通过回执](../../deliveries/groundwater-v2.1-stage8-review-kit/deepseek-flash-reply-automatic-batch-18-2026-11-23.json) · [24 轮汇总](../../deliveries/groundwater-v2.1-stage8-review-kit/deepseek-flash-reply-automatic-summary-2026-11-23.json)
+
+当前源码的完整离线门禁 `9cb6e622f236` 通过全部 14 个阶段，报告计数为 3,525 项通过、5 项按条件跳过。源码指纹为 `1c8a05c1dbd4f721b69e5e98ad4bdda6692f1d32e2c91f6ffd80a3496e6c8584`。本轮修正了描述统计算子检索断言，重新生成 114 个算子的功能清单，将已准备审批的修正逻辑归入现有协议修正模块，并用语法树核对 SDK 委托关系。接口与存储沿用现行合同。跳过项是专项 QGIS 用例、两项 MODFLOW 6 用例和两项 Pastas 用例，原始原因见回执。
+
+最终装配核对了 6 个模型的 60 项具名成果发布、21 个实连浏览器用例和 9 项任务协作检查。Data 与 Knowledge 联合验收通过 9 类检查，临时资源清理和源码快照可独立核验。主界面生产构建的 50 项浏览器测试也已通过。本次使用脚本模型，真实模型请求为 0。专业回复第 2、3 轮草稿仍待补测，现场科学签收和真实用户体验尚待验收。[当前工程门禁归档](../../deliveries/groundwater-v2.1-stage8-9cb6e622f236/README.md) · [正式报告](../../deliveries/groundwater-v2.1-stage8-9cb6e622f236/engineering/report.md) · [独立核验](../../deliveries/groundwater-v2.1-stage8-9cb6e622f236/engineering/independent-verification.json)
+
+在通过 1,089 项 Kernel 检查的同一运行代码上，又完成了三轮冻结草稿 HTTP 离线回放和三轮 DeepSeek Flash 实测。实测分别使用 7、9、8 次请求，共 24 次，上限 36 次，全部返回 HTTP 200。上下文保持 100 万 token。三轮均绑定精确 Data 版本，开启数值文本识别，只暴露 `statistics.describe_columns.summary`，因缺少排序规则保持不可执行，且未创建确认、执行任务、WorkflowRun 或发布成果。两个隔离测试实例均完成清理。[当前代码离线回执](../../deliveries/groundwater-v2.1-stage8-review-kit/whole-table-draft-exact-candidate-offline-2026-11-23.json) · [三轮实测回执](../../deliveries/groundwater-v2.1-stage8-review-kit/deepseek-flash-reply-automatic-batch-19-2026-11-23.json)
+
+专业回复的 24 轮冻结用例均已有通过回执，累计 307 次真实请求。汇总保留每轮实际测试时的代码和装配身份。现场科学签收和真实用户试用仍待验收，阶段 8 尚未达到退出条件。[24 轮评测汇总](../../deliveries/groundwater-v2.1-stage8-review-kit/deepseek-flash-reply-automatic-summary-2026-11-23.json)
+
+使用工程候选 `9cb6e622f236` 的运行代码重放封存的 USGS 观测。Kernel 在批准前保持零执行，批准后由原生 Worker 计算并经 Data 发布 21 项具名成果。17 项与离线参考逐字节一致，4 项统一日期和数值类型后逐字段一致。用封存日值独立复算了三口井的 273 条月度记录，核对了季节趋势、变点、离群结果及摘要的 1,993 个字段值。隔离 HTTP 用例通过，临时 PostgreSQL 已清理，未发出真实模型请求。本次完成公开数据技术复验，现场签收和真实用户试用仍待验收。[公开数据当前候选回执](../../deliveries/groundwater-v2.1-stage8-review-kit/monitoring-current-candidate-public-2026-11-23.json) · [现场复核记录](../../deliveries/groundwater-v2.1-stage8-review-kit/field-review.md)
+
+为当前候选启动独立本机试用实例，绑定固定项目，网关仅监听回环地址。5 个试用账号的知识包均通过预检，Chromium 均跑通首页进入待确认工作、刷新恢复和退出登录。浏览器预检后，5 项原确认仍待决定，执行数为零。实例使用本地脚本模型，已记录 favicon 404。正式试用表的 25 项均待实际参与者评估，现场科学签收也仍待复核。[试用入口与材料](../../deliveries/groundwater-v2.1-stage8-pilot-9cb6e622f236/README.md) · [当前候选试用回执](../../deliveries/groundwater-v2.1-stage8-pilot-9cb6e622f236/verification.json)
+
+当前候选通过 17 项隔离 Gateway 授权复验，覆盖匿名访问、只读角色、其他主体、固定项目范围，以及 Data 和 Knowledge 的读写边界。对已登录的待确认方案所有者降权后，服务器拒绝其批准方案、驳回方案及发送新消息的请求。恢复原角色后核对确认标识、内容与状态一致。请求前后模型、WorkflowRun、派发和 Executor 任务计数一致，Data 仅保留获准的夹具发布，Knowledge 导入列表一致。真实模型请求为零，隔离实例已清理。[当前候选授权回执](../../deliveries/groundwater-v2.1-stage8-review-kit/current-candidate-role-boundary-2026-11-23.json)
+
+当前候选通过 v38 Kernel 的源码升级、重启和备份回滚演练。四个阶段的待确认方案内容、用户角色与工作关联均一致，重启后重复的进度查询沿用原回执。回滚启动前，恢复文件与升级前备份的校验和一致。另有 29 项 SQLite 迁移与工作生命周期检查通过，包含 v37→v38 显式迁移、失败回滚、重跑幂等与游标恢复。独立恢复公开监测案例的 Kernel 备份后，21 项已发布成果引用与原发布回执一致，重启后仍可读取。演练在隔离副本中完成，成果恢复范围为 Kernel 保存的引用。真实模型请求为零。[迁移与恢复回执](../../deliveries/groundwater-v2.1-stage8-review-kit/current-candidate-upgrade-restore-2026-11-23.json)
+
+当前生产构建用 273 条封存 USGS 月度观测在隔离 Chromium 中重放一条完整旅程，核对 19 项步骤。创建工作到首个关联会话 1.987 秒，SSE 断线恢复 3.054 秒，确认到读取已发布状态 35.116 秒，浏览器开始操作到归档追溯 80.363 秒。故意遗漏阈值的样例首次准备为 0/1，补参后为 1/1。确认、21 项具名成果发布、测试账号验收和跨会话精确复用均通过。单条旅程采用脚本模型，真实请求数为零。指标页保存该轮分母和计时边界，并列出六模型、真实模型冻结评测和授权复验各自的样本范围。[阶段 8 验收指标](../../deliveries/groundwater-v2.1-stage8-review-kit/acceptance-metrics.md) · [当前浏览器回执](../../deliveries/groundwater-v2.1-stage8-review-kit/current-candidate-journey-metrics-2026-11-23.json)
+
+当前候选在隔离实例依次停启 Data、Knowledge 和 Executor。三次停机均将就绪状态降为 503，恢复后返回 200。原确认内容和修订保持一致，进度查询仍返回待确认。另停止 Native Worker 直到心跳失效。此时一次明确批准登记一个作业，WorkflowRun 状态为 `RUNNING`，发布状态为空，输出数为零。Worker 恢复后同一作业成功，Data 一次发布两项具名成果，两个对象的校验和均一致，工作进入待验收。测试未发出真实模型请求，隔离实例已清理。[依赖停机与作业恢复回执](../../deliveries/groundwater-v2.1-stage8-review-kit/current-candidate-service-outage-2026-11-23.json)
+
+使用当前候选分别装配两个固定项目，通过实际 Gateway 与独立持久化目录运行。每个项目均完成独立资料发布、知识导入及一个原生工作流，四项成果均核对对象校验和。在同一 Chromium 的两个入口通过 39 项检查，包含 16 项双向跨项目读取拒绝以及两项切换绑定项目的拒绝。退出一个项目后，另一项目的登录与读取仍有效。测试未发出真实模型请求，两个复验实例均已清理。[双项目隔离回执](../../deliveries/groundwater-v2.1-stage8-review-kit/current-candidate-two-project-isolation-2026-11-23.json)
+
+从归档记录的本地提交、已测补丁和 8 个未跟踪文件独立重建候选。重建的运行源码逐文件核对内容、文件类型和 Git 执行权限位。7 个装配产物与工程门禁的 SHA-256 一致。Compose 在统一构建目录和挂载源路径后结构一致。恢复副本断网通过 152 项定向测试，涵盖装配、产品清单、工作流平台、参数命名和草稿合同。正式项目所需三份现场资料仍缺，真实试用仍无评估记录。[源码快照重建回执](../../deliveries/groundwater-v2.1-stage8-review-kit/current-candidate-source-reconstitution-2026-11-23.json)
+
+### 阶段 8 本地自动验收结项
+
+2026-11-23，用户决定放弃人工评估。本阶段取消正式场地人工复核及签收、真实用户试用。模型回复人工盲审此前已取消。阶段 8 按本地自动验收范围结项。[阶段结项回执](../../deliveries/groundwater-v2.1-stage8-review-kit/stage8-closeout-2026-11-23.json)
+
+工程候选 `9cb6e622f236` 通过 14 个离线门禁阶段，记录 3,525 项通过和 5 项条件跳过。当前候选的 19 项业务旅程、失败恢复、授权边界和源码重建均有回执。真实 DeepSeek Flash 冻结意图 24/24 通过，冻结专业回复 24/24 通过，逐轮记录各自源码及装配身份。[工程门禁](../../deliveries/groundwater-v2.1-stage8-9cb6e622f236/engineering/report.md) · [验收指标](../../deliveries/groundwater-v2.1-stage8-review-kit/acceptance-metrics.md) · [模型回执索引](../../deliveries/groundwater-v2.1-stage8-review-kit/provider-review.md)
+
+USGS 公开案例通过独立复算与 21 项成果发布核对。正式场地的科学适用性和真实用户体验均记录为 `NOT_ASSESSED`。正式项目三份资料未取得，匿名表没有实际试用结果。[公开数据回执](../../deliveries/groundwater-v2.1-stage8-review-kit/monitoring-current-candidate-public-2026-11-23.json) · [试用归档](../../deliveries/groundwater-v2.1-stage8-review-kit/study-facilitator.md)

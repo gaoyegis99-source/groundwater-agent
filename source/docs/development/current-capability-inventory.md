@@ -7,10 +7,10 @@
 
 | 来源 | 路径 | 身份 |
 |---|---|---|
-| Product manifest | `products/groundwater/product-manifest.json` | `sha256:d534cbc9af3ffdfee993301b45cb56a42daa104fe408fb8857e6213448c6bfd4` |
+| Product manifest | `products/groundwater/product-manifest.json` | `sha256:b2dde2fec774b692b21dc9feb11f29a687380101b646a497b93c2d1eaff4da30` |
 | Domain manifest | `domains/groundwater/6.2.0/domain-manifest.json` | package `sha256:9862f88dd7cce5bcdcf58dd008edb6465bcfde031d97548785a66eb3e14c5fc3` |
-| Operator Catalog index | `packages/operator-pack/catalog/index.json` | manifest `sha256:3881423fa69deae67a4d31bbab2c202541b8c7ccaf7c1182497da74a67b672ab`<br>execution `sha256:47eb493ad355de2062110e459c5d69368fd6de457d5debabc9f2f8c2363f4494` |
-| Product UI | `products/groundwater/ui/product-ui-porous.v1.json` | source `sha256:7b6554c54e4d57a6392ea427de8ec937464dddbbd3a5c1d6c885a3ee8b572091`<br>compiled `sha256:4e1eff274ec9662f0f0398d48c2335630b54fd01f4cd78d03134dd74e18c2250` |
+| Operator Catalog index | `packages/operator-pack/catalog/index.json` | manifest `sha256:15766f915cbefe35f58bbb38fc983623fc4b570816a565fb110f33de4d0a2b49`<br>execution `sha256:2e8d449dcf9697da947714b59c74e4d9ac727cc701a4b92897516f31285db228` |
+| Product UI | `products/groundwater/ui/product-ui-porous.v1.json` | source `sha256:5d5915021c40d7a9cf429021b958c78af781da99d2f6b9a2f9eedfad2b123d4f`<br>compiled `sha256:c81146da56cd5774c74effbbca76c64426d3a8629a23065c01e6bf49a6458f58` |
 | Business Capability | `products/groundwater/capabilities/business-capabilities.v1.json` | `sha256:5f276ca3dfbec2aa024b71b0fb35ed5203ca121e79b43f7e46689f4cde7d91ca` |
 
 ## 摘要
@@ -19,7 +19,7 @@
 |---|---:|
 | 可执行模型 | 18 |
 | 工作流 | 18 |
-| Catalog 算子 | 113 |
+| Catalog 算子 | 114 |
 | 被当前工作流引用的唯一算子 | 54 |
 | UI 模型配置 | 18 |
 | 业务能力 | 2 |
@@ -28,7 +28,7 @@
 | Knowledge documents | 9 |
 | Execution cases | 1 |
 
-算子 runtime：`native` 86、`qgis` 15、`remote_http` 12。
+算子 runtime：`native` 87、`qgis` 15、`remote_http` 12。
 
 结果 viewer：`chart` 9、`image` 2、`json` 41、`map` 22、`metadata` 16、`table` 26。
 
@@ -126,7 +126,7 @@
 
 ## Operator Catalog 摘要
 
-领域分布：`cartography` 1、`crs` 1、`data` 2、`document` 2、`geometry` 2、`groundwater` 18、`hydrology` 8、`ml` 3、`points` 2、`preprocessing` 3、`raster` 21、`statistics` 7、`table` 10、`timeseries` 17、`vector` 16。
+领域分布：`cartography` 1、`crs` 1、`data` 2、`document` 2、`geometry` 2、`groundwater` 18、`hydrology` 8、`ml` 3、`points` 2、`preprocessing` 3、`raster` 21、`statistics` 8、`table` 10、`timeseries` 17、`vector` 16。
 
 Catalog 中存在不等于当前领域工作流已暴露；下表的“工作流”与“节点使用”来自当前 18 个工作流的精确引用。
 
@@ -197,6 +197,7 @@ Catalog 中存在不等于当前领域工作流已暴露；下表的“工作流
 | `raster.zonal_statistics@1.0.0` | `raster` | `native` | 0 | 0 |
 | `spreadsheet.extract_table@1.0.0` | `table` | `native` | 1 | 1 |
 | `statistics.describe@1.0.0` | `statistics` | `native` | 1 | 1 |
+| `statistics.describe_columns@1.0.0` | `statistics` | `native` | 0 | 0 |
 | `statistics.linear_trend@1.0.0` | `statistics` | `native` | 1 | 1 |
 | `statistics.mad_outliers@1.0.0` | `statistics` | `native` | 1 | 1 |
 | `statistics.mann_kendall@1.0.0` | `statistics` | `native` | 1 | 1 |

@@ -33,7 +33,7 @@ dev = [
 ]
 
 [project.scripts]
-platform-operator-run = "moperators.runtime.task:main"
+platform-operator-run = "moperators.runtime.entrypoint:main"
 platform-operator-catalog = "moperators.catalog:main"
 platform-operator-smoke = "moperators.smoke:main"
 

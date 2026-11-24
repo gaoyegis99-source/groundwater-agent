@@ -200,13 +200,15 @@ test('G18 keeps a blocked spatial check while approving and executing the ready 
     expect.objectContaining({ parameter: 'xField', kind: 'MISSING_PARAMETER' }),
     expect.objectContaining({ parameter: 'yField', kind: 'MISSING_PARAMETER' }),
   ]));
+  expect(prepared.disposition).toBe('WAITING_CONFIRMATION');
   await page.reload();
   const workspace = page.getByTestId('workspace-panel');
   await page.getByRole('navigation', { name: '会话详情' }).getByRole('link', { name: '数据', exact: true }).click();
   const checks = workspace.locator('.workspace-preparation');
-  await expect(checks).toContainText('地下水流场');
-  await expect(checks).toContainText('待补充');
-  await expect(checks).toContainText('可提案');
+  await checks.getByText('输入准备 · 等待确认', { exact: true }).click();
+  await expect(checks.getByRole('heading', { name: /地下水流场.*未通过检查/ })).toBeVisible();
+  await expect(checks.getByText('检查通过', { exact: true })).toBeVisible();
+  await expect(checks.getByRole('button', { name: '补充参数' })).toHaveCount(0);
   await page.screenshot({ path: info.outputPath('g18-preparation-after-refresh.png') });
   await page.getByRole('button', { name: '返回对话', exact: true }).click();
   await page.getByTestId('confirm-execution').click();
@@ -219,6 +221,10 @@ test('G18 keeps a blocked spatial check while approving and executing the ready 
   expect(run).toMatchObject({ status: 'SUCCEEDED', modelId: 'groundwater.monitoring-trend' });
   expect(run.outputs.length).toBeGreaterThan(0);
   expect(finished.preparation.entries).toEqual(prepared.entries);
+  expect(finished.preparation.disposition).toBe('CONSUMED');
+  await page.getByRole('navigation', { name: '会话详情' }).getByRole('link', { name: '数据', exact: true }).click();
+  await page.reload();
+  await expect(checks.getByText('输入准备 · 本轮准备已结束', { exact: true })).toBeVisible();
   await writeFile(info.outputPath('g18-lifecycle.json'), JSON.stringify({ id, versionId, prepared, confirmation: before.confirmation, run }, null, 2));
 });
 

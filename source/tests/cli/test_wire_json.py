@@ -55,3 +55,10 @@ def test_wire_mapper_converts_owned_objects_inside_named_field_arrays() -> None:
         "rows": [{"source_field": "head_m", "versionId": "opaque"}],
     }
     assert from_wire_json(wire) == internal
+
+
+def test_workflow_parameter_values_keep_case_sensitive_names_and_values() -> None:
+    values = {"inferNumericStrings": True, "no_data_code": {"source_field": "head"}}
+    wire = {"parameterValues": values}
+    assert from_wire_json(wire) == {"parameter_values": values}
+    assert to_wire_json({"parameter_values": values}) == wire

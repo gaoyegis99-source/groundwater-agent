@@ -15,6 +15,12 @@ V6 只通过项目根 `bin/docker` 连接当前用户的 `$XDG_RUNTIME_DIR/groun
 
 research profile 只把统一 Gateway 的 `28186` 发布到 loopback。数据库、内部 API 和 worker 不对主机发布端口。
 
+## 项目与实例
+
+每套实例在装配时使用 Product Manifest 的 `projectId`。Gateway 按该实例的 Kernel 校验登录和成员角色，Data、Knowledge 和 Executor 沿用这个项目身份。工作、会话、资料和成果在各自的项目入口管理。
+
+同一台主机部署多个项目时，每个项目使用独立装配和实例数据目录。可用 `PLATFORM_GATEWAY_PORT` 为各 Gateway 分配不同的监听端口。浏览器按主机名隔离登录 Cookie。需要在同一浏览器同时保持多个项目登录时，为各项目使用不同的入口主机名。
+
 ## 数据与秘密
 
 每个持久挂载都解析到当前 instance data root 的普通目录。Compose 顶层不声明持久命名卷，不挂载 Docker socket；科研开发可将源码只读挂载到服务容器。秘密由顶层 file secret 声明，并只授予实际消费者；容器内路径为 `/run/secrets/<name>`。

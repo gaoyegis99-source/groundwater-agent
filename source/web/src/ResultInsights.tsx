@@ -3,12 +3,14 @@ import { ApiError, contentUrl, readDataVersion, runDataQuery } from './api';
 import { StatisticsSummary } from './StatisticsSummary';
 import { outputName } from './card-presentation';
 import type { ResultOverview } from './product-ui';
-import type { ResourceReference } from './types';
+import type { ResourceDetail, ResourceReference } from './types';
 import type { RasterCategory } from './viewers/RasterViewer';
 
 const RasterViewer = lazy(() => import('./viewers/RasterViewer').then(module => ({ default: module.RasterViewer })));
 const CalibrationChart = lazy(() => import('./viewers/CalibrationChart'));
 const number = new Intl.NumberFormat('zh-CN', { maximumSignificantDigits: 5 });
+const integer = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 0 });
+const resolution = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 2 });
 
 export function record(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
@@ -38,18 +40,64 @@ function fact(label: string, value: unknown, unit = '') {
 
 const classColors = ['#156a84', '#368880', '#969149', '#ca702c', '#b44127', '#862f46'];
 
-export function ResultInsights({ overview, summary, trend, visuals, project, targetTime }: {
+function useFlowEvidence(snapshot?: ResourceReference, diagnostics?: ResourceReference, raster?: ResourceReference) {
+  const key = snapshot || diagnostics || raster ? JSON.stringify([snapshot, diagnostics, raster]) : '';
+  const [loaded, setLoaded] = useState<{ key: string; descriptors: (ResourceDetail['descriptor'] | undefined)[] }>();
+  useEffect(() => {
+    if (!key) return;
+    const controller = new AbortController();
+    const references: (ResourceReference | null)[] = JSON.parse(key);
+    async function descriptor(reference: ResourceReference | null) {
+      if (!reference) return;
+      try {
+        return (await readDataVersion(reference.versionId, controller.signal, reference)).descriptor;
+      } catch (error) {
+        if (controller.signal.aborted || error instanceof ApiError) return;
+        throw error;
+      }
+    }
+    void Promise.all(references.map(descriptor)).then(descriptors => {
+      if (!controller.signal.aborted) setLoaded({ key, descriptors });
+    });
+    return () => controller.abort();
+  }, [key]);
+  const [active, total, head] = loaded?.key === key ? loaded.descriptors : [];
+  const selectedCount = active?.rowCount;
+  const participating = typeof selectedCount === 'number' && Number.isSafeInteger(selectedCount) && selectedCount >= 0
+    ? selectedCount : undefined;
+  const diagnosticCount = total?.rowCount;
+  const excluded = participating !== undefined
+    && typeof diagnosticCount === 'number' && Number.isSafeInteger(diagnosticCount) && diagnosticCount >= participating
+    ? diagnosticCount - participating : undefined;
+  const transform = record(record(head?.raster)?.grid)?.transform;
+  if (!Array.isArray(transform) || transform.length !== 6
+      || !transform.every(value => typeof value === 'number' && Number.isFinite(value))) return { participating, excluded };
+  const width = Math.hypot(transform[1], transform[4]);
+  const height = Math.hypot(transform[2], transform[5]);
+  return {
+    participating,
+    excluded,
+    actualResolution: width > 0 && height > 0 ? `${resolution.format(width)} × ${resolution.format(height)} m` : undefined,
+  };
+}
+
+export function ResultInsights({ overview, summary, trend, visuals, project, runArguments, snapshot, snapshotDiagnostics, headRaster }: {
   overview: NonNullable<ResultOverview['insight']>;
   summary?: ResourceReference;
   trend?: ResourceReference;
   visuals: ResourceReference[];
   project: string;
-  targetTime?: string;
+  runArguments?: Record<string, unknown>;
+  snapshot?: ResourceReference;
+  snapshotDiagnostics?: ResourceReference;
+  headRaster?: ResourceReference;
 }) {
   const [retry, setRetry] = useState(0);
   const payload = usePublishedJson(project, summary, undefined, retry);
   const value = record(payload);
   const data = overview.schemaVersion && value?.schemaVersion !== overview.schemaVersion ? null : value;
+  const flow = overview.kind === 'darcy';
+  const flowEvidence = useFlowEvidence(flow ? snapshot : undefined, flow ? snapshotDiagnostics : undefined, flow ? headRaster : undefined);
   const trendKey = trend ? JSON.stringify(trend) : null;
   const [trendCounts, setTrendCounts] = useState<{ key: string; counts: number[] | null }>();
   useEffect(() => {
@@ -117,8 +165,11 @@ export function ResultInsights({ overview, summary, trend, visuals, project, tar
       && data.extent.every(item => typeof item === 'number' && Number.isFinite(item)) ? data.extent.map(item => number.format(item)).join(' · ') : undefined));
   }
   if (overview.kind === 'darcy' && data?.resultKind === 'MODEL_DERIVED_NOT_OBSERVED') {
-    if (targetTime) facts.push(fact('目标时点', targetTime));
-    facts.push(fact('有效网格数', data.validCellCount), fact('导水系数', data.hydraulicConductivityMetersPerDay, 'm/d'),
+    if (runArguments?.targetTime) facts.push(fact('目标时点', runArguments.targetTime));
+    facts.push(fact('参与插值井数', flowEvidence.participating === undefined ? undefined : integer.format(flowEvidence.participating)),
+      fact('被排除井数', flowEvidence.excluded === undefined ? undefined : integer.format(flowEvidence.excluded)),
+      fact('目标像元大小', runArguments?.pixelSize, 'm'), fact('实际分辨率（X × Y）', flowEvidence.actualResolution),
+      fact('流速有效网格数', data.validCellCount), fact('水力传导系数', data.hydraulicConductivityMetersPerDay, 'm/d'),
       fact('有效孔隙度', data.effectivePorosity));
     note = '流速来自二维稳态模型推导。方向从网格北顺时针计量，指向水头降低的方向。';
   }

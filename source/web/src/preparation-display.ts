@@ -1,4 +1,38 @@
-import type { TaskPreparationCheck, TaskPreparationEntry } from './types';
+import type { History, TaskPreparation, TaskPreparationCheck, TaskPreparationEntry } from './types';
+
+const lifecycleLabels: Record<Exclude<TaskPreparation['disposition'], 'ACTIVE'>, string> = {
+  WAITING_CONFIRMATION: '等待确认',
+  EXECUTING: '执行进行中',
+  CONSUMED: '本轮准备已结束',
+  REJECTED: '本轮方案已拒绝',
+  FAILED: '本轮未完成',
+  ABANDONED: '本轮准备已放弃',
+  STALE: '需要本轮重新核验',
+};
+
+export function preparationDisplay(history: History) {
+  const preparation = history.preparation;
+  if (!preparation || preparation.sessionId !== history.sessionId) return null;
+  const disposition = preparation.freshForCurrentTurn && preparation.goalRevision === history.goalRevision
+    ? preparation.disposition : 'STALE';
+  if (disposition !== 'ACTIVE') {
+    const label = lifecycleLabels[disposition] ?? '状态待核实';
+    return { preparation, actionable: false, label, parameterLabel: label };
+  }
+  if (preparation.status === 'READY') {
+    return { preparation, actionable: true, label: '合同可提案', parameterLabel: '已通过合同检查' };
+  }
+  if (preparation.status === 'BLOCKED') {
+    return { preparation, actionable: true, label: '有分析需要补充', parameterLabel: '存在阻塞' };
+  }
+  return { preparation, actionable: false, label: '状态待核实', parameterLabel: '状态待核实' };
+}
+
+export function preparationEntryLabel(status: TaskPreparationEntry['status'], actionable: boolean) {
+  if (status === 'READY') return actionable ? '可提案' : '检查通过';
+  if (status === 'BLOCKED') return actionable ? '待补充' : '未通过检查';
+  return '状态待核实';
+}
 
 export function preparationIssues(
   entry: TaskPreparationEntry,

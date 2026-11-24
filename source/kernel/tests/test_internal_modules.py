@@ -657,6 +657,15 @@ def test_minimax_discovery_cursor_repair_instruction_requires_omission_or_digits
     assert "digits only" in instruction
 
 
+def test_discovery_tags_repair_preserves_the_optional_array_contract() -> None:
+    instruction = _schema_repair_instruction(
+        "discover_datasets",
+        {"issues": [{"path": "/tags", "validator": "type"}]},
+    )
+    assert "omit tags" in instruction
+    assert "JSON array of strings" in instruction
+
+
 def test_supported_provider_read_description_requires_exact_refs(kernel_settings):
     settings = kernel_settings("knowledge")
     definition = next(
@@ -746,9 +755,9 @@ def test_deepseek_observation_normalization_drops_only_unknown_schema_siblings()
     ) is incomplete
 
 
-def test_deepseek_discovery_treats_null_optional_scopes_as_omitted() -> None:
+def test_deepseek_discovery_treats_null_optional_scopes_and_tags_as_omitted() -> None:
     schema = {
-        "properties": {"query": {}, "spatial_extent": {}, "time_window": {}},
+        "properties": {"query": {}, "spatial_extent": {}, "time_window": {}, "tags": {"type": "array"}},
         "required": ["query"],
         "additionalProperties": False,
     }
@@ -756,6 +765,7 @@ def test_deepseek_discovery_treats_null_optional_scopes_as_omitted() -> None:
         "query": "monitoring",
         "spatial_extent": None,
         "time_window": ["2025-01-01", "2025-12-01"],
+        "tags": None,
     }
     assert _normalize_observation_arguments(
         supplied,
@@ -764,6 +774,11 @@ def test_deepseek_discovery_treats_null_optional_scopes_as_omitted() -> None:
         accepts_budget=False,
         input_schema=schema,
     ) == {"query": "monitoring", "time_window": supplied["time_window"]}
+    supplied["tags"] = "invalid-scalar"
+    assert _normalize_observation_arguments(
+        supplied, provider="deepseek", tool_name="discover_datasets",
+        accepts_budget=False, input_schema=schema,
+    )["tags"] == "invalid-scalar"
 
 
 def test_minimax_general_retrieval_discards_inapplicable_binding() -> None:

@@ -7,7 +7,9 @@ from dataclasses import replace
 import json
 from pathlib import Path
 import sqlite3
+from types import SimpleNamespace
 
+from agents import FunctionTool, Usage
 from agents.testing import ModelStep, ScriptedModel, function_call
 from fastapi.testclient import TestClient
 import httpx
@@ -28,9 +30,11 @@ from kernel.tests.test_recommendations import (
 from platform_kernel.api import create_app
 from platform_kernel.api.wire import to_wire
 from platform_kernel.agent_runtime.models import SubmittedReplyV6
+from platform_kernel.agent_runtime.tooling.catalog_tools import add_workflow_validation
 from platform_kernel.agent_runtime.tooling.reply_submission import ReplySubmission
 from platform_kernel.composition import PlatformApplication
 from platform_kernel.database import connect_database, read_session_events
+from platform_workflow_compiler.composition.execution import ArtifactComposition
 
 
 _RAW_OBJECT = RESOURCE["objects"][0]
@@ -120,6 +124,38 @@ def _draft():
         "unresolved_items": ["需要排序规则文件。"],
         "limitations": ["仅草稿，未执行计算。"],
     }
+
+
+_FULL_COLUMN_GOAL = (
+    "请基于「冻结观测表」生成工作流草稿：先按规则稳定排序，再计算各数值列的描述统计。"
+    "排序规则 JSON 尚未提供，请列为缺项；不要执行或安装。"
+)
+
+
+def _whole_table_draft(*, intermediate=False, inference=True):
+    draft = _draft()
+    draft["graph"]["nodes"][1]["operatorId"] = "statistics.describe_columns"
+    draft["graph"]["parameters"] = ["numeric_text"] if inference is not None else []
+    draft["graph"]["nodes"][1]["parameters"] = (
+        {"inferNumericStrings": {"workflowParameter": "numeric_text"}}
+        if inference is not None else {}
+    )
+    draft["parameter_values"] = {}
+    draft["parameter_sources"] = []
+    if isinstance(inference, bool):
+        draft["parameter_values"]["numeric_text"] = inference
+        draft["parameter_sources"] = [{
+            "name": "numeric_text", "source": "DATA", "explanation": "CSV 排序节点保留字符串。",
+        }]
+    if intermediate:
+        draft["graph"]["outputs"].insert(0, {
+            "name": "sorted_table", "nodeOutput": {"nodeId": "sort", "port": "data"},
+        })
+    return draft
+
+
+def _whole_table_steps(draft):
+    return [_operator("table.sort"), _operator("statistics.describe_columns"), _read(), _inspect(), _reply(draft)]
 
 
 def _fan_out_draft():
@@ -298,6 +334,99 @@ def _no_execution(app):
             assert (
                 connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0] == 0
             )
+
+
+@pytest.mark.parametrize("mode", ["WORKFLOW_DRAFT", "DIALOGUE"])
+@pytest.mark.parametrize("case", ["single_column", "whole_table_csv", "whole_table_parquet"])
+def test_draft_validation_reports_missing_inputs_independently_of_execution(
+    kernel_settings, mode, case,
+):
+    profile = ArtifactComposition(
+        operators={}, manifests={}, environment={}, limits={}, rule_schemas={},
+    )
+    settings = replace(kernel_settings("knowledge"), workflow_composition=profile)
+    data_format, media_type = (
+        ("parquet", "application/vnd.apache.parquet") if case == "whole_table_parquet"
+        else ("csv", "text/csv")
+    )
+
+    async def inspect_version(_context, _arguments):
+        return {"data": {
+            "status": "OK",
+            "versionId": REFERENCE["version_id"],
+            "datasetId": REFERENCE["dataset_id"],
+            "semanticId": REFERENCE["semantic_id"],
+            "objects": [{
+                "objectId": REFERENCE["object_id"],
+                "role": _RAW_OBJECT["role"],
+                "format": data_format,
+                "mediaType": media_type,
+                "size": REFERENCE["size_bytes"],
+                "checksum": REFERENCE["checksum"],
+            }],
+        }}
+
+    async def inspect_operator(_context, arguments):
+        operator_id, version = json.loads(arguments)
+        operator = settings.operator_catalog[operator_id, version]
+        return {
+            "operator_id": operator_id,
+            "operator_version": version,
+            "implementation_revision": operator["implementationRevision"],
+        }
+
+    inspect_data, inspect_manifest, validate_draft = add_workflow_validation([
+        FunctionTool(
+            name="inspect_data_version", description="", params_json_schema={"type": "object"},
+            on_invoke_tool=inspect_version,
+        ),
+        FunctionTool(
+            name="get_operator", description="", params_json_schema={"type": "object"},
+            on_invoke_tool=inspect_operator,
+        ),
+    ], settings, {
+        "current_message": (
+            "先排序，再统计。排序规则 JSON 尚未提供。"
+            if case == "single_column" else _FULL_COLUMN_GOAL
+        ),
+        "workflow_draft_id": "draft",
+    })
+
+    async def validate():
+        context = SimpleNamespace(
+            context={"governance": {"mode": mode}, "agent_run_id": "run"},
+            tool_call_id="inspect",
+        )
+        await inspect_data.on_invoke_tool(context, "{}")
+        describe_operator = "statistics.describe" if case == "single_column" else "statistics.describe_columns"
+        for operator in ("table.sort", describe_operator):
+            context.tool_call_id = operator
+            await inspect_manifest.on_invoke_tool(context, json.dumps((operator, "1.0.0")))
+        draft = (
+            _draft() if case == "single_column"
+            else _whole_table_draft(intermediate=case == "whole_table_csv", inference=None)
+        )
+        draft["graph"]["inputs"][0].update(formats=[data_format], mediaTypes=[media_type])
+        draft["knowledge_refs"] = []
+        return await validate_draft.on_invoke_tool(context, json.dumps(draft, ensure_ascii=False))
+
+    result = asyncio.run(validate())
+    composition_check = {"status": "INVALID", "code": "COMPOSITION_OPERATOR_UNSUPPORTED"}
+    if mode == "DIALOGUE":
+        assert result == composition_check
+    elif case == "whole_table_csv":
+        assert result["status"] == "INVALID"
+        assert [issue["code"] for issue in result["issues"]] == [
+            "WORKFLOW_DRAFT_INTERMEDIATE_OUTPUT", "WORKFLOW_DRAFT_NUMERIC_TEXT_REQUIRED",
+        ]
+        assert "set that parameter to JSON true" in result["instruction"]
+    else:
+        assert result["status"] == "INCOMPLETE"
+        assert result["missing_inputs"] == [{
+            "kind": "DATA", "name": "rules", "required_by": [{"node_id": "sort", "port": "rules"}],
+        }]
+        assert result["execution_allowed"] is False
+        assert result["composition_check"] == composition_check
 
 
 @pytest.mark.parametrize(
@@ -643,6 +772,57 @@ def test_deepseek_draft_repairs_one_disabled_read_after_discovery_closes(
     _no_execution(app)
 
 
+@pytest.mark.parametrize("second_repair_succeeds", [True, False])
+def test_deepseek_draft_repairs_malformed_responses_at_distinct_stages(
+    kernel_settings, second_repair_succeeds,
+):
+    def malformed(call_id):
+        call = function_call("list_operators", {}, call_id=call_id)
+        return ModelStep(output=[call.model_copy(update={"arguments": "{"})])
+
+    sort, describe, read, inspect, reply = _steps()
+    steps = [sort, malformed("first-invalid"), describe, read, malformed("second-invalid")]
+    if second_repair_succeeds:
+        steps.extend([inspect, reply])
+    else:
+        steps.append(malformed("second-invalid-retry"))
+    app, client, model = _app(kernel_settings, [
+        replace(step, usage=Usage(input_tokens=10, output_tokens=2, total_tokens=12))
+        for step in steps
+    ])
+    sid, path, _ = _create(client)
+
+    _drain(app, sid)
+
+    resource = client.get(path).json()
+    assert resource["status"] == ("COMPLETE" if second_repair_succeeds else "FAILED"), resource
+    assert len(model.calls) == len(steps)
+    with connect_database(app.database) as connection:
+        attempts = [tuple(row) for row in connection.execute(
+            "SELECT stage,attempt,outcome,error_class FROM provider_requests "
+            "ORDER BY created_at,rowid"
+        )]
+    assert attempts[1:3] == [
+        ("AGENT_INITIAL:2", 1, "FAILED", "PROTOCOL_OR_SCHEMA_INVALID"),
+        ("AGENT_INITIAL:2", 2, "SUCCEEDED", None),
+    ]
+    assert attempts[4:6] == [
+        ("AGENT_INITIAL:5", 1, "FAILED", "PROTOCOL_OR_SCHEMA_INVALID"),
+        ("AGENT_INITIAL:5", 2, "SUCCEEDED", None) if second_repair_succeeds else
+        ("AGENT_INITIAL:5", 2, "FAILED", "PROTOCOL_OR_SCHEMA_INVALID"),
+    ]
+    assert app.agent_runtime.get(resource["agentRunId"]).total_tokens == 12 * len(steps)
+    if second_repair_succeeds:
+        payload = resource["payload"]
+        assert payload["dataBindings"] == to_wire(_draft())["dataBindings"]
+        assert payload["knowledgeRefs"] == to_wire(_draft())["knowledgeRefs"]
+        assert payload["executionAllowed"] is False
+    else:
+        assert resource["errorCode"] == "AGENT_MODEL_OUTPUT_INVALID"
+        assert resource["payload"] is None
+    _no_execution(app)
+
+
 def test_deepseek_draft_repairs_one_unknown_catalog_identity(kernel_settings):
     app, client, model = _app(
         kernel_settings,
@@ -816,6 +996,84 @@ def test_deepseek_draft_allows_explicit_sequence_fan_out_and_multiple_outputs(
         for output in resource["payload"]["workflow"]["outputs"]
     } == {"trend", "gaps"}
     assert len(model.calls) == len(_steps(draft))
+    _no_execution(app)
+
+
+@pytest.mark.parametrize(("intermediate", "inference", "issues"), [
+    (True, True, ["WORKFLOW_DRAFT_INTERMEDIATE_OUTPUT"]),
+    (False, None, ["WORKFLOW_DRAFT_NUMERIC_TEXT_REQUIRED"]),
+    (True, "unassigned", ["WORKFLOW_DRAFT_INTERMEDIATE_OUTPUT", "WORKFLOW_DRAFT_NUMERIC_TEXT_REQUIRED"]),
+])
+def test_deepseek_draft_repairs_whole_table_result_contract(
+    kernel_settings, intermediate, inference, issues,
+):
+    invalid = _whole_table_draft(intermediate=intermediate, inference=inference)
+    app, client, model = _app(
+        kernel_settings, [*_whole_table_steps(invalid), _reply(_whole_table_draft(), call_id="reply-repair")],
+    )
+    sid, path, _ = _create(client, message=_FULL_COLUMN_GOAL)
+
+    _drain(app, sid)
+
+    resource = client.get(path).json()
+    assert resource["status"] == "COMPLETE", resource
+    assert len(model.calls) == 6
+    repair_input = json.dumps(model.calls[-1].input)
+    assert all(code in repair_input for code in issues)
+    assert model.calls[-1].model_settings.tool_choice == "submit_reply"
+    payload = resource["payload"]
+    assert payload["workflow"]["outputs"] == [{
+        "name": "summary", "nodeOutput": {"nodeId": "describe", "port": "summary"},
+    }]
+    assert payload["parameterValues"] == {"numeric_text": True}
+    assert payload["missingInputs"] == [{
+        "name": "rules", "kind": "DATA", "requiredBy": [{"nodeId": "sort", "port": "rules"}],
+    }]
+    assert payload["dataBindings"][0]["dataRef"]["versionId"] == REFERENCE["version_id"]
+    assert payload["executionAllowed"] is False
+    _no_execution(app)
+
+
+@pytest.mark.parametrize(("goal", "intermediate", "inference"), [
+    (_FULL_COLUMN_GOAL + "另请导出排序后的表。", True, True),
+    (_FULL_COLUMN_GOAL + "参数 inferNumericStrings=false，只统计物理数值列。", False, False),
+    ("请生成排序后统计草稿，具体成果请先与我确认。", True, None),
+])
+def test_whole_table_draft_respects_explicit_output_and_representation_choices(
+    kernel_settings, goal, intermediate, inference,
+):
+    draft = _whole_table_draft(intermediate=intermediate, inference=inference)
+    if inference is False:
+        draft["parameter_sources"][0]["source"] = "USER"
+    steps = _whole_table_steps(draft)
+    app, client, model = _app(kernel_settings, steps)
+    sid, path, _ = _create(client, message=goal)
+
+    _drain(app, sid)
+
+    resource = client.get(path).json()
+    assert resource["status"] == "COMPLETE", resource
+    assert len(model.calls) == len(steps)
+    payload = resource["payload"]
+    assert len(payload["workflow"]["outputs"]) == (2 if intermediate else 1)
+    assert payload["executionAllowed"] is False
+    _no_execution(app)
+
+
+def test_whole_table_draft_does_not_save_after_repeated_output_violation(kernel_settings):
+    draft = _whole_table_draft(intermediate=True)
+    app, client, model = _app(
+        kernel_settings, [*_whole_table_steps(draft), _reply(draft, call_id="still-invalid")],
+    )
+    sid, path, _ = _create(client, message=_FULL_COLUMN_GOAL)
+
+    _drain(app, sid)
+
+    resource = client.get(path).json()
+    assert resource["status"] == "FAILED", resource
+    assert resource["payload"] is None
+    assert resource["diagnostics"]["code"] == "WORKFLOW_DRAFT_INTERMEDIATE_OUTPUT"
+    assert len(model.calls) == 6
     _no_execution(app)
 
 

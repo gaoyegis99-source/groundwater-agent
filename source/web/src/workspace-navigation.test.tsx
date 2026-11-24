@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import sourceProfile from '../../products/groundwater/ui/product-ui.json';
 import App from './App';
 import { decodeProductUi, setProductUi } from './product-ui';
-import { capabilitiesForProfile, historyFixture, instant, sessionResponseFixture } from './test-fixtures';
+import { capabilitiesForProfile, dataRef, historyFixture, instant, sessionResponseFixture } from './test-fixtures';
 
 const profile = decodeProductUi(sourceProfile);
 
@@ -199,4 +199,33 @@ it('rechecks workspace authorization on same-session navigation', async () => {
   const tasks = await screen.findByRole('main', { name: '任务工作台' });
   await within(tasks).findByText('当前身份无法查看工作归属');
   expect(within(tasks).queryByRole('link', { name: '返回业务工作' })).not.toBeInTheDocument();
+});
+
+it.each([
+  ['ACTIVE', '输入准备待补充'],
+  ['CONSUMED', '已关联到工作'],
+] as const)('only shows a linked input as awaiting preparation while checks are active (%s)', async (disposition, label) => {
+  Element.prototype.scrollIntoView = vi.fn();
+  const reference = dataRef();
+  const work = context('north', '北区监测工作').context;
+  const requests = mockWorkspace(undefined, () => json({ context: { ...work, assets: [
+    { linkId: 'data-1', linkedAt: instant, state: 'AVAILABLE', reference: { kind: 'DATA', dataRef: reference } },
+  ] } }));
+  const history = historyFixture({ preparation: {
+    schemaVersion: 'task-preparation.v1', preparationId: 'preparation-1', revision: 3,
+    sessionId: 'session-1', agentRunId: 'agent-1', goalRevision: 1, taskId: null, baseTaskRevision: null,
+    status: 'BLOCKED', freshForCurrentTurn: true, disposition,
+    entries: [{
+      targetKind: 'EXECUTABLE_MODEL', targetId: 'groundwater.summary', targetVersion: '1.0.0',
+      status: 'BLOCKED', selectionPolicy: 'PINNED', inputs: { versionId: reference },
+      knowledgeRefs: [], parameters: {}, parameterSources: {}, checks: [],
+      blockingReasons: ['WORKFLOW_DRAFT_MISSING_PARAMETER:axis'],
+    }],
+  } });
+  vi.stubGlobal('fetch', (url: string) => url.endsWith('/session-1/messages') ? Promise.resolve(json(history)) : requests(url));
+  go('#/sessions/session-1?workItem=north');
+  render(<App />);
+
+  const workBackground = await screen.findByRole('region', { name: '工作背景' });
+  await within(workBackground).findByText(label);
 });

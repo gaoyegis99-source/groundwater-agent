@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import replace
 import json
+from threading import Event
 import time
 
 from agents import Usage
@@ -36,6 +37,44 @@ def test_deepseek_router_prompt_treats_confirmation_proposal_as_execution():
 
     assert "先核实资料并提交确认" in instructions
     assert "EXECUTE_ON_DATA|NONE|NONE" in instructions
+
+
+@pytest.mark.parametrize("instructions", [
+    pytest.param(router_module._DEEPSEEK_INSTRUCTIONS, id="semantic-literal"),
+    pytest.param(router_module._INSTRUCTIONS, id="structured"),
+])
+def test_router_prompt_classifies_the_requested_deliverable(instructions):
+    text = " ".join(instructions.split())
+
+    assert "CONSULT: explain a concept or answer a factual question" in text
+    assert "DESIGN: recommend an approach or give analysis steps" in text
+    assert "CREATE_WORKFLOW: produce a workflow artifact" in text
+    assert 'A request for a workflow draft is enough even without "reusable" or "exportable"' in text
+    assert "Do not execute" in text and "does not change the requested deliverable" in text
+
+
+@pytest.mark.parametrize(
+    "message,semantic,response_kind,policy",
+    [
+        ("解释一下哪些情况适合做水化学分析。", "CONSULT", "DIALOGUE", "READ_ONLY"),
+        ("建议一下这批样品的筛选规则和分析步骤，先别计算。", "DESIGN", "DIALOGUE", "READ_ONLY"),
+        ("起草一个从样品筛选到质量报告的工作流，先别计算。", "CREATE_WORKFLOW", "WORKFLOW_DRAFT", None),
+    ],
+    ids=["explanation", "analysis-design", "workflow-artifact"],
+)
+def test_kernel_maps_design_and_draft_without_execution_authorization(
+    kernel_settings, message, semantic, response_kind, policy,
+):
+    model = ScriptedModel([ModelStep(output=[assistant_message(f"{semantic}|NONE|NONE")])])
+    router = IntentRouter(kernel_settings().intent_router, agent_slots=asyncio.Semaphore(1), model=model)
+
+    result = asyncio.run(router.route(message=message, memory=None, history=()))
+
+    assert result.intent.semantic_intent == semantic
+    assert result.intent.response_kind == response_kind
+    assert result.intent.dialogue_policy == policy
+    assert result.intent.control_intent is None
+    assert result.provider_request_count == 1
 
 
 class _UsageLedger:
@@ -106,18 +145,20 @@ def _model(value: dict, *, usage: Usage | None = None) -> ScriptedModel:
     ])
 
 
+def _reply_step() -> ModelStep:
+    return ModelStep(output=[function_call("submit_reply", {
+        "conclusion": {"text": "我可以直接解释这个问题。", "citations": []},
+        "details": [],
+        "unresolved_items": [],
+        "referenced_workflow_runs": [],
+        "include_execution_status": False,
+        "interaction_options": [],
+        "workflow_draft": None,
+    }, call_id="reply")])
+
+
 def _reply_model() -> ScriptedModel:
-    return ScriptedModel([
-        ModelStep(output=[function_call("submit_reply", {
-            "conclusion": {"text": "我可以直接解释这个问题。", "citations": []},
-            "details": [],
-            "unresolved_items": [],
-            "referenced_workflow_runs": [],
-            "include_execution_status": False,
-            "interaction_options": [],
-            "workflow_draft": None,
-        }, call_id="reply")])
-    ])
+    return ScriptedModel([_reply_step()])
 
 
 def _clarification_reply_model() -> ScriptedModel:
@@ -650,8 +691,9 @@ def test_platform_auto_message_persists_route_then_runs_decided_agent(
     assert "TOOL_SCHEMAS" in manifests and "OUTPUT_SCHEMA" in manifests
 
 
+@pytest.mark.parametrize("followup", [None, "rule", "status", "invalid", "change", "approved", "replaced", "control"])
 def test_auto_dialogue_execution_request_waits_for_confirmation_before_job(
-    kernel_settings,
+    kernel_settings, monkeypatch, followup,
 ):
     router_model = _model(_decision("DIALOGUE", policy="EXECUTION_PROPOSAL"))
     agent_model = ScriptedModel([
@@ -712,6 +754,132 @@ def test_auto_dialogue_execution_request_waits_for_confirmation_before_job(
                 time.sleep(0.02)
             else:
                 raise AssertionError("confirmation was not proposed")
+
+            if followup is not None:
+                path = f"/api/v12/sessions/{session_id}"
+                original = client.get(path).raise_for_status().json()
+                assert original["confirmation"]["status"] == "PENDING"
+                messages_path = path + "/messages"
+                body = {
+                    "requestId": "followup",
+                    "message": {
+                        "rule": "查看状态",
+                        "status": "刚才提交的监测统计处理到哪一步了，还有什么等我处理？",
+                        "invalid": "之前那个分析现在还缺哪一步？",
+                        "change": "换一个目标，请直接解释地下水位的含义。",
+                        "approved": "监测摘要现在到了哪个环节？",
+                        "replaced": "改为讨论含水层的定义。",
+                        "control": "改为讨论含水层的定义。",
+                    }[followup],
+                    "requestedMode": "AUTO",
+                }
+                started, release = Event(), Event()
+                if followup != "rule":
+                    literal = {
+                        "status": "STATUS_QUERY|NONE|NONE",
+                        "invalid": "an invalid routing response",
+                        "change": "CONSULT|NONE|NONE",
+                        "approved": "STATUS_QUERY|CONTINUE|NONE",
+                        "replaced": "CONSULT|NONE|NONE",
+                        "control": "CONSULT|NONE|NONE",
+                    }[followup]
+                    router_model.enqueue(ModelStep(output=[assistant_message(literal)]))
+                    if followup == "invalid":
+                        router_model.enqueue(ModelStep(output=[assistant_message(literal)]))
+                    if followup in {"change", "replaced"}:
+                        agent_model.enqueue(_reply_step())
+                    respond = router_model.get_response
+
+                    async def pause_route(*args, **kwargs):
+                        started.set()
+                        assert await asyncio.to_thread(release.wait, 5)
+                        return await respond(*args, **kwargs)
+
+                    monkeypatch.setattr(router_model, "get_response", pause_route)
+                try:
+                    receipt = client.post(messages_path, json=body).raise_for_status().json()
+                    if followup != "rule":
+                        assert started.wait(5)
+                        during = client.get(path).raise_for_status().json()
+                        assert during["goalRevision"] == original["goalRevision"]
+                        assert during["confirmation"] == original["confirmation"]
+                        pending = client.get(messages_path).raise_for_status().json()
+                        assert len(pending["turns"]) == 1
+                        assert pending["controlMessages"][-1]["requestId"] == "followup"
+                        assert pending["controlMessages"][-1]["status"] in {"ROUTING_REQUESTED", "ROUTING_RUNNING"}
+                        assert client.post(messages_path, json=body).raise_for_status().json() == receipt
+                        if followup == "approved":
+                            approve = {"confirmationId": original["confirmation"]["confirmationId"]}
+                            approved = client.post(path + "/confirm", json=approve).raise_for_status().json()
+                            (workflow_run_id,) = approved["workflowRunIds"]
+                            assert client.post(path + "/confirm", json=approve).raise_for_status().json()[
+                                "workflowRunIds"
+                            ] == [workflow_run_id]
+                        elif followup == "replaced":
+                            client.post(messages_path, json={
+                                "requestId": "other-goal", "message": "请解释地下水位。", "requestedMode": "DIALOGUE",
+                            }).raise_for_status()
+                            assert _await_terminal_turn(client, session_id)["requestId"] == "other-goal"
+                        elif followup == "control":
+                            client.post(messages_path, json={
+                                "requestId": "approval-proposal", "message": "批准", "requestedMode": "AUTO",
+                            }).raise_for_status()
+                finally:
+                    release.set()
+
+                if followup == "change":
+                    terminal = _await_terminal_turn(client, session_id)
+                    assert terminal["status"] == "COMPLETE"
+                    changed = client.get(messages_path).raise_for_status().json()
+                    assert changed["goalRevision"] == original["goalRevision"] + 1
+                    assert changed["turns"][0]["confirmations"][0]["status"] == "SUPERSEDED"
+                    assert changed["turns"][-1]["requestId"] == "followup"
+                    assert len(agent_model.calls) == 4
+                else:
+                    for _ in range(120):
+                        snapshot = client.get(messages_path).raise_for_status().json()
+                        result = next((item for item in snapshot["controlMessages"]
+                                       if item["requestId"] == "followup" and item["status"] in
+                                       {"CONTROL_COMPLETE", "FAILED"}), None)
+                        if result is not None:
+                            break
+                        time.sleep(0.02)
+                    else:
+                        raise AssertionError("status request did not finish")
+                    assert snapshot["goalRevision"] == original["goalRevision"] + int(followup == "replaced")
+                    assert len(snapshot["turns"]) == 1 + int(followup == "replaced")
+                    current = client.get(path).raise_for_status().json()
+                    if followup == "approved":
+                        assert current["confirmation"]["confirmationId"] == original["confirmation"]["confirmationId"]
+                        assert current["confirmation"]["status"] == "CONFIRMED"
+                        assert current["confirmation"]["actions"] == original["confirmation"]["actions"]
+                        assert current["workflowRunIds"] == [workflow_run_id]
+                    elif followup == "replaced":
+                        assert snapshot["turns"][-1]["requestId"] == "other-goal"
+                        assert snapshot["turns"][0]["confirmations"][0]["status"] == "SUPERSEDED"
+                    else:
+                        assert current["confirmation"] == original["confirmation"]
+                    assert len(agent_model.calls) == 3 + int(followup == "replaced")
+                    replay = client.post(messages_path, json=body).raise_for_status().json()
+                    assert replay == receipt
+                    assert client.post(messages_path, json={**body, "message": "不同的请求"}).status_code == 409
+                    if followup == "replaced":
+                        assert result["status"] == "FAILED"
+                        assert result["errorCode"] == "MESSAGE_GOAL_CHANGED"
+                    elif followup == "control":
+                        assert result["status"] == "FAILED"
+                        assert result["errorCode"] == "CONTROL_PROPOSAL_PENDING"
+                        assert snapshot["controlProposals"][0]["status"] == "PENDING"
+                    elif followup == "invalid":
+                        assert result["status"] == "FAILED"
+                        assert result["errorCode"] == "AGENT_INTENT_ROUTING_INVALID"
+                    else:
+                        assert result["semanticIntent"] == "STATUS_QUERY"
+                        if followup == "approved":
+                            assert result["statusSnapshot"] != "WAITING_CONFIRMATION"
+                        else:
+                            assert result["statusSnapshot"] == "WAITING_CONFIRMATION"
+                        assert receipt["routingStatus"] == ("CONTROL_COMPLETE" if followup == "rule" else "ROUTING_REQUESTED")
     finally:
         asyncio.run(service_client.aclose())
 
@@ -720,8 +888,9 @@ def test_auto_dialogue_execution_request_waits_for_confirmation_before_job(
     assert turn["resolvedMode"] == "DIALOGUE"
     assert turn["confirmations"][0]["status"] == "PENDING"
     assert turn["executionTasks"] == []
-    assert len(service_requests) == 1
     assert service_requests[0].url.path.endswith("inspect_data_version")
+    if followup != "approved":
+        assert len(service_requests) == 1
     with connect_database(application.database) as connection:
         counts = {
             table: connection.execute(
@@ -731,15 +900,26 @@ def test_auto_dialogue_execution_request_waits_for_confirmation_before_job(
         }
     assert counts == {
         "confirmations": 1,
-        "workflow_runs": 0,
-        "workflow_dispatches": 0,
+        "workflow_runs": int(followup == "approved"),
+        "workflow_dispatches": int(followup == "approved"),
     }
 
 
+@pytest.mark.parametrize(
+    "literal,message,reason",
+    [
+        ("UNKNOWN|NONE|REQUEST_KIND_AMBIGUOUS", "请帮我处理一下", "REQUEST_KIND_AMBIGUOUS"),
+        ("EXECUTE_ON_DATA|CONTINUE|NONE", "请运行监测趋势分析，先提交确认。", "TASK_CONFLICT"),
+        ("CREATE_WORKFLOW|CONTINUE|NONE", "请继续设计可复用的监测分析流程。", "TASK_CONFLICT"),
+    ],
+    ids=["ambiguous-request", "missing-task-for-execution", "missing-task-for-workflow"],
+)
 def test_platform_clarification_asks_one_question_without_confirmation_workflow_or_job(
-    kernel_settings,
+    kernel_settings, literal, message, reason,
 ):
-    router_model = _model(_decision("NEEDS_CLARIFICATION"))
+    router_model = ScriptedModel([
+        ModelStep(output=[assistant_message(literal)]) for _ in range(2)
+    ])
     agent_model = _clarification_reply_model()
     service_requests = []
 
@@ -766,7 +946,7 @@ def test_platform_clarification_asks_one_question_without_confirmation_workflow_
                 f"/api/v12/sessions/{session_id}/messages",
                 json={
                     "requestId": "clarification",
-                    "message": "请帮我处理一下",
+                    "message": message,
                     "requestedMode": "AUTO",
                 },
             )
@@ -791,6 +971,11 @@ def test_platform_clarification_asks_one_question_without_confirmation_workflow_
             ).fetchone()[0]
             for table in ("confirmations", "workflow_runs", "workflow_dispatches")
         }
+        decision = connection.execute(
+            """SELECT semantic_intent, task_action, clarification_reason
+               FROM message_requests WHERE session_id=?""",
+            (session_id,),
+        ).fetchone()
         assistant = connection.execute(
             """SELECT content FROM messages
                WHERE session_id=? AND role='assistant'""",
@@ -801,6 +986,7 @@ def test_platform_clarification_asks_one_question_without_confirmation_workflow_
         "workflow_runs": 0,
         "workflow_dispatches": 0,
     }
+    assert tuple(decision) == ("UNKNOWN", "NONE", reason)
     assert assistant == "你希望得到解释、分析建议，还是可复用的处理流程？"
 
 

@@ -3,7 +3,7 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import App from './App';
 import { capabilitiesFixture, historyFixture, messageReceiptFixture, replyFixture, sessionResponseFixture, sessionResultsFixture, turnFixture } from './test-fixtures';
 import { messageBody, newRequestId, routingLabel } from './message-routing';
-import type { History, MessageRequest } from './types';
+import type { Confirmation, ControlMessage, History, MessageRequest } from './types';
 import { identityStorageScope, scopedStorageKey } from './browser-scope';
 
 const storageScope = identityStorageScope('groundwater', 'demo', 'test-user');
@@ -128,6 +128,61 @@ it('recovers an accepted request from history after a lost response without post
   expect(posts).toHaveLength(0);
   expect(await screen.findByRole('status')).toHaveTextContent('正在判断需求');
 });
+it.each(['success', 'lost receipt', 'failed routing'] as const)('keeps the original confirmation while checking natural-language progress (%s)', async outcome => {
+  const confirmation: Confirmation = {
+    confirmationId: 'original-approval', goalRevision: 1, status: 'PENDING', agentRunId: 'agent-1',
+    reason: '资料已核实', decision: null, decisionState: null,
+    actions: [{ toolCallId: 'original-action', tool: 'run_summary', modelId: 'summary', modelVersion: '1',
+      workflowId: 'summary', workflowVersion: '1', arguments: { source: 'frozen-version' } }],
+  };
+  const question = '刚才的监测计算走到哪一步了，还在等我操作吗？';
+  history = historyFixture({
+    items: [{ messageId: 1, goalRevision: 1, role: 'user', content: '计算监测统计摘要' }],
+    turns: [{ status: 'WAITING_CONFIRMATION', confirmations: [confirmation] }],
+  });
+  post = async body => {
+    const pending: ControlMessage = {
+      requestId: body.requestId, message: body.message, status: 'ROUTING_RUNNING',
+      responseKind: null, semanticIntent: null, controlIntent: null, clarificationReason: null,
+      statusSnapshot: 'WAITING_CONFIRMATION', waitingReason: 'CONFIRMATION_REQUIRED', results: [],
+      createdAt: history.snapshotAt,
+    };
+    history = { ...history, eventCursor: 1, controlMessages: [pending] };
+    if (outcome === 'lost receipt') throw new TypeError('response lost');
+    return json(messageReceiptFixture({ requestId: body.requestId, sessionId: 'routing' }));
+  };
+  const view = render(<App />);
+  const input = await ready();
+  fireEvent.change(input, { target: { value: question } });
+  fireEvent.keyDown(input, { key: 'Enter' });
+  await screen.findByText('正在判断这条消息的需求');
+  await waitFor(() => expect(input).toHaveValue(''));
+  expect(screen.queryByRole('button', { name: '重试发送' })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /^确认执行/ })).toBeEnabled();
+  expect(posts).toHaveLength(1);
+  expect(posts[0].body).toMatchObject({ message: question, requestedMode: 'AUTO' });
+
+  history = { ...history, eventCursor: 2, controlMessages: [{
+    ...history.controlMessages![0],
+    ...(outcome === 'failed routing'
+      ? { status: 'FAILED', errorCode: 'AGENT_INTENT_ROUTING_INVALID' }
+      : { status: 'CONTROL_COMPLETE', responseKind: 'DIALOGUE', semanticIntent: 'STATUS_QUERY' }),
+  }] };
+  act(() => Events.latest.emit(outcome === 'failed routing' ? 'intent_routing.failed' : 'intent_routing.resolved'));
+  if (outcome === 'failed routing') {
+    await screen.findByText('需求理解未完成');
+    await waitFor(() => expect(input).toHaveValue(question));
+  } else {
+    await screen.findByText('有计算方案等待确认。');
+    await waitFor(() => expect(sessionStorage.getItem(cacheKey('routing-draft', 'routing'))).toBeNull());
+    view.unmount(); render(<App />); await ready();
+    expect(await screen.findByText('有计算方案等待确认。')).toBeVisible();
+  }
+  expect(screen.getByRole('button', { name: /^确认执行/ })).toBeEnabled();
+  fireEvent.click(screen.getByText('核对本批次资料与参数'));
+  expect(await screen.findByText('frozen-version')).toBeVisible();
+  expect(posts).toHaveLength(1);
+});
 it('renders persisted intent choices and sends the exact option through AUTO', async () => {
   history = historyFixture({ items: [{ messageId: 1, goalRevision: 1, role: 'user', content: '我需要一个可复用的工作流模板' }, { messageId: 2, goalRevision: 1, role: 'assistant', content: '你希望我如何继续？' }], turns: [{ requestId: 'original-request', requestedMode: 'AUTO', routingStatus: 'START_REQUESTED', intentDecision: 'NEEDS_CLARIFICATION', resolvedMode: 'DIALOGUE', clarificationRequired: true, reply: replyFixture('你希望我如何继续？'), interactionOptions: [{ label: '整理处理流程', description: '形成可复用流程', message: '请整理当前任务的可复用工作流。' }, { label: '普通说明', description: '只解释方法', message: '请只说明可行方法。' }] }] });
   render(<App />); const input = await ready();
@@ -139,7 +194,7 @@ it('renders persisted intent choices and sends the exact option through AUTO', a
   await waitFor(() => expect(posts).toHaveLength(1));
   expect(posts[0].body).toEqual({ requestId: expect.any(String), requestedMode: 'AUTO', message: '请整理当前任务的可复用工作流。' });
   await waitFor(() => expect(screen.getByRole('button', { name: '发送消息' })).toBeEnabled());
-  expect(input).toHaveValue('另一个尚未发送的问题'); expect(screen.getByText('你希望我如何继续？')).toBeVisible();
+  expect(input).toHaveValue('另一个尚未发送的问题'); expect(await screen.findByText('你希望我如何继续？')).toBeVisible();
 });
 it('refreshes routing via durable events and exposes routing metadata only in debug details', async () => {
   window.history.replaceState({}, '', '/?debug=1#/sessions/routing');
@@ -175,6 +230,34 @@ it('does not expose explicit mode recovery for a failed AUTO router turn', async
   expect(screen.queryByRole('region', { name: '下一步选项' })).not.toBeInTheDocument();
   expect(posts).toHaveLength(0);
 });
+it('restores recovery guidance for a failed task clarification and submits only the user message', async () => {
+  history = historyFixture({
+    items: [{ messageId: 1, goalRevision: 1, role: 'user', content: '继续上一轮监测分析' }],
+    turns: [{ requestId: 'task-conflict', requestedMode: 'AUTO', routingStatus: 'START_REQUESTED',
+      intentDecision: 'NEEDS_CLARIFICATION', resolvedMode: 'DIALOGUE', clarificationRequired: true,
+      clarificationReason: 'TASK_CONFLICT', status: 'FAILED', errorCode: 'AGENT_MODEL_OUTPUT_INVALID',
+      diagnostics: { reason: 'REPLY_SCHEMA_INVALID' } }],
+  });
+  const guidance = '请在消息框说明要继续的任务，或补充本次的工作目标。';
+  const view = render(<App />);
+  await ready();
+  expect(await screen.findByText(guidance)).toBeVisible();
+  expect(screen.queryByRole('region', { name: '下一步选项' })).not.toBeInTheDocument();
+  expect(posts).toHaveLength(0);
+
+  view.unmount();
+  render(<App />);
+  const input = await ready();
+  expect(await screen.findByText(guidance)).toBeVisible();
+  expect(screen.getByText('技术详情')).toBeVisible();
+  const message = '请在当前会话开始新的监测趋势分析。';
+  fireEvent.change(input, { target: { value: message } });
+  fireEvent.keyDown(input, { key: 'Enter' });
+  await waitFor(() => expect(posts).toEqual([{ path: '/api/v12/sessions/routing/messages', body: {
+    requestId: expect.any(String), requestedMode: 'AUTO', message,
+  } }]));
+});
+
 it('moves a homepage submission into its new session and retains the same requestId', async () => {
   window.location.hash = '#/';
   render(<App />); const input = await ready();

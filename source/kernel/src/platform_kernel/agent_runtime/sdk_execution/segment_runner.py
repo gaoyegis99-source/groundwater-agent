@@ -90,29 +90,26 @@ async def _execute_agent(
                     preview(None)
                 return streamed
 
-            result: Any
-            try:
+            repaired = False
+            while True:
                 try:
                     result = await run_once(agent_input)
-                    repaired_early_model_error = False
                 except ModelBehaviorError:
                     if not usage_capture.stage_model_behavior_retry():
                         raise
-                    result = await run_once(_early_model_error_repair_input(
-                        usage_capture, agent,
-                    ))
-                    repaired_early_model_error = True
-            except _ProtocolRepairRequiredError as repair:
-                response_batch = [repair.response]
-                result = await run_once(repair.repair_input)
-                response_batch.extend(result.raw_responses)
-                repaired_early_model_error = False
-            else:
-                response_batch = list(result.raw_responses[response_start:])
-            if _needs_missing_tool_retry(result, usage_capture):
-                repair_input = _missing_tool_repair_input(result, agent)
-                result = await run_once(repair_input)
-                response_batch.extend(result.raw_responses)
+                    agent_input = _early_model_error_repair_input(usage_capture, agent)
+                except _ProtocolRepairRequiredError as repair:
+                    agent_input = repair.repair_input
+                else:
+                    if not _needs_missing_tool_retry(result, usage_capture):
+                        break
+                    agent_input = _missing_tool_repair_input(result, agent)
+                # The persisted stage ledger limits each repair to attempt 2.
+                # Carry the same governance state across SDK invocations,
+                # including when the initial input was an approved RunState.
+                repaired = True
+                if usage_capture.context is not None:
+                    arguments["context"] = usage_capture.context.context
     except TimeoutError as error:
         if not deadline.expired() and not request_deadline.expired():
             raise
@@ -127,11 +124,6 @@ async def _execute_agent(
     except UpstreamServiceError as error:
         raise _execution_failure(
             str(error), True, previous_usage, usage_capture, memory_update, error
-        ) from error
-    except _ProtocolRepairRequiredError as error:
-        raise _execution_failure(
-            "AGENT_MODEL_OUTPUT_INVALID", False, previous_usage, usage_capture,
-            memory_update, error,
         ) from error
     except AgentRunError as error:
         raise _execution_failure(
@@ -222,10 +214,11 @@ async def _execute_agent(
         )
         if adapted is not None:
             result.final_output = adapted
+    # After repair the final SDK result only accounts for the last invocation.
     usage = _add_usage(previous_usage, (
         usage_capture.delta()
-        if repaired_early_model_error
-        else _responses_usage(response_batch)
+        if repaired
+        else _responses_usage(result.raw_responses[response_start:])
     ))
     return SDKExecutionResult(result, usage, memory_update)
 

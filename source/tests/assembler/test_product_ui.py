@@ -62,6 +62,11 @@ def _save_profile(source: Path, profile: dict) -> None:
         (lambda value: value["outputs"].pop("summary"), "PRODUCT_UI_OUTPUTS_INVALID"),
         (lambda value: value["cases"].pop("yaozhanbao-transfer-case"), "PRODUCT_UI_CASES_INVALID"),
         (lambda value: value["models"]["groundwater.summary"].update(unknown="value"), "PRODUCT_UI_MODEL_FIELDS_INVALID"),
+        (lambda value: value["models"]["groundwater.monitoring-trend"]["inputCaseParameters"].update(versionId="unrelated"), "PRODUCT_UI_CASE_PARAMETERS_INVALID"),
+        (lambda value: value["models"]["groundwater.monitoring-trend"]["inputCaseParameters"].update(frequency="week"), "PRODUCT_UI_CASE_PARAMETERS_INVALID"),
+        (lambda value: value["models"]["groundwater.monitoring-trend"]["caseRequest"].update(pattern="^unclosed($"), "PRODUCT_UI_CASE_REQUEST_INVALID"),
+        (lambda value: value["models"]["groundwater.monitoring-trend"]["caseRequest"]["switches"]["thresholdEventsEnabled"]["required"].append("versionId"), "PRODUCT_UI_CASE_REQUEST_INVALID"),
+        (lambda value: value["models"]["groundwater.monitoring-trend"]["resultOverview"]["inactiveGroups"][0]["outputs"].append("unknown"), "PRODUCT_UI_RESULT_OVERVIEW_INVALID"),
     ],
 )
 def test_product_ui_must_completely_and_strictly_cover_domain(source: Path, mutate, error: str) -> None:

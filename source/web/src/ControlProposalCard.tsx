@@ -1,4 +1,5 @@
 import type { ControlMessage, ControlProposal } from './types';
+import { ErrorNotice } from './ErrorNotice';
 
 const labels = {
   APPROVE_CONFIRMATION: '批准当前计算方案',
@@ -20,6 +21,13 @@ export function ControlProposalCard({ proposal, message, disabled, onDecision, o
   onDecision: (proposalId: string, action: 'confirm' | 'dismiss') => void;
   onResource?: (resourceId: string) => void;
 }) {
+  if (message.status === 'ROUTING_REQUESTED' || message.status === 'ROUTING_RUNNING') return <section className="control-proposal" role="status">
+    <strong>{message.message}</strong><p>正在判断这条消息的需求</p>
+  </section>;
+  if (message.status === 'FAILED' && message.errorCode) return <section className="control-proposal stale">
+    <strong>{message.message}</strong>
+    <ErrorNotice title="需求理解未完成" code={message.errorCode} />
+  </section>;
   if (message.semanticIntent === 'STATUS_QUERY') return <section className="control-proposal complete" role="status">
     <strong>当前状态</strong><p>{statusLabels[message.statusSnapshot] ?? message.statusSnapshot}</p>
     {message.waitingReason && <p>{waitingReasons[message.waitingReason] ?? message.waitingReason}</p>}

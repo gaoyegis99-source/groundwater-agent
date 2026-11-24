@@ -358,3 +358,55 @@ def test_eligible_business_ambiguity_only_blocks_execution(registry, kernel_sett
             await app.close()
 
     asyncio.run(scenario())
+
+
+@pytest.mark.parametrize(
+    ("message", "anomaly_threshold", "anomaly_source"),
+    [
+        ("补充参数 eventThreshold：10 m", 3.5, "MODEL_DEFAULT"),
+        ("补充参数 eventThreshold：10 m；MAD阈值：4.5", 4.5, "USER"),
+    ],
+)
+def test_named_threshold_does_not_also_match_the_anomaly_threshold(
+    registry, message, anomaly_threshold, anomaly_source,
+):
+    models, bundle = registry
+    base_model, = models
+    model = replace(
+        base_model,
+        input_schema={
+            **base_model.input_schema,
+            "properties": {
+                **base_model.input_schema["properties"], "threshold": {"type": "number"},
+            },
+        },
+        default_parameters={**base_model.default_parameters, "threshold": 3.5},
+    )
+    profile = bundle[0]["profiles"][0]
+    profile["modelDefaults"]["threshold"] = 3.5
+    event_rule = {
+        "pattern": r"(?:^|[，,。；;])\s*(?:补充参数\s+)?eventThreshold\s*[:=：]\s*(?P<value>[0-9]+)\s*(?P<unit>m)?",
+    }
+    profile["textParameters"][0]["patterns"].append(event_rule)
+    profile["textParameters"].append({
+        "name": "threshold", "label": "MAD 异常阈值", "type": "number",
+        "patterns": [{"pattern": r"(?:MAD阈值|MAD 阈值|threshold)\s*[:=：]\s*(?P<value>[0-9]+(?:\.[0-9]+)?)"}],
+    })
+    installed = parse_business_capabilities(bundle, (model,), {"data", model.execution_service})
+    roles = frozenset({"researcher"})
+    standalone = select_business_capability(installed, GOAL + message, roles, [_attachment()])
+    assert standalone is not None and standalone["parameters"]["eventThreshold"] == 10.0
+    assert standalone["parameters"]["threshold"] == anomaly_threshold
+    assert standalone["business_capability"]["argumentSources"]["threshold"] == anomaly_source
+
+    initial = select_business_capability(installed, GOAL, roles, [_attachment()])
+    prior = bind_workflow_selection(initial, model, (_attachment(),))
+    continued, references = continue_business_capability(
+        installed, prior, {"kind": "MISSING_PARAMETER", "parameter": "eventThreshold"}, message, roles, [],
+    )
+    assert references == [_attachment()]
+    assert continued["parameters"]["eventThreshold"] == 10.0
+    assert continued["parameters"]["threshold"] == anomaly_threshold
+    assert continued["business_capability"]["argumentSources"]["threshold"] == anomaly_source
+    assert continued["business_capability"]["thresholdUnit"] == "m"
+    assert not continued["business_capability"]["parameterConflicts"]

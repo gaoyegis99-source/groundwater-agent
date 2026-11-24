@@ -161,6 +161,9 @@ async def execute_initial(
                         "arguments": explicit_request.arguments,
                     }
                 capabilities = _capabilities(dependencies, request_context)
+                hooks.approval_models = {model.tool_name: model for model in capabilities.models}
+                hooks.explicit_model_tool_request = request_context.get("explicit_model_tool_request")
+                hooks.has_workflow_selection = request_context.get("workflow_selection") is not None
                 context_policy = ContextPolicyV1(O200kTokenEstimator())
                 all_turns = completed_turns(history, after_revision=0)
                 snapshot = ContextSourceSnapshotV1(

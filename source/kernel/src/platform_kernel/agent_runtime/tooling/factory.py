@@ -73,6 +73,7 @@ def build_agent_tools(
     explicit_model_tool_request = (
         None if request_context is None else request_context.get("explicit_model_tool_request")
     )
+    workflow_selection = None if request_context is None else request_context.get("workflow_selection")
     if capabilities.allow_model_tools:
         tools.append(build_preparation_tool(
             database,
@@ -82,7 +83,7 @@ def build_agent_tools(
             observation_client=observation_client,
             provider=provider,
             explicit_model_tool_request=explicit_model_tool_request,
-            workflow_selection=request_context.get("workflow_selection") if request_context else None,
+            workflow_selection=workflow_selection,
             composition=composition_settings.workflow_composition if composition_settings else None,
         ))
     tools.append(ReplySubmission(
@@ -122,6 +123,7 @@ def build_agent_tools(
             build_model_tool(
                 database, item, provider=provider,
                 explicit_model_tool_request=explicit_model_tool_request,
+                has_workflow_selection=workflow_selection is not None,
             ) for item in models
         )
     tools = _prepare_tools(

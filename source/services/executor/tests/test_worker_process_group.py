@@ -100,7 +100,7 @@ def test_operator_child_applies_original_limits_before_exec(monkeypatch):
         (operator_child.resource.RLIMIT_FSIZE, (4096, 4096)),
     ]
     assert command == [
-        (sys.executable, [sys.executable, "-m", "moperators.runtime.task", "input", "output"])
+        (sys.executable, [sys.executable, "-m", "moperators.runtime.entrypoint", "input", "output"])
     ]
 
 

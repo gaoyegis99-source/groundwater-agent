@@ -13,6 +13,13 @@ EXPLICIT_MODES = frozenset({"DIALOGUE", "WORKFLOW_DRAFT"})
 INTENT_DECISIONS = frozenset({
     "DIALOGUE", "WORKFLOW_DRAFT", "CONTROL", "NEEDS_CLARIFICATION",
 })
+ROUTING_IN_PROGRESS = frozenset({"ROUTING_REQUESTED", "ROUTING_RUNNING"})
+
+
+def awaits_goal_reservation(row) -> bool:
+    # Ordinary AUTO requests reserve a turn first and use AUTO until resolved.
+    # A model request protecting a pending confirmation reserves only a queue slot.
+    return row["routing_source"] == "MODEL" and row["routing_status"] in ROUTING_IN_PROGRESS
 
 
 @dataclass(frozen=True)
@@ -159,6 +166,11 @@ def receipt_from_row(row, corrects_agent_run_id=None) -> dict[str, object]:
             resolved_mode=None, clarification_required=False,
             workflow_draft_id=None, error_code=None,
         )
+        if awaits_goal_reservation(row) or row["routing_status"] == "CONTROL_COMPLETE":
+            response.update(
+                routing_source="AUTO", intent=None, semantic_intent=None, task_action=None,
+                control_intent=None, clarification_reason=None,
+            )
     return response
 
 

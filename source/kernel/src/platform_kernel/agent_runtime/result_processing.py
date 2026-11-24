@@ -13,7 +13,11 @@ from ..errors import AgentRunError
 from ..settings import ExecutableModelDefinition
 from .evidence import collect_turn_evidence
 from .models import AgentRun
-from .provider_arguments import normalize_model_tool_arguments, omit_unset_field_arguments
+from .provider_arguments import (
+    normalize_model_tool_arguments,
+    omit_disabled_model_options,
+    omit_unset_field_arguments,
+)
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -164,6 +168,44 @@ def _select_prepared_arguments(
     raise _PreparedArgumentsMismatchError(paths)
 
 
+def _proposed_model_arguments(
+    arguments_json: str, model: ExecutableModelDefinition, *,
+    provider: str, explicit_model_tool_request: object,
+) -> tuple[dict[str, object], dict[str, object]]:
+    supplied = json.loads(arguments_json)
+    if not isinstance(supplied, dict):
+        raise ValueError("AGENT_MODEL_OUTPUT_INVALID")
+    supplied = normalize_model_tool_arguments(supplied, model.input_schema, provider=provider)
+    supplied = omit_unset_field_arguments(supplied, model, explicit_model_tool_request)
+    return supplied, {**model.default_parameters, **supplied}
+
+
+def prepared_approval_correction(
+    arguments_json: str, model: ExecutableModelDefinition, input_items: list[dict[str, Any]], *,
+    provider: str, explicit_model_tool_request: object,
+    has_workflow_selection: bool,
+) -> tuple[dict[str, object], dict[str, object]] | None:
+    """Provide a retry only when one current preparation determines the intended call."""
+    evidence = collect_turn_evidence(input_items)
+    candidates = evidence.prepared_arguments.get(model.model_id, [])
+    if evidence.prepared_candidate_counts.get(model.model_id) != 1 or len(candidates) != 1:
+        return None
+    try:
+        _, arguments = _proposed_model_arguments(
+            arguments_json, model, provider=provider,
+            explicit_model_tool_request=explicit_model_tool_request,
+        )
+    except ValueError:
+        return None
+    prepared, _selection_policy = candidates[0]
+    if not has_workflow_selection and explicit_model_tool_request is None and prepared != arguments:
+        arguments = omit_disabled_model_options(arguments, model)
+    paths = _argument_difference_paths(prepared, arguments)
+    if not paths:
+        return None
+    return prepared, _processing_diagnostics(_PreparedArgumentsMismatchError(paths))
+
+
 def prepare_interruption(
     run: AgentRun,
     result: Any,
@@ -205,18 +247,19 @@ def prepare_interruption(
             ):
                 raise ValueError("AGENT_PLAN_ACTION_MISMATCH")
             model = models_by_tool[tool_name]
-            supplied = json.loads(arguments)
-            if not isinstance(supplied, dict):
-                raise ValueError("AGENT_MODEL_OUTPUT_INVALID")
-            supplied = normalize_model_tool_arguments(
-                supplied, model.input_schema, provider=provider,
+            supplied, arguments = _proposed_model_arguments(
+                arguments, model, provider=provider,
+                explicit_model_tool_request=explicit_model_tool_request,
             )
-            supplied = omit_unset_field_arguments(supplied, model, explicit_model_tool_request)
-            arguments = {**model.default_parameters, **supplied}
             selection_policy = "PINNED"
             explicitly_prepared = prepared_arguments.get(model.model_id, [])
             if business_scope and not explicitly_prepared:
                 raise ValueError("TASK_PREPARATION_REQUIRED")
+            if workflow_selection is None and explicit_model_tool_request is None and not any(
+                candidate == arguments for candidate, _policy in explicitly_prepared
+            ):
+                arguments = omit_disabled_model_options(arguments, model)
+                supplied = {name: value for name, value in supplied.items() if name in arguments}
             if model.model_id in explicitly_prepared_targets:
                 match, arguments, selection_policy = _select_prepared_arguments(
                     arguments, explicitly_prepared, provider=provider,
