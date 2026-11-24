@@ -5,7 +5,7 @@
 ## 阶段 0 本地基线
 
 - 核查日期为 2026-11-20。分支为 `main`，HEAD 为 `90be0475fb257157d62c2ca9593c56559dfa24b9`。
-- 开始时暂存区为空。`git status --short` 显示 `plans/groundwater-agent-v2/` 下旧阶段文档和脚本的删除、总控与索引改动以及 V2.1 提示词和状态模板的新增。`source/` 无 Git 改动。本报告按 [阶段 0 提示词](../groundwater-agent-v2/prompts/01_BASELINE_AND_STATUS.md) 指定路径创建，保留原有计划改动。
+- 开始时暂存区为空。`git status --short` 显示 `plans/groundwater-agent-v2/` 下旧阶段文档和脚本的删除、总控与索引改动以及 V2.1 提示词和状态模板的新增。`source/` 无 Git 改动。本报告在阶段 0 基线核查时创建，保留了当时的计划改动。
 - 产品为 `groundwater`，清单默认项目为 `groundwater-demo`。领域包为 `groundwater@6.2.0`，公共合同为 v12，Kernel SQLite 为 v38，Executor SQLite 为 v9。Data 与 Knowledge 的公共服务路由为 v3。[产品清单](../../source/products/groundwater/product-manifest.json) · [架构概览](../../source/docs/architecture/architecture-overview.md)
 - 验证使用已有 Python 3.12.8、Node.js 22.23.1、依赖缓存和 PostgreSQL 16.10 镜像。合成用例使用独立数据库与运行目录、脚本 Provider 和原生执行路径。测试命令、边界与日志见文末。
 
@@ -524,7 +524,7 @@ DeepSeek Flash 的公开监测试跑先复现两项缺口。带时区的读表�
 
 ### 主旅程逐项核对
 
-步骤编号沿用 [阶段 8 主旅程](../groundwater-agent-v2/prompts/09_END_TO_END_ACCEPTANCE.md)。工程证据来自当前候选的正式门禁、服务端监测端到端用例和已记录的本地浏览器样本。
+步骤编号沿用阶段 8 的端到端验收顺序。工程证据来自当前候选的正式门禁、服务端监测端到端用例和已记录的本地浏览器样本。
 
 | 步骤 | 已核对的行为 | 待验收 |
 | --- | --- | --- |
